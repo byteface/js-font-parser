@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <script type="text/ecmascript" src="pottis.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/utils/BinaryParser.js"></script>
+
+    <script type="text/ecmascript" src="com/byteface/font/data/RawFont.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/TableDirectory.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/DirectoryEntry.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/TableFactory.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/Os2Table.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/Panose.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/Table.js"></script>        
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapTable.js"></script>            
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfTable.js"></script>                
+    <script type="text/ecmascript" src="com/byteface/font/table/HeadTable.js"></script>                    
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapIndexEntry.js"></script>                    
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat0.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat2.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat4.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat6.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/HheaTable.js"></script>                        
+    <script type="text/ecmascript" src="com/byteface/font/table/HmtxTable.js"></script>                        
+    <script type="text/ecmascript" src="com/byteface/font/table/LocaTable.js"></script>                        
+    <script type="text/ecmascript" src="com/byteface/font/table/NameTable.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/NameRecord.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/MaxpTable.js"></script>                            
+    <script type="text/ecmascript" src="com/byteface/font/table/PostTable.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GsubTable.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfSimpleDescript.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfCompositeDescript.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/Script.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/ScriptRecord.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/data/Point.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/data/GlyphData.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfCompositeComp.js"></script>
+        
+    <script type="text/ecmascript">
+        var pottis = null;
+        
+                    var font
+        
+        
+        // font loading and parsing
+        window.onload = function()
+        {
+        
+        
+  
+  
+  
+          var file = load_binary_resource("truetypefonts/CARDS.TTF");
+        
+//        var file = load_binary_resource("slkscr.ttf");
+        
+        
+        //    var file = load_binary_resource("DiscoMo.ttf");
+            var bytedata = new a3d.ByteArray( file, a3d.Endian.BIG );
+            font = new RawFont( bytedata );
+//          drawGlyph( font, 1, Math.random()*10 );
+
+            setInterval(doSomat,100)                                                
+        }
+
+        function doSomat()
+        {
+            drawGlyph( font, Math.round(Math.random()*100) );        
+        }
+
+        function drawGlyph(font,char)
+        {
+        
+            var SCALE = Math.random()*.5;
+        
+            var g = font.getGlyph(char);            var drawingCanvas = document.getElementById('myDrawing');			
+						// set up the glyph
+			var context = drawingCanvas.getContext('2d');
+			context.lineWidth = 10 + Math.random()*10;
+			context.strokeStyle = "#000000";
+            context.fillStyle = Math.floor(Math.random()*16777215).toString(16);
+            context.globalAlpha = Math.random()*1;            
+            context.beginPath();
+            context.translate(Math.random()*10,Math.random()*100);
+            //context.rotate(20 * Math.PI / 180);
+            context.scale(1,-1);
+
+            var firstindex=0;
+            var counter=0;
+            
+			for(var i=0;i<g.getPointCount();i++)			{
+                counter++;			
+                if( g.getPoint(i).endOfContour )
+                {
+                    addContourToShape( context, g, firstindex, counter, SCALE);
+                    firstindex=i+1;
+                    counter=0;
+                }
+                else
+                {
+                    //window.console.log("normal point");
+                }   
+            }
+            
+            context.closePath();
+            context.stroke();
+            context.fill();
+        }    
+
+        
+        function addContourToShape( shape, glyph, startIndex, count, scale )
+        {
+        
+            if (glyph.getPoint(startIndex).endOfContour)
+            {
+                return;
+            }
+     
+            offset = 0;
+            
+            while(offset < count)
+            {
+                var p0 = glyph.getPoint(startIndex + offset%count);
+                var p1 = glyph.getPoint(startIndex + (offset+1)%count);
+                
+                if (offset == 0)
+                {
+                    //window.console.log("move");
+                    shape.moveTo(p0.x*scale, p0.y*scale);
+                }
+
+                if (p0.onCurve)
+                {
+                    if (p1.onCurve)
+                    {
+                        shape.lineTo(p1.x*scale, p1.y*scale);
+                        offset++;
+                    }
+                    else
+                    {
+                        var p2 = glyph.getPoint(startIndex + (offset+2)%count);
+                        
+                        if(p2.onCurve)
+                        {
+                            shape.quadraticCurveTo(p1.x*scale, p1.y*scale, p2.x*scale, p2.y*scale);
+                        }
+                        else
+                        {
+                            shape.quadraticCurveTo(p1.x*scale, p1.y*scale, midValue(p1.x*scale, p2.x*scale), midValue(p1.y*scale, p2.y*scale));
+                        }
+                        
+                        offset+=2;
+                    } 
+                }
+                else
+                {
+                
+                if(!p1.onCurve)
+                {
+                    shape.quadraticCurveTo(p0.x*scale, p0.y*scale, midValue(p0.x*scale, p1.x*scale), midValue(p0.y*scale, p1.y*scale));
+                }
+                else
+                {
+                    shape.quadraticCurveTo(p0.x*scale, p0.y*scale, p1.x*scale, p1.y*scale);
+                }
+                
+                offset++;
+                
+                }
+            }
+        }
+
+
+        function midValue(a,b)
+        {
+            return (a+b)/2
+        }
+            
+            
+        // load the binary data of the font
+        function load_binary_resource(url)
+        {
+            var req = new XMLHttpRequest();
+            req.open( 'GET', url, false );
+            req.overrideMimeType( 'text/plain; charset=x-user-defined' );
+            req.send(null);
+
+           // alert( "text status:" + req.status);
+           // if(req.status != 200) return '';            
+           // alert( "text response:" + req.responseText);
+            
+            return req.responseText;
+        }
+
+    </script>    
+            
+
+<meta charset="utf-8">
+<title>DrawingTest</title>
+</head>
+
+
+<body>
+
+<canvas id="myDrawing" width="1000" height="1000">
+<p>Your browser doesn't support canvas</p>
+</canvas>
+
+</body>
+</html>

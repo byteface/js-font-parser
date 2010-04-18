@@ -1,0 +1,419 @@
+/*
+
+Licensed to the Apache Software Foundation (ASF) under one or more
+contributor license agreements.  See the NOTICE file distributed with
+this work for additional information regarding copyright ownership.
+The ASF licenses this file to You under the Apache License, Version 2.0
+(the "License"); you may not use this file except in compliance with
+the License.  You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+This interface defines constants for CSS.
+Important: Constants must not contain uppercase characters.
+
+@author <a href="mailto:stephane@hillion.org">Stephane Hillion</a>
+@version $Id: CSSConstants.java 475477 2006-11-15 22:44:28Z cam $
+
+ported to as3 <a href="mailto=byteface@googlemail.com">Michael Lawrence</a>ported to javascript <a href="mailto=byteface@googlemail.com">Michael Lawrence</a>
+
+*/
+
+function CSSConstants(){}
+
+
+//
+// The CSS mime-type string.
+//
+CSSConstants.CSS_MIME_TYPE = "text/css";
+
+//
+// The CSS property names.
+//
+CSSConstants.CSS_ALIGNMENT_BASELINE_PROPERTY = "alignment-baseline";
+CSSConstants.CSS_BASELINE_SHIFT_PROPERTY = "baseline-shift";
+CSSConstants.CSS_CLIP_PROPERTY = "clip";
+CSSConstants.CSS_CLIP_PATH_PROPERTY = "clip-path";
+CSSConstants.CSS_CLIP_RULE_PROPERTY = "clip-rule";
+CSSConstants.CSS_COLOR_PROFILE_PROPERTY = "color-profile";
+CSSConstants.CSS_COLOR_PROPERTY = "color";
+CSSConstants.CSS_COLOR_INTERPOLATION_PROPERTY = "color-interpolation";
+CSSConstants.CSS_COLOR_INTERPOLATION_FILTERS_PROPERTY = "color-interpolation-filters";
+CSSConstants.CSS_COLOR_RENDERING_PROPERTY = "color-rendering";
+CSSConstants.CSS_CURSOR_PROPERTY = "cursor";
+CSSConstants.CSS_DIRECTION_PROPERTY = "direction";
+CSSConstants.CSS_DISPLAY_PROPERTY = "display";
+CSSConstants.CSS_DOMINANT_BASELINE_PROPERTY = "dominant-baseline";
+CSSConstants.CSS_ENABLE_BACKGROUND_PROPERTY = "enable-background";
+CSSConstants.CSS_FILL_OPACITY_PROPERTY = "fill-opacity";
+CSSConstants.CSS_FILL_PROPERTY = "fill";
+CSSConstants.CSS_FILL_RULE_PROPERTY = "fill-rule";
+CSSConstants.CSS_FILTER_PROPERTY = "filter";
+CSSConstants.CSS_FLOOD_COLOR_PROPERTY = "flood-color";
+CSSConstants.CSS_FLOOD_OPACITY_PROPERTY = "flood-opacity";
+CSSConstants.CSS_FONT_PROPERTY = "font";
+CSSConstants.CSS_FONT_FAMILY_PROPERTY = "font-family";
+CSSConstants.CSS_FONT_SIZE_PROPERTY = "font-size";
+CSSConstants.CSS_FONT_SIZE_ADJUST_PROPERTY = "font-size-adjust";
+CSSConstants.CSS_FONT_STRETCH_PROPERTY = "font-stretch";
+CSSConstants.CSS_FONT_STYLE_PROPERTY = "font-style";
+CSSConstants.CSS_FONT_VARIANT_PROPERTY = "font-variant";
+CSSConstants.CSS_FONT_WEIGHT_PROPERTY = "font-weight";
+CSSConstants.CSS_GLYPH_ORIENTATION_HORIZONTAL_PROPERTY = "glyph-orientation-horizontal";
+CSSConstants.CSS_GLYPH_ORIENTATION_VERTICAL_PROPERTY = "glyph-orientation-vertical";
+CSSConstants.CSS_IMAGE_RENDERING_PROPERTY = "image-rendering";
+CSSConstants.CSS_KERNING_PROPERTY = "kerning";
+CSSConstants.CSS_LETTER_SPACING_PROPERTY = "letter-spacing";
+CSSConstants.CSS_LIGHTING_COLOR_PROPERTY = "lighting-color";
+CSSConstants.CSS_LINE_HEIGHT_PROPERTY = "line-height";
+CSSConstants.CSS_MARKER_PROPERTY = "marker";
+CSSConstants.CSS_MARKER_END_PROPERTY = "marker-end";
+CSSConstants.CSS_MARKER_MID_PROPERTY = "marker-mid";
+CSSConstants.CSS_MARKER_START_PROPERTY = "marker-start";
+CSSConstants.CSS_MASK_PROPERTY = "mask";
+CSSConstants.CSS_OPACITY_PROPERTY = "opacity";
+CSSConstants.CSS_OVERFLOW_PROPERTY = "overflow";
+CSSConstants.CSS_POINTER_EVENTS_PROPERTY = "pointer-events";
+CSSConstants.CSS_SHAPE_RENDERING_PROPERTY = "shape-rendering";
+CSSConstants.CSS_SRC_PROPERTY = "src";
+CSSConstants.CSS_STOP_COLOR_PROPERTY = "stop-color";
+CSSConstants.CSS_STOP_OPACITY_PROPERTY = "stop-opacity";
+CSSConstants.CSS_STROKE_PROPERTY = "stroke";
+CSSConstants.CSS_STROKE_DASHARRAY_PROPERTY = "stroke-dasharray";
+CSSConstants.CSS_STROKE_DASHOFFSET_PROPERTY = "stroke-dashoffset";
+CSSConstants.CSS_STROKE_LINECAP_PROPERTY = "stroke-linecap";
+CSSConstants.CSS_STROKE_LINEJOIN_PROPERTY = "stroke-linejoin";
+CSSConstants.CSS_STROKE_MITERLIMIT_PROPERTY = "stroke-miterlimit";
+CSSConstants.CSS_STROKE_OPACITY_PROPERTY = "stroke-opacity";
+CSSConstants.CSS_STROKE_WIDTH_PROPERTY = "stroke-width";
+CSSConstants.CSS_TEXT_ANCHOR_PROPERTY = "text-anchor";
+CSSConstants.CSS_TEXT_DECORATION_PROPERTY = "text-decoration";
+CSSConstants.CSS_TEXT_RENDERING_PROPERTY = "text-rendering";
+CSSConstants.CSS_UNICODE_BIDI_PROPERTY = "unicode-bidi";
+CSSConstants.CSS_VISIBILITY_PROPERTY = "visibility";
+CSSConstants.CSS_WORD_SPACING_PROPERTY = "word-spacing";
+CSSConstants.CSS_WRITING_MODE_PROPERTY = "writing-mode";
+
+//
+// The CSS property values.
+//
+CSSConstants.CSS_ACCUMULATE_VALUE = "accumulate";
+CSSConstants.CSS_ACTIVEBORDER_VALUE = "activeborder";
+CSSConstants.CSS_ACTIVECAPTION_VALUE = "activecaption";
+CSSConstants.CSS_AFTER_EDGE_VALUE = "after-edge";
+CSSConstants.CSS_ALICEBLUE_VALUE = "aliceblue";
+CSSConstants.CSS_ALL_VALUE = "all";
+CSSConstants.CSS_ALPHABETIC_VALUE = "alphabetic";
+CSSConstants.CSS_ANTIQUEWHITE_VALUE = "antiquewhite";
+CSSConstants.CSS_APPWORKSPACE_VALUE = "appworkspace";
+CSSConstants.CSS_AQUAMARINE_VALUE = "aquamarine";
+CSSConstants.CSS_AQUA_VALUE = "aqua";
+CSSConstants.CSS_AUTOSENSE_SCRIPT_VALUE = "autosense-script";
+CSSConstants.CSS_AUTO_VALUE = "auto";
+CSSConstants.CSS_AZURE_VALUE = "azure";
+CSSConstants.CSS_BACKGROUND_VALUE = "background";
+CSSConstants.CSS_BASELINE_VALUE = "baseline";
+CSSConstants.CSS_BEFORE_EDGE_VALUE = "before-edge";
+CSSConstants.CSS_BEIGE_VALUE = "beige";
+CSSConstants.CSS_BEVEL_VALUE = "bevel";
+CSSConstants.CSS_BIDI_OVERRIDE_VALUE = "bidi-override";
+CSSConstants.CSS_BISQUE_VALUE = "bisque";
+CSSConstants.CSS_BLACK_VALUE = "black";
+CSSConstants.CSS_BLANCHEDALMOND_VALUE = "blanchedalmond";
+CSSConstants.CSS_BLINK_VALUE = "blink";
+CSSConstants.CSS_BLOCK_VALUE = "block";
+CSSConstants.CSS_BLUEVIOLET_VALUE = "blueviolet";
+CSSConstants.CSS_BLUE_VALUE = "blue";
+CSSConstants.CSS_BOLDER_VALUE = "bolder";
+CSSConstants.CSS_BOLD_VALUE = "bold";
+CSSConstants.CSS_BOTTOM_VALUE = "bottom";
+CSSConstants.CSS_BROWN_VALUE = "brown";
+CSSConstants.CSS_BURLYWOOD_VALUE = "burlywood";
+CSSConstants.CSS_BUTTONFACE_VALUE = "buttonface";
+CSSConstants.CSS_BUTTONHIGHLIGHT_VALUE = "buttonhighlight";
+CSSConstants.CSS_BUTTONSHADOW_VALUE = "buttonshadow";
+CSSConstants.CSS_BUTTONTEXT_VALUE = "buttontext";
+CSSConstants.CSS_BUTT_VALUE = "butt";
+CSSConstants.CSS_CADETBLUE_VALUE = "cadetblue";
+CSSConstants.CSS_CAPTIONTEXT_VALUE = "captiontext";
+CSSConstants.CSS_CAPTION_VALUE = "caption";
+CSSConstants.CSS_CENTER_VALUE = "center";
+CSSConstants.CSS_CENTRAL_VALUE = "central";
+CSSConstants.CSS_CHARTREUSE_VALUE = "chartreuse";
+CSSConstants.CSS_CHOCOLATE_VALUE = "chocolate";
+CSSConstants.CSS_COLLAPSE_VALUE = "collapse";
+CSSConstants.CSS_COMPACT_VALUE = "compact";
+CSSConstants.CSS_CONDENSED_VALUE = "condensed";
+CSSConstants.CSS_CORAL_VALUE = "coral";
+CSSConstants.CSS_CORNFLOWERBLUE_VALUE = "cornflowerblue";
+CSSConstants.CSS_CORNSILK_VALUE = "cornsilk";
+CSSConstants.CSS_CRIMSON_VALUE = "crimson";
+CSSConstants.CSS_CRISPEDGES_VALUE = "crispedges";
+CSSConstants.CSS_CROSSHAIR_VALUE = "crosshair";
+CSSConstants.CSS_CURRENTCOLOR_VALUE = "currentcolor";
+CSSConstants.CSS_CURSIVE_VALUE = "cursive";
+CSSConstants.CSS_CYAN_VALUE = "cyan";
+CSSConstants.CSS_DARKBLUE_VALUE = "darkblue";
+CSSConstants.CSS_DARKCYAN_VALUE = "darkcyan";
+CSSConstants.CSS_DARKGOLDENROD_VALUE = "darkgoldenrod";
+CSSConstants.CSS_DARKGRAY_VALUE = "darkgray";
+CSSConstants.CSS_DARKGREEN_VALUE = "darkgreen";
+CSSConstants.CSS_DARKGREY_VALUE = "darkgrey";
+CSSConstants.CSS_DARKKHAKI_VALUE = "darkkhaki";
+CSSConstants.CSS_DARKMAGENTA_VALUE = "darkmagenta";
+CSSConstants.CSS_DARKOLIVEGREEN_VALUE = "darkolivegreen";
+CSSConstants.CSS_DARKORANGE_VALUE = "darkorange";
+CSSConstants.CSS_DARKORCHID_VALUE = "darkorchid";
+CSSConstants.CSS_DARKRED_VALUE = "darkred";
+CSSConstants.CSS_DARKSALMON_VALUE = "darksalmon";
+CSSConstants.CSS_DARKSEAGREEN_VALUE = "darkseagreen";
+CSSConstants.CSS_DARKSLATEBLUE_VALUE = "darkslateblue";
+CSSConstants.CSS_DARKSLATEGRAY_VALUE = "darkslategray";
+CSSConstants.CSS_DARKSLATEGREY_VALUE = "darkslategrey";
+CSSConstants.CSS_DARKTURQUOISE_VALUE = "darkturquoise";
+CSSConstants.CSS_DARKVIOLET_VALUE = "darkviolet";
+CSSConstants.CSS_DEEPPINK_VALUE = "deeppink";
+CSSConstants.CSS_DEEPSKYBLUE_VALUE = "deepskyblue";
+CSSConstants.CSS_DEFAULT_VALUE = "default";
+CSSConstants.CSS_DIMGRAY_VALUE = "dimgray";
+CSSConstants.CSS_DIMGREY_VALUE = "dimgrey";
+CSSConstants.CSS_DODGERBLUE_VALUE = "dodgerblue";
+CSSConstants.CSS_EMBED_VALUE = "embed";
+CSSConstants.CSS_END_VALUE = "end";
+CSSConstants.CSS_EVENODD_VALUE = "evenodd";
+CSSConstants.CSS_EXPANDED_VALUE = "expanded";
+CSSConstants.CSS_EXTRA_CONDENSED_VALUE = "extra-condensed";
+CSSConstants.CSS_EXTRA_EXPANDED_VALUE = "extra-expanded";
+CSSConstants.CSS_E_RESIZE_VALUE = "e-resize";
+CSSConstants.CSS_FANTASY_VALUE = "fantasy";
+CSSConstants.CSS_FILLSTROKE_VALUE = "fillstroke";
+CSSConstants.CSS_FILL_VALUE = "fill";
+CSSConstants.CSS_FIREBRICK_VALUE = "firebrick";
+CSSConstants.CSS_FLORALWHITE_VALUE = "floralwhite";
+CSSConstants.CSS_FORESTGREEN_VALUE = "forestgreen";
+CSSConstants.CSS_FUCHSIA_VALUE = "fuchsia";
+CSSConstants.CSS_GAINSBORO_VALUE = "gainsboro";
+CSSConstants.CSS_GEOMETRICPRECISION_VALUE = "geometricprecision";
+CSSConstants.CSS_GHOSTWHITE_VALUE = "ghostwhite";
+CSSConstants.CSS_GOLDENROD_VALUE = "goldenrod";
+CSSConstants.CSS_GOLD_VALUE = "gold";
+CSSConstants.CSS_GRAYTEXT_VALUE = "graytext";
+CSSConstants.CSS_GRAY_VALUE = "gray";
+CSSConstants.CSS_GREENYELLOW_VALUE = "greenyellow";
+CSSConstants.CSS_GREEN_VALUE = "green";
+CSSConstants.CSS_GREY_VALUE = "grey";
+CSSConstants.CSS_HANGING_VALUE = "hanging";
+CSSConstants.CSS_HELP_VALUE = "help";
+CSSConstants.CSS_HIDDEN_VALUE = "hidden";
+CSSConstants.CSS_HIGHLIGHTTEXT_VALUE = "highlighttext";
+CSSConstants.CSS_HIGHLIGHT_VALUE = "highlight";
+CSSConstants.CSS_HONEYDEW_VALUE = "honeydew";
+CSSConstants.CSS_HOTPINK_VALUE = "hotpink";
+CSSConstants.CSS_ICON_VALUE = "icon";
+CSSConstants.CSS_IDEOGRAPHIC_VALUE = "ideographic";
+CSSConstants.CSS_INACTIVEBORDER_VALUE = "inactiveborder";
+CSSConstants.CSS_INACTIVECAPTIONTEXT_VALUE = "inactivecaptiontext";
+CSSConstants.CSS_INACTIVECAPTION_VALUE = "inactivecaption";
+CSSConstants.CSS_INDIANRED_VALUE = "indianred";
+CSSConstants.CSS_INDIGO_VALUE = "indigo";
+CSSConstants.CSS_INFOBACKGROUND_VALUE = "infobackground";
+CSSConstants.CSS_INFOTEXT_VALUE = "infotext";
+CSSConstants.CSS_INLINE_TABLE_VALUE = "inline-table";
+CSSConstants.CSS_INLINE_VALUE = "inline";
+CSSConstants.CSS_ITALIC_VALUE = "italic";
+CSSConstants.CSS_IVORY_VALUE = "ivory";
+CSSConstants.CSS_KHAKI_VALUE = "khaki";
+CSSConstants.CSS_LARGER_VALUE = "larger";
+CSSConstants.CSS_LARGE_VALUE = "large";
+CSSConstants.CSS_LAVENDERBLUSH_VALUE = "lavenderblush";
+CSSConstants.CSS_LAVENDER_VALUE = "lavender";
+CSSConstants.CSS_LAWNGREEN_VALUE = "lawngreen";
+CSSConstants.CSS_LEMONCHIFFON_VALUE = "lemonchiffon";
+CSSConstants.CSS_LIGHTBLUE_VALUE = "lightblue";
+CSSConstants.CSS_LIGHTCORAL_VALUE = "lightcoral";
+CSSConstants.CSS_LIGHTCYAN_VALUE = "lightcyan";
+CSSConstants.CSS_LIGHTER_VALUE = "lighter";
+CSSConstants.CSS_LIGHTGOLDENRODYELLOW_VALUE = "lightgoldenrodyellow";
+CSSConstants.CSS_LIGHTGRAY_VALUE = "lightgray";
+CSSConstants.CSS_LIGHTGREEN_VALUE = "lightgreen";
+CSSConstants.CSS_LIGHTGREY_VALUE = "lightgrey";
+CSSConstants.CSS_LIGHTPINK_VALUE = "lightpink";
+CSSConstants.CSS_LIGHTSALMON_VALUE = "lightsalmon";
+CSSConstants.CSS_LIGHTSEAGREEN_VALUE = "lightseagreen";
+CSSConstants.CSS_LIGHTSKYBLUE_VALUE = "lightskyblue";
+CSSConstants.CSS_LIGHTSLATEGRAY_VALUE = "lightslategray";
+CSSConstants.CSS_LIGHTSLATEGREY_VALUE = "lightslategrey";
+CSSConstants.CSS_LIGHTSTEELBLUE_VALUE = "lightsteelblue";
+CSSConstants.CSS_LIGHTYELLOW_VALUE = "lightyellow";
+CSSConstants.CSS_LIMEGREEN_VALUE = "limegreen";
+CSSConstants.CSS_LIME_VALUE = "lime";
+CSSConstants.CSS_LINEARRGB_VALUE = "linearrgb";
+CSSConstants.CSS_LINEN_VALUE = "linen";
+CSSConstants.CSS_LINE_THROUGH_VALUE = "line-through";
+CSSConstants.CSS_LIST_ITEM_VALUE = "list-item";
+CSSConstants.CSS_LOWER_VALUE = "lower";
+CSSConstants.CSS_LR_TB_VALUE = "lr-tb";
+CSSConstants.CSS_LR_VALUE = "lr";
+CSSConstants.CSS_LTR_VALUE = "ltr";
+CSSConstants.CSS_MAGENTA_VALUE = "magenta";
+CSSConstants.CSS_MARKER_VALUE = "marker";
+CSSConstants.CSS_MAROON_VALUE = "maroon";
+CSSConstants.CSS_MATHEMATICAL_VALUE = "mathematical";
+CSSConstants.CSS_MEDIUMAQUAMARINE_VALUE = "mediumaquamarine";
+CSSConstants.CSS_MEDIUMBLUE_VALUE = "mediumblue";
+CSSConstants.CSS_MEDIUMORCHID_VALUE = "mediumorchid";
+CSSConstants.CSS_MEDIUMPURPLE_VALUE = "mediumpurple";
+CSSConstants.CSS_MEDIUMSEAGREEN_VALUE = "mediumseagreen";
+CSSConstants.CSS_MEDIUMSLATEBLUE_VALUE = "mediumslateblue";
+CSSConstants.CSS_MEDIUMSPRINGGREEN_VALUE = "mediumspringgreen";
+CSSConstants.CSS_MEDIUMTURQUOISE_VALUE = "mediumturquoise";
+CSSConstants.CSS_MEDIUMVIOLETRED_VALUE = "mediumvioletred";
+CSSConstants.CSS_MEDIUM_VALUE = "medium";
+CSSConstants.CSS_MENU_VALUE = "menu";
+CSSConstants.CSS_MENUTEXT_VALUE = "menutext";
+CSSConstants.CSS_MESSAGE_BOX_VALUE = "message-box";
+CSSConstants.CSS_MIDDLE_VALUE = "middle";
+CSSConstants.CSS_MIDNIGHTBLUE_VALUE = "midnightblue";
+CSSConstants.CSS_MINTCREAM_VALUE = "mintcream";
+CSSConstants.CSS_MISTYROSE_VALUE = "mistyrose";
+CSSConstants.CSS_MITER_VALUE = "miter";
+CSSConstants.CSS_MOCCASIN_VALUE = "moccasin";
+CSSConstants.CSS_MONOSPACE_VALUE = "monospace";
+CSSConstants.CSS_MOVE_VALUE = "move";
+CSSConstants.CSS_NARROWER_VALUE = "narrower";
+CSSConstants.CSS_NAVAJOWHITE_VALUE = "navajowhite";
+CSSConstants.CSS_NAVY_VALUE = "navy";
+CSSConstants.CSS_NEW_VALUE = "new";
+CSSConstants.CSS_NE_RESIZE_VALUE = "ne-resize";
+CSSConstants.CSS_NONE_VALUE = "none";
+CSSConstants.CSS_NONZERO_VALUE = "nonzero";
+CSSConstants.CSS_NORMAL_VALUE = "normal";
+CSSConstants.CSS_NO_CHANGE_VALUE = "no-change";
+CSSConstants.CSS_NW_RESIZE_VALUE = "nw-resize";
+CSSConstants.CSS_N_RESIZE_VALUE = "n-resize";
+CSSConstants.CSS_OBLIQUE_VALUE = "oblique";
+CSSConstants.CSS_OLDLACE_VALUE = "oldlace";
+CSSConstants.CSS_OLIVEDRAB_VALUE = "olivedrab";
+CSSConstants.CSS_OLIVE_VALUE = "olive";
+CSSConstants.CSS_OPTIMIZELEGIBILITY_VALUE = "optimizelegibility";
+CSSConstants.CSS_OPTIMIZEQUALITY_VALUE = "optimizequality";
+CSSConstants.CSS_OPTIMIZESPEED_VALUE = "optimizespeed";
+CSSConstants.CSS_ORANGERED_VALUE = "orangered";
+CSSConstants.CSS_ORANGE_VALUE = "orange";
+CSSConstants.CSS_ORCHID_VALUE = "orchid";
+CSSConstants.CSS_OVERLINE_VALUE = "overline";
+CSSConstants.CSS_PAINTED_VALUE = "painted";
+CSSConstants.CSS_PALEGOLDENROD_VALUE = "palegoldenrod";
+CSSConstants.CSS_PALEGREEN_VALUE = "palegreen";
+CSSConstants.CSS_PALETURQUOISE_VALUE = "paleturquoise";
+CSSConstants.CSS_PALEVIOLETRED_VALUE = "palevioletred";
+CSSConstants.CSS_PAPAYAWHIP_VALUE = "papayawhip";
+CSSConstants.CSS_PEACHPUFF_VALUE = "peachpuff";
+CSSConstants.CSS_PERU_VALUE = "peru";
+CSSConstants.CSS_PINK_VALUE = "pink";
+CSSConstants.CSS_PLUM_VALUE = "plum";
+CSSConstants.CSS_POINTER_VALUE = "pointer";
+CSSConstants.CSS_POWDERBLUE_VALUE = "powderblue";
+CSSConstants.CSS_PURPLE_VALUE = "purple";
+CSSConstants.CSS_RED_VALUE = "red";
+CSSConstants.CSS_RESET_SIZE_VALUE = "reset-size";
+CSSConstants.CSS_RESET_VALUE = "reset";
+CSSConstants.CSS_RL_TB_VALUE = "rl-tb";
+CSSConstants.CSS_RL_VALUE = "rl";
+CSSConstants.CSS_ROSYBROWN_VALUE = "rosybrown";
+CSSConstants.CSS_ROUND_VALUE = "round";
+CSSConstants.CSS_ROYALBLUE_VALUE = "royalblue";
+CSSConstants.CSS_RTL_VALUE = "rtl";
+CSSConstants.CSS_RUN_IN_VALUE = "run-in";
+CSSConstants.CSS_SADDLEBROWN_VALUE = "saddlebrown";
+CSSConstants.CSS_SALMON_VALUE = "salmon";
+CSSConstants.CSS_SANDYBROWN_VALUE = "sandybrown";
+CSSConstants.CSS_SANS_SERIF_VALUE = "sans-serif";
+CSSConstants.CSS_SCROLLBAR_VALUE = "scrollbar";
+CSSConstants.CSS_SCROLL_VALUE = "scroll";
+CSSConstants.CSS_SEAGREEN_VALUE = "seagreen";
+CSSConstants.CSS_SEASHELL_VALUE = "seashell";
+CSSConstants.CSS_SEMI_CONDENSED_VALUE = "semi-condensed";
+CSSConstants.CSS_SEMI_EXPANDED_VALUE = "semi-expanded";
+CSSConstants.CSS_SERIF_VALUE = "serif";
+CSSConstants.CSS_SE_RESIZE_VALUE = "se-resize";
+CSSConstants.CSS_SIENNA_VALUE = "sienna";
+CSSConstants.CSS_SILVER_VALUE = "silver";
+CSSConstants.CSS_SKYBLUE_VALUE = "skyblue";
+CSSConstants.CSS_SLATEBLUE_VALUE = "slateblue";
+CSSConstants.CSS_SLATEGRAY_VALUE = "slategray";
+CSSConstants.CSS_SLATEGREY_VALUE = "slategrey";
+CSSConstants.CSS_SMALLER_VALUE = "smaller";
+CSSConstants.CSS_SMALL_CAPS_VALUE = "small-caps";
+CSSConstants.CSS_SMALL_CAPTION_VALUE = "small-caption";
+CSSConstants.CSS_SMALL_VALUE = "small";
+CSSConstants.CSS_SNOW_VALUE = "snow";
+CSSConstants.CSS_SPRINGGREEN_VALUE = "springgreen";
+CSSConstants.CSS_SQUARE_VALUE = "square";
+CSSConstants.CSS_SRGB_VALUE = "srgb";
+CSSConstants.CSS_START_VALUE = "start";
+CSSConstants.CSS_STATUS_BAR_VALUE = "status-bar";
+CSSConstants.CSS_STEELBLUE_VALUE = "steelblue";
+CSSConstants.CSS_STROKE_VALUE = "stroke";
+CSSConstants.CSS_SUB_VALUE = "sub";
+CSSConstants.CSS_SUPER_VALUE = "super";
+CSSConstants.CSS_SW_RESIZE_VALUE = "sw-resize";
+CSSConstants.CSS_S_RESIZE_VALUE = "s-resize";
+CSSConstants.CSS_TABLE_CAPTION_VALUE = "table-caption";
+CSSConstants.CSS_TABLE_CELL_VALUE = "table-cell";
+CSSConstants.CSS_TABLE_COLUMN_GROUP_VALUE = "table-column-group";
+CSSConstants.CSS_TABLE_COLUMN_VALUE = "table-column";
+CSSConstants.CSS_TABLE_FOOTER_GROUP_VALUE = "table-footer-group";
+CSSConstants.CSS_TABLE_HEADER_GROUP_VALUE = "table-header-group";
+CSSConstants.CSS_TABLE_ROW_GROUP_VALUE = "table-row-group";
+CSSConstants.CSS_TABLE_ROW_VALUE = "table-row";
+CSSConstants.CSS_TABLE_VALUE = "table";
+CSSConstants.CSS_TAN_VALUE = "tan";
+CSSConstants.CSS_TB_RL_VALUE = "tb-rl";
+CSSConstants.CSS_TB_VALUE = "tb";
+CSSConstants.CSS_TEAL_VALUE = "teal";
+CSSConstants.CSS_TEXT_AFTER_EDGE_VALUE = "text-after-edge";
+CSSConstants.CSS_TEXT_BEFORE_EDGE_VALUE = "text-before-edge";
+CSSConstants.CSS_TEXT_BOTTOM_VALUE = "text-bottom";
+CSSConstants.CSS_TEXT_TOP_VALUE = "text-top";
+CSSConstants.CSS_TEXT_VALUE = "text";
+CSSConstants.CSS_THISTLE_VALUE = "thistle";
+CSSConstants.CSS_THREEDDARKSHADOW_VALUE = "threeddarkshadow";
+CSSConstants.CSS_THREEDFACE_VALUE = "threedface";
+CSSConstants.CSS_THREEDHIGHLIGHT_VALUE = "threedhighlight";
+CSSConstants.CSS_THREEDLIGHTSHADOW_VALUE = "threedlightshadow";
+CSSConstants.CSS_THREEDSHADOW_VALUE = "threedshadow";
+CSSConstants.CSS_TOMATO_VALUE = "tomato";
+CSSConstants.CSS_TOP_VALUE = "top";
+CSSConstants.CSS_TURQUOISE_VALUE = "turquoise";
+CSSConstants.CSS_ULTRA_CONDENSED_VALUE = "ultra-condensed";
+CSSConstants.CSS_ULTRA_EXPANDED_VALUE = "ultra-expanded";
+CSSConstants.CSS_UNDERLINE_VALUE = "underline";
+CSSConstants.CSS_USE_SCRIPT_VALUE = "use-script";
+CSSConstants.CSS_VIOLET_VALUE = "violet";
+CSSConstants.CSS_VISIBLEFILLSTROKE_VALUE = "visiblefillstroke";
+CSSConstants.CSS_VISIBLEFILL_VALUE = "visiblefill";
+CSSConstants.CSS_VISIBLEPAINTED_VALUE = "visiblepainted";
+CSSConstants.CSS_VISIBLESTROKE_VALUE = "visiblestroke";
+CSSConstants.CSS_VISIBLE_VALUE = "visible";
+CSSConstants.CSS_WAIT_VALUE = "wait";
+CSSConstants.CSS_WHEAT_VALUE = "wheat";
+CSSConstants.CSS_WHITESMOKE_VALUE = "whitesmoke";
+CSSConstants.CSS_WHITE_VALUE = "white";
+CSSConstants.CSS_WIDER_VALUE = "wider";
+CSSConstants.CSS_WINDOWFRAME_VALUE = "windowframe";
+CSSConstants.CSS_WINDOWTEXT_VALUE = "windowtext";
+CSSConstants.CSS_WINDOW_VALUE = "window";
+CSSConstants.CSS_W_RESIZE_VALUE = "w-resize";
+CSSConstants.CSS_XX_LARGE_VALUE = "xx-large";
+CSSConstants.CSS_XX_SMALL_VALUE = "xx-small";
+CSSConstants.CSS_X_LARGE_VALUE = "x-large";
+CSSConstants.CSS_X_SMALL_VALUE = "x-small";
+CSSConstants.CSS_YELLOWGREEN_VALUE = "yellowgreen";
+CSSConstants.CSS_YELLOW_VALUE = "yellow";
