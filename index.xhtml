@@ -41,13 +41,9 @@
         // font loading and parsing
         window.onload = function()
         {
-            var file = load_binary_resource("AppleSimple.ttf");
+            var file = load_binary_resource("truetypefonts/DiscoMo.ttf");
             var bytedata = new a3d.ByteArray( file, a3d.Endian.BIG );
             var font = read( bytedata );
-
-
-
-
 
             var svg = document.getElementById( "tutorial" );
             pottis = new Pottis(svg);

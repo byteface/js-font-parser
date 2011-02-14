@@ -2,80 +2,79 @@
 <html>
 <head>
 
-    <script type="text/ecmascript" src="pottis.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/utils/BinaryParser.js"></script>
 
-    <script type="text/ecmascript" src="com/byteface/font/data/RawFont.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/TableDirectory.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/DirectoryEntry.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/TableFactory.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/Os2Table.js"></script>    
-    <script type="text/ecmascript" src="com/byteface/font/table/Panose.js"></script>    
-    <script type="text/ecmascript" src="com/byteface/font/table/Table.js"></script>        
-    <script type="text/ecmascript" src="com/byteface/font/table/CmapTable.js"></script>            
-    <script type="text/ecmascript" src="com/byteface/font/table/GlyfTable.js"></script>                
-    <script type="text/ecmascript" src="com/byteface/font/table/HeadTable.js"></script>                    
-    <script type="text/ecmascript" src="com/byteface/font/table/CmapIndexEntry.js"></script>                    
-    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat0.js"></script>    
-    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat2.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat4.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat6.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/HheaTable.js"></script>                        
-    <script type="text/ecmascript" src="com/byteface/font/table/HmtxTable.js"></script>                        
-    <script type="text/ecmascript" src="com/byteface/font/table/LocaTable.js"></script>                        
-    <script type="text/ecmascript" src="com/byteface/font/table/NameTable.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/NameRecord.js"></script>    
-    <script type="text/ecmascript" src="com/byteface/font/table/MaxpTable.js"></script>                            
-    <script type="text/ecmascript" src="com/byteface/font/table/PostTable.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/GsubTable.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/GlyfSimpleDescript.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/GlyfCompositeDescript.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/Script.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/ScriptRecord.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/data/Point.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/data/GlyphData.js"></script>
-    <script type="text/ecmascript" src="com/byteface/font/table/GlyfCompositeComp.js"></script>
+
+    <script type="text/ecmascript" src="../../com/byteface/font/utils/BinaryParser.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/data/RawFont.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/TableDirectory.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/DirectoryEntry.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/TableFactory.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Os2Table.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Panose.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Table.js"></script>        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapTable.js"></script>            
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfTable.js"></script>                
+    <script type="text/ecmascript" src="../../com/byteface/font/table/HeadTable.js"></script>                    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapIndexEntry.js"></script>                    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat0.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat2.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat4.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat6.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/HheaTable.js"></script>                        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/HmtxTable.js"></script>                        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/LocaTable.js"></script>                        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/NameTable.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/NameRecord.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/MaxpTable.js"></script>                            
+    <script type="text/ecmascript" src="../../com/byteface/font/table/PostTable.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GsubTable.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfSimpleDescript.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfCompositeDescript.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Script.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/ScriptRecord.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/data/Point.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/data/GlyphData.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfCompositeComp.js"></script>
         
     <script type="text/ecmascript">
-
-        var pottis = null;
         
-                    var font
+		var pottis = null;
+		var font;
         
         
         // font loading and parsing
         window.onload = function()
         {
-            var file = load_binary_resource("truetypefonts/DiscoMo.ttf");
+            var file = load_binary_resource("../../truetypefonts/DiscoMo.ttf");
             var bytedata = new a3d.ByteArray( file, a3d.Endian.BIG );
             font = new RawFont( bytedata );
-//          drawGlyph( font, 1, Math.random()*10 );
 
-            setInterval(doSomat,100)                                                
+			for( var i=0; i<100; i++ )
+			{
+				drawGlyph( font, i );
+			}
         }
 
-        function doSomat()
-        {
-            drawGlyph( font, Math.round(Math.random()*100) );        
-        }
 
         function drawGlyph(font,char)
         {
         
-            var SCALE = Math.random()*.5;
+            var SCALE = .05;//Math.random()*.5;
         
             var g = font.getGlyph(char);
             var drawingCanvas = document.getElementById('myDrawing');			
 			
 			// set up the glyph
 			var context = drawingCanvas.getContext('2d');
-			context.lineWidth = 10 + Math.random()*10;
+			context.lineWidth = 0; //10 + Math.random()*10;
 			context.strokeStyle = "#000000";
-            context.fillStyle = Math.floor(Math.random()*16777215).toString(16);
-            context.globalAlpha = Math.random()*1;            
+            context.fillStyle = "#000000";//Math.floor(Math.random()*16777215).toString(16);
+            context.globalAlpha = 1;
             context.beginPath();
-            context.translate(Math.random()*10,Math.random()*100);
+//			window.console.log(char);
+			context.translate( 20,100 )
+//          	context.translate(Math.random()*(i*10,Math.random()*(i*10));
             //context.rotate(20 * Math.PI / 180);
             context.scale(1,-1);
 
@@ -100,6 +99,9 @@
             context.closePath();
             context.stroke();
             context.fill();
+				
+			// also pass it out so we can play with it further
+			return context;
         }    
 
         
@@ -197,7 +199,7 @@
 
 <body>
 
-<canvas id="myDrawing" width="1000" height="1000">
+<canvas id="myDrawing" width="2000" height="1000">
 <p>Your browser doesn't support canvas</p>
 </canvas>
 

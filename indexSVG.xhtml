@@ -55,7 +55,7 @@
         // font loading and parsing
         window.onload = function()
         {
-            var file = load_binary_resource("AppleSimple.ttf");
+            var file = load_binary_resource("truetypefonts/DiscoMo.ttf");
             var bytedata = new a3d.ByteArray( file, a3d.Endian.BIG );
             var font = new RawFont( bytedata );
 
@@ -96,6 +96,6 @@
 <body>
     <h2>LOADING FONTS IN HTML</h2>
     <svg id="tutorial" version="1.1" width="500" height="500" />
-    <font size="15" face="AppleSimple">ABCDEFGHIJKLMNOPQRSTUVWXYZ</font>
+    <font size="15" face="DiscoMo">ABCDEFGHIJKLMNOPQRSTUVWXYZ</font>
 </body>
 </html>
