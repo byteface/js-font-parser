@@ -6,7 +6,7 @@ PrintStream = Class.extend({
             
     , println: function()
     {
-        alert("twat");	
+        alert("test");	
     }
             
     , print: function()
