@@ -63,7 +63,8 @@
 				//test.moveTo( 1000,100 );
 //				}
         	 setInterval(doSomat,1)                                                
-
+//		   drawGlyph( font, 50);    
+//				   drawGlyph( font, 50);        
 
 			        }
 
@@ -72,7 +73,7 @@
 			         
 					//	for( var i=0; i<100; i++ )
 					//	{
-			   drawGlyph( font, 20);        
+			   drawGlyph( font, 40);        
 						//test.moveTo( 1000,100 );
 					//	}
 			
@@ -80,24 +81,45 @@
 			        }
 
 
+					function clearCanvas(context, canvas) {
+					  context.clearRect(0, 0, canvas.width, canvas.height);
+				//	  var w = canvas.width;
+//					  canvas.width = 1;
+					 // canvas.width = w;
+					}
+
         function drawGlyph(font,char)
         {
             var SCALE = .5;//Math.random()*.5;
         
             var g = font.getGlyph(char);
             var drawingCanvas = document.getElementById('myDrawing');			
-			
+
 			// set up the glyph
 			var context = drawingCanvas.getContext('2d');
-			context.lineWidth = .5 + Math.random()*2;
-			context.strokeStyle = Math.floor(Math.random()*16777215).toString(16);//"#ff0000";
+			
+			
+			
+			
+			
+			context.lineWidth = 2;//.5 + Math.random()*2;
+			context.strokeStyle = "#ffffff";//Math.floor(Math.random()*16777215).toString(16);//"#ff0000";
             context.fillStyle = "#ffffff";//Math.floor(Math.random()*16777215).toString(16);
             context.globalAlpha = 1;//.5;
             context.beginPath();
+
+
+context.shadowColor = "#f0f0f0";
+context.shadowBlur= 50;
+context.shadowOffsetX= 20;
+context.shadowOffsetY= 20;
+
+
 //			window.console.log(char);
-			context.translate( 2,3);
+//			context.translate( 2,5);
 //          	context.translate(Math.random()*(i*10,Math.random()*(i*10));
-            context.rotate(20 * Math.PI / 180);
+//            context.rotate(20 * Math.PI / 180);
+//context.rotate(1)
             context.scale(1,-1);
 
             var firstindex=0;
@@ -108,7 +130,7 @@
                 counter++;			
                 if( g.getPoint(i).endOfContour )
                 {
-                    addContourToShape( context, g, firstindex, counter, SCALE);
+                    addContourToShapeWobble( context, g, firstindex, counter, SCALE);
                     firstindex=i+1;
                     counter=0;
                 }
@@ -120,6 +142,8 @@
             
             context.closePath();
             context.stroke();
+
+clearCanvas( context, drawingCanvas );
             context.fill();
 				
 			// also pass it out so we can play with it further
@@ -298,7 +322,7 @@
 
 <body>
 
-<canvas id="myDrawing" width="2000" height="1000">
+<canvas id="myDrawing" width="500" height="500">
 <p>Your browser doesn't support canvas</p>
 </canvas>
 
