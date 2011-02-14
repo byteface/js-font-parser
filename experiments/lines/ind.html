@@ -45,10 +45,22 @@
         window.onload = function()
         {
 			var font = new QuickFont( "../../truetypefonts/DiscoMo.ttf" );
+			
+			var drawingCanvas = document.getElementById('myDrawing');
+			var context = drawingCanvas.getContext('2d');
+			context.translate( 100,100 );
+			
 			for( var i=0; i<100; i++ ){
-				var context = font.drawGlyph( 58, 'myDrawing' );
-				context.translate( 1,1 );
+				var context = font.drawGlyph( 10, 'myDrawing' );
 			}
+
+			 context.translate( 200,100 );
+			
+			
+				for( var i=0; i<100; i++ ){
+					var context = font.drawGlyph( 11, 'myDrawing' );
+				}
+			
 			
 			// var font2 = new QuickFont( "../../truetypefonts/DiscoMo.ttf" );
 			// for( var i=0; i<100; i++ ){
