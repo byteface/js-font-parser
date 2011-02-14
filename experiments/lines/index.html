@@ -69,7 +69,7 @@
 			context.lineWidth = .5 + Math.random()*1;
 			context.strokeStyle = "#ff0000";
             context.fillStyle = "#ffffff";//Math.floor(Math.random()*16777215).toString(16);
-            context.globalAlpha = .2;
+            context.globalAlpha = .4;
             context.beginPath();
 //			window.console.log(char);
 		//	context.translate( 100,500 )
@@ -109,7 +109,8 @@
         function addContourToShapeWobble( shape, glyph, startIndex, count, scale )
         {
 	
-	
+	var xShift = 50;
+	var yShift = 50;
         
             if (glyph.getPoint(startIndex).endOfContour)
             {
@@ -133,7 +134,7 @@
                 {
                     if (p1.onCurve)
                     {
-                        shape.lineTo( ( p1.x + Math.random()*100 )*scale, p1.y*scale );
+                        shape.lineTo( ( p1.x + Math.random()*xShift )*scale, (p1.y + Math.random()*yShift )*scale );
                         offset++;
                     }
                     else
@@ -142,11 +143,11 @@
                         
                         if(p2.onCurve)
                         {
-                            shape.quadraticCurveTo( ( p1.x + Math.random()*100 ) *scale, p1.y*scale, p2.x*scale, p2.y*scale);
+                            shape.quadraticCurveTo( ( p1.x + Math.random()*xShift ) *scale, (p1.y + Math.random()*yShift )*scale, p2.x*scale, p2.y*scale);
                         }
                         else
                         {
-                            shape.quadraticCurveTo( ( p1.x + Math.random()*100 )*scale, p1.y*scale, midValue(p1.x*scale, p2.x*scale), midValue(p1.y*scale, p2.y*scale));
+                            shape.quadraticCurveTo( ( p1.x + Math.random()*xShift )*scale, (p1.y + Math.random()*yShift )*scale, midValue(p1.x*scale, p2.x*scale), midValue(p1.y*scale, p2.y*scale));
                         }
                         
                         offset+=2;
