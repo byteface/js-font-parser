@@ -41,34 +41,54 @@
         
     <script type="text/ecmascript">
         
+		var context;
+		var font;
+
         // font loading and parsing
         window.onload = function()
         {
-			var font = new QuickFont( "../../truetypefonts/DiscoMo.ttf" );
+			font = new QuickFont( "../../truetypefonts/DiscoMo.ttf" );
 			
 			var drawingCanvas = document.getElementById('myDrawing');
-			var context = drawingCanvas.getContext('2d');
-			context.translate( 100,100 );
-			
-			for( var i=0; i<100; i++ ){
-				var context = font.drawGlyph( 10, 'myDrawing' );
-			}
+			this.context = drawingCanvas.getContext('2d');
+			context.translate( 300,100 );
 
-			 context.translate( 200,100 );
-			
-			
-				for( var i=0; i<100; i++ ){
-					var context = font.drawGlyph( 11, 'myDrawing' );
-				}
-			
-			
-			// var font2 = new QuickFont( "../../truetypefonts/DiscoMo.ttf" );
-			// for( var i=0; i<100; i++ ){
-			// 	var context = font2.drawGlyph( 41, 'myDrawingAlso' );
-			// 	context.translate( 2,2 )
+			font.setStyle( 1, "#000000", "#ffffff", .2 );
+
+			//setStyle
+
+			// for( var i=0; i<20; i++ ){
+			// 	context = font.drawGlyph( 10, 'myDrawing' );
 			// }
+
+//			this.drawIt();		
 			
+			
+		setInterval(drawIt,1)                                                
 		}
+		
+		function drawIt()
+		{
+			this.context.translate( -200,-100 );
+			
+			for( var i=0; i<200; i++ ){
+					//		font.setStyle( Math.random()*10, "#000000", "#00ff00", .5 );
+								font.setStyle( Math.random()*1, "#000000", "#ffffff", .2 );
+				this.context = this.font.drawGlyph( 10, 'myDrawing' );
+			}
+			
+			 context.translate( 200,100 );
+			// 		
+			// 		for( var i=0; i<200; i++ ){
+			// 											font.setStyle( Math.random()*1, "#000000", "#ffffff", .2 );
+			// 			context = font.drawGlyph( 11, 'myDrawing' );
+			// 		}
+		}
+		
+		
+		
+		
+		
 
 
     </script>    

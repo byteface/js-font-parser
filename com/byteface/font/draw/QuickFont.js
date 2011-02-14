@@ -1,5 +1,10 @@
 QuickFont = Class.extend({
-	
+		
+	LINE_WIDTH:1,
+	STROKE_STYLE:"#000000",
+	FILL_STYLE:"#000000",
+	GLOBAL_ALPHA:1,
+
 	fontdata: null,
 
 // TODO - create a class for global functions like this one
@@ -11,7 +16,6 @@ inc: function(filename){
     body.appendChild(script);
 }
 
-
 , init: function(path)
 {
 	var file = this.load_binary_resource(path);
@@ -20,28 +24,37 @@ inc: function(filename){
 	this.fontdata = new RawFont( bytedata );
 }
 
+// setup styling for the char
+, setStyle: function( lineWidth, strokeStyle, fillStyle, globalAlpha )
+{
+	this.LINE_WIDTH = lineWidth;
+	this.STROKE_STYLE = strokeStyle
+	this.FILL_STYLE = fillStyle;
+	this.GLOBAL_ALPHA = globalAlpha;
+}
+
+//, setShadow: function( lineWidth, strokeStyle, fillStyle, globalAlpha )
+//{
+	// context.shadowColor = "#f0f0f0";
+	// context.shadowBlur= 50;
+	// context.shadowOffsetX= 20;
+	// context.shadowOffsetY= 20;
+
+//}
 
 , drawGlyph: function (  char, canvas )
 {
-        var SCALE = .5;//Math.random()*.5;
-    
+        var SCALE = .5//;/Math.random()*.5;
         var g = this.fontdata.getGlyph(char);
         var drawingCanvas = document.getElementById(canvas);			
 
 		// set up the glyph
 		var context = drawingCanvas.getContext('2d');
-		context.lineWidth = 2;//.5 + Math.random()*2;
-		context.strokeStyle = "#000000";//Math.floor(Math.random()*16777215).toString(16);//"#ff0000";
-        context.fillStyle = "#ffffff";//Math.floor(Math.random()*16777215).toString(16);
-        context.globalAlpha = 1;//.5;
+		context.lineWidth = this.LINE_WIDTH;//2;//.5 + Math.random()*2;
+		context.strokeStyle = this.STROKE_STYLE;//"#000000";//Math.floor(Math.random()*16777215).toString(16);//"#ff0000";
+        context.fillStyle = this.FILL_STYLE;//"#ffffff";//Math.floor(Math.random()*16777215).toString(16);
+        context.globalAlpha = this.GLOBAL_ALPHA;//1;//.5;
         context.beginPath();
-
-
-// context.shadowColor = "#f0f0f0";
-// context.shadowBlur= 50;
-// context.shadowOffsetX= 20;
-// context.shadowOffsetY= 20;
-
 
 //			window.console.log(char);
 //			context.translate( 2,5);
@@ -70,8 +83,6 @@ inc: function(filename){
         
         context.closePath();
         context.stroke();
-
-
         context.fill();
 			
 		// also pass it out so we can play with it further
