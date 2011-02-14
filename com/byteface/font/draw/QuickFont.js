@@ -4,6 +4,8 @@ QuickFont = Class.extend({
 	STROKE_STYLE:"#000000",
 	FILL_STYLE:"#000000",
 	GLOBAL_ALPHA:1,
+	
+	SCALE:.5,
 
 	fontdata: null,
 
@@ -25,6 +27,12 @@ inc: function(filename){
 }
 
 // setup styling for the char
+, setProps: function( scale )
+{
+	this.SCALE = scale;
+}
+
+// setup styling for the char
 , setStyle: function( lineWidth, strokeStyle, fillStyle, globalAlpha )
 {
 	this.LINE_WIDTH = lineWidth;
@@ -39,12 +47,17 @@ inc: function(filename){
 	// context.shadowBlur= 50;
 	// context.shadowOffsetX= 20;
 	// context.shadowOffsetY= 20;
+	
+	 // context.shadowColor = "#f0f0f0";
+	 // context.shadowBlur= 50;
+	 // context.shadowOffsetX= 20;
+	 // context.shadowOffsetY= 20;
 
 //}
 
 , drawGlyph: function (  char, canvas )
 {
-        var SCALE = .5//;/Math.random()*.5;
+        var SCALE = this.SCALE;//.5//;/Math.random()*.5;
         var g = this.fontdata.getGlyph(char);
         var drawingCanvas = document.getElementById(canvas);			
 
@@ -71,7 +84,8 @@ inc: function(filename){
             counter++;			
             if( g.getPoint(i).endOfContour )
             {
-                this.addContourToShapeWobble( context, g, firstindex, counter, SCALE);
+                this.addContourToShapeWobble( context, g, firstindex, counter, SCALE, 50);
+//                this.addContourToShape( context, g, firstindex, counter, SCALE);
                 firstindex=i+1;
                 counter=0;
             }
@@ -92,15 +106,14 @@ inc: function(filename){
 
 
     
-, addContourToShapeWobble:    function ( shape, glyph, startIndex, count, scale )
+, addContourToShapeWobble:    function ( shape, glyph, startIndex, count, scale, pRandomOffset )
     {
+		// draw each point at a random offset
+		var randomOffset = pRandomOffset;
 
-		var xShift = (Math.random()*30) - (Math.random()*30);
-		var yShift = (Math.random()*30) - (Math.random()*30);
+		var xShift = (Math.random()*randomOffset) - (Math.random()*randomOffset);
+		var yShift = (Math.random()*randomOffset) - (Math.random()*randomOffset);
 
-//	 xShift += 1;
-//	 yShift += 1;
-    
         if (glyph.getPoint(startIndex).endOfContour)
         {
             return;
@@ -136,7 +149,7 @@ inc: function(filename){
                     }
                     else
                     {
-                        shape.quadraticCurveTo( ( p1.x + Math.random()*xShift )*scale, (p1.y + Math.random()*yShift )*scale, midValue(( p1.x + Math.random()*xShift )*scale, (p2.x + Math.random()*xShift )*scale), midValue(p1.y*scale, p2.y*scale));
+                        shape.quadraticCurveTo( ( p1.x + Math.random()*xShift )*scale, (p1.y + Math.random()*yShift )*scale, this.midValue(( p1.x + Math.random()*xShift )*scale, (p2.x + Math.random()*xShift )*scale), this.midValue(p1.y*scale, p2.y*scale));
                     }
                     
                     offset+=2;
@@ -147,7 +160,7 @@ inc: function(filename){
             
             if(!p1.onCurve)
             {
-                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, midValue(p0.x*scale, ( p1.x + Math.random()*xShift )*scale), midValue(p0.y*scale, p1.y*scale));
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, this.midValue(p0.x*scale, ( p1.x + Math.random()*xShift )*scale), this.midValue(p0.y*scale, p1.y*scale));
             }
             else
             {
@@ -205,7 +218,7 @@ inc: function(filename){
                     }
                     else
                     {
-                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, midValue(p1.x*scale, p2.x*scale), midValue(p1.y*scale, p2.y*scale));
+                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, this.midValue(p1.x*scale, p2.x*scale), this.midValue(p1.y*scale, p2.y*scale));
                     }
                     
                     offset+=2;
@@ -216,7 +229,7 @@ inc: function(filename){
             
             if(!p1.onCurve)
             {
-                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, midValue(p0.x*scale, p1.x*scale), midValue(p0.y*scale, p1.y*scale));
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, this.midValue(p0.x*scale, p1.x*scale), this.midValue(p0.y*scale, p1.y*scale));
             }
             else
             {

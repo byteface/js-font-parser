@@ -47,42 +47,42 @@
         // font loading and parsing
         window.onload = function()
         {
-			// init canvas
+			font = new QuickFont( "../../truetypefonts/DiscoMo.ttf" );
+			
 			var drawingCanvas = document.getElementById('myDrawing');
 			this.context = drawingCanvas.getContext('2d');
-			context.translate( 100,100 );
-			
-			// init font
-			font = new QuickFont( "../../truetypefonts/DiscoMo.ttf" );
+			context.translate( 300,100 );
+
 			font.setStyle( 1, "#000000", "#ffffff", .2 );
 
-			setInterval(drawIt,1);
+			//setStyle
+
+			// for( var i=0; i<20; i++ ){
+			// 	context = font.drawGlyph( 10, 'myDrawing' );
+			// }
+
+//			this.drawIt();		
+			
+			
+		setInterval(drawIt,1)                                                
 		}
 		
 		function drawIt()
 		{
-			for( var i=0; i<20; i++ ){
-				var col = Math.floor(Math.random()*16777215).toString(16);
-				font.setStyle( Math.random()*1, col, "#ffffff", .2 );	
-				this.context = this.font.drawGlyph( 52, 'myDrawing' );
+			this.context.translate( -200,-100 );
+			
+			for( var i=0; i<200; i++ ){
+					//		font.setStyle( Math.random()*10, "#000000", "#00ff00", .5 );
+								font.setStyle( Math.random()*1, "#000000", "#ffffff", .2 );
+				this.context = this.font.drawGlyph( 10, 'myDrawing' );
 			}
 			
-			// context.translate( 200,0 );
+			 context.translate( 200,100 );
 			// 		
-			// for( var i=0; i<20; i++ ){
-			// 	var col = Math.floor(Math.random()*16777215).toString(16);
-			// 	font.setStyle( Math.random()*2, col, "#ffffff", .2 );
-			// 	context = font.drawGlyph( , 'myDrawing' );
-			// }
-			// 
-			// this.context.translate( -200,0 );						
-			
-			
-			// context.shadowColor = "#f0f0f0";
-			// 		 context.shadowBlur= 50;
-			// 		 context.shadowOffsetX= 20;
-			// 		 context.shadowOffsetY= 20;
-			
+			// 		for( var i=0; i<200; i++ ){
+			// 											font.setStyle( Math.random()*1, "#000000", "#ffffff", .2 );
+			// 			context = font.drawGlyph( 11, 'myDrawing' );
+			// 		}
 		}
 		
 		
@@ -100,7 +100,7 @@
 
 
 <body>
-<canvas id="myDrawing" width="800" height="800">
+<canvas id="myDrawing" width="500" height="500">
 <!-- <canvas id="myDrawingAlso" width="500" height="500"> -->
 
 <p>Your browser doesn't support canvas</p>
