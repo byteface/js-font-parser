@@ -1,4 +1,4 @@
-Glyph = Class.extend({
+ImageGlyph = Class.extend({
 		
 	LINE_WIDTH:1,
 	STROKE_STYLE:"#000000",
@@ -146,6 +146,9 @@ inc: function(filename){
 	                {
 	                    shape.lineTo(p1.x*scale, p1.y*scale);
 	                    offset++;
+	
+					this.addImage( shape, p1.x*scale, p1.y*scale );
+	
 	                }
 	                else
 	                {
@@ -154,10 +157,17 @@ inc: function(filename){
 	                    if(p2.onCurve)
 	                    {
 	                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, p2.x*scale, p2.y*scale);
+	
+					this.addImage( shape, p1.x*scale, p1.y*scale );
+	
 	                    }
 	                    else
 	                    {
 	                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, this.midValue(p1.x*scale, p2.x*scale), this.midValue(p1.y*scale, p2.y*scale));
+	
+	
+					this.addImage( shape, p1.x*scale, p1.y*scale );
+	
 	                    }
 
 	                    offset+=2;
@@ -170,15 +180,23 @@ inc: function(filename){
 	            {
 	                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, this.midValue(p0.x*scale, p1.x*scale), this.midValue(p0.y*scale, p1.y*scale));
 
-					window.console.log("point?");
-					shape.fillRect( p0.x*scale, p0.y*scale, 10, 10 );
+				//	window.console.log("point?");
+				//	shape.fillRect( p0.x*scale, p0.y*scale, 10, 10 );
+					
+					
+				this.addImage( shape, p1.x*scale, p1.y*scale );
+					
+					
 	            }
 	            else
 	            {		
 	                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, p1.x*scale, p1.y*scale);
 	
-					window.console.log("point?");
-					shape.fillRect( p0.x*scale, p0.y*scale, 10, 10 );
+				//	window.console.log("point?");
+				//	shape.fillRect( p0.x*scale, p0.y*scale, 10, 10 );
+				
+								this.addImage( shape, p1.x*scale, p1.y*scale );
+				
 	            }
 
 	            offset++;
@@ -192,7 +210,14 @@ inc: function(filename){
 
 
 
-
+, addImage: function( shape, x, y )
+{
+	var myImage = new Image();
+	myImage.onload = function() {
+		shape.drawImage(myImage, x, y, 15, 15 );
+	}
+	myImage.src = "leaf.png";	
+}
 
 
 

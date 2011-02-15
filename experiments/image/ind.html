@@ -35,8 +35,8 @@
     <script type="text/ecmascript" src="../../com/byteface/font/data/GlyphData.js"></script>
     <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfCompositeComp.js"></script>
 	
+	<script type="text/ecmascript" src="../../com/byteface/font/draw/ImageGlyph.js"></script>
 
-	<script type="text/ecmascript" src="../../com/byteface/font/draw/Glyph.js"></script>
         
     <script type="text/ecmascript">
         
@@ -55,7 +55,7 @@
 //			this.context.rotate(180 * Math.PI / 180);
 			
 			// init font
-			this.font = new Glyph( "../../truetypefonts/Aims in your Life normal.ttf" );
+			this.font = new ImageGlyph( "../../truetypefonts/Aims in your Life normal.ttf" );
 			this.font.setWobble( 30 );
 			
 			this.font.setStyle( 3, "#000000", "#00ff00", 5. );
