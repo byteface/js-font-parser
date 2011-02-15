@@ -8,6 +8,9 @@ QuickFont = Class.extend({
 	SCALE:.5,
 
 	fontdata: null,
+	
+	// fun props
+	wobble: 30,
 
 // TODO - create a class for global functions like this one
 inc: function(filename){
@@ -55,9 +58,15 @@ inc: function(filename){
 
 //}
 
+// when a character draws how badly they wobble
+, setWobble: function( offset )
+{
+	this.wobble - offset;
+}
+
 , drawGlyph: function (  char, canvas )
 {
-        var SCALE = this.SCALE;//.5//;/Math.random()*.5;
+        var SCALE = this.SCALE;//Math.random()*.5;
         var g = this.fontdata.getGlyph(char);
         var drawingCanvas = document.getElementById(canvas);			
 
@@ -72,7 +81,7 @@ inc: function(filename){
 //			window.console.log(char);
 //			context.translate( 2,5);
 //          	context.translate(Math.random()*(i*10,Math.random()*(i*10));
-//            context.rotate(20 * Math.PI / 180);
+// /            context.rotate(20 * Math.PI / 180);
 //context.rotate(1)
      //   context.scale(1,-1);
 
@@ -84,7 +93,7 @@ inc: function(filename){
             counter++;			
             if( g.getPoint(i).endOfContour )
             {
-                this.addContourToShapeWobble( context, g, firstindex, counter, SCALE, 50);
+                this.addContourToShapeWobble( context, g, firstindex, counter, SCALE );
 //                this.addContourToShape( context, g, firstindex, counter, SCALE);
                 firstindex=i+1;
                 counter=0;
@@ -106,10 +115,10 @@ inc: function(filename){
 
 
     
-, addContourToShapeWobble:    function ( shape, glyph, startIndex, count, scale, pRandomOffset )
+, addContourToShapeWobble: function ( shape, glyph, startIndex, count, scale, pRandomOffset )
     {
 		// draw each point at a random offset
-		var randomOffset = pRandomOffset;
+		var randomOffset = this.wobble;
 
 		var xShift = (Math.random()*randomOffset) - (Math.random()*randomOffset);
 		var yShift = (Math.random()*randomOffset) - (Math.random()*randomOffset);

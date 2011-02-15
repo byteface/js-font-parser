@@ -50,12 +50,12 @@
 			// init canvas
 			var drawingCanvas = document.getElementById('myDrawing');
 			this.context = drawingCanvas.getContext('2d');
-			context.translate( 100,200 );
+			context.translate( 100,100 );
 			
 			// init font
-			this.font = new QuickFont( "../../truetypefonts/20FACES.TTF" );
+			this.font = new QuickFont( "../../truetypefonts/Quill.ttf" );
 			this.font.setStyle( 1, "#000000", "#ffffff", .2 );
-			this.font.setWobble( 30 );
+			this.font.setWobble( 0 );
 
 			setInterval(drawIt,1);
 //			drawIt();
@@ -64,9 +64,9 @@
 		function drawIt()
 		{
 			for( var i=0; i<20; i++ ){
-				var col = Math.floor(Math.random()*16777215).toString(16);
-				font.setStyle( Math.random()*.01, "#ff0000", "#ff0000", .1 );	
-				this.context = this.font.drawGlyph( 55, 'myDrawing' );
+			//	var col = Math.floor(Math.random()*16777215).toString(16);
+			//	font.setStyle( Math.random()*1, "#ff0000", col, .2 );	
+				this.context = this.font.drawGlyph( 34, 'myDrawing' );
 		//		this.context.rotate(20 * Math.PI / 180);
 			}
 			
