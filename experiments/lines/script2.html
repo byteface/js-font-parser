@@ -2,6 +2,8 @@
 <html>
 <head>
 
+
+
     <script type="text/ecmascript" src="../../com/byteface/font/utils/BinaryParser.js"></script>
     <script type="text/ecmascript" src="../../com/byteface/font/data/RawFont.js"></script>
     <script type="text/ecmascript" src="../../com/byteface/font/table/TableDirectory.js"></script>
@@ -36,7 +38,6 @@
     <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfCompositeComp.js"></script>
 	
 	<script type="text/ecmascript" src="../../com/byteface/font/draw/QuickFont.js"></script>
-	<script type="text/ecmascript" src="../../com/byteface/font/draw/Glyph.js"></script>
         
     <script type="text/ecmascript">
         
@@ -49,30 +50,25 @@
 			// init canvas
 			var drawingCanvas = document.getElementById('myDrawing');
 			this.context = drawingCanvas.getContext('2d');
-		//	this.context.lineTo(100,100);
-			
-//			context.translate( 400,500 );
-//			this.context.rotate(180 * Math.PI / 180);
+			context.translate( 400,400 );
 			
 			// init font
-			this.font = new QuickFont( "../../truetypefonts/Aims in your Life normal.ttf" );
-			this.font.setWobble( 30 );
-			
-			this.font.setStyle( 3, "#000000", "#00ff00", 5. );
-			this.font.drawGlyph( 16, 'myDrawing' );
+			this.font = new QuickFont( "../../truetypefonts/Quill.ttf" );
+			this.font.setStyle( 1, Math.floor(Math.random()*16777215).toString(16), "#ffffff", .2 );
+			this.font.setWobble( 0 );
 
-//			setInterval(drawIt,1);
+			setInterval(drawIt,1);
 //			drawIt();
 		}
 		
 		function drawIt()
 		{
-		// 	for( var i=0; i<20; i++ ){
-		// 		var col = Math.floor(Math.random()*16777215).toString(16);
-		// 		font.setStyle( Math.random()*.01, "#ff0000", "#ff0000", .1 );	
-		// 		this.context = this.font.drawGlyph( 24, 'myDrawing' );
-
-		// 	}
+			for( var i=0; i<20; i++ ){
+				var col = Math.floor(Math.random()*16777215).toString(16);
+				this.font.setStyle( 1, Math.floor(Math.random()*16777215).toString(16), "#ffffff", .2 );
+				this.context = this.font.drawGlyph( 51, 'myDrawing' );
+				this.context.rotate(20 * Math.PI / 180);
+			}
 			
 			// context.translate( 200,0 );
 			// 		
