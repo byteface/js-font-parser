@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+
+
+    <script type="text/ecmascript" src="../../com/byteface/font/utils/BinaryParser.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/data/RawFont.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/TableDirectory.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/DirectoryEntry.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/TableFactory.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Os2Table.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Panose.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Table.js"></script>        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapTable.js"></script>            
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfTable.js"></script>                
+    <script type="text/ecmascript" src="../../com/byteface/font/table/HeadTable.js"></script>                    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapIndexEntry.js"></script>                    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat0.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat2.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat4.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat6.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/HheaTable.js"></script>                        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/HmtxTable.js"></script>                        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/LocaTable.js"></script>                        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/NameTable.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/NameRecord.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/MaxpTable.js"></script>                            
+    <script type="text/ecmascript" src="../../com/byteface/font/table/PostTable.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GsubTable.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfSimpleDescript.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfCompositeDescript.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Script.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/ScriptRecord.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/data/Point.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/data/GlyphData.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfCompositeComp.js"></script>
+	
+	<script type="text/ecmascript" src="../../com/byteface/font/draw/Font3D.js"></script>
+        
+    <script type="text/ecmascript">
+        
+		var context;
+		var font;
+
+        // font loading and parsing
+        window.onload = function()
+        {
+			// init canvas
+			var drawingCanvas = document.getElementById('myDrawing');
+			this.context = drawingCanvas.getContext('2d');
+			context.translate( 100,100 );
+			
+			// init font
+			this.font = new Font3D( "../../truetypefonts/Quill.ttf" );
+			this.font.setStyle( 1, "#000000", "#ffffff", .2 );
+			//this.font.setWobble( 0 );
+
+			setInterval(drawIt,1);
+		//	drawIt();
+		}
+		
+		var count=0;
+		
+		function drawIt()
+		{
+		
+			
+			count+=0.1;
+		//	canvas.clear = true;
+		//	for( var i=0; i<20; i++ ){
+			//	var col = Math.floor(Math.random()*16777215).toString(16);
+			//	font.setStyle( Math.random()*1, "#ff0000", col, .2 );	
+				this.context = this.font.drawGlyph( 39, 'myDrawing', 20 );
+		//		this.context.rotate(20 * Math.PI / 180);
+		//	}
+// 
+//this.font.setProps( .8+ Math.abs(Math.cos(count)) );
+// 
+ 			//	this.context = this.font.drawGlyph( 2, 'myDrawing', 50 );
+
+			
+			// context.translate( 200,0 );
+			// 		
+			// for( var i=0; i<20; i++ ){
+			// 	var col = Math.floor(Math.random()*16777215).toString(16);
+			// 	font.setStyle( Math.random()*2, col, "#ffffff", .2 );
+			// 	context = font.drawGlyph( , 'myDrawing' );
+			// }
+			// 
+			// this.context.translate( -200,0 );						
+			
+			
+			// context.shadowColor = "#f0f0f0";
+			// 		 context.shadowBlur= 50;
+			// 		 context.shadowOffsetX= 20;
+			// 		 context.shadowOffsetY= 20;
+			
+		}
+		
+		
+		
+		
+		
+
+
+    </script>    
+            
+
+<meta charset="utf-8">
+<title>DrawingTest</title>
+</head>
+
+
+<body>
+	
+	<img src="/pix/milford_sound/milford_sound_t.jpg" width="225" height="151" alt="Milford Sound in New Zealand">
+	
+<canvas id="myDrawing" width="800" height="800">
+<!-- <canvas id="myDrawingAlso" width="500" height="500"> -->
+
+<p>Your browser doesn't support canvas</p>
+</canvas>
+
+</body>
+</html>

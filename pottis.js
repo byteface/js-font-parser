@@ -404,7 +404,7 @@ var Pottis = function(targetSVG, startCallback)
 
 
 
-	this.cuntface = null;
+	this.test = null;
 
 
 	this.readFontSVG = function(svgfile, groupid)
@@ -414,8 +414,61 @@ var Pottis = function(targetSVG, startCallback)
     //        var node = doc.documentElement.childNodes[i].cloneNode(true);
       //      _pottis.targetSVG.appendChild(node);
         //}
-        this.cuntface = svgfile;
+        this.test = svgfile;
 	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	this.setSVG = function( svgfile, groupid, actualSVG, div )
+	{
+		// var obj = document.createElement("object");
+		// obj.setAttribute("id", svgfile);
+		// obj.setAttribute("type", "image/svg+xml");
+		// obj.setAttribute("data", svgfile);
+
+		document.body.appendChild(obj);
+		// 
+		// make sure we have a defs element in the svg
+		var defs = _pottis.targetSVG.getElementsByTagName("defs");
+		if (defs.length == 0) {
+			defs = this.targetDocument.createElementNS( _pottis.svgNS, "defs");
+			this.targetSVG.insertBefore(defs, this.targetSVG.firstChild);
+		} else defs = defs[0];
+
+//--
+		var newsvg = document.getElementById("tutorial");
+						        //var svgstr = '<svg:svg height="300" width="700" id="svg-container"><svg:circle cx="150px" cy="100px" r="30px" /></svg:svg>';
+							    var svgstr = actualSVG;//'<svg:svg height="200" width="200" id="svg-container">' + actualSVG + '</svg:svg>'
+						        newsvg.innerHTML = svgstr;
+//--
+		
+		// obj.onload = function() {
+		// 		var svgobj = obj.contentDocument.documentElement;
+		// 				for (i = 0; i < svgobj.childNodes.length; i++) {
+		// 					var node = svgobj.childNodes[i].cloneNode(true);
+		// 					defs.appendChild(node);
+		// 				}
+		// 	
+		// 		// the object is not needed anymore ^____^
+		// 		// TODO: how to make the page load finish? it does finish, if we don't remove the obj element
+		// 		//obj.contentDocument.removeChild(obj.contentDocument.documentElement);
+		// 		obj.parentNode.removeChild(obj);
+		// 	}
+	}
+	
+	
+	
+	
+	
+	
 	
 	
 	
@@ -444,7 +497,7 @@ var Pottis = function(targetSVG, startCallback)
 		// TODO: maybe an option to add straigh to svg body instead of defs?
 		var group = this.group(groupid, [ ]);
 		defs.appendChild(group);
-		    	var doc = this.StringtoXML(other);
+		var doc = this.StringtoXML(other);
 		obj.onload = function() {
 		
 
@@ -487,9 +540,8 @@ var Pottis = function(targetSVG, startCallback)
     }
 
 
-	this.importSVG = function(svgfile, groupid) {
-		//<object id="longcatbasket" type="image/svg+xml" data="longcatbasket_defs.svg" width="900" height="600">
-
+	this.importSVG = function( svgfile, groupid )
+	{
 		var obj = document.createElement("object");
 		obj.setAttribute("id", svgfile);
 		obj.setAttribute("type", "image/svg+xml");
@@ -507,13 +559,12 @@ var Pottis = function(targetSVG, startCallback)
 			this.targetSVG.insertBefore(defs, this.targetSVG.firstChild);
 		} else defs = defs[0];
 		
-		// TODO: maybe an option to add straigh to svg body instead of defs?
+		// TODO: maybe an option to add straight to svg body instead of defs?
 		var group = this.group(groupid, [ ]);
 		defs.appendChild(group);
 
 		obj.onload = function() {
 			var svgobj = obj.contentDocument.documentElement;
-//alert(svgobj.childNodes);
 			for (i = 0; i < svgobj.childNodes.length; i++) {
 				var node = svgobj.childNodes[i].cloneNode(true);
 				group.appendChild(node);

@@ -1,13 +1,11 @@
-<!DOCTYPE html  PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"
-      xmlns:svg="http://www.w3.org/2000/svg"
-      xmlns:xlink="http://www.w3.org/1999/xlink">
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>LOADING FONTS IN HTML</title>
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC
+"-//W3C//DTD XHTML 1.1 plus MathML 2.0 plus SVG 1.1//EN"
+"http://www.w3.org/2002/04/xhtml-math-svg/xhtml-math-svg.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:svg="http://www.w3.org/2000/svg">
+   <head>
+      <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8"/>
+      <title>SVG</title>
 
-    <!-- // TODO - these 2 into libs    -->
     <script type="text/ecmascript" src="pottis.js"></script>
     <script type="text/ecmascript" src="com/byteface/font/utils/BinaryParser.js"></script>
 
@@ -34,7 +32,7 @@
     <script type="text/ecmascript" src="com/byteface/font/table/NameRecord.js"></script>    
     <script type="text/ecmascript" src="com/byteface/font/table/MaxpTable.js"></script>                            
     <script type="text/ecmascript" src="com/byteface/font/table/PostTable.js"></script>
-    
+
     <!--
     <script type="text/ecmascript" src="com/byteface/font/constants/XMLConstants.js"></script>
     <script type="text/ecmascript" src="com/byteface/font/constants/SVGConstants.js"></script>    
@@ -42,8 +40,8 @@
     -->
 
     <script type="text/ecmascript" src="com/byteface/font/constants/ALLConstants.js"></script>    
-    
-    
+
+
     <script type="text/ecmascript" src="com/byteface/font/SVGFont.js"></script>
     <script type="text/ecmascript" src="com/byteface/font/PrintStream.js"></script>    
     <script type="text/ecmascript" src="com/byteface/font/table/GsubTable.js"></script>
@@ -54,58 +52,56 @@
     <script type="text/ecmascript" src="com/byteface/font/data/Point.js"></script>
     <script type="text/ecmascript" src="com/byteface/font/data/GlyphData.js"></script>
     <script type="text/ecmascript" src="com/byteface/font/table/GlyfCompositeComp.js"></script>
+
+
+
+
+<script type="text/javascript">
+   <![CDATA[    
+	window.onload = function()
+   {
+		var file = load_binary_resource("truetypefonts/DiscoMo.ttf");
+		var bytedata = new a3d.ByteArray( file, a3d.Endian.BIG );
+		var font = new RawFont( bytedata );
+		var svgF = new SVGFont( font ); // add char range etc
+		
+		
+		var newsvg = document.getElementById("svg-wrapper");
+        //var svgstr = '<svg:svg height="300" width="700" id="svg-container"><svg:circle cx="150px" cy="100px" r="30px" /></svg:svg>';
+	    var svgstr = '<svg:svg height="200" width="200" id="svg-container">' + svgF.FONT_DATA + '</svg:svg>'
+        newsvg.innerHTML = svgstr;
+    }   
+
+
+    function load_binary_resource(url)
+    {
+        var req = new XMLHttpRequest();
+        req.open( 'GET', url, false );
+        req.overrideMimeType( 'text/plain; charset=x-user-defined' );
+        req.send(null);
+
+
+       // alert( "text status:" + req.status);
+                            
+       // if(req.status != 200) return '';
         
-    <script type="text/ecmascript">
-    <![CDATA[
-        var pottis = null;
+       // alert( "text response:" + req.responseText);
         
-        // font loading and parsing
-        window.onload = function()
-        {
-            var file = load_binary_resource("truetypefonts/DiscoMo.ttf");
-            var bytedata = new a3d.ByteArray( file, a3d.Endian.BIG );
-            var font = new RawFont( bytedata );
-
-            var svgF = new SVGFont( font ); // add char range etc
-            var svg = document.getElementById( "tutorial" );
-
-            pottis = new Pottis(svg);
-        //	pottis.readFontSVG( svgF.FONT_DATA );
-
-//		window.console.log( svgF.FONT_DATA );	
-
-            
-          //  pottis.importSVG( "test2.svg", "apple" );
-
-          // pottis.setSVG( "test2.svg", "apple", svgF.FONT_DATA, "svg-wrapper" );
-
-            
-        }
-        
-        // load the binary data of the font
-        function load_binary_resource(url)
-        {
-            var req = new XMLHttpRequest();
-            req.open( 'GET', url, false );
-            req.overrideMimeType( 'text/plain; charset=x-user-defined' );
-            req.send(null);
+        return req.responseText;
+    }
 
 
-           // alert( "text status:" + req.status);
-                                
-           // if(req.status != 200) return '';
-            
-           // alert( "text response:" + req.responseText);
-            
-            return req.responseText;
-        }
+   ]]>
+   </script>
 
-    ]]></script>
 
-</head>
-<body>
-    <h2>LOADING FONTS IN HTML</h2>
-    <svg id="tutorial" version="1.1" width="500" height="500" />
+
+
+
+
+ </head>
+ <body>
+    <div id="svg-wrapper"></div>
     <font size="15" face="DiscoMo">ABCDEFGHIJKLMNOPQRSTUVWXYZ</font>
-</body>
-</html>
+ </body>
+ </html>

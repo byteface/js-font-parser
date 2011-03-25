@@ -43,7 +43,6 @@
         {
             var file = load_binary_resource("truetypefonts/DiscoMo.ttf");
             var bytedata = new a3d.ByteArray( file, a3d.Endian.BIG );
-            var font = read( bytedata );
 
             var svg = document.getElementById( "tutorial" );
             pottis = new Pottis(svg);
@@ -57,14 +56,9 @@
             req.open( 'GET', url, false );
             req.overrideMimeType( 'text/plain; charset=x-user-defined' );
             req.send(null);
-
-
-           // alert( "text status:" + req.status);
-                                
+           // alert( "text status:" + req.status);                   
            // if(req.status != 200) return '';
-            
            // alert( "text response:" + req.responseText);
-            
             return req.responseText;
         }
 
@@ -74,6 +68,6 @@
 <body>
     <h2>LOADING FONTS IN HTML</h2>
     <svg id="tutorial" version="1.1" width="500" height="500" />
-    <font size="15" face="AppleSimple">ABCDEFGHIJKLMNOPQRSTUVWXYZ</font>
+    <font size="15" face="DiscoMo">ABCDEFGHIJKLMNOPQRSTUVWXYZ</font>
 </body>
 </html>
