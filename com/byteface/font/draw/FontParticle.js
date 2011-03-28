@@ -262,7 +262,7 @@ inc: function(filename){
     
     , draw: function() {
 
-        context.clearRect(0, 0, width, height);
+       // context.clearRect(0, 0, width, height);
 
         var i, point;
         for(i = 0; i < this.physicalPoints.length; i++ ) {
@@ -275,8 +275,10 @@ inc: function(filename){
 			context.translate(point.x,point.y);
 			context.rotate( point.rotation );
 			
+			
 			context.beginPath();
-            context.arc(0, 0, .5, 0, Math.PI*2, false);
+			context.strokeStyle = this.rndColor();
+            context.arc(0, 0, .1, 0, Math.PI*2, false);
 
 			context.stroke();
 
