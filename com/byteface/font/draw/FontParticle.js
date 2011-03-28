@@ -81,9 +81,6 @@ inc: function(filename){
 		width = drawingCanvas.width;
         height = drawingCanvas.height;
 		
-		
-		
-		
 		context.lineWidth = this.LINE_WIDTH;
 		context.strokeStyle = this.STROKE_STYLE;
         context.fillStyle = this.FILL_STYLE;
@@ -97,7 +94,7 @@ inc: function(filename){
             counter++;			
             if( g.getPoint(i).endOfContour )
             {
-                this.addContourToShape( context, g, firstindex, counter, SCALE );
+                this.addContourToShapeNoCurves( context, g, firstindex, counter, SCALE );
                 firstindex=i+1;
                 counter=0;
             }
@@ -112,11 +109,9 @@ inc: function(filename){
 
         context.translate(_distance, 5);
 
-
         var self = this;  
         this.interval = setInterval( function(){ self.animate(); }, 1000/24 );
-
-			
+		
 		// also pass it out so we can play with it further
 		return context;
     }   
@@ -124,7 +119,6 @@ inc: function(filename){
     
 ,addContourToShape: function ( shape, glyph, startIndex, count, scale )
 {
-    
         if (glyph.getPoint(startIndex).endOfContour)
         {
             return;
@@ -191,15 +185,94 @@ inc: function(filename){
 
 
 
-, addParticle: function( point,scale,canvas )
+	
+,addContourToShapeNoCurves: function ( shape, glyph, startIndex, count, scale )
 {
+        if (glyph.getPoint(startIndex).endOfContour)
+        {
+            return;
+        }
+ 
+        offset = 0;
+        
+        while(offset < count)
+        {
+            var p0 = glyph.getPoint(startIndex + offset%count);
+            var p1 = glyph.getPoint(startIndex + (offset+1)%count);
+
+
+//			this.addParticle(p1,scale,shape);
+
+            if (offset == 0)
+            {
+                shape.moveTo(p0.x*scale, p0.y*scale);
+            }
+
+            if (p0.onCurve)
+            {
+	
+				this.addParticle(p0,scale,shape);
+	
+                if (p1.onCurve)
+                {
+                    shape.lineTo(p1.x*scale, p1.y*scale);
+                    offset++;
+                }
+                else
+                {
+                    var p2 = glyph.getPoint(startIndex + (offset+2)%count);
+                    
+				//	this.addParticle(p2,scale,shape);
+
+                    if(p2.onCurve)
+                    {
+                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, p2.x*scale, p2.y*scale);
+                    }
+                    else
+                    {
+                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, this.midValue(p1.x*scale, p2.x*scale), this.midValue(p1.y*scale, p2.y*scale));
+                    }
+                    
+                    offset+=2;
+                } 
+            }
+            else
+            {
+            
+            if(!p1.onCurve)
+            {
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, this.midValue(p0.x*scale, p1.x*scale), this.midValue(p0.y*scale, p1.y*scale));
+            }
+            else
+            {
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, p1.x*scale, p1.y*scale);
+            }
+            
+            offset++;
+            
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+, addParticle: function( point,scale,canvas )
+{	
 	var p = new Particle();
 		p.bounce = -1;
-		p.grav = -1;
-		// p.maxSpeed = 20;
+	//	p.grav = -4;
+	//	p.maxSpeed = 20;
 	//	p.addGravPoint( 100, 500, 2000 );
 	//	p.addRepelPoint( 300, 300, 900 );
-				p.wander = 1;
+	//			p.wander = 1;
 		p.setEdgeBehavior("bounce");
 		// 		p.turnToPath( true );
 			//	p.setGravToMouse(canvas, true, 30000 );
@@ -278,7 +351,7 @@ inc: function(filename){
 			
 			context.beginPath();
 			context.strokeStyle = this.rndColor();
-            context.arc(0, 0, .1, 0, Math.PI*2, false);
+            context.arc(0, 0, 8, 0, Math.PI*2, false);
 
 			context.stroke();
 
