@@ -16,20 +16,6 @@ Renderer = Class.extend({
         width = canvas.width;
         height = canvas.height;
 
-		// var Mouse = { //make a globally available object with x,y attributes 
-		//     x: 0,
-		//     y: 0
-		// }
-		// canvas.onmousemove = function (event) { // this  object refers to canvas object  
-		// 	
-		//     Mouse = {
-		//         x: event.pageX - this.offsetLeft,
-		//         y: event.pageY - this.offsetTop
-		//     }
-		// }
-
-
-        
         for(i = 0; i < this.numPoints; i += 1) {
 			
 			var p = new Particle();
