@@ -1,7 +1,7 @@
 Renderer = Class.extend({
 
     points:[],
-    numPoints:2000,
+    numPoints:500,
     i:null,
     canvas:null,
     context:null,
