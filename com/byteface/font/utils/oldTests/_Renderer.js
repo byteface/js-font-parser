@@ -1,7 +1,7 @@
 Renderer = Class.extend({
 
     points:[],
-    numPoints:100,
+    numPoints:2000,
     i:null,
     canvas:null,
     context:null,
@@ -21,17 +21,17 @@ Renderer = Class.extend({
 			var p = new Particle();
 			p.bounce = -1;
 			p.grav = 2;
-			p.maxSpeed = 20;
+			p.maxSpeed = 8;
 		//	p.addGravPoint( 100, 500, 2000 );
-		//	p.addRepelPoint( 300, 600, 100 );
+			p.addRepelPoint( 300, 600, 100 );
 			p.wander = 20;
 //						p.setEdgeBehavior("wrap");
 			
 			
 			p.x = width/2;//Math.random() * width;
 	        p.y = height/2;//Math.random() * height;
-            p.vx = Math.random() * 10 - 5;
-            p.vy = Math.random() * 10 - 5;
+           // p.vx = Math.random() * 1000 - (Math.random() * 1000);
+            // p.vy = Math.random() * 10 - 5;
 	
             this.points.push( p );
         }
