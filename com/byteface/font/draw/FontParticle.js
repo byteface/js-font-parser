@@ -13,6 +13,7 @@ FontParticle = Class.extend({
 
     points:[],
 	physicalPoints:[],
+	physicalPointsIndex:0,
 
     i:null,
     canvas:null,
@@ -57,8 +58,7 @@ inc: function(filename){
         var g = this.fontdata.getGlyph(char);
 		var _distance = distance;
         
-
-_currentGlyph = g;
+		_currentGlyph = g;
 
 
 		this.canvas = document.getElementById(pcanvas);
@@ -181,7 +181,8 @@ _currentGlyph = g;
         }
  
         offset = 0;
-        
+		physicalPointsIndex = 0;
+
         while(offset < count)
         {
             var p0 = glyph.getPoint(startIndex + offset%count);
@@ -200,8 +201,8 @@ _currentGlyph = g;
 			{
 			//	window.console.log( "yo" );
 //									window.console.log( this.getParticle( offset ).x );
-var				particle0 = this.getParticle( offset );
-var				particle1 = this.getParticle( offset );
+var				particle0 = this.getParticle();
+var				particle1 = this.getParticle();
 				
 				p0.x = particle0.x *2;
 				p0.y = particle0.y *2;				
@@ -232,9 +233,20 @@ var				particle1 = this.getParticle( offset );
                 }
                 else
                 {
-                    var p2 = glyph.getPoint(startIndex + (offset+2)%count);
+                    		var p2 = glyph.getPoint(startIndex + (offset+2)%count);
                     
-				//	this.addParticle(p2,scale,this.context);
+							if(firstRun)
+							{
+								this.addParticle(p2,scale,this.context);
+							}
+							else
+							{
+								var	particle2 = this.getParticle();
+								p2.x = particle2.x *2;
+								p2.y = particle2.y *2;
+							}
+								
+				
 
                     if(p2.onCurve)
                     {
@@ -264,6 +276,9 @@ var				particle1 = this.getParticle( offset );
             
             }
         }
+
+
+		physicalPointsIndex=0;
     }
 
 
@@ -301,9 +316,10 @@ var				particle1 = this.getParticle( offset );
 
 
 
-, getParticle: function( index )
-{	
-	return this.physicalPoints[index];
+, getParticle: function()
+{
+	physicalPointsIndex++;
+	return this.physicalPoints[physicalPointsIndex-1];
 }
 
 
@@ -400,7 +416,7 @@ var				particle1 = this.getParticle( offset );
 			
 			context.beginPath();
 	//		context.strokeStyle = this.rndColor();
-            context.arc(0, 0, 8, 0, Math.PI*2, false);
+          //  context.arc(0, 0, 8, 0, Math.PI*2, false);
 
 			context.stroke();
 
