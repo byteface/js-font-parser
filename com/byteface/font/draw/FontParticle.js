@@ -327,21 +327,27 @@ var				particle1 = this.getParticle();
 {	
 	var p = new Particle();
 		p.bounce = -1;
-	//	p.grav = 4;
+	//	p.grav = 20;
 		p.maxSpeed = 20;
-	//	p.addGravPoint( point.x*scale, point.y*scale, 1 );
+		p.damp = .6;
 	//	p.addRepelPoint( 300, 300, 900 );
-		p.wander = .3;
+	//	p.wander = .3;
 		p.setEdgeBehavior("bounce");
 		// p.turnToPath( true );
 
-		// p.setGravToMouse( this.canvas, true, 30000 );
+		 p.setGravToMouse( this.canvas, true, 1000 );
 			
-		p.setRepelMouse( this.canvas, true, 30000 );
+	//	p.setRepelMouse( this.canvas, true, 30000 );
 			
 				
 		p.x = point.x*scale;
         p.y = point.y*scale;
+
+
+	//	p.setFixedPoint( p.x, p.y, 1000 )
+
+//		p.addGravPoint( (point.x+1)*scale, (point.y+1)*scale, 1000 );
+
 
 		this.physicalPoints.push( p );
 }
