@@ -23,11 +23,12 @@ Renderer = Class.extend({
 		//	p.grav = 1;
 			p.maxSpeed = 20;
 		//	p.addGravPoint( 100, 500, 2000 );
-			p.addRepelPoint( 300, 300, 900 );
+			//p.addRepelPoint( 300, 300, 900 );
 			p.wander = 10;
 			p.setEdgeBehavior("bounce");
 			p.turnToPath( true );
-			p.setGravToMouse( canvas, true, 30000 );
+		p.setGravToMouse( canvas, true, 50000 );
+            p.setRepelMouse( canvas, true, 10,30 );
 			
 			p.x = Math.random() * width;
 	        p.y = height/2;//Math.random() * height;
