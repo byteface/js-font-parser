@@ -329,9 +329,9 @@ var				particle1 = this.getParticle();
 		p.bounce = -1;
 	//	p.grav = 4;
 		p.maxSpeed = 20;
-	//	p.addGravPoint( 100, 500, 2000 );
+	//	p.addGravPoint( point.x*scale, point.y*scale, 1 );
 	//	p.addRepelPoint( 300, 300, 900 );
-	//	p.wander = 1;
+		p.wander = .3;
 		p.setEdgeBehavior("bounce");
 		// p.turnToPath( true );
 
@@ -416,7 +416,7 @@ var				particle1 = this.getParticle();
 			
 			context.beginPath();
 	//		context.strokeStyle = this.rndColor();
-          //  context.arc(0, 0, 8, 0, Math.PI*2, false);
+            //context.arc(0, 0, 8, 0, Math.PI*2, false);
 
 			context.stroke();
 
