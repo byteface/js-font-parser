@@ -4,7 +4,7 @@ FontParticle = Class.extend({
 	STROKE_STYLE:"#000000",
 	FILL_STYLE:"#000000",
 	GLOBAL_ALPHA:1,
-	SCALE:.5,
+	SCALE:1,
 	
 	_currentGlyph:null,
 	
@@ -54,7 +54,6 @@ inc: function(filename){
 
 , drawGlyph: function (  char, pcanvas, distance ) // TODO - why distance?.. maybe remove
 {
-        var SCALE = this.SCALE;
         var g = this.fontdata.getGlyph(char);
 		var _distance = distance;
         
@@ -66,12 +65,15 @@ inc: function(filename){
 		this.width = this.canvas.width;
         this.height = this.canvas.height;
 				
-		this.canvas.width = this.canvas.width; // reset
+//		this.canvas.width = this.canvas.width; // reset
 
 		this.context.lineWidth = this.LINE_WIDTH;
 		this.context.strokeStyle = this.STROKE_STYLE;
         this.context.fillStyle = this.FILL_STYLE;
         this.context.beginPath();
+        
+//					this.rotation = Math.atan2(this.vy, this.vx);// * 180 / Math.PI;
+//		this.context.rotate( (2)* 180/Math.PI);
 
         var firstindex=0;
         var counter=0;
@@ -81,7 +83,7 @@ inc: function(filename){
             counter++;			
             if( g.getPoint(i).endOfContour )
             {
-                this.addContourToShapeNoCurves( g, firstindex, counter, SCALE, true );
+                this.addContourToShape( g, firstindex, counter, true );
                 firstindex=i+1;
                 counter=0;
             }
@@ -93,7 +95,7 @@ inc: function(filename){
         this.context.closePath();
         this.context.stroke();
         this.context.fill();
-
+        // this.context.rotate(180);
         this.context.translate(_distance, 5);
 
         var self = this;  
@@ -103,78 +105,11 @@ inc: function(filename){
 		return context;
     }   
     
-    
-,addContourToShape: function ( glyph, startIndex, count, scale )
-{
-        if (glyph.getPoint(startIndex).endOfContour)
-        {
-            return;
-        }
- 
-        offset = 0;
-        
-        while(offset < count)
-        {
-            var p0 = glyph.getPoint(startIndex + offset%count);
-            var p1 = glyph.getPoint(startIndex + (offset+1)%count);
-
-			this.addParticle(p0,scale,this.context);
-			this.addParticle(p1,scale,this.context);
-
-            if (offset == 0)
-            {
-                this.context.moveTo(p0.x*scale, p0.y*scale);
-            }
-
-            if (p0.onCurve)
-            {
-                if (p1.onCurve)
-                {
-                    this.context.lineTo(p1.x*scale, p1.y*scale);
-                    offset++;
-                }
-                else
-                {
-                    var p2 = glyph.getPoint(startIndex + (offset+2)%count);
-                    
-					this.addParticle(p2,scale,this.context);
-
-                    if(p2.onCurve)
-                    {
-                        this.context.quadraticCurveTo(p1.x*scale, p1.y*scale, p2.x*scale, p2.y*scale);
-                    }
-                    else
-                    {
-                        this.context.quadraticCurveTo(p1.x*scale, p1.y*scale, this.midValue(p1.x*scale, p2.x*scale), this.midValue(p1.y*scale, p2.y*scale));
-                    }
-                    
-                    offset+=2;
-                } 
-            }
-            else
-            {
-            
-            if(!p1.onCurve)
-            {
-                this.context.quadraticCurveTo(p0.x*scale, p0.y*scale, this.midValue(p0.x*scale, p1.x*scale), this.midValue(p0.y*scale, p1.y*scale));
-            }
-            else
-            {
-                this.context.quadraticCurveTo(p0.x*scale, p0.y*scale, p1.x*scale, p1.y*scale);
-            }
-            
-            offset++;
-            
-            }
-        }
-    }
-
-
-
 
 	
-,addContourToShapeNoCurves: function ( glyph, startIndex, count, scale, firstRun )
+,addContourToShape: function ( glyph, startIndex, count, firstRun )
 {
+
         if (glyph.getPoint(startIndex).endOfContour)
         {
             return;
@@ -194,8 +129,8 @@ inc: function(filename){
 			if(firstRun)
 			{
 			//	window.console.log( "hey" );
-				this.addParticle(p0,scale,this.context);
-				this.addParticle(p1,scale,this.context);				
+				this.addParticle(p0,this.context);
+				this.addParticle(p1,this.context);				
 			}
 			else
 			{
@@ -204,11 +139,11 @@ inc: function(filename){
 var				particle0 = this.getParticle();
 var				particle1 = this.getParticle();
 				
-				p0.x = particle0.x *2;
-				p0.y = particle0.y *2;				
+				p0.x = particle0.x;// *2;
+				p0.y = particle0.y;// *2;				
 				
-				p1.x = particle1.x *2;
-				p1.y = particle1.y *2;				
+				p1.x = particle1.x;// *2;
+				p1.y = particle1.y;// *2;				
 				
 				// p0.x = p1.x*scale;
 				// 		        p1.y = p1.y*scale;
@@ -221,14 +156,14 @@ var				particle1 = this.getParticle();
 
             if (offset == 0)
             {
-                this.context.moveTo(p0.x*scale, p0.y*scale);
+                this.context.moveTo(p0.x, p0.y);
             }
 
             if (p0.onCurve)
             {					
                 if (p1.onCurve)
                 {
-                    this.context.lineTo(p1.x*scale, p1.y*scale);
+                    this.context.lineTo(p1.x, p1.y);
                     offset++;
                 }
                 else
@@ -237,24 +172,24 @@ var				particle1 = this.getParticle();
                     
 							if(firstRun)
 							{
-								this.addParticle(p2,scale,this.context);
+								this.addParticle(p2,this.context);
 							}
 							else
 							{
 								var	particle2 = this.getParticle();
-								p2.x = particle2.x *2;
-								p2.y = particle2.y *2;
+								p2.x = particle2.x;// *2;
+								p2.y = particle2.y;// *2;
 							}
 								
 				
 
                     if(p2.onCurve)
                     {
-                        this.context.quadraticCurveTo(p1.x*scale, p1.y*scale, p2.x*scale, p2.y*scale);
+                        this.context.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y);
                     }
                     else
                     {
-                        this.context.quadraticCurveTo(p1.x*scale, p1.y*scale, this.midValue(p1.x*scale, p2.x*scale), this.midValue(p1.y*scale, p2.y*scale));
+                        this.context.quadraticCurveTo(p1.x, p1.y, this.midValue(p1.x, p2.x), this.midValue(p1.y, p2.y));
                     }
                     
                     offset+=2;
@@ -265,11 +200,11 @@ var				particle1 = this.getParticle();
             
             if(!p1.onCurve)
             {
-                this.context.quadraticCurveTo(p0.x*scale, p0.y*scale, this.midValue(p0.x*scale, p1.x*scale), this.midValue(p0.y*scale, p1.y*scale));
+                this.context.quadraticCurveTo(p0.x, p0.y, this.midValue(p0.x, p1.x), this.midValue(p0.y, p1.y));
             }
             else
             {
-                this.context.quadraticCurveTo(p0.x*scale, p0.y*scale, p1.x*scale, p1.y*scale);
+                this.context.quadraticCurveTo(p0.x, p0.y, p1.x, p1.y);
             }
             
             offset++;
@@ -290,6 +225,9 @@ var				particle1 = this.getParticle();
         this.context.fillStyle = this.FILL_STYLE;
         this.context.beginPath();
 
+
+
+//        context.fillStyle = this.rndColor();
         var firstindex=0;
         var counter=0;
         
@@ -298,7 +236,7 @@ var				particle1 = this.getParticle();
             counter++;			
             if( _currentGlyph.getPoint(i).endOfContour )
             {
-                this.addContourToShapeNoCurves( _currentGlyph, firstindex, counter, this.SCALE, false );
+                this.addContourToShape( _currentGlyph, firstindex, counter, false );
                 firstindex=i+1;
                 counter=0;
             }
@@ -340,7 +278,7 @@ var				particle1 = this.getParticle();
 	this._particle = particle;
 }
 
-, addParticle: function( point, scale )
+, addParticle: function( point )
 {	
 	// TOOD - set a default one
 	
@@ -365,8 +303,8 @@ var				particle1 = this.getParticle();
 	//	window.console.log( p.bounce );
 		
 				
-		p.x = point.x*scale;
-        p.y = point.y*scale;
+		p.x = point.x;
+        p.y = point.y;
 
 
 	//	p.setFixedPoint( p.x, p.y, 1000 )
@@ -431,12 +369,16 @@ var				particle1 = this.getParticle();
 
 
     ,showPoints:false
+    ,redrawfills:true
 
 
     
     , draw: function() {
 
-      // context.clearRect(0, 0, this.width, this.height);
+    if(this.redrawfills)
+	{
+       context.clearRect(0, 0, this.width, this.height);
+	}
 
         var i, point;
 
@@ -447,14 +389,15 @@ var				particle1 = this.getParticle();
             
 			// set the points on the class
 			point = this.physicalPoints[i];
-			point.width = point.height = 2;// tell it size dims
+			point.width = point.height = 8;// tell it size dims
 			
 			context.save();
 			context.translate(point.x,point.y);
 			context.rotate( point.rotation );
 			
 			context.beginPath();
-	//		context.strokeStyle = this.rndColor();
+//			context.strokeStyle = this.rndColor();
+//			context.fillStyle = this.rndColor();			
 	
 if(	    this.showPoints)
 {
