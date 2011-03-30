@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+	
+    <script type="text/ecmascript" src="../../com/byteface/font/utils/BinaryParser.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/data/RawFont.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/TableDirectory.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/DirectoryEntry.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/TableFactory.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Os2Table.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Panose.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Table.js"></script>        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapTable.js"></script>            
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfTable.js"></script>                
+    <script type="text/ecmascript" src="../../com/byteface/font/table/HeadTable.js"></script>                    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapIndexEntry.js"></script>                    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat0.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat2.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat4.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat6.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/HheaTable.js"></script>                        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/HmtxTable.js"></script>                        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/LocaTable.js"></script>                        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/NameTable.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/NameRecord.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/MaxpTable.js"></script>                            
+    <script type="text/ecmascript" src="../../com/byteface/font/table/PostTable.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GsubTable.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfSimpleDescript.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfCompositeDescript.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Script.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/ScriptRecord.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/data/Point.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/data/GlyphData.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfCompositeComp.js"></script>
+	
+	<script type="text/ecmascript" src="../../com/byteface/font/draw/FontParticle.js"></script>
+	<script type="text/ecmascript" src="../../com/byteface/font/utils/Particle.js"></script>
+        
+    <script type="text/ecmascript">
+        
+		var context;
+		var font;
+
+        // font loading and parsing
+        window.onload = function()
+        {
+			// init canvas
+			var drawingCanvas = document.getElementById('myDrawing');
+			this.context = drawingCanvas.getContext('2d');
+			
+			// init font
+			this.font = new FontParticle( "../../truetypefonts/Quill.ttf" );
+			this.font.setStyle( 1, "#000000", "#ffffff", .2 );
+
+		//	this.font.showPoints = true;
+			this.font.redrawfills = false;			
+			
+			this.font.SCALE = .5;						
+
+			var p = new Particle();
+				p.bounce = -1;
+			//	p.grav = 20;
+				p.maxSpeed = 20;
+				p.damp = .6;
+			//	p.addRepelPoint( 300, 300, 900 );
+				//p.wander = .3;
+				p.setEdgeBehavior("bounce");
+				// p.turnToPath( true );
+
+				p.setGravToMouse( drawingCanvas, true, 1000 );
+
+
+			this.font.setParticles( p );
+
+			drawIt();
+		}
+		
+		function drawIt()
+		{
+            this.context = this.font.drawGlyph( Math.round(Math.random()*50), 'myDrawing' );
+		}
+
+    </script>    
+            
+
+<meta charset="utf-8">
+<title>DrawingTest</title>
+</head>
+
+
+<body>
+<canvas id="myDrawing" width="2000" height="1000">
+<!-- <canvas id="myDrawingAlso" width="500" height="500"> -->
+
+<p>Your browser doesn't support canvas</p>
+</canvas>
+
+</body>
+</html>
