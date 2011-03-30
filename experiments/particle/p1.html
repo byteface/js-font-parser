@@ -1,9 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-
-
-
+	
     <script type="text/ecmascript" src="../../com/byteface/font/utils/BinaryParser.js"></script>
     <script type="text/ecmascript" src="../../com/byteface/font/data/RawFont.js"></script>
     <script type="text/ecmascript" src="../../com/byteface/font/table/TableDirectory.js"></script>
@@ -56,6 +54,23 @@
 			// init font
 			this.font = new FontParticle( "../../truetypefonts/DiscoMo.ttf" );
 			this.font.setStyle( 1, "#000000", "#ffffff", .2 );
+
+			this.font.showPoints = true;
+
+			var p = new Particle();
+				p.bounce = -1;
+			//	p.grav = 20;
+				p.maxSpeed = 20;
+				p.damp = .6;
+			//	p.addRepelPoint( 300, 300, 900 );
+				//p.wander = .3;
+				p.setEdgeBehavior("bounce");
+				// p.turnToPath( true );
+
+				p.setGravToMouse( drawingCanvas, true, 1000 );
+
+
+			this.font.setParticles( p );
 
 			drawIt();
 		}

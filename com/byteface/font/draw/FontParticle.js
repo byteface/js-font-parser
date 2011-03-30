@@ -315,30 +315,55 @@ var				particle1 = this.getParticle();
 
 
 
-
+// used by above to get sotred physical points.. TODO - change name of this
 , getParticle: function()
 {
 	physicalPointsIndex++;
 	return this.physicalPoints[physicalPointsIndex-1];
 }
 
+// used by above to get sotred physical points.. TODO - change name of this
+// , setParticlePhysicalProperties: function()
+// {
+// 
+// }
+
+
+
+
+
+
+// set the types of particle you are going to create from outside the class by creating particles and setting up their properties
+    ,_particle:{}
+, setParticles: function( particle )
+{
+	this._particle = particle;
+}
 
 , addParticle: function( point, scale )
 {	
-	var p = new Particle();
-		p.bounce = -1;
-	//	p.grav = 20;
-		p.maxSpeed = 20;
-		p.damp = .6;
-	//	p.addRepelPoint( 300, 300, 900 );
-	//	p.wander = .3;
-		p.setEdgeBehavior("bounce");
-		// p.turnToPath( true );
-
-		 p.setGravToMouse( this.canvas, true, 1000 );
+	// TOOD - set a default one
+	
+	// var p = new Particle();
+	// 		p.bounce = -1;
+	// 	//	p.grav = 20;
+	// 		p.maxSpeed = 20;
+	// 		p.damp = .6;
+	// 	//	p.addRepelPoint( 300, 300, 900 );
+	// 	//	p.wander = .3;
+	// 		p.setEdgeBehavior("bounce");
+	// 		// p.turnToPath( true );
+	// 
+	// 		 p.setGravToMouse( this.canvas, true, 1000 );
 			
 	//	p.setRepelMouse( this.canvas, true, 30000 );
-			
+		var p = this.clone(this._particle);	
+		
+
+
+		
+	//	window.console.log( p.bounce );
+		
 				
 		p.x = point.x*scale;
         p.y = point.y*scale;
@@ -400,10 +425,18 @@ var				particle1 = this.getParticle();
 			point.update();
         }
     }
+
+
+
+
+
+    ,showPoints:false
+
+
     
     , draw: function() {
 
-       context.clearRect(0, 0, this.width, this.height);
+      // context.clearRect(0, 0, this.width, this.height);
 
         var i, point;
 
@@ -422,7 +455,16 @@ var				particle1 = this.getParticle();
 			
 			context.beginPath();
 	//		context.strokeStyle = this.rndColor();
-            //context.arc(0, 0, 8, 0, Math.PI*2, false);
+	
+if(	    this.showPoints)
+{
+	
+	
+	
+            context.arc(0, 0, 8, 0, Math.PI*2, false);
+
+}
+
 
 			context.stroke();
 
@@ -435,6 +477,28 @@ var				particle1 = this.getParticle();
 	, rndColor: function() {
 	    return '#' + ('00000' + (Math.random() * 16777216 << 0).toString(16)).substr(-6);
 	}
+
+
+
+,clone:	function (obj)
+	 { var clone = {};
+	   clone.prototype = obj.prototype;
+	   for (property in obj) clone[property] = obj[property];
+	   return clone;
+	 }
+
+
+
+
+	// Object.prototype.clone = function() {
+	//   var newObj = (this instanceof Array) ? [] : {};
+	//   for (i in this) {
+	//     if (i == 'clone') continue;
+	//     if (this[i] && typeof this[i] == "object") {
+	//       newObj[i] = this[i].clone();
+	//     } else newObj[i] = this[i]
+	//   } return newObj;
+	// };
 
 
 
