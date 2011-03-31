@@ -101,10 +101,21 @@ inc: function(filename){
         var self = this;  
         this.interval = setInterval( function(){ self.animate(); }, 1000/24 );
 		
+//		this.stopInterval();
+		
 		// also pass it out so we can play with it further
 		return context;
     }   
     
+
+
+
+,stopInterval: function()
+{
+	clearInterval( this.interval );
+	
+}
+
 
 	
 ,addContourToShape: function ( glyph, startIndex, count, firstRun )
@@ -220,7 +231,7 @@ var				particle1 = this.getParticle();
 
 	,redrawLines: function ()
 	{
-		this.context.lineWidth = this.LINE_WIDTH;
+		this.context.lineWidth = Math.random()*2;//this.LINE_WIDTH;
 		this.context.strokeStyle = this.STROKE_STYLE;
         this.context.fillStyle = this.FILL_STYLE;
         this.context.beginPath();

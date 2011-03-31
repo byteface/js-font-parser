@@ -49,36 +49,54 @@
 			// init canvas
 			var drawingCanvas = document.getElementById('myDrawing');
 			this.context = drawingCanvas.getContext('2d');
-
+		//	context.translate( 100,100 );
 			
 			// init font
 			this.font = new FontParticle( "../../truetypefonts/DiscoMo.ttf" );
 			this.font.setStyle( 1, "#000000", "#ffffff", .2 );
 
-			this.font.showPoints = true;
+		//	this.font.showPoints = true;
+			this.font.redrawfills = false;
+			
+		//	this.font.SCALE = 1;
+			
+			
 
 			var p = new Particle();
 				p.bounce = -1;
 			//	p.grav = 20;
 				p.maxSpeed = 20;
-				p.damp = .6;
+				p.damp = .9;
 			//	p.addRepelPoint( 300, 300, 900 );
-				//p.wander = .3;
+			//	p.wander = 2;
 				p.setEdgeBehavior("bounce");
 				// p.turnToPath( true );
 
 				p.setGravToMouse( drawingCanvas, true, 1000 );
+//				p.setRepelMouse( drawingCanvas, true, 100 );				
 
 
 			this.font.setParticles( p );
 
 			drawIt();
+			
+			
+		//	this.interval = setInterval( function(){ this.stopInterval(); }, 1000 );
 		}
 		
 		function drawIt()
 		{
-            this.context = this.font.drawGlyph( 45, 'myDrawing' );
+            this.context = this.font.drawGlyph( Math.round(Math.random()*50), 'myDrawing' );
 		}
+
+
+		function stopInterval()
+		{
+			this.font.stopInterval();
+
+		}
+
+
 
     </script>    
             
@@ -89,7 +107,7 @@
 
 
 <body>
-<canvas id="myDrawing" width="800" height="800">
+<canvas id="myDrawing" width="2000" height="1200">
 <!-- <canvas id="myDrawingAlso" width="500" height="500"> -->
 
 <p>Your browser doesn't support canvas</p>
