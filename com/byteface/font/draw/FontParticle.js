@@ -35,6 +35,14 @@ inc: function(filename){
 	var file = this.load_binary_resource(path);
 	var bytedata = new a3d.ByteArray( file, a3d.Endian.BIG );
 	this.fontdata = new RawFont( bytedata );
+	
+	// set a default particle
+	this._particle = new Particle();
+	this._particle.bounce = -1;
+	this._particle.maxSpeed = 20;
+	this._particle.damp = .6;
+	this._particle.wander = 3;
+	this._particle.setEdgeBehavior("bounce");
 }
 
 // setup styling for the char
@@ -139,27 +147,19 @@ inc: function(filename){
 			
 			if(firstRun)
 			{
-			//	window.console.log( "hey" );
 				this.addParticle(p0,this.context);
 				this.addParticle(p1,this.context);				
 			}
 			else
 			{
-			//	window.console.log( "yo" );
-//									window.console.log( this.getParticle( offset ).x );
-var				particle0 = this.getParticle();
-var				particle1 = this.getParticle();
+				var particle0 = this.getParticle();
+				var				particle1 = this.getParticle();
 				
-				p0.x = particle0.x;// *2;
+				p0.x = particle0.x;// *2; // used to scale up again after
 				p0.y = particle0.y;// *2;				
 				
 				p1.x = particle1.x;// *2;
 				p1.y = particle1.y;// *2;				
-				
-				// p0.x = p1.x*scale;
-				// 		        p1.y = p1.y*scale;
-				// 
-									
 			}
 			
 			
@@ -231,14 +231,11 @@ var				particle1 = this.getParticle();
 
 	,redrawLines: function ()
 	{
-		this.context.lineWidth = Math.random()*2;//this.LINE_WIDTH;
+		this.context.lineWidth = this.LINE_WIDTH;
 		this.context.strokeStyle = this.STROKE_STYLE;
         this.context.fillStyle = this.FILL_STYLE;
         this.context.beginPath();
 
-
-
-//        context.fillStyle = this.rndColor();
         var firstindex=0;
         var counter=0;
         
@@ -291,39 +288,10 @@ var				particle1 = this.getParticle();
 
 , addParticle: function( point )
 {	
-	// TOOD - set a default one
-	
-	// var p = new Particle();
-	// 		p.bounce = -1;
-	// 	//	p.grav = 20;
-	// 		p.maxSpeed = 20;
-	// 		p.damp = .6;
-	// 	//	p.addRepelPoint( 300, 300, 900 );
-	// 	//	p.wander = .3;
-	// 		p.setEdgeBehavior("bounce");
-	// 		// p.turnToPath( true );
-	// 
-	// 		 p.setGravToMouse( this.canvas, true, 1000 );
-			
-	//	p.setRepelMouse( this.canvas, true, 30000 );
-		var p = this.clone(this._particle);	
-		
-
-
-		
-	//	window.console.log( p.bounce );
-		
-				
-		p.x = point.x;
-        p.y = point.y;
-
-
-	//	p.setFixedPoint( p.x, p.y, 1000 )
-
-//		p.addGravPoint( (point.x+1)*scale, (point.y+1)*scale, 1000 );
-
-
-		this.physicalPoints.push( p );
+	var p = this.clone(this._particle);	
+	p.x = point.x;
+	p.y = point.y;
+	this.physicalPoints.push( p );
 }
 
 , midValue: function(a,b)
@@ -410,15 +378,10 @@ var				particle1 = this.getParticle();
 //			context.strokeStyle = this.rndColor();
 //			context.fillStyle = this.rndColor();			
 	
-if(	    this.showPoints)
-{
-	
-	
-	
-            context.arc(0, 0, 8, 0, Math.PI*2, false);
-
-}
-
+			if(	this.showPoints)
+			{
+            	context.arc(0, 0, 8, 0, Math.PI*2, false);
+			}
 
 			context.stroke();
 
@@ -432,35 +395,12 @@ if(	    this.showPoints)
 	    return '#' + ('00000' + (Math.random() * 16777216 << 0).toString(16)).substr(-6);
 	}
 
-
-
-,clone:	function (obj)
+	,clone:	function (obj)
 	 { var clone = {};
 	   clone.prototype = obj.prototype;
 	   for (property in obj) clone[property] = obj[property];
 	   return clone;
 	 }
-
-
-
-
-	// Object.prototype.clone = function() {
-	//   var newObj = (this instanceof Array) ? [] : {};
-	//   for (i in this) {
-	//     if (i == 'clone') continue;
-	//     if (this[i] && typeof this[i] == "object") {
-	//       newObj[i] = this[i].clone();
-	//     } else newObj[i] = this[i]
-	//   } return newObj;
-	// };
-
-
-
-
-
-
-
-
 
 
 

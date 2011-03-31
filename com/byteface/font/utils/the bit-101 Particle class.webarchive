@@ -1,0 +1,205 @@
+bplist00—_WebMainResource’	
+_WebResourceTextEncodingName_WebResourceData_WebResourceMIMEType^WebResourceURL_WebResourceFrameNameUUTF-8O&Ñ<html><head>
+<title>the bit-101 Particle class</title>
+</head><body bgcolor="#FFFFFF">
+<h1>the bit-101 Particle class</h1>
+Version 1.1
+<p>Here you will find an ActionScript 2.0 class called the Particle class.</p>
+<p>This class allows you to create some pretty complex (and pretty damn cool) particle animations with minimal effort.</p>
+<p>The class adds several new properties and a whole bunch of new methods to any movie clip that you assign the class to.</p>
+<p>As this class is written  in AS 2.0, you will need Flash MX 2004 to use it.</p>
+<h2>Instructions:</h2>
+<ol>
+<li>First download the class .as file: <a href="Particle.as">Particle.as</a></li>
+<li>Create a new directory in your classes directory called "com", and in that, a ne directory called "bit101", and copy the Particle.as file into that new directory. See the Flash MX 2004 help files to locate your classes directory.</li>
+<li>Create a movie clip with any shape you want. (It is best to have the shapes registration point centered.) Export the clip, giving it any linkage name you want.</li>
+<li>While assigning a linkage name, set the AS 2.0 class name to "com.bit101.Particle".</li>
+<li>Now any instance of this clip, either places on stage at author-time, or attached at run-time, will be of the Particle class, and have all the properties and methods of the class available.</li>
+<li>Do not assign an onEnterFrame handler to any Particle instance. Doing so will overwrite the onEnterFrame assigned by the class.</li>
+<li>See below for full documentation on each property and method. This is also included inside the Particle.as file.</li>
+<li>See the files below for several examples of its use.</li>
+<li>Be sure to send me links to any cool results you come up with!</li>
+</ol>
+<h2>Examples:</h2>
+Note, the source for the examples is based on version 1.0 of the class. See the documentation for a couple of important changes.
+<ul>
+<li><a href="example 01.html" target="_blank">Example 1</a> - <a href="example 01.fla" target="_blank">source</a></li>
+<li><a href="example 02.html" target="_blank">Example 2</a> - <a href="example 02.fla" target="_blank">source</a></li>
+<li><a href="example 03.html" target="_blank">Example 3</a> - <a href="example 03.fla" target="_blank">source</a></li>
+<li><a href="example 04.html" target="_blank">Example 4</a> - <a href="example 04.fla" target="_blank">source</a></li>
+<li><a href="example 05.html" target="_blank">Example 5</a> - <a href="example 05.fla" target="_blank">source</a></li>
+<li><a href="example 06.html" target="_blank">Example 6</a> - <a href="example 06.fla" target="_blank">source</a></li>
+</ul>
+<h2>Documentation:</h2>
+
+<pre> Instructions: Create a directory in your classes directory named "com".
+ Inside that, create a directory named "bit101" and copy this file into it.
+ Then create any movie clip, export it under any name, and under AS 2 Class, enter "com.bit101.Particle".
+ All methods and properties of the Particle class will then be available to that movie clip.
+ 
+ History:
+ --------
+ 12/21/03:
+ 	- changed some methods into getter/setter properties
+ 		+ Instead of setDrag(true), say draggable = true
+ 		+ Instead of turnToPath(true), say turnToPath = true
+ 	- got rid of setWrap and replaced with edgeBehavior
+ 		+ Instead of setWrap(true), say edgeBehavior = "wrap"
+ 		+ Instead of setWrap(false), say edgeBehavior = "bounce" or "remove"
+ 	- added access modifiers
+ 	- moved onEnterFrame code to an attached clip at depth 1,000,000.
+ 	  This allows you to assign your own separate onEnterFrame code to the particle.
+ 	- added "com" to class path.
+ 	
+ Public Properties:
+ 
+ ------------------
+ vx:Number - the velocity on the x axis. default is 0
+ vy:Number - the velocity on the y axis. default is 0
+ damp:Number - a pseudo-friction value. 1.0 is no friction. Usual values are between 0.9 and 1.0. default is 0.9
+ bounce:Number - how much the particle will bounce from a wall. -1.0 will bounce with same force it hit with.
+          default is -0.5
+ grav:Number - how much velocity is added to vy each frame. Usual values are 0.0 to 2.0. default is 0
+ maxSpeed:Number - maximum allowed speed in any direction for a particle.
+            default is Number.MAX_VALUE (essentially infinity or no limit)
+ wander:Number - gives particle a random motion. numbers between 0 and 5 works well. default is 0
+ draggable:Boolean - if true, drag and throw is possible on the particle
+ edgeBehavior:String - determines behavior when particle hits an edge of the world.
+ 			Can be set to "wrap", "bounce", or "remove"
+ 			wrap causes the particle to disappear and appear on the opposite edge of the space
+ 			bounce causes the particle to bounce off the edge at a speed determined by the bounce property
+ 			remove causes the particle to be permanently deleted if it leaves the space.
+ turnToPath:Boolean - if true, particle will turn towards the direction it is moving in.
+ 
+ Public Methods:
+ ---------------
+ setBounds(bounds:Object)
+ 	- sets the "walls" of the universe in which the particle will be able to travel
+	- arguments:
+		bounds. an object containing properties: xMin, xMax, yMin, yMax.
+		        you can directly use the object returned from the method getBounds().
+				default values are the Stage dimensions.
+
+ gravToMouse(bGrav:Boolean [, force:Number])
+ 	- causes the particle to gravitate towards the mouse. it is advised that us use maxSpeed along with this,
+	  as this method can create near infinite particle speeds.
+	- arguments:
+		bGrav. if true, particle will gravitate towards mouse. if false, it won't. default is false.
+		force. the gravitational force applied to the particle.
+		       generally high numbers of 1000 or more are used. default is 1000
+		
+ springToMouse(bSpring:Boolean [, force:Number])
+ 	- causes the particle to spring to the mouse
+	- arguments:
+		bSpring. if true, particle will spring to the mouse. if false, it won't. default is false.
+		force. the strength of the spring. generally numbers less than 1 are used. default is 0.1
+		
+ repelMouse(bRepel:Boolean [, force:Number, minDist:Number])
+ 	- causes the particle to spring away from the mouse
+	- arguments:
+		bRepels. if true, particle will spring away from the mouse. if false it won't.
+		force. the strength of the spring action. generally numbers less than 1 are used. default is 0.1
+		minDist. the distance in pixels from the mouse that the particle will attempt maintain.
+		         default is 100
+	- returns:
+		the index number of the point added (can be used to remove the point)
+		
+ addSpringPoint(x:Number, y:Number [, force:Number])
+ 	- adds a stationary point to which the particle will spring. any number of points can be added,
+	  but the result will be that the particle will spring to an point which is the average of all points.
+	- arguments:
+		x, y. the point to which the particle will spring.
+		force. the strength of the spring. default is 0.1
+	- returns:
+		the index number of the point added (can be used to remove the point)
+		
+ addGravPoint(x:Number, y:Number [, force:Number])
+ 	- adds a stationary point to which the particle will try to gravitate. any number of points can be added.
+	- arguments:
+		x, y. the point to which the particle will gravitate.
+		force. the gravitational force of the point. default is 1000
+	- returns:
+		the index number of the point added (can be used to remove the point)
+		
+ addRepelPoint(x:Number, y:Number [, force:Number, minDist:Number])
+ 	- adds a stationary point which the particle will try to spring away from.
+	  any number of points can be added.
+	- arguments:
+		x, y. the point the particle will try to avoid.
+		force. the force of the spring. default is 0.1
+		minDist. the distance in pixels from the point that the particle will try to maintain. default is 100
+	- returns:
+		the index number of the point added (can be used to remove the point)
+		
+ addSpringClip(clip:MovieClip [, force:Number])
+ 	- designates a movie clip to which the particle will spring towards. any number of clips can be added.
+	- arguments:
+		clip. a movie clip towards which the particle will spring.
+		force. the strength of the spring. default is 0.1
+	- returns:
+		the index number of the clip added (can be used to remove the clip from the list)
+		
+ addGravClip(clip:MovieClip [, force:Number])
+ 	- designates a movie clip to which the particle will gravitate. any number of clips can be added.
+	- arguments:
+		clip. a movie clip towards which the particle will spring.
+		force. the strength of the gravitation. default is 1000
+	- returns:
+		the index number of the clip added (can be used to remove the clip from the list)
+ 
+ addRepelClip(clip:MovieClip [, force:Number, minDist:Number])
+ 	- designates a movie clip which the particle will spring away from. any number of clips can be added.
+	- arguments:
+		clip. a movie clip which the particle will spring away from.
+		force. the strength of the spring. default is 0.1
+		minDist. the distance in pixels from the point that the particle will try to maintain. default is 100
+	- returns:
+		the index number of the clip added (can be used to remove the clip from the list)
+		
+ removeSpringPoints(index:Number)
+ 	- removes a previously specified spring point
+	- arguments:
+		index. the number of the point to remove
+		
+ removeGravPoints(index:Number)
+ 	- removes a previously specified gravity point
+	- arguments:
+		index. the number of the point to remove
+
+ removeRepelPoints(index:Number)
+ 	- removes a previously specified repel point
+	- arguments:
+		index. the number of the point to remove
+
+ clearSpringPoints()
+ 	- removes all spring points
+	
+ clearGravPoints()
+ 	- removes all grav points
+	
+ clearRepelPoints()
+ 	- removes all repel points
+	
+ clearSpringClips()
+ 	- removes all spring points
+	
+ clearGravClips()
+ 	- removes all grav points
+	
+ clearRepelClips()
+ 	- removes all repel points
+
+</pre>
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>Ytext/html_!http://www.bit-101.com/Particles/P    ( F X n } î ö'"','P                           'Q
