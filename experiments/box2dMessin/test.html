@@ -1,0 +1,189 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+
+		<!--=============================-->
+		<!-- Copy this part to your app. -->
+		<!-- START                       -->
+		<!--=============================-->
+		<!-- libs -->
+		<!--[if IE]><script type="text/javascript" src="lib/excanvas.js"></script><![endif]-->
+    <script src="lib/prototype-1.6.0.2.js"></script>
+
+		<!-- box2djs -->
+    <script src='js/box2d/common/b2Settings.js'></script>
+    <script src='js/box2d/common/math/b2Vec2.js'></script>
+    <script src='js/box2d/common/math/b2Mat22.js'></script>
+    <script src='js/box2d/common/math/b2Math.js'></script>
+    <script src='js/box2d/collision/b2AABB.js'></script>
+    <script src='js/box2d/collision/b2Bound.js'></script>
+    <script src='js/box2d/collision/b2BoundValues.js'></script>
+    <script src='js/box2d/collision/b2Pair.js'></script>
+    <script src='js/box2d/collision/b2PairCallback.js'></script>
+    <script src='js/box2d/collision/b2BufferedPair.js'></script>
+    <script src='js/box2d/collision/b2PairManager.js'></script>
+    <script src='js/box2d/collision/b2BroadPhase.js'></script>
+    <script src='js/box2d/collision/b2Collision.js'></script>
+    <script src='js/box2d/collision/Features.js'></script>
+    <script src='js/box2d/collision/b2ContactID.js'></script>
+    <script src='js/box2d/collision/b2ContactPoint.js'></script>
+    <script src='js/box2d/collision/b2Distance.js'></script>
+    <script src='js/box2d/collision/b2Manifold.js'></script>
+    <script src='js/box2d/collision/b2OBB.js'></script>
+    <script src='js/box2d/collision/b2Proxy.js'></script>
+    <script src='js/box2d/collision/ClipVertex.js'></script>
+    <script src='js/box2d/collision/shapes/b2Shape.js'></script>
+    <script src='js/box2d/collision/shapes/b2ShapeDef.js'></script>
+    <script src='js/box2d/collision/shapes/b2BoxDef.js'></script>
+    <script src='js/box2d/collision/shapes/b2CircleDef.js'></script>
+    <script src='js/box2d/collision/shapes/b2CircleShape.js'></script>
+    <script src='js/box2d/collision/shapes/b2MassData.js'></script>
+    <script src='js/box2d/collision/shapes/b2PolyDef.js'></script>
+    <script src='js/box2d/collision/shapes/b2PolyShape.js'></script>
+    <script src='js/box2d/dynamics/b2Body.js'></script>
+    <script src='js/box2d/dynamics/b2BodyDef.js'></script>
+    <script src='js/box2d/dynamics/b2CollisionFilter.js'></script>
+    <script src='js/box2d/dynamics/b2Island.js'></script>
+    <script src='js/box2d/dynamics/b2TimeStep.js'></script>
+    <script src='js/box2d/dynamics/contacts/b2ContactNode.js'></script>
+    <script src='js/box2d/dynamics/contacts/b2Contact.js'></script>
+    <script src='js/box2d/dynamics/contacts/b2ContactConstraint.js'></script>
+    <script src='js/box2d/dynamics/contacts/b2ContactConstraintPoint.js'></script>
+    <script src='js/box2d/dynamics/contacts/b2ContactRegister.js'></script>
+    <script src='js/box2d/dynamics/contacts/b2ContactSolver.js'></script>
+    <script src='js/box2d/dynamics/contacts/b2CircleContact.js'></script>
+    <script src='js/box2d/dynamics/contacts/b2Conservative.js'></script>
+    <script src='js/box2d/dynamics/contacts/b2NullContact.js'></script>
+    <script src='js/box2d/dynamics/contacts/b2PolyAndCircleContact.js'></script>
+    <script src='js/box2d/dynamics/contacts/b2PolyContact.js'></script>
+    <script src='js/box2d/dynamics/b2ContactManager.js'></script>
+    <script src='js/box2d/dynamics/b2World.js'></script>
+    <script src='js/box2d/dynamics/b2WorldListener.js'></script>
+    <script src='js/box2d/dynamics/joints/b2JointNode.js'></script>
+    <script src='js/box2d/dynamics/joints/b2Joint.js'></script>
+    <script src='js/box2d/dynamics/joints/b2JointDef.js'></script>
+    <script src='js/box2d/dynamics/joints/b2DistanceJoint.js'></script>
+    <script src='js/box2d/dynamics/joints/b2DistanceJointDef.js'></script>
+    <script src='js/box2d/dynamics/joints/b2Jacobian.js'></script>
+    <script src='js/box2d/dynamics/joints/b2GearJoint.js'></script>
+    <script src='js/box2d/dynamics/joints/b2GearJointDef.js'></script>
+    <script src='js/box2d/dynamics/joints/b2MouseJoint.js'></script>
+    <script src='js/box2d/dynamics/joints/b2MouseJointDef.js'></script>
+    <script src='js/box2d/dynamics/joints/b2PrismaticJoint.js'></script>
+    <script src='js/box2d/dynamics/joints/b2PrismaticJointDef.js'></script>
+    <script src='js/box2d/dynamics/joints/b2PulleyJoint.js'></script>
+    <script src='js/box2d/dynamics/joints/b2PulleyJointDef.js'></script>
+    <script src='js/box2d/dynamics/joints/b2RevoluteJoint.js'></script>
+    <script src='js/box2d/dynamics/joints/b2RevoluteJointDef.js'></script>
+
+
+		<!--=============================-->
+		<!-- Copy this part to your app. -->
+		<!-- END                         -->
+		<!--=============================-->
+
+		<!-- demos -->
+    <script src='mike/draw_world.js'></script>
+    <script src='mike/demo_base.js'></script>
+    <script src='mike/crank.js'></script>
+    <script src='mike/demo.js'></script>
+
+
+    <script type="text/ecmascript" src="../../com/byteface/font/utils/BinaryParser.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/data/RawFont.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/TableDirectory.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/DirectoryEntry.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/TableFactory.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Os2Table.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Panose.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Table.js"></script>        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapTable.js"></script>            
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfTable.js"></script>                
+    <script type="text/ecmascript" src="../../com/byteface/font/table/HeadTable.js"></script>                    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapIndexEntry.js"></script>                    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat0.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat2.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat4.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat6.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/HheaTable.js"></script>                        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/HmtxTable.js"></script>                        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/LocaTable.js"></script>                        
+    <script type="text/ecmascript" src="../../com/byteface/font/table/NameTable.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/NameRecord.js"></script>    
+    <script type="text/ecmascript" src="../../com/byteface/font/table/MaxpTable.js"></script>                            
+    <script type="text/ecmascript" src="../../com/byteface/font/table/PostTable.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GsubTable.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfSimpleDescript.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfCompositeDescript.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/Script.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/table/ScriptRecord.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/data/Point.js"></script>
+    <script type="text/ecmascript" src="../../com/byteface/font/data/GlyphData.js"></script>
+
+<!--    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfCompositeComp.js"></script> -->
+
+
+	<script type="text/ecmascript" src="../../com/byteface/font/draw/FontBox2d.js"></script>
+	<script type="text/ecmascript" src="../../com/byteface/font/utils/Particle.js"></script>
+	<script type="text/ecmascript" src="../../com/byteface/font/utils/Color.js"></script>
+
+
+    <script type="text/ecmascript">
+
+
+	// 
+	var context;
+	// var font;
+
+    // font loading and parsing
+    window.onload = function()
+    {
+
+		
+		
+		/*
+
+		var p = new Particle();
+		p.bounce = -1;
+		//	p.grav = 20;
+		p.maxSpeed = 30;
+		p.damp = .2;
+		//	p.addRepelPoint( 300, 300, 900 );
+		//	p.wander = 2;
+		p.setEdgeBehavior("bounce");
+		// p.turnToPath( true );
+
+		p.setGravToMouse( drawingCanvas, true, 20000 );
+		//	p.setRepelMouse( drawingCanvas, true, 100 );
+
+		this.font.setParticles( p );
+*/
+
+		
+		
+	//	this.interval = setInterval( function(){ this.changeStyle(); }, 100 );
+		
+		
+	//	this.interval = setInterval( function(){ this.stopInterval(); }, 1000 );
+	}
+	
+
+
+    </script>
+
+
+
+
+    <link href="style/box2d.css" rel="stylesheet" type="text/css" />
+  </head>
+<body>
+
+    <canvas id="canvas" width='1200' height='800' style="top:260px; left:125px;"></canvas>
+
+
+
+</body>
+</html>
