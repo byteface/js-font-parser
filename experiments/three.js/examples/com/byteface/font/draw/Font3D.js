@@ -1,6 +1,6 @@
-QuickFont = Class.extend({
+Font3D = Class.extend({
 		
-	LINE_WIDTH:1,
+	LINE_WIDTH:100,
 	STROKE_STYLE:"#000000",
 	FILL_STYLE:"#000000",
 	GLOBAL_ALPHA:1,
@@ -10,7 +10,7 @@ QuickFont = Class.extend({
 	fontdata: null,
 	
 	// fun props
-	wobble: 30, // TODO - 0 as default
+	wobble: 0, // TODO - 0 as default
 
 // TODO - create a class for global functions like this one
 inc: function(filename){
@@ -64,10 +64,14 @@ inc: function(filename){
 	this.wobble - offset;
 }
 
-, drawGlyph: function (  char, canvas )
+, drawGlyph: function (  char, canvas, distance )
 {
+	
+		
+
         var SCALE = this.SCALE;//Math.random()*.5;
         var g = this.fontdata.getGlyph(char);
+		var _distance = distance;
 
 //		window.console.log( g );
 
@@ -75,11 +79,35 @@ inc: function(filename){
 
 		// set up the glyph
 		var context = drawingCanvas.getContext('2d');
-		context.lineWidth = this.LINE_WIDTH;//2;//.5 + Math.random()*2;
+		
+	drawingCanvas.width = drawingCanvas.width;
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		context.lineWidth = 2;//this.LINE_WIDTH;//2;//.5 + Math.random()*2;
 		context.strokeStyle = this.STROKE_STYLE;//"#000000";//Math.floor(Math.random()*16777215).toString(16);//"#ff0000";
         context.fillStyle = this.FILL_STYLE;//"#ffffff";//Math.floor(Math.random()*16777215).toString(16);
-        context.globalAlpha = this.GLOBAL_ALPHA;//1;//.5;
+
+
+
+
+        context.globalAlpha = 1;//this.GLOBAL_ALPHA;//1;//.5;
         context.beginPath();
+
+
+
+		this.drawCircles(  context );
+
+
+		context.fillStyle = "rgba(0, 0, 0, 0)";
+		  //context.fillAlpha = 0;// this.FILL_STYLE;//"#
+
 
 //			window.console.log(char);
 //			context.translate( 2,5);
@@ -87,6 +115,13 @@ inc: function(filename){
 // /            context.rotate(20 * Math.PI / 180);
 //context.rotate(1)
      //   context.scale(1,-1);
+
+
+
+
+context.strokeStyle = "rgba(255, 0, 0, .8)";
+
+        context.beginPath();
 
         var firstindex=0;
         var counter=0;
@@ -96,7 +131,7 @@ inc: function(filename){
             counter++;			
             if( g.getPoint(i).endOfContour )
             {
-                this.addContourToShapeWobble( context, g, firstindex, counter, SCALE );
+                this.addContourToShapeDistance( context, g, firstindex, counter, SCALE, 0  );
 //                this.addContourToShape( context, g, firstindex, counter, SCALE);
                 firstindex=i+1;
                 counter=0;
@@ -106,7 +141,49 @@ inc: function(filename){
                 //window.console.log("normal point");
             }   
         }
-        
+        context.closePath();
+        context.stroke();
+        context.fill();
+
+
+//context.strokeStyle = "#00ffff";
+
+
+context.translate(_distance, 5);  
+
+context.strokeStyle = "rgba(0, 255, 255, .8)";
+
+ context.beginPath();
+
+firstindex=0;
+counter=0;
+				for(var j=0;j<g.getPointCount();j++)
+				{
+					counter++;			
+					if( g.getPoint(j).endOfContour )
+					{
+					//	window.console.log( "twattwattwat" );
+						
+						this.addContourToShapeDistance( context, g, firstindex, counter, SCALE, 0  );
+						firstindex=j+1;
+						counter=0;
+					}
+					
+					else
+					{
+						  //window.console.log("normal point");
+					}   
+				}
+
+
+
+
+
+
+
+
+
+
         context.closePath();
         context.stroke();
         context.fill();
@@ -117,14 +194,46 @@ inc: function(filename){
 
 
 
+
+
+
+
+
+
+, drawCircles: function(context)
+{
+
+	
+	// Create the yellow face
+	context.strokeStyle = "#ff0000";
+	context.fillStyle = "rgba(0, 0, 0, 0)";
+	context.beginPath();
+	context.arc(120,100,50,0,Math.PI*2,true);
+	context.closePath();
+	context.stroke();
+	context.fill();
+	
+	context.strokeStyle = "#00ffff";
+	context.fillStyle = "rgba(0, 0, 0, 0)";
+	context.beginPath();
+	context.arc(100,100,50,0,Math.PI*2,true);
+	context.closePath();
+	context.stroke();
+	context.fill();
+	
+	
+}
+
+
+
     
-, addContourToShapeWobble: function ( shape, glyph, startIndex, count, scale, pRandomOffset )
+, addContourToShapeDistance: function ( shape, glyph, startIndex, count, scale, pRandomOffset )
     {
 		// draw each point at a random offset
-		var randomOffset = this.wobble;
+		var randomOffset = pRandomOffset;
 
-		var xShift = (Math.random()*randomOffset) - (Math.random()*randomOffset);
-		var yShift = (Math.random()*randomOffset) - (Math.random()*randomOffset);
+		var xShift = randomOffset;
+		var yShift = 0;
 
         if (glyph.getPoint(startIndex).endOfContour)
         {
@@ -148,7 +257,7 @@ inc: function(filename){
             {
                 if (p1.onCurve)
                 {
-                    shape.lineTo( ( p1.x + Math.random()*xShift )*scale, (p1.y + Math.random()*yShift )*scale );
+                    shape.lineTo( ( p1.x - xShift )*scale, (p1.y - yShift )*scale );
                     offset++;
                 }
                 else
@@ -157,11 +266,11 @@ inc: function(filename){
                     
                     if(p2.onCurve)
                     {
-                        shape.quadraticCurveTo( ( p1.x + Math.random()*xShift ) *scale, (p1.y + Math.random()*yShift )*scale, (p2.x + Math.random()*xShift )*scale, (p2.y + Math.random()*xShift )*scale);
+                        shape.quadraticCurveTo( ( p1.x - xShift ) *scale, (p1.y - yShift )*scale, (p2.x - xShift )*scale, (p2.y - xShift )*scale);
                     }
                     else
                     {
-                        shape.quadraticCurveTo( ( p1.x + Math.random()*xShift )*scale, (p1.y + Math.random()*yShift )*scale, this.midValue(( p1.x + Math.random()*xShift )*scale, (p2.x + Math.random()*xShift )*scale), this.midValue(p1.y*scale, p2.y*scale));
+                        shape.quadraticCurveTo( ( p1.x - xShift )*scale, (p1.y - yShift )*scale, this.midValue(( p1.x - xShift )*scale, (p2.x - xShift )*scale), this.midValue(p1.y*scale, p2.y*scale));
                     }
                     
                     offset+=2;
@@ -172,11 +281,11 @@ inc: function(filename){
             
             if(!p1.onCurve)
             {
-                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, this.midValue(p0.x*scale, ( p1.x + Math.random()*xShift )*scale), this.midValue(p0.y*scale, p1.y*scale));
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, this.midValue(p0.x*scale, ( p1.x - xShift )*scale), this.midValue(p0.y*scale, p1.y*scale));
             }
             else
             {
-                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, ( p1.x + Math.random()*xShift )*scale, p1.y*scale);
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, ( p1.x - xShift )*scale, ( p1.y - yShift )*scale);
             }
             
             offset++;
@@ -272,7 +381,7 @@ inc: function(filename){
    // if(req.status != 200) return '';            
    // alert( "text response:" + req.responseText);
     
-    return req.response;
+    return req.responseText;
 }
 
 , clearCanvas: function (context, canvas)

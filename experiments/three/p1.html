@@ -1,9 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-
-
-
+	
     <script type="text/ecmascript" src="../../com/byteface/font/utils/BinaryParser.js"></script>
     <script type="text/ecmascript" src="../../com/byteface/font/data/RawFont.js"></script>
     <script type="text/ecmascript" src="../../com/byteface/font/table/TableDirectory.js"></script>
@@ -37,12 +35,34 @@
     <script type="text/ecmascript" src="../../com/byteface/font/data/GlyphData.js"></script>
     <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfCompositeComp.js"></script>
 	
-	<script type="text/ecmascript" src="../../com/byteface/font/draw/QuickFont.js"></script>
+	<script type="text/ecmascript" src="../../com/byteface/font/draw/FontTHREE.js"></script>
+	<script type="text/ecmascript" src="../../com/byteface/font/utils/Particle.js"></script>
         
+
+	<script type="text/javascript" src="build/Three.js"></script>
+	<script type="text/javascript" src="js/RequestAnimationFrame.js"></script>
+
+
+
     <script type="text/ecmascript">
         
 		var context;
 		var font;
+
+		var mouseX = 0, mouseY = 0,
+
+		windowHalfX = window.innerWidth / 2,
+		windowHalfY = window.innerHeight / 2,
+
+		SEPARATION = 200,
+		AMOUNTX = 10,
+		AMOUNTY = 10,
+
+		camera, scene, renderer;
+
+		init();
+		animate();
+
 
         // font loading and parsing
         window.onload = function()
@@ -50,56 +70,161 @@
 			// init canvas
 			var drawingCanvas = document.getElementById('myDrawing');
 			this.context = drawingCanvas.getContext('2d');
-			context.translate( 100,200 );
+
+
+
+
+
+
+/*
 			
 			// init font
-		//	this.font = new QuickFont( "../../truetypefonts/20FACES.TTF" );
-
-
-// NEW THING WITH LOCAL FILES NOT LOADING...
-            this.font = new QuickFont( "http://localhost:8888/js-font-parser/truetypefonts/20FACES.TTF" );
-
-
-
-
-
+			this.font = new FontParticle( "../../truetypefonts/DiscoMo.ttf" );
 			this.font.setStyle( 1, "#000000", "#ffffff", .2 );
-			this.font.setWobble( 30 );
 
-			setInterval(drawIt,1);
-//			drawIt();
+			this.font.showPoints = true;
+
+			var p = new Particle();
+				p.bounce = -1;
+			//	p.grav = 20;
+				p.maxSpeed = 20;
+				p.damp = .6;
+			//	p.addRepelPoint( 300, 300, 900 );
+				//p.wander = .3;
+				p.setEdgeBehavior("bounce");
+				// p.turnToPath( true );
+
+				p.setGravToMouse( drawingCanvas, true, 1000 );
+
+
+			this.font.setParticles( p );
+
+			drawIt();
+			*/
 		}
-		
+	
 		function drawIt()
 		{
-			for( var i=0; i<20; i++ ){
-				var col = Math.floor(Math.random()*16777215).toString(16);
-				font.setStyle( Math.random()*.01, "#ff0000", "#ff0000", .1 );	
-				this.context = this.font.drawGlyph( 55, 'myDrawing' );
-		//		this.context.rotate(20 * Math.PI / 180);
+            this.context = this.font.drawGlyph( 45, 'myDrawing' );
+		}
+		
+		function init() {
+
+			var container, separation = 100, amountX = 50, amountY = 50,
+			particles, particle;
+
+			container = document.createElement('div');
+			document.body.appendChild(container);
+
+			camera = new THREE.Camera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
+			camera.position.z = 100;
+
+			scene = new THREE.Scene();
+
+			renderer = new THREE.CanvasRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			container.appendChild( renderer.domElement );
+
+			// particles
+
+			var PI2 = Math.PI * 2;
+			var material = new THREE.ParticleCanvasMaterial( {
+
+				color: 0xffffff,
+				program: function ( context ) {
+
+					context.beginPath();
+					context.arc( 0, 0, 1, 0, PI2, true );
+					context.closePath();
+					context.fill();
+
+				}
+
+			} );
+
+			var geometry = new THREE.Geometry();
+
+			for ( var i = 0; i < 100; i ++ ) {
+
+				particle = new THREE.Particle( material );
+				particle.position.x = Math.random() * 2 - 1;
+				particle.position.y = Math.random() * 2 - 1;
+				particle.position.z = Math.random() * 2 - 1;
+				particle.position.normalize();
+				particle.position.multiplyScalar( Math.random() * 10 + 450 );
+				particle.scale.x = particle.scale.y = 5;
+				scene.addObject( particle );
+
+				geometry.vertices.push( new THREE.Vertex( particle.position ) );
+
 			}
-			
-			// context.translate( 200,0 );
-			// 		
-			// for( var i=0; i<20; i++ ){
-			// 	var col = Math.floor(Math.random()*16777215).toString(16);
-			// 	font.setStyle( Math.random()*2, col, "#ffffff", .2 );
-			// 	context = font.drawGlyph( , 'myDrawing' );
-			// }
-			// 
-			// this.context.translate( -200,0 );						
-			
-			
-			// context.shadowColor = "#f0f0f0";
-			// 		 context.shadowBlur= 50;
-			// 		 context.shadowOffsetX= 20;
-			// 		 context.shadowOffsetY= 20;
-			
+
+			// lines
+
+			var line = new THREE.Line( geometry, new THREE.LineBasicMaterial( { color: 0xffffff, opacity: 0.5 } ) );
+			scene.addObject( line );
+
+			document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+			document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+			document.addEventListener( 'touchmove', onDocumentTouchMove, false );
 		}
 		
 		
 		
 		
+		
+		
+		
+		function onDocumentMouseMove(event) {
+
+			mouseX = event.clientX - windowHalfX;
+			mouseY = event.clientY - windowHalfY;
+		}
+
+		function onDocumentTouchStart( event ) {
+
+			if ( event.touches.length > 1 ) {
+
+				event.preventDefault();
+
+				mouseX = event.touches[ 0 ].pageX - windowHalfX;
+				mouseY = event.touches[ 0 ].pageY - windowHalfY;
+
+			}
+
+		}
+
+		function onDocumentTouchMove( event ) {
+
+			if ( event.touches.length == 1 ) {
+
+				event.preventDefault();
+
+				mouseX = event.touches[ 0 ].pageX - windowHalfX;
+				mouseY = event.touches[ 0 ].pageY - windowHalfY;
+
+			}
+
+		}
+
+		//
+
+		function animate() {
+
+			requestAnimationFrame( animate );
+
+			render();
+
+		}
+
+		function render() {
+
+			camera.position.x += ( mouseX - camera.position.x ) * .05;
+			camera.position.y += ( - mouseY + 200 - camera.position.y ) * .05;
+
+			renderer.render( scene, camera );
+
+		}
 		
 
 
@@ -112,6 +237,21 @@
 
 
 <body>
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 <canvas id="myDrawing" width="800" height="800">
 <!-- <canvas id="myDrawingAlso" width="500" height="500"> -->
 

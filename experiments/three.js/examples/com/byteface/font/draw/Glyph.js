@@ -1,4 +1,4 @@
-QuickFont = Class.extend({
+Glyph = Class.extend({
 		
 	LINE_WIDTH:1,
 	STROKE_STYLE:"#000000",
@@ -10,7 +10,7 @@ QuickFont = Class.extend({
 	fontdata: null,
 	
 	// fun props
-	wobble: 30, // TODO - 0 as default
+	wobble: 0,
 
 // TODO - create a class for global functions like this one
 inc: function(filename){
@@ -96,10 +96,10 @@ inc: function(filename){
             counter++;			
             if( g.getPoint(i).endOfContour )
             {
-                this.addContourToShapeWobble( context, g, firstindex, counter, SCALE );
-//                this.addContourToShape( context, g, firstindex, counter, SCALE);
-                firstindex=i+1;
-                counter=0;
+               this.addContourToShape( context, g, firstindex, counter, SCALE );
+				this.addGraphicsToPoints( context, g, firstindex, counter, SCALE );
+               firstindex=i+1;
+               counter=0;
             }
             else
             {
@@ -113,86 +113,100 @@ inc: function(filename){
 			
 		// also pass it out so we can play with it further
 		return context;
-    }    
-
-
-
-    
-, addContourToShapeWobble: function ( shape, glyph, startIndex, count, scale, pRandomOffset )
-    {
-		// draw each point at a random offset
-		var randomOffset = this.wobble;
-
-		var xShift = (Math.random()*randomOffset) - (Math.random()*randomOffset);
-		var yShift = (Math.random()*randomOffset) - (Math.random()*randomOffset);
-
-        if (glyph.getPoint(startIndex).endOfContour)
-        {
-            return;
-        }
- 
-        offset = 0;
-        
-        while(offset < count)
-        {
-            var p0 = glyph.getPoint(startIndex + offset%count);
-            var p1 = glyph.getPoint(startIndex + (offset+1)%count);
-            
-            if (offset == 0)
-            {
-                //window.console.log("move");
-                shape.moveTo(p0.x*scale, p0.y*scale);
-            }
-
-            if (p0.onCurve)
-            {
-                if (p1.onCurve)
-                {
-                    shape.lineTo( ( p1.x + Math.random()*xShift )*scale, (p1.y + Math.random()*yShift )*scale );
-                    offset++;
-                }
-                else
-                {
-                    var p2 = glyph.getPoint(startIndex + (offset+2)%count);
-                    
-                    if(p2.onCurve)
-                    {
-                        shape.quadraticCurveTo( ( p1.x + Math.random()*xShift ) *scale, (p1.y + Math.random()*yShift )*scale, (p2.x + Math.random()*xShift )*scale, (p2.y + Math.random()*xShift )*scale);
-                    }
-                    else
-                    {
-                        shape.quadraticCurveTo( ( p1.x + Math.random()*xShift )*scale, (p1.y + Math.random()*yShift )*scale, this.midValue(( p1.x + Math.random()*xShift )*scale, (p2.x + Math.random()*xShift )*scale), this.midValue(p1.y*scale, p2.y*scale));
-                    }
-                    
-                    offset+=2;
-                } 
-            }
-            else
-            {
-            
-            if(!p1.onCurve)
-            {
-                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, this.midValue(p0.x*scale, ( p1.x + Math.random()*xShift )*scale), this.midValue(p0.y*scale, p1.y*scale));
-            }
-            else
-            {
-                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, ( p1.x + Math.random()*xShift )*scale, p1.y*scale);
-            }
-            
-            offset++;
-            
-            }
-        }
     }
 
 
 
 
 
+	,addGraphicsToPoints: function ( shape, glyph, startIndex, count, scale )
+	    {
+
+	        if (glyph.getPoint(startIndex).endOfContour)
+	        {
+	            return;
+	        }
+
+	        offset = 0;
+
+	        while(offset < count)
+	        {
+	            var p0 = glyph.getPoint(startIndex + offset%count);
+	            var p1 = glyph.getPoint(startIndex + (offset+1)%count);
+
+	            if (offset == 0)
+	            {
+	                //window.console.log("move");
+	                shape.moveTo(p0.x*scale, p0.y*scale);
+	            }
+
+	            if (p0.onCurve)
+	            {
+	                if (p1.onCurve)
+	                {
+	                    shape.lineTo(p1.x*scale, p1.y*scale);
+	                    offset++;
+	                }
+	                else
+	                {
+	                    var p2 = glyph.getPoint(startIndex + (offset+2)%count);
+
+	                    if(p2.onCurve)
+	                    {
+	                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, p2.x*scale, p2.y*scale);
+	                    }
+	                    else
+	                    {
+	                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, this.midValue(p1.x*scale, p2.x*scale), this.midValue(p1.y*scale, p2.y*scale));
+	                    }
+
+	                    offset+=2;
+	                } 
+	            }
+	            else
+	            {
+
+	            if(!p1.onCurve)
+	            {
+	                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, this.midValue(p0.x*scale, p1.x*scale), this.midValue(p0.y*scale, p1.y*scale));
+
+					window.console.log("point?");
+					shape.fillRect( p0.x*scale, p0.y*scale, 10, 10 );
+	            }
+	            else
+	            {		
+	                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, p1.x*scale, p1.y*scale);
+	
+					window.console.log("point?");
+					shape.fillRect( p0.x*scale, p0.y*scale, 10, 10 );
+	            }
+
+	            offset++;
+
+	            }
+	        }
+	    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     
-,addContourToShape:    function ( shape, glyph, startIndex, count, scale )
+,addContourToShape: function ( shape, glyph, startIndex, count, scale )
     {
     
         if (glyph.getPoint(startIndex).endOfContour)
@@ -272,7 +286,7 @@ inc: function(filename){
    // if(req.status != 200) return '';            
    // alert( "text response:" + req.responseText);
     
-    return req.response;
+    return req.responseText;
 }
 
 , clearCanvas: function (context, canvas)

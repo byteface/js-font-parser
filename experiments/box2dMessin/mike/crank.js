@@ -16,7 +16,7 @@ demos.crank.initWorld = function(world) {
 	//font.redrawfills = true;
 
 
-setInterval( function(){
+	setTimeout( function(){
 	
 	
 	
@@ -51,12 +51,20 @@ if(i>1)
 		rjd.anchorPoint.Set(pp[i-1].x, pp[i-1].y);
 		rjd.body1 = prevBody;
 		rjd.body2 = body;
-		// motorSpeed = 10;
-		// 				rjd.enableMotor = true;
 	    world.CreateJoint(rjd);
+
+
+
+/*
+    var jointTest = new b2JointDef();
+    jointTest.body1 = prevBody;
+    jointTest.body2 = body;
+    world.createJoint(jointTest);
+*/
+
+
+
 	
-	// rjd.motorSpeed = 10;
-	// rjd.enableMotor = true;
 }
 
 		prevBody = body;

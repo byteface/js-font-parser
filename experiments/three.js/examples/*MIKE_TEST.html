@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<title>three.js canvas - lines - random</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			a {
+				color:#0078ff;
+			}
+		</style>
+	</head>
+	<body>
+	
+		
+    <script type="text/ecmascript" src="com/byteface/font/utils/BinaryParser.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/data/RawFont.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/TableDirectory.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/DirectoryEntry.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/TableFactory.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/Os2Table.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/Panose.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/Table.js"></script>        
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapTable.js"></script>            
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfTable.js"></script>                
+    <script type="text/ecmascript" src="com/byteface/font/table/HeadTable.js"></script>                    
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapIndexEntry.js"></script>                    
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat0.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat2.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat4.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat6.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/HheaTable.js"></script>                        
+    <script type="text/ecmascript" src="com/byteface/font/table/HmtxTable.js"></script>                        
+    <script type="text/ecmascript" src="com/byteface/font/table/LocaTable.js"></script>                        
+    <script type="text/ecmascript" src="com/byteface/font/table/NameTable.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/NameRecord.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/MaxpTable.js"></script>                            
+    <script type="text/ecmascript" src="com/byteface/font/table/PostTable.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GsubTable.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfSimpleDescript.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfCompositeDescript.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/Script.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/ScriptRecord.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/data/Point.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/data/GlyphData.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfCompositeComp.js"></script>
+	<script type="text/ecmascript" src="com/byteface/font/draw/QuickFont.js"></script>
+
+		<script src="../build/Three.js"></script>
+		<script src="js/RequestAnimationFrame.js"></script>
+
+		<script>
+
+			var mouseX = 0, mouseY = 0,
+
+			windowHalfX = window.innerWidth / 2,
+			windowHalfY = window.innerHeight / 2,
+
+			SEPARATION = 200,
+			AMOUNTX = 10,
+			AMOUNTY = 10,
+
+			camera, scene, renderer;
+
+			init();
+			animate();
+
+			function init() {
+
+
+				var container, separation = 100, amountX = 50, amountY = 50,
+				particles, particle;
+
+				container = document.createElement('div');
+				document.body.appendChild(container);
+
+				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.z = 300;
+
+				scene = new THREE.Scene();
+
+				renderer = new THREE.CanvasRenderer();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+
+
+
+			// init font
+			this.font = new QuickFont( "truetypefonts/DiscoMo.ttf" );
+
+            
+
+				// particles
+
+				var PI2 = Math.PI * 2;
+				var material = new THREE.ParticleCanvasMaterial( {
+
+					color: 0xffffff,
+					program: function ( context ) {
+
+						context.beginPath();
+						context.arc( 0, 0, 1, 0, PI2, true );
+						context.closePath();
+						context.fill();
+
+					}
+
+				} );
+
+				var geometry = new THREE.Geometry();
+
+				for ( var i = 0; i < this.font.fontdata.getGlyph(39).getPointCount(); i ++ ) {
+
+					particle = new THREE.Particle( material );
+					particle.position.x = this.font.fontdata.getGlyph(39).getPoint(i).x;//Math.random() * 2 - 1;
+					particle.position.y = this.font.fontdata.getGlyph(39).getPoint(i).y;//Math.random() * 2 - 1;
+					//particle.position.z = Math.random() * 2 - 1;
+					//particle.position.normalize();
+//					particle.position.multiplyScalar( Math.random() * 10 + 450 );
+					particle.scale.x = particle.scale.y = 5;
+					scene.add( particle );
+
+					geometry.vertices.push( new THREE.Vertex( particle.position ) );
+
+				}
+
+				// lines
+
+				var line = new THREE.Line( geometry, new THREE.LineBasicMaterial( { color: 0xffffff, opacity: 0.5 } ) );
+				scene.add( line );
+
+				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+				document.addEventListener( 'touchmove', onDocumentTouchMove, false );
+			}
+
+
+
+
+
+
+
+			function onDocumentMouseMove(event) {
+
+				mouseX = event.clientX - windowHalfX;
+				mouseY = event.clientY - windowHalfY;
+			}
+
+			function onDocumentTouchStart( event ) {
+
+				if ( event.touches.length > 1 ) {
+
+					event.preventDefault();
+
+					mouseX = event.touches[ 0 ].pageX - windowHalfX;
+					mouseY = event.touches[ 0 ].pageY - windowHalfY;
+
+				}
+
+			}
+
+			function onDocumentTouchMove( event ) {
+
+				if ( event.touches.length == 1 ) {
+
+					event.preventDefault();
+
+					mouseX = event.touches[ 0 ].pageX - windowHalfX;
+					mouseY = event.touches[ 0 ].pageY - windowHalfY;
+
+				}
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+
+			}
+
+			function render() {
+
+				camera.position.x += ( mouseX - camera.position.x ) * .05;
+				camera.position.y += ( - mouseY + 200 - camera.position.y ) * .05;
+				camera.lookAt( scene.position );
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+	</body>
+</html>

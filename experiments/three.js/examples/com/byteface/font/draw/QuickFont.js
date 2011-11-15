@@ -268,10 +268,6 @@ inc: function(filename){
     req.overrideMimeType( 'text/plain; charset=x-user-defined' );
     req.send(null);
 
-   // alert( "text status:" + req.status);
-   // if(req.status != 200) return '';            
-   // alert( "text response:" + req.responseText);
-    
     return req.response;
 }
 
