@@ -95,8 +95,32 @@
 
 			// init font
 			this.font = new QuickFont( "truetypefonts/DiscoMo.ttf" );
+			var glyph = this.font.fontdata.getGlyph(39);
 
+
+        var firstindex=0;
+        var counter=0;
+        
+        var path = new THREE.Path(); // INSTEAD OF CANVAS
+        
+		for(var i=0;i<glyph.getPointCount();i++)
+		{
+            counter++;			
+            if( glyph.getPoint(i).endOfContour )
+            {
             
+                this.buildGlyph( path, glyph, firstindex, counter, 1 );
+                
+                
+                firstindex=i+1;
+                counter=0;
+            }else{
+                //window.console.log("normal point");
+            }   
+        }
+
+
+
 
 				// particles
 
@@ -117,15 +141,19 @@
 
 				var geometry = new THREE.Geometry();
 
-				for ( var i = 0; i < this.font.fontdata.getGlyph(39).getPointCount(); i ++ ) {
+                
+
+var points = path.getPoints();
+
+				for ( var i = 0; i < points.length; i ++ ) {
 
 					particle = new THREE.Particle( material );
-					particle.position.x = this.font.fontdata.getGlyph(39).getPoint(i).x;//Math.random() * 2 - 1;
-					particle.position.y = this.font.fontdata.getGlyph(39).getPoint(i).y;//Math.random() * 2 - 1;
+					particle.position.x = points[i].x;//Math.random() * 2 - 1;
+					particle.position.y = points[i].y;//Math.random() * 2 - 1;
 					//particle.position.z = Math.random() * 2 - 1;
 					//particle.position.normalize();
 //					particle.position.multiplyScalar( Math.random() * 10 + 450 );
-					particle.scale.x = particle.scale.y = 5;
+					particle.scale.x = particle.scale.y = 2;
 					scene.add( particle );
 
 					geometry.vertices.push( new THREE.Vertex( particle.position ) );
@@ -146,6 +174,77 @@
 
 
 
+
+
+function buildGlyph( shape, glyph, startIndex, count, scale )
+    {
+    
+        if (glyph.getPoint(startIndex).endOfContour)
+        {
+            return;
+        }
+ 
+        offset = 0;
+        
+        while(offset < count)
+        {
+            var p0 = glyph.getPoint(startIndex + offset%count);
+            var p1 = glyph.getPoint(startIndex + (offset+1)%count);
+            
+            if (offset == 0)
+            {
+                //window.console.log("move");
+                shape.moveTo(p0.x*scale, p0.y*scale);
+            }
+
+            if (p0.onCurve)
+            {
+                if (p1.onCurve)
+                {
+                    shape.lineTo(p1.x*scale, p1.y*scale);
+                    offset++;
+                }
+                else
+                {
+                    var p2 = glyph.getPoint(startIndex + (offset+2)%count);
+                    
+                    if(p2.onCurve)
+                    {
+                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, p2.x*scale, p2.y*scale);
+                    }
+                    else
+                    {
+                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, this.midValue(p1.x*scale, p2.x*scale), this.midValue(p1.y*scale, p2.y*scale));
+                    }
+                    
+                    offset+=2;
+                } 
+            }
+            else
+            {
+            
+            if(!p1.onCurve)
+            {
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, this.midValue(p0.x*scale, p1.x*scale), this.midValue(p0.y*scale, p1.y*scale));
+            }
+            else
+            {
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, p1.x*scale, p1.y*scale);
+            }
+            
+            offset++;
+            
+            }
+        }
+    }
+    
+    
+    
+    
+    function midValue(a,b)
+    {
+        return (a+b)/2
+    }
 
 
 			function onDocumentMouseMove(event) {
