@@ -56,6 +56,47 @@
 		<script src="../build/Three.js"></script>
 		<script src="js/RequestAnimationFrame.js"></script>
 
+
+
+			<script type="x-shader/x-vertex" id="vertexshader">
+
+				attribute float size;
+				attribute vec3 pcolor;
+
+				varying vec3 vColor;
+
+				void main() {
+
+					vColor = pcolor;
+
+					vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+
+					gl_PointSize = size * ( 200.0 / length( mvPosition.xyz ) );
+
+					gl_Position = projectionMatrix * mvPosition;
+
+				}
+
+			</script>
+
+			<script type="x-shader/x-fragment" id="fragmentshader">
+
+				uniform sampler2D texture;
+
+				varying vec3 vColor;
+
+				void main() {
+
+					vec4 outColor = texture2D( texture, gl_PointCoord );
+
+					gl_FragColor = outColor * vec4( vColor, 1.0 );
+
+				}
+
+			</script>
+
+
+
 		<script>
 
 			var mouseX = 0, mouseY = 0,
@@ -91,22 +132,30 @@
 				container.appendChild( renderer.domElement );
 
 
+/*
+				var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
+				directionalLight.position.set( 0, -1, 1 );
+				directionalLight.position.normalize();
+				scene.add( directionalLight );
+
+				pointLight = new THREE.PointLight( 0xffffff, 2, 300 );
+				pointLight.position.set( 0, 0, 0 );
+				scene.add( pointLight );
+
+
+*/
+
+
 
 
 
 
 
 			// init font
-			this.font = new QuickFont( "truetypefonts/AUGIE___.TTF" );
-			
-			
-			
-			
-			for( var z=0; z<100;  z++ )
-			{
-
-
+			this.font = new QuickFont( "truetypefonts/Quill.ttf" );
 			var glyph = this.font.fontdata.getGlyph(Math.round(Math.random()*100));
+			
+			
 
                 var firstindex=0;
                 var counter=0; 
@@ -114,16 +163,29 @@
                 for(var i=0;i<glyph.getPointCount();i++){
                     counter++;			
                     if( glyph.getPoint(i).endOfContour ){
-                        this.buildGlyph( path, glyph, firstindex, counter, Math.random()*.02 );
+                        this.buildGlyph( path, glyph, firstindex, counter, .4 );
                         firstindex=i+1;
                         counter=0;
                     }
                 }
         
-
+                var PI2 = Math.PI * 2;
+                var material = new THREE.ParticleCanvasMaterial( {
+        
+                    color: 0xffffff,
+                    program: function ( context ) {
+        
+                        context.beginPath();
+                        context.arc( 0, 0, 1, 0, PI2, true );
+                        context.closePath();
+                        context.fill();
+        
+                    }
+        
+                } );
 
 				// Triangle
-				var extrudeSettings = {	amount: 10,  bevelEnabled: true, bevelSegments: 0, steps: 2 }; // bevelSegments: 2, steps: 2 , bevelSegments: 5, bevelSize: 8, bevelThickness:5
+				var extrudeSettings = {	amount: 100,  bevelEnabled: true, bevelSegments: 0, steps: 2 }; // bevelSegments: 2, steps: 2 , bevelSegments: 5, bevelSize: 8, bevelThickness:5
 
 				var triangle3d = path.extrude( extrudeSettings );
 				var trianglePoints = path.createPointsGeometry();
@@ -131,12 +193,36 @@
 
                 THREE.GeometryUtils.center( triangle3d );
 
-				addGeometry( triangle3d, trianglePoints, triangleSpacedPoints, Math.random() * 0xffffff, -180, Math.random()*800, Math.random()*800, Math.random()*800, 0, 0, 1 );
+				addGeometry( triangle3d, trianglePoints, triangleSpacedPoints, Math.random() * 0xffffff, -180,    0, 0,     0, 0, 0, 1 );
 				
+				
+				
+				
+				
+				
+				
+				
+				
+                for ( var i = 0; i < 100; i ++ ) {
+
+//						var mesh = new THREE.Mesh( geometry, material );
 
 
+                        addGeometry( triangle3d, trianglePoints, triangleSpacedPoints, Math.random() * 0xffffff, -180, 
+                        Math.random() * 10000 - 5000, 
+                        Math.random() * 10000 - 5000,
+                        Math.random() * 10000 - 5000,
+                        Math.random() * 360 * ( Math.PI / 180 ), 
+                        Math.random() * 360 * ( Math.PI / 180 ), Math.random()*1 );
 
-                }
+					}
+				
+				
+				
+				
+				
+				
+				
 
 				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 				document.addEventListener( 'touchstart', onDocumentTouchStart, false );
