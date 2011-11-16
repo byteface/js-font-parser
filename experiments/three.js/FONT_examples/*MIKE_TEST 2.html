@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - custom attributes [lines]</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #ffffff;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				color: #fff;
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+				z-index:100;
+			}
+
+		</style>
+	</head>
+
+	<body>
+		<div id="info"><a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a> - custom attributes example</div>
+		<div id="container"></div>
+		
+		
+		
+		
+		
+		
+		    <script type="text/ecmascript" src="com/byteface/font/utils/BinaryParser.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/data/RawFont.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/TableDirectory.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/DirectoryEntry.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/TableFactory.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/Os2Table.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/Panose.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/Table.js"></script>        
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapTable.js"></script>            
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfTable.js"></script>                
+    <script type="text/ecmascript" src="com/byteface/font/table/HeadTable.js"></script>                    
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapIndexEntry.js"></script>                    
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat0.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat2.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat4.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat6.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/HheaTable.js"></script>                        
+    <script type="text/ecmascript" src="com/byteface/font/table/HmtxTable.js"></script>                        
+    <script type="text/ecmascript" src="com/byteface/font/table/LocaTable.js"></script>                        
+    <script type="text/ecmascript" src="com/byteface/font/table/NameTable.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/NameRecord.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/MaxpTable.js"></script>                            
+    <script type="text/ecmascript" src="com/byteface/font/table/PostTable.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GsubTable.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfSimpleDescript.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfCompositeDescript.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/Script.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/ScriptRecord.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/data/Point.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/data/GlyphData.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfCompositeComp.js"></script>
+	<script type="text/ecmascript" src="com/byteface/font/draw/QuickFont.js"></script>
+		
+		
+		
+		
+		
+
+		<script src="js/RequestAnimationFrame.js"></script>
+		<script src="js/Detector.js"></script>
+		<script src="js/Stats.js"></script>
+
+		<script src="../build/Three.js"></script>
+
+		<script src="fonts/helvetiker_bold.typeface.js"></script>
+
+		<script type="x-shader/x-vertex" id="vertexshader">
+
+			uniform float amplitude;
+
+			attribute vec3 displacement;
+			attribute vec3 customColor;
+
+			varying vec3 vColor;
+
+			void main() {
+
+				vec3 newPosition = position + amplitude * displacement;
+
+				vColor = customColor;
+
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );
+
+			}
+
+		</script>
+
+		<script type="x-shader/x-fragment" id="fragmentshader">
+
+			uniform vec3 color;
+			uniform float opacity;
+
+			varying vec3 vColor;
+
+			void main() {
+
+				gl_FragColor = vec4( vColor * color, opacity );
+
+			}
+
+		</script>
+
+
+		<script>
+
+		if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+		var renderer, scene, camera, stats;
+
+		var object, uniforms, attributes;
+
+		var text = "three.js",
+
+			height = 15,
+			size = 50,
+
+			curveSegments = 10,
+			steps = 40,
+
+			bevelThickness = 5,
+			bevelSize = 1.5,
+			bevelSegments = 10,
+			bevelEnabled = true,
+			bend = false,
+
+			font = "helvetiker", 		// helvetiker, optimer, gentilis, droid sans, droid serif
+			weight = "bold",		// normal bold
+			style = "normal";		// normal italic
+
+		var WIDTH = window.innerWidth,
+			HEIGHT = window.innerHeight;
+
+		init();
+		animate();
+
+		function init() {
+
+			scene = new THREE.Scene();
+
+			camera = new THREE.PerspectiveCamera( 30, WIDTH / HEIGHT, 1, 10000 );
+			camera.position.z = 400;
+
+			scene.add( camera );
+
+			attributes = {
+
+				displacement: {	type: 'v3', value: [] },
+				customColor: {	type: 'c', value: [] }
+
+			};
+
+			uniforms = {
+
+				amplitude: { type: "f", value: 10.0 },
+				opacity:   { type: "f", value: 0.9 },
+				color:     { type: "c", value: new THREE.Color( 0xff0000 ) }
+
+			};
+
+			var shaderMaterial = new THREE.ShaderMaterial( {
+
+				uniforms: 		uniforms,
+				attributes:     attributes,
+				vertexShader:   document.getElementById( 'vertexshader' ).textContent,
+				fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
+				blending: 		THREE.AdditiveBlending,
+				depthTest:		false,
+				transparent:	true
+
+			});
+
+			shaderMaterial.linewidth = 4;
+/*
+			geometry = new THREE.TextGeometry( text, {
+
+				size: size,
+				height: height,
+				curveSegments: curveSegments,
+
+				font: font,
+				weight: weight,
+				style: style,
+
+				bevelThickness: bevelThickness,
+				bevelSize: bevelSize,
+				bevelEnabled: bevelEnabled,
+				bevelSegments: bevelSegments,
+
+				bend: bend,
+
+				steps: steps
+
+			});
+
+			geometry.dynamic = true;
+
+			THREE.GeometryUtils.center( geometry );
+
+*/
+
+
+			// init font
+			this.font = new QuickFont( "truetypefonts/DiscoMo.ttf" );
+			var glyph = this.font.fontdata.getGlyph(Math.round(Math.random()*100));
+
+                var firstindex=0;
+                var counter=0; 
+                var path = new THREE.Path(); // INSTEAD OF CANVAS
+                for(var i=0;i<glyph.getPointCount();i++){
+                    counter++;			
+                    if( glyph.getPoint(i).endOfContour ){
+                        this.buildGlyph( path, glyph, firstindex, counter, .2 );
+                        firstindex=i+1;
+                        counter=0;
+                    }
+                }
+					
+					
+                var geometry = new THREE.Geometry();
+                var points = path.getPoints();
+
+				for ( var i = 0; i < points.length; i ++ ) {
+
+
+
+	                particle = new THREE.Particle(  );
+					particle.position.x = points[i].x;//Math.random() * 2 - 1;
+					particle.position.y = points[i].y;//Math.random() * 2 - 1;
+					//particle.position.z = Math.random() * 2 - 1;
+					//particle.position.normalize();
+//					particle.position.multiplyScalar( Math.random() * 10 + 450 );
+				//	particle.scale.x = particle.scale.y = 2;
+				//	scene.add( particle ); -->
+
+					geometry.vertices.push( new THREE.Vertex( particle.position ) );
+
+				}
+					
+
+
+
+
+			geometry.dynamic = true;
+			THREE.GeometryUtils.center( geometry );
+
+
+
+
+
+
+
+
+
+
+			object = new THREE.Line( geometry, shaderMaterial, THREE.LineStrip );
+
+			var vertices = object.geometry.vertices;
+
+			var displacement = attributes.displacement.value;
+			var color = attributes.customColor.value;
+
+			for( var v = 0; v < vertices.length; v ++ ) {
+
+				displacement[ v ] = new THREE.Vector3( 0, 0, 0 );
+
+				color[ v ] = new THREE.Color( 0xffffff );
+				color[ v ].setHSV( v / vertices.length, 0.9, 0.9 );
+
+			}
+
+			object.rotation.x = 0.5;
+
+			scene.add( object );
+
+			renderer = new THREE.WebGLRenderer( { clearColor: 0x050505, clearAlpha: 1, antialias: true } );
+			renderer.setSize( WIDTH, HEIGHT );
+
+			var container = document.getElementById( 'container' );
+			container.appendChild( renderer.domElement );
+
+			stats = new Stats();
+			stats.domElement.style.position = 'absolute';
+			stats.domElement.style.top = '0px';
+			container.appendChild( stats.domElement );
+
+		}
+		
+		
+		
+		
+		
+		function buildGlyph( shape, glyph, startIndex, count, scale )
+    {
+    
+        if (glyph.getPoint(startIndex).endOfContour)
+        {
+            return;
+        }
+ 
+        offset = 0;
+        
+        while(offset < count)
+        {
+            var p0 = glyph.getPoint(startIndex + offset%count);
+            var p1 = glyph.getPoint(startIndex + (offset+1)%count);
+            
+            if (offset == 0)
+            {
+                //window.console.log("move");
+                shape.moveTo(p0.x*scale, p0.y*scale);
+            }
+
+            if (p0.onCurve)
+            {
+                if (p1.onCurve)
+                {
+                    shape.lineTo(p1.x*scale, p1.y*scale);
+                    offset++;
+                }
+                else
+                {
+                    var p2 = glyph.getPoint(startIndex + (offset+2)%count);
+                    
+                    if(p2.onCurve)
+                    {
+                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, p2.x*scale, p2.y*scale);
+                    }
+                    else
+                    {
+                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, this.midValue(p1.x*scale, p2.x*scale), this.midValue(p1.y*scale, p2.y*scale));
+                    }
+                    
+                    offset+=2;
+                } 
+            }
+            else
+            {
+            
+            if(!p1.onCurve)
+            {
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, this.midValue(p0.x*scale, p1.x*scale), this.midValue(p0.y*scale, p1.y*scale));
+            }
+            else
+            {
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, p1.x*scale, p1.y*scale);
+            }
+            
+            offset++;
+            
+            }
+        }
+    }
+    
+    
+    
+    
+    function midValue(a,b)
+    {
+        return (a+b)/2
+    }
+
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+
+		function animate() {
+
+			requestAnimationFrame( animate );
+
+			render();
+			stats.update();
+
+		}
+
+		function render() {
+
+			var time = Date.now() * 0.001;
+
+			object.rotation.y = 0.25 * time;
+
+			uniforms.amplitude.value = 0.5 * Math.sin( 0.5 * time );
+			THREE.ColorUtils.adjustHSV( uniforms.color.value, 0.0005, 0, 0 );
+
+			var nx, ny, nz, value;
+
+			for( var i = 0, il = attributes.displacement.value.length; i < il; i ++ ) {
+
+				nx = 0.3 * ( 0.5 - Math.random() );
+				ny = 0.3 * ( 0.5 - Math.random() );
+				nz = 0.3 * ( 0.5 - Math.random() );
+
+				value = attributes.displacement.value[ i ];
+
+				value.x += nx;
+				value.y += ny;
+				value.z += nz;
+
+			}
+
+			attributes.displacement.needsUpdate = true;
+
+			renderer.render( scene, camera );
+
+		}
+
+
+	</script>
+
+</body>
+
+</html>

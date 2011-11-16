@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<title>three.js canvas - lines - random</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			a {
+				color:#0078ff;
+			}
+		</style>
+	</head>
+	<body>
+	
+		
+    <script type="text/ecmascript" src="com/byteface/font/utils/BinaryParser.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/data/RawFont.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/TableDirectory.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/DirectoryEntry.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/TableFactory.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/Os2Table.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/Panose.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/Table.js"></script>        
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapTable.js"></script>            
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfTable.js"></script>                
+    <script type="text/ecmascript" src="com/byteface/font/table/HeadTable.js"></script>                    
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapIndexEntry.js"></script>                    
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat0.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat2.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat4.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/CmapFormat6.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/HheaTable.js"></script>                        
+    <script type="text/ecmascript" src="com/byteface/font/table/HmtxTable.js"></script>                        
+    <script type="text/ecmascript" src="com/byteface/font/table/LocaTable.js"></script>                        
+    <script type="text/ecmascript" src="com/byteface/font/table/NameTable.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/NameRecord.js"></script>    
+    <script type="text/ecmascript" src="com/byteface/font/table/MaxpTable.js"></script>                            
+    <script type="text/ecmascript" src="com/byteface/font/table/PostTable.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GsubTable.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfSimpleDescript.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfCompositeDescript.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/Script.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/ScriptRecord.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/data/Point.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/data/GlyphData.js"></script>
+    <script type="text/ecmascript" src="com/byteface/font/table/GlyfCompositeComp.js"></script>
+	<script type="text/ecmascript" src="com/byteface/font/draw/QuickFont.js"></script>
+
+		<script src="../build/Three.js"></script>
+		<script src="js/RequestAnimationFrame.js"></script>
+
+		<script>
+
+			var mouseX = 0, mouseY = 0,
+
+			windowHalfX = window.innerWidth / 2,
+			windowHalfY = window.innerHeight / 2,
+
+			SEPARATION = 200,
+			AMOUNTX = 10,
+			AMOUNTY = 10,
+
+			camera, scene, renderer;
+
+			init();
+			animate();
+
+			function init() {
+
+
+				var container, separation = 100, amountX = 50, amountY = 50,
+				particles, particle;
+
+				container = document.createElement('div');
+				document.body.appendChild(container);
+
+				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.z = 300;
+
+				scene = new THREE.Scene();
+
+				renderer = new THREE.CanvasRenderer();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+
+
+
+
+
+
+			// init font
+			this.font = new QuickFont( "truetypefonts/AUGIE___.TTF" );
+			var glyph = this.font.fontdata.getGlyph(Math.round(Math.random()*100));
+			
+			
+			var textMaterial = new THREE.MeshBasicMaterial( { color: Math.random() * 0xffffff, overdraw: true, wireframe:false } );			
+			
+			
+			
+
+                var firstindex=0;
+                var counter=0; 
+                var path = new THREE.Shape(); // INSTEAD OF CANVAS
+                for(var i=0;i<glyph.getPointCount();i++){
+                    counter++;			
+                    if( glyph.getPoint(i).endOfContour ){
+                        this.buildGlyph( path, glyph, firstindex, counter, .4 );
+                        firstindex=i+1;
+                        counter=0;
+                    }
+                }
+        
+                var PI2 = Math.PI * 2;
+                var material = new THREE.ParticleCanvasMaterial( {
+        
+                    color: 0xffffff,
+                    program: function ( context ) {
+        
+                        context.beginPath();
+                        context.arc( 0, 0, 1, 0, PI2, true );
+                        context.closePath();
+                        context.fill();
+        
+                    }
+        
+                } );
+
+
+
+				// Triangle
+				var extrudeSettings = {	amount: 100,  bevelEnabled: true, bevelSegments: 0, steps: 2 }; // bevelSegments: 2, steps: 2 , bevelSegments: 5, bevelSize: 8, bevelThickness:5
+
+				var triangle3d = path.extrude( extrudeSettings );
+				var trianglePoints = path.createPointsGeometry();
+				var triangleSpacedPoints = path.createSpacedPointsGeometry();
+
+                THREE.GeometryUtils.center( triangle3d );
+
+				addGeometry( triangle3d, trianglePoints, triangleSpacedPoints, Math.random() * 0xffffff, -180,    0, 0,     0, 0, 0, 1 );
+				
+
+				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+				document.addEventListener( 'touchmove', onDocumentTouchMove, false );
+			}
+
+
+
+
+
+
+			function addGeometry( geometry, points, spacedPoints, color, x, y, z, rx, ry, rz, s ) {
+
+				// 3d shape
+
+				var mesh = THREE.SceneUtils.createMultiMaterialObject( geometry, [ new THREE.MeshLambertMaterial( { color: color } ), new THREE.MeshBasicMaterial( { color: 0x000000, wireframe: false, transparent: true } ) ] );
+				mesh.position.set( x, y, z - 75 );
+				mesh.rotation.set( rx, ry, rz );
+				mesh.scale.set( s, s, s );
+				scene.add( mesh );
+
+/*
+				// solid line
+
+				var line = new THREE.Line( points, new THREE.LineBasicMaterial( { color: color, linewidth: 2 } ) );
+				line.position.set( x, y, z + 25 );
+				line.rotation.set( rx, ry, rz );
+				line.scale.set( s, s, s );
+				scene.add( line );
+
+				// transparent line from real points
+
+				var line = new THREE.Line( points, new THREE.LineBasicMaterial( { color: color, opacity: 0.5 } ) );
+				line.position.set( x, y, z + 75 );
+				line.rotation.set( rx, ry, rz );
+				line.scale.set( s, s, s );
+				scene.add( line );
+
+				// vertices from real points
+
+				var pgeo = THREE.GeometryUtils.clone( points );
+				var particles = new THREE.ParticleSystem( pgeo, new THREE.ParticleBasicMaterial( { color: color, size: 2, opacity: 0.75 } ) );
+				particles.position.set( x, y, z + 75 );
+				particles.rotation.set( rx, ry, rz );
+				particles.scale.set( s, s, s );
+				scene.add( particles );
+
+				// transparent line from equidistance sampled points
+
+				var line = new THREE.Line( spacedPoints, new THREE.LineBasicMaterial( { color: color, opacity: 0.2 } ) );
+				line.position.set( x, y, z + 100 );
+				line.rotation.set( rx, ry, rz );
+				line.scale.set( s, s, s );
+				scene.add( line );
+
+				// equidistance sampled points
+
+				var pgeo = THREE.GeometryUtils.clone( spacedPoints );
+				var particles2 = new THREE.ParticleSystem( pgeo, new THREE.ParticleBasicMaterial( { color: color, size: 2, opacity: 0.5 } ) );
+				particles2.position.set( x, y, z + 100 );
+				particles2.rotation.set( rx, ry, rz );
+				particles2.scale.set( s, s, s );
+				scene.add( particles2 );
+
+
+
+*/
+
+			}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function buildGlyph( shape, glyph, startIndex, count, scale )
+    {
+    
+        if (glyph.getPoint(startIndex).endOfContour)
+        {
+			shape.closePath();
+            return;
+        }
+ 
+        offset = 0;
+        
+        while(offset < count)
+        {
+            var p0 = glyph.getPoint(startIndex + offset%count);
+            var p1 = glyph.getPoint(startIndex + (offset+1)%count);
+            
+            if (offset == 0)
+            {
+                //window.console.log("move");
+                shape.moveTo(p0.x*scale, p0.y*scale);
+            }
+
+            if (p0.onCurve)
+            {
+                if (p1.onCurve)
+                {
+                    shape.lineTo(p1.x*scale, p1.y*scale);
+                    offset++;
+                }
+                else
+                {
+                    var p2 = glyph.getPoint(startIndex + (offset+2)%count);
+                    
+                    if(p2.onCurve)
+                    {
+                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, p2.x*scale, p2.y*scale);
+                    }
+                    else
+                    {
+                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, this.midValue(p1.x*scale, p2.x*scale), this.midValue(p1.y*scale, p2.y*scale));
+                    }
+                    
+                    offset+=2;
+                } 
+            }
+            else
+            {
+            
+            if(!p1.onCurve)
+            {
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, this.midValue(p0.x*scale, p1.x*scale), this.midValue(p0.y*scale, p1.y*scale));
+            }
+            else
+            {
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, p1.x*scale, p1.y*scale);
+            }
+            
+            offset++;
+            
+            }
+        }
+    }
+    
+    
+    
+    
+    function midValue(a,b)
+    {
+        return (a+b)/2
+    }
+
+
+			function onDocumentMouseMove(event) {
+
+				mouseX = event.clientX - windowHalfX;
+				mouseY = event.clientY - windowHalfY;
+			}
+
+			function onDocumentTouchStart( event ) {
+
+				if ( event.touches.length > 1 ) {
+
+					event.preventDefault();
+
+					mouseX = event.touches[ 0 ].pageX - windowHalfX;
+					mouseY = event.touches[ 0 ].pageY - windowHalfY;
+
+				}
+
+			}
+
+			function onDocumentTouchMove( event ) {
+
+				if ( event.touches.length == 1 ) {
+
+					event.preventDefault();
+
+					mouseX = event.touches[ 0 ].pageX - windowHalfX;
+					mouseY = event.touches[ 0 ].pageY - windowHalfY;
+
+				}
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+
+			}
+
+			function render() {
+
+				camera.position.x += ( mouseX - camera.position.x ) * .05;
+				camera.position.y += ( - mouseY + 200 - camera.position.y ) * .05;
+				camera.lookAt( scene.position );
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+	</body>
+</html>

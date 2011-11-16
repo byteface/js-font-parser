@@ -99,24 +99,15 @@
 
 
         var firstindex=0;
-        var counter=0;
-        
+        var counter=0; 
         var path = new THREE.Path(); // INSTEAD OF CANVAS
-        
-		for(var i=0;i<glyph.getPointCount();i++)
-		{
+		for(var i=0;i<glyph.getPointCount();i++){
             counter++;			
-            if( glyph.getPoint(i).endOfContour )
-            {
-            
+            if( glyph.getPoint(i).endOfContour ){
                 this.buildGlyph( path, glyph, firstindex, counter, 1 );
-                
-                
                 firstindex=i+1;
                 counter=0;
-            }else{
-                //window.console.log("normal point");
-            }   
+            }
         }
 
 
@@ -140,10 +131,7 @@
 				} );
 
 				var geometry = new THREE.Geometry();
-
-                
-
-var points = path.getPoints();
+                var points = path.getPoints();
 
 				for ( var i = 0; i < points.length; i ++ ) {
 
@@ -159,6 +147,10 @@ var points = path.getPoints();
 					geometry.vertices.push( new THREE.Vertex( particle.position ) );
 
 				}
+
+
+                geometry.dynamic = true;
+                THREE.GeometryUtils.center( geometry );
 
 				// lines
 
