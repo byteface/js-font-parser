@@ -1,0 +1,163 @@
+<!DOCTYPE HTML>
+<html lang="en">
+
+<head>
+    <title>Load Example</title>
+    <meta charset="utf-8">
+</head>
+
+<body>
+
+<script type="text/javascript" src="js/jquery.min.js"></script>
+<script type="text/javascript" src="js/includer.js"></script>
+
+<script>
+
+    window.console.log("test");
+
+    var file = load_binary_resource("truetypefonts/DiscoMo.ttf");
+    var bytedata = new a3d.ByteArray( file, a3d.Endian.BIG );
+    var font = new RawFont( bytedata );
+
+    setInterval(doSomat,100);
+
+    function doSomat()
+    {
+        drawGlyph( font, Math.round(Math.random()*100) );        
+    }
+
+    function drawGlyph(font,char)
+    {
+    
+        var SCALE = Math.random()*.5;
+    
+        var g = font.getGlyph(char);
+        var drawingCanvas = document.getElementById('myDrawing');           
+        
+        // set up the glyph
+        var context = drawingCanvas.getContext('2d');
+        context.lineWidth = 10 + Math.random()*10;
+        context.strokeStyle = "#000000";
+        context.fillStyle = Math.floor(Math.random()*16777215).toString(16);
+        context.globalAlpha = Math.random()*1;            
+        context.beginPath();
+        context.translate(Math.random()*10,Math.random()*100);
+        //context.rotate(20 * Math.PI / 180);
+        context.scale(1,-1);
+
+        var firstindex=0;
+        var counter=0;
+        
+        for(var i=0;i<g.getPointCount();i++)
+        {
+            counter++;          
+            if( g.getPoint(i).endOfContour )
+            {
+                addContourToShape( context, g, firstindex, counter, SCALE);
+                firstindex=i+1;
+                counter=0;
+            }
+            else
+            {
+                //window.console.log("normal point");
+            }   
+        }
+        
+        context.closePath();
+        context.stroke();
+        context.fill();
+    }    
+
+    
+    function addContourToShape( shape, glyph, startIndex, count, scale )
+    {
+    
+        if (glyph.getPoint(startIndex).endOfContour)
+        {
+            return;
+        }
+ 
+        offset = 0;
+        
+        while(offset < count)
+        {
+            var p0 = glyph.getPoint(startIndex + offset%count);
+            var p1 = glyph.getPoint(startIndex + (offset+1)%count);
+            
+            if (offset == 0)
+            {
+                //window.console.log("move");
+                shape.moveTo(p0.x*scale, p0.y*scale);
+            }
+
+            if (p0.onCurve)
+            {
+                if (p1.onCurve)
+                {
+                    shape.lineTo(p1.x*scale, p1.y*scale);
+                    offset++;
+                }
+                else
+                {
+                    var p2 = glyph.getPoint(startIndex + (offset+2)%count);
+                    
+                    if(p2.onCurve)
+                    {
+                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, p2.x*scale, p2.y*scale);
+                    }
+                    else
+                    {
+                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, midValue(p1.x*scale, p2.x*scale), midValue(p1.y*scale, p2.y*scale));
+                    }
+                    
+                    offset+=2;
+                } 
+            }
+            else
+            {
+            
+            if(!p1.onCurve)
+            {
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, midValue(p0.x*scale, p1.x*scale), midValue(p0.y*scale, p1.y*scale));
+            }
+            else
+            {
+                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, p1.x*scale, p1.y*scale);
+            }
+            
+            offset++;
+            
+            }
+        }
+    }
+
+
+    function midValue(a,b)
+    {
+        return (a+b)/2
+    }
+        
+        
+    // load the binary data of the font
+    function load_binary_resource(url)
+    {
+        var req = new XMLHttpRequest();
+        req.open( 'GET', url, false );
+        req.overrideMimeType( 'text/plain; charset=x-user-defined' );
+        req.send(null);
+
+       // alert( "text status:" + req.status);
+       // if(req.status != 200) return '';            
+       // alert( "text response:" + req.responseText);
+        
+        return req.responseText;
+    }
+
+</script>
+
+<canvas id="myDrawing" width="1000" height="1000">
+<p>Your browser doesn't support canvas</p>
+</canvas>
+
+</body>
+</html>
