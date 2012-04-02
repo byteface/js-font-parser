@@ -202,13 +202,13 @@
 				
 				
 				
-				
+				var bo
                 for ( var i = 0; i < 100; i ++ ) {
 
 //						var mesh = new THREE.Mesh( geometry, material );
 
 
-                        addGeometry( triangle3d, trianglePoints, triangleSpacedPoints, Math.random() * 0xffffff, -180, 
+                       bo = addGeometry( triangle3d, trianglePoints, triangleSpacedPoints, Math.random() * 0xffffff, -180, 
                         Math.random() * 10000 - 5000, 
                         Math.random() * 10000 - 5000,
                         Math.random() * 10000 - 5000,
@@ -220,7 +220,7 @@
 				
 				
 				
-				
+				//scene.add( bo );
 				
 				
 
@@ -242,7 +242,15 @@
 				mesh.position.set( x, y, z - 75 );
 				mesh.rotation.set( rx, ry, rz );
 				mesh.scale.set( s, s, s );
-				scene.add( mesh );
+				
+				
+				//THREE.GeometryUtils.merge(geometry, mesh);
+								
+												scene.add( mesh );
+							//	return mesh;
+				
+				
+
 
 
 				// var line = new THREE.Line( points, new THREE.LineBasicMaterial( { color: 0x000000, linewidth: 2 } ) );
