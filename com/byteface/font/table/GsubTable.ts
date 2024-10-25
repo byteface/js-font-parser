@@ -2,8 +2,9 @@ import { ByteArray } from "../utils/ByteArray.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
 import { Table } from "./Table.js";
 import { ScriptList } from "./ScriptList.js";
+import { ITable } from "./ITable.js";
 
-export class GsubTable {
+export class GsubTable implements ITable {
     scriptList: ScriptList;
     featureList: FeatureList;
     lookupList: LookupList;

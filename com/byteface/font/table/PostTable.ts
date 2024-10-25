@@ -1,8 +1,9 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
+import { ITable } from "./ITable.js";
 import { Table } from "./Table.js";
 
-export class PostTable {
+export class PostTable implements ITable {
     macGlyphName: string[] = [
         ".notdef",      // 0
         "null",         // 1

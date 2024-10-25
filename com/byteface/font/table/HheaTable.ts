@@ -1,8 +1,8 @@
 import { ByteArray } from "../utils/ByteArray.js";
-
 import { Table } from "./Table.js";
+import { ITable } from "./ITable.js";
 
-export class HheaTable {
+export class HheaTable implements ITable {
     version: number;
     ascender: number;
     descender: number;

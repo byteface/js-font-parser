@@ -1,8 +1,9 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
+import { ITable } from "./ITable.js";
 import { Table } from "./Table.js";
 
-export class HmtxTable {
+export class HmtxTable implements ITable {
     private buf: ByteArray | null;
     private hMetrics: number[] | null;
     private leftSideBearing: number[] | null;

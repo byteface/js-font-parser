@@ -28,8 +28,6 @@ var GlyfTable = /** @class */ (function () {
             // console.log(`Buffer length: ${this.buf.dataView.byteLength}`);
             if (len > 0) {
                 // Create a new ByteArray, starting at the current glyph offset
-                // const bittie = new ByteArray(new Uint8Array(this.buf.dataView.buffer, offsetCurrent, len));
-                // const bittie = new ByteArray(new Uint8Array(this.buf.dataView.buffer.slice(offsetCurrent, len)));
                 var bittie = new ByteArray(new Uint8Array(this.buf.dataView.buffer.slice(offsetCurrent, offsetCurrent + len)));
                 // Read number of contours (2 bytes)
                 var numberOfContours = (bittie.readUnsignedByte() << 8) | bittie.readUnsignedByte();

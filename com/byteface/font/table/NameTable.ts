@@ -2,8 +2,9 @@ import { ByteArray } from "../utils/ByteArray.js";
 import { Table } from "./Table.js";
 import { NameRecord } from "./NameRecord.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
+import { ITable } from "./ITable.js";
 
-export class NameTable {
+export class NameTable implements ITable {
     formatSelector: number;
     numberOfNameRecords: number;
     stringStorageOffset: number;

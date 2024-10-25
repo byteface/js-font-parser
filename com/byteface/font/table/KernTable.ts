@@ -1,8 +1,8 @@
 import { ByteArray } from "../utils/ByteArray.js";
-
+import { ITable } from "./ITable.js";
 import { Table } from "./Table.js";
 
-export class KernTable {
+export class KernTable implements ITable {
     version: number;
     nTables: number;
     tables: KernSubtable[];

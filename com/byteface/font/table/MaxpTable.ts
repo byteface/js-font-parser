@@ -1,8 +1,9 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { Table } from "./Table.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
+import { ITable } from "./ITable.js";
 
-export class MaxpTable {
+export class MaxpTable implements ITable {
     versionNumber: number;
     numGlyphs: number;
     maxPoints: number;

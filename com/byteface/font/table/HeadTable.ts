@@ -1,8 +1,9 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
+import { ITable } from "./ITable.js";
 import { Table } from "./Table.js";
 
-export class HeadTable {
+export class HeadTable  implements ITable {
     versionNumber: number;
     fontRevision: number;
     checkSumAdjustment: number;

@@ -3,8 +3,9 @@ import { CmapIndexEntry } from "./CmapIndexEntry.js";
 import { CmapFormat } from "./CmapFormat.js";
 import { Table } from "./Table.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
+import { ITable } from "./ITable.js";
 
-export class CmapTable {
+export class CmapTable implements ITable {
     version: number;
     numTables: number;
     entries: CmapIndexEntry[];

@@ -2,8 +2,9 @@ import { ByteArray } from '../utils/ByteArray.js';
 import { Panose } from './Panose.js';
 import { Table } from './Table.js';
 import { DirectoryEntry } from './DirectoryEntry.js';
+import { ITable } from './ITable.js';
 
-export class Os2Table {
+export class Os2Table implements ITable {
     version: number = 0;
     xAvgCharWidth: number = 0;
     usWeightClass: number = 0;

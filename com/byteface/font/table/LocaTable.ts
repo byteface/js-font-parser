@@ -1,8 +1,9 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
+import { ITable } from "./ITable.js";
 import { Table } from "./Table.js";
 
-export class LocaTable {
+export class LocaTable implements ITable {
     private buf: ByteArray | null;
     private offsets: number[] | null = [];
     private factor: number = 0;
