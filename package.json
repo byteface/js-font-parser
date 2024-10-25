@@ -1,0 +1,19 @@
+{
+  "name": "js-font-parser",
+  "version": "1.0.0",
+  "description": "This library can load truetype fonts for creative experiments.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack"
+  },
+  "keywords": ["font"],
+  "author": "byteface",
+  "license": "ISC",
+  "devDependencies": {
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.6.3",
+    "webpack": "^5.95.0",
+    "webpack-cli": "^5.1.4"
+  }
+}

@@ -1,0 +1,173 @@
+import { ByteArray } from "../utils/ByteArray.js";
+
+import { IGlyphDescription } from "./IGlyphDescription.js";
+
+export class GlyfSimpleDescript implements IGlyphDescription {
+    private instructions: number[] | null;
+    private parentTable: any;
+    private numberOfContours: number;
+    private xMin: number;
+    private yMin: number;
+    private xMax: number;
+    private yMax: number;
+    private endPtsOfContours: number[];
+    private flags: number[];
+    private xCoordinates: number[];
+    private yCoordinates: number[];
+    private count: number;
+
+    // Constants for flag checks
+    private onCurve: number = 0x01;
+    private xShortVector: number = 0x02;
+    private yShortVector: number = 0x04;
+    private repeat: number = 0x08;
+    private xDual: number = 0x10;
+    private yDual: number = 0x20;
+
+    constructor(parentTable: any, numberOfContours: number, bais: ByteArray) {
+
+        this.instructions = null;
+        this.parentTable = parentTable;
+        this.numberOfContours = numberOfContours;
+
+        this.xMin = (bais.readUnsignedByte() << 8) | bais.readUnsignedByte();
+        this.yMin = (bais.readUnsignedByte() << 8) | bais.readUnsignedByte();
+        this.xMax = (bais.readUnsignedByte() << 8) | bais.readUnsignedByte();
+        this.yMax = (bais.readUnsignedByte() << 8) | bais.readUnsignedByte();
+
+        // Initialize end points of contours
+        this.endPtsOfContours = [];
+        for (let i = 0; i < this.numberOfContours; i++) {
+            this.endPtsOfContours.push((bais.readUnsignedByte() << 8) | bais.readUnsignedByte());
+        }
+
+        // Calculate the total number of points
+        this.count = this.endPtsOfContours[this.numberOfContours - 1] + 1;
+
+        this.flags = [];
+        this.xCoordinates = [];
+        this.yCoordinates = [];
+
+        const instructionCount = (bais.readUnsignedByte() << 8) | bais.readUnsignedByte();
+        this.readInstructions(bais, instructionCount);
+
+        this.readFlags(this.count, bais);
+        this.readCoords(this.count, bais);
+    }
+
+    private readInstructions(byte_ar: ByteArray, count: number): void {
+        this.instructions = [];
+        for (let i = 0; i < count; i++) {
+            this.instructions.push(byte_ar.readUnsignedByte());
+        }
+    }
+
+    public getEndPtOfContours(i: number): number {
+        return this.endPtsOfContours[i];
+    }
+
+    public getFlags(i: number): number {
+        return this.flags[i];
+    }
+
+    public getXCoordinate(i: number): number {
+        return this.xCoordinates[i];
+    }
+
+    public getYCoordinate(i: number): number {
+        return this.yCoordinates[i];
+    }
+
+    public isComposite(): boolean {
+        return false;
+    }
+
+    public getPointCount(): number {
+        return this.count;
+    }
+
+    public getContourCount(): number {
+        return this.numberOfContours;
+    }
+
+    private readCoords(count: number, bais: ByteArray): void {
+        let x = 0;
+        let y = 0;
+
+        for (let i = 0; i < count; i++) {
+            if ((this.flags[i] & this.xDual) !== 0) {
+                if ((this.flags[i] & this.xShortVector) !== 0) {
+                    x += bais.readUnsignedByte();
+                }
+            } else {
+                if ((this.flags[i] & this.xShortVector) !== 0) {
+                    x += -bais.readUnsignedByte();
+                } else {
+                    let xPos = (bais.readUnsignedByte() << 8) | bais.readUnsignedByte();
+
+                    if (xPos > 60000) {
+                        xPos = 65536 - xPos;
+                        x -= xPos;
+                    } else {
+                        x += xPos;
+                    }
+                }
+            }
+            this.xCoordinates.push(x);
+        }
+
+        for (let j = 0; j < count; j++) {
+            if ((this.flags[j] & this.yDual) !== 0) {
+                if ((this.flags[j] & this.yShortVector) !== 0) {
+                    y += bais.readUnsignedByte();
+                }
+            } else {
+                if ((this.flags[j] & this.yShortVector) !== 0) {
+                    y += -bais.readUnsignedByte();
+                } else {
+                    let yPos = (bais.readUnsignedByte() << 8) | bais.readUnsignedByte();
+
+                    if (yPos > 60000) {
+                        yPos = 65536 - yPos;
+                        y -= yPos;
+                    } else {
+                        y += yPos;
+                    }
+                }
+            }
+            this.yCoordinates.push(y);
+        }
+    }
+
+    private readFlags(flagCount: number, bais: ByteArray): void {
+        for (let index = 0; index < flagCount; index++) {
+            this.flags.push(bais.readUnsignedByte());
+            if ((this.flags[index] & this.repeat) !== 0) {
+                const repeats = bais.readUnsignedByte();
+                for (let i = 1; i <= repeats; i++) {
+                    this.flags[index + i] = this.flags[index];
+                }
+                index += repeats;
+            }
+        }
+    }
+
+    public resolve(): void {
+        // Implement resolve logic here if needed
+    }
+
+
+    public getXMaximum(): number {
+        return 0;
+    }
+    public getXMinimum(): number {
+        return 0;
+    }
+    public getYMaximum(): number {
+        return 0;
+    }
+    public getYMinimum(): number {
+        return 0;
+    }
+
+}

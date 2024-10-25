@@ -9,17 +9,68 @@
 <body>
 
 <script type="text/javascript" src="js/jquery.min.js"></script>
-<script type="text/javascript" src="js/includer.js"></script>
+<!-- <script type="text/javascript" src="js/includer.js"></script> -->
 
-<script>
+<script type="module">
+
+    import { ByteArray } from './dist/utils/ByteArray.js';
+    import { RawFont } from './dist/data/RawFont.js';
+
+    function loadBinaryResource(url) {
+        return fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.arrayBuffer();
+            })
+            .then(arrayBuffer => new Uint8Array(arrayBuffer)) // Convert to ByteArray-like object
+            .catch(error => {
+                console.error('Error loading resource:', error);
+            });
+    }
+
+
+    // load the binary data of the font
+    // function load_binary_resource(url)
+    // {
+    //     var req = new XMLHttpRequest();
+    //     req.open( 'GET', url, false );
+    //     req.overrideMimeType( 'text/plain; charset=x-user-defined' );
+    //     req.send(null);
+
+    //    // alert( "text status:" + req.status);
+    //    // if(req.status != 200) return '';            
+    //    // alert( "text response:" + req.responseText);
+        
+    //     return req.responseText;
+    // }
+
 
     window.console.log("test");
 
-    var file = load_binary_resource("truetypefonts/DiscoMo.ttf");
-    var bytedata = new a3d.ByteArray( file, a3d.Endian.BIG );
-    var font = new RawFont( bytedata );
+    // var file = load_binary_resource("truetypefonts/DiscoMo.ttf");
+    // var bytedata = new a3d.ByteArray( file, a3d.Endian.BIG );
+    // var font = new RawFont( bytedata );
 
-    setInterval(doSomat,100);
+    // try {
+    var font = null;
+    const byteData = loadBinaryResource("truetypefonts/DiscoMo.ttf")
+        .then(arrayBuffer => {
+            const byte_ar = new ByteArray(arrayBuffer);
+            font = new RawFont(byte_ar);
+            setInterval(doSomat, 100);
+    })
+    .catch(error => {
+        console.error('Error loading binary resource:', error);
+    });
+
+        // Use the font as needed
+    // } catch (error) {
+    //     console.error("Error loading font:", error);
+    // }
+    
+    // setInterval(doSomat,100);
 
     function doSomat()
     {
@@ -48,6 +99,7 @@
         var firstindex=0;
         var counter=0;
         
+        console.log(g.getPointCount());
         for(var i=0;i<g.getPointCount();i++)
         {
             counter++;          
@@ -68,7 +120,7 @@
         context.fill();
     }    
 
-    
+    var offset;
     function addContourToShape( shape, glyph, startIndex, count, scale )
     {
     
@@ -135,22 +187,6 @@
     function midValue(a,b)
     {
         return (a+b)/2
-    }
-        
-        
-    // load the binary data of the font
-    function load_binary_resource(url)
-    {
-        var req = new XMLHttpRequest();
-        req.open( 'GET', url, false );
-        req.overrideMimeType( 'text/plain; charset=x-user-defined' );
-        req.send(null);
-
-       // alert( "text status:" + req.status);
-       // if(req.status != 200) return '';            
-       // alert( "text response:" + req.responseText);
-        
-        return req.responseText;
     }
 
 </script>

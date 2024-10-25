@@ -1,0 +1,127 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>SVG Glyph Drawer</title>
+    <meta charset="utf-8">
+    <style>
+        #svg-container {
+            width: 500px;
+            height: 500px;
+            border: 1px solid black;
+        }
+        path {
+            stroke: black;
+            fill: none;
+            stroke-width: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>SVG Glyph Drawer</h1>
+    <div id="svg-container"></div>
+
+    <script type="module">
+        import { ByteArray } from './dist/utils/ByteArray.js';
+        import { RawFont } from './dist/data/RawFont.js';
+
+        async function loadBinaryResource(url) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+            const arrayBuffer = await response.arrayBuffer();
+            return new Uint8Array(arrayBuffer);
+        }
+
+        async function initializeFont() {
+            const byteData = await loadBinaryResource("truetypefonts/DiscoMo.ttf");
+            const byte_ar = new ByteArray(byteData);
+            return new RawFont(byte_ar);
+        }
+
+        function getGlyphBounds(glyph) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (let i = 0; i < glyph.getPointCount(); i++) {
+                const point = glyph.getPoint(i);
+                if (point.x < minX) minX = point.x;
+                if (point.y < minY) minY = point.y;
+                if (point.x > maxX) maxX = point.x;
+                if (point.y > maxY) maxY = point.y;
+            }
+            return { minX, minY, maxX, maxY };
+        }
+
+        function drawGlyphAsSVG(font, charCode) {
+            const glyph = font.getGlyph(charCode);
+            const svgContainer = document.getElementById("svg-container");
+            svgContainer.innerHTML = ''; // Clear previous glyph
+
+            // Get glyph bounds and calculate center offset
+            const bounds = getGlyphBounds(glyph);
+            const glyphWidth = bounds.maxX - bounds.minX;
+            const glyphHeight = bounds.maxY - bounds.minY;
+            const offsetX = -bounds.minX - glyphWidth / 2;
+            const offsetY = -bounds.minY - glyphHeight / 2;
+
+            // Create SVG element
+            const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svgElement.setAttribute("width", "100%");
+            svgElement.setAttribute("height", "100%");
+            svgElement.setAttribute("viewBox", `${-glyphWidth/2} ${-glyphHeight/2} ${glyphWidth*2} ${glyphHeight*2}`);
+
+            let pathData = '';
+            let startIdx = 0;
+
+            for (let i = 0; i < glyph.getPointCount(); i++) {
+                const point = glyph.getPoint(i);
+
+                // Start new contour
+                if (i === startIdx) {
+                    pathData += `M${point.x + offsetX},${-(point.y + offsetY)} `;
+                }
+
+                // Check the type of point (on-curve or off-curve)
+                if (point.onCurve) {
+                    if (i > startIdx) {
+                        pathData += `L${point.x + offsetX},${-(point.y + offsetY)} `;
+                    }
+                } else {
+                    const nextPoint = glyph.getPoint((i + 1) % glyph.getPointCount());
+                    if (nextPoint.onCurve) {
+                        pathData += `Q${point.x + offsetX},${-(point.y + offsetY)} ${nextPoint.x + offsetX},${-(nextPoint.y + offsetY)} `;
+                    } else {
+                        const midX = (point.x + nextPoint.x) / 2;
+                        const midY = -(point.y + nextPoint.y) / 2;
+                        pathData += `Q${point.x + offsetX},${-(point.y + offsetY)} ${midX + offsetX},${midY + offsetY} `;
+                    }
+                    i++; // Skip the next point as it's part of this curve
+                }
+
+                // End contour
+                if (point.endOfContour) {
+                    pathData += 'Z ';
+                    startIdx = i + 1;
+                }
+            }
+
+            // Create path element
+            const pathElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            pathElement.setAttribute("d", pathData);
+            pathElement.setAttribute("fill", "none");
+            pathElement.setAttribute("stroke", "#000");
+            pathElement.setAttribute("stroke-width", "2");
+            svgElement.appendChild(pathElement);
+            svgContainer.appendChild(svgElement);
+        }
+
+        initializeFont().then(font => {
+            setInterval(() => {
+                const randomCharCode = Math.floor(Math.random() * 100) + 30;
+                drawGlyphAsSVG(font, randomCharCode);
+            }, 1000);
+        }).catch(error => {
+            console.error('Error loading font:', error);
+        });
+
+    </script>
+</body>
+</html>
