@@ -2,168 +2,198 @@
 <html lang="en">
 
 <head>
-    <title>Load Example</title>
+    <title>TTF FontParser Example</title>
     <meta charset="utf-8">
 </head>
-
 <body>
-
+<canvas id="myDrawing" width="800" height="800">
+    <p>Your browser doesn't support canvas</p>
+</canvas>
+    
 <script type="text/javascript" src="js/jquery.min.js"></script>
 
 <script type="module">
 
-    import { ByteArray } from './dist/utils/ByteArray.js';
-    import { RawFont } from './dist/data/RawFont.js';
+    import { FontParserTTF } from './dist/data/FontParserTTF.js';
 
-    function loadBinaryResource(url) {
-        return fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                return response.arrayBuffer();
-            })
-            .then(arrayBuffer => new Uint8Array(arrayBuffer)) // Convert to ByteArray-like object
-            .catch(error => {
-                console.error('Error loading resource:', error);
-            });
-    }
+    let font = null;
+    const GRID_SIZE = 100; // Adjust this based on the number of glyphs and desired grid size
+    const CELL_SIZE = 30; // Width and height for each glyph cell
+
+    FontParserTTF.load("truetypefonts/DiscoMo.ttf")
+        .then(ttf_font => {
+            font = ttf_font;
+            drawGrid();
+        })
+        .catch(error => {
+            console.error("Failed to load font:", error);
+        });
 
 
-    var font = null;
-    const byteData = loadBinaryResource("truetypefonts/DiscoMo.ttf")
-        .then(arrayBuffer => {
-            const byte_ar = new ByteArray(arrayBuffer);
-            font = new RawFont(byte_ar);
-            setInterval(doSomat, 100);
-    })
-    .catch(error => {
-        console.error('Error loading binary resource:', error);
-    });
+    // Define your styles in a CSS-like object
+    const cssStyles = {
+        'color': '#3498db',
+        'stroke-color': '#000000',
+        'opacity': '1',
+        'line-width': '2',
 
+        'shadow-color': '#95a5a6',
+        'shadow-blur': '10',
+        'shadow-offset-x': '4',
+        'shadow-offset-y': '4',
+        // 'transform': 'scale(1.2, 1.2) rotate(0.5)'
+    };
 
-    function doSomat()
-    {
-        drawGlyph( font, Math.round(Math.random()*100) );        
-    }
-
-    function drawGlyph(font,char)
-    {
-    
-        var SCALE = Math.random()*.5;
-    
-        var g = font.getGlyph(char);
-        var drawingCanvas = document.getElementById('myDrawing');           
-        
-        // set up the glyph
-        var context = drawingCanvas.getContext('2d');
-        context.lineWidth = 10 + Math.random()*10;
-        context.strokeStyle = "#000000";
-        context.fillStyle = Math.floor(Math.random()*16777215).toString(16);
-        context.globalAlpha = Math.random()*1;            
-        context.beginPath();
-        context.translate(Math.random()*10,Math.random()*100);
-        //context.rotate(20 * Math.PI / 180);
-        context.scale(1,-1);
-
-        var firstindex=0;
-        var counter=0;
-        
-        console.log(g.getPointCount());
-        for(var i=0;i<g.getPointCount();i++)
-        {
-            counter++;          
-            if( g.getPoint(i).endOfContour )
-            {
-                addContourToShape( context, g, firstindex, counter, SCALE);
-                firstindex=i+1;
-                counter=0;
+    function applyCanvasStyles(context, styles) {
+        for (const [key, value] of Object.entries(styles)) {
+            switch (key) {
+                case 'color':
+                case 'fill':
+                case 'fillStyle':
+                    context.fillStyle = value;
+                    break;
+                case 'stroke-color':
+                case 'strokeStyle':
+                    context.strokeStyle = value;
+                    break;
+                case 'opacity':
+                case 'globalAlpha':
+                    context.globalAlpha = parseFloat(value);
+                    break;
+                case 'line-width':
+                case 'lineWidth':
+                    context.lineWidth = parseFloat(value);
+                    break;
+                case 'line-cap':
+                case 'lineCap':
+                    context.lineCap = value;
+                    break;
+                case 'line-join':
+                case 'lineJoin':
+                    context.lineJoin = value;
+                    break;
+                case 'miter-limit':
+                case 'miterLimit':
+                    context.miterLimit = parseFloat(value);
+                    break;
+                case 'shadow-color':
+                case 'shadowColor':
+                    context.shadowColor = value;
+                    break;
+                case 'shadow-blur':
+                case 'shadowBlur':
+                    context.shadowBlur = parseFloat(value);
+                    break;
+                case 'shadow-offset-x':
+                case 'shadowOffsetX':
+                    context.shadowOffsetX = parseFloat(value);
+                    break;
+                case 'shadow-offset-y':
+                case 'shadowOffsetY':
+                    context.shadowOffsetY = parseFloat(value);
+                    break;
+                // case 'transform': 
+                //     const transforms = value.split(" ");
+                //     transforms.forEach(transform => {
+                //         const [type, arg] = transform.split("(");
+                //         const args = arg.slice(0, -1).split(",").map(Number);
+                //         if (type === "scale") context.scale(...args);
+                //         else if (type === "rotate") context.rotate(args[0]);
+                //         else if (type === "translate") context.translate(...args);
+                //     });
+                //     break;
+                // Additional CSS properties can be added here
+                default:
+                    console.warn(`Unsupported style property: ${key}`);
             }
-            else
-            {
-                //window.console.log("normal point");
-            }   
         }
-        
+    }
+
+    function drawGrid() {
+        const drawingCanvas = document.getElementById('myDrawing');
+        const context = drawingCanvas.getContext('2d');
+        let charIndex = 0;
+
+        // Loop to position glyphs in a grid
+        for (let row = 0; row < GRID_SIZE; row++) {
+            for (let col = 0; col < GRID_SIZE; col++) {
+                drawGlyph(font, charIndex, context, col * CELL_SIZE, row * CELL_SIZE);
+                charIndex++;
+            }
+        }
+    }
+
+    function drawGlyph(font, char, context, x, y) {
+        const SCALE = 0.04;
+        const glyph = font.getGlyph(char);
+        context.save();
+        context.translate(x + CELL_SIZE / 2, y + CELL_SIZE / 2); // Center glyph in each cell
+        context.scale(SCALE, -SCALE);
+
+        // context.strokeStyle = "#333";
+        // context.fillStyle = "#666";
+        applyCanvasStyles(context, cssStyles);
+
+        context.beginPath();
+        let firstindex = 0;
+        let counter = 0;
+
+        for (let i = 0; i < glyph.getPointCount(); i++) {
+            counter++;
+            if (glyph.getPoint(i).endOfContour) {
+                addContourToShape(context, glyph, firstindex, counter);
+                firstindex = i + 1;
+                counter = 0;
+            }
+        }
+
         context.closePath();
         context.stroke();
         context.fill();
-    }    
+        context.restore();
+    }
 
-    var offset;
-    function addContourToShape( shape, glyph, startIndex, count, scale )
-    {
-    
-        if (glyph.getPoint(startIndex).endOfContour)
-        {
+    function addContourToShape(context, glyph, startIndex, count) {
+        if (glyph.getPoint(startIndex).endOfContour) {
             return;
         }
- 
-        offset = 0;
-        
-        while(offset < count)
-        {
-            var p0 = glyph.getPoint(startIndex + offset%count);
-            var p1 = glyph.getPoint(startIndex + (offset+1)%count);
-            
-            if (offset == 0)
-            {
-                //window.console.log("move");
-                shape.moveTo(p0.x*scale, p0.y*scale);
+
+        let offset = 0;
+        while (offset < count) {
+            const p0 = glyph.getPoint(startIndex + offset % count);
+            const p1 = glyph.getPoint(startIndex + (offset + 1) % count);
+
+            if (offset === 0) {
+                context.moveTo(p0.x, p0.y);
             }
 
-            if (p0.onCurve)
-            {
-                if (p1.onCurve)
-                {
-                    shape.lineTo(p1.x*scale, p1.y*scale);
+            if (p0.onCurve) {
+                if (p1.onCurve) {
+                    context.lineTo(p1.x, p1.y);
                     offset++;
+                } else {
+                    const p2 = glyph.getPoint(startIndex + (offset + 2) % count);
+                    if (p2.onCurve) {
+                        context.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y);
+                    } else {
+                        context.quadraticCurveTo(p1.x, p1.y, midValue(p1.x, p2.x), midValue(p1.y, p2.y));
+                    }
+                    offset += 2;
                 }
-                else
-                {
-                    var p2 = glyph.getPoint(startIndex + (offset+2)%count);
-                    
-                    if(p2.onCurve)
-                    {
-                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, p2.x*scale, p2.y*scale);
-                    }
-                    else
-                    {
-                        shape.quadraticCurveTo(p1.x*scale, p1.y*scale, midValue(p1.x*scale, p2.x*scale), midValue(p1.y*scale, p2.y*scale));
-                    }
-                    
-                    offset+=2;
-                } 
-            }
-            else
-            {
-            
-            if(!p1.onCurve)
-            {
-                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, midValue(p0.x*scale, p1.x*scale), midValue(p0.y*scale, p1.y*scale));
-            }
-            else
-            {
-                shape.quadraticCurveTo(p0.x*scale, p0.y*scale, p1.x*scale, p1.y*scale);
-            }
-            
-            offset++;
-            
+            } else {
+                if (!p1.onCurve) {
+                    context.quadraticCurveTo(p0.x, p0.y, midValue(p0.x, p1.x), midValue(p0.y, p1.y));
+                } else {
+                    context.quadraticCurveTo(p0.x, p0.y, p1.x, p1.y);
+                }
+                offset++;
             }
         }
     }
 
-
-    function midValue(a,b)
-    {
-        return (a+b)/2
+    function midValue(a, b) {
+        return (a + b) / 2;
     }
-
 </script>
-
-<canvas id="myDrawing" width="1000" height="1000">
-<p>Your browser doesn't support canvas</p>
-</canvas>
-
 </body>
 </html>

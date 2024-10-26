@@ -13,7 +13,7 @@
 
 <script type="module">
     import { ByteArray } from './dist/utils/ByteArray.js';
-    import { RawFont } from './dist/data/RawFont.js';
+    import { FontParserTTF } from './dist/data/FontParserTTF.js';
 
     function loadBinaryResource(url) {
         return fetch(url)
@@ -38,7 +38,7 @@
     // loadBinaryResource("truetypefonts/DiscoMo.ttf")
         .then(arrayBuffer => {
             const byte_ar = new ByteArray(arrayBuffer);
-            font = new RawFont(byte_ar);
+            font = new FontParserTTF(byte_ar);
             drawGrid();
         })
         .catch(error => {

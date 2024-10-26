@@ -12,10 +12,10 @@ import { PostTable } from '../table/PostTable.js';
 import { Table } from '../table/Table.js';
 import { TableDirectory } from '../table/TableDirectory.js';
 import { TableFactory } from '../table/TableFactory.js';
-import { GlyphData } from '../data/GlyphData.js';
+import { GlyphData } from './GlyphData.js';
 import { ITable } from '../table/ITable.js';
 
-export class RawFont {
+export class FontParserTTF {
     // Define properties
     private os2: Os2Table | null = null;
     private cmap: CmapTable | null = null;
@@ -32,11 +32,26 @@ export class RawFont {
     private tableDir: TableDirectory | null = null;
     private tables: Array<any> = [];
 
+    // Static load method that returns a Promise
+    static load(url: string): Promise<FontParserTTF> {
+        return fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                return response.arrayBuffer();
+            })
+            .then(arrayBuffer => new ByteArray(new Uint8Array(arrayBuffer))) // Wrap in ByteArray
+            .then(byteArray => new FontParserTTF(byteArray)) // Create and initialize FontParserTTF
+            .catch(error => {
+                console.error('Error loading font:', error);
+                throw error; // Propagate error for further handling if needed
+            });
+    }
+
     constructor(byteData: ByteArray) {
         this.init(byteData);
     }
 
-    // Initialize the RawFont instance
+    // Initialize the FontParserTTF instance
     private init(byteData: ByteArray): void {
         // Initialize the table directory
         this.tableDir = new TableDirectory(byteData);

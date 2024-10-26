@@ -1,8 +1,6 @@
 import { ByteArray } from '../utils/ByteArray.js'
-
 import { DirectoryEntry } from './DirectoryEntry.js'
 import { Table } from './Table.js'
-
 import { GsubTable } from './GsubTable.js'
 import { Os2Table } from './Os2Table.js'
 import { CmapTable } from './CmapTable.js'
@@ -22,41 +20,28 @@ export class TableFactory {
     create(de: DirectoryEntry, byte_ar: ByteArray): any | null {
         let t: Table | null = null;
 
-        // console.log('de.TAG', de.tag);
         switch (de.tag) {
             case Table.GSUB:
-                // console.log('Table.GSUB');
-                t = new GsubTable(de, byte_ar);
-                break;
+                return new GsubTable(de, byte_ar);
             case Table.OS_2:
-                // console.log('Table.OS_2');
                 return new Os2Table(de, byte_ar);
             case Table.cmap:
-                // console.log('Table.cmap');
                 return new CmapTable(de, byte_ar);
             case Table.glyf:
-                // console.log('Table.glyf');
                 return new GlyfTable(de, byte_ar);
             case Table.head:
-                // console.log('Table.head');
                 return new HeadTable(de, byte_ar);
             case Table.hhea:
-                // console.log('Table.hhea');
                 return new HheaTable(de, byte_ar);
             case Table.hmtx:
-                // console.log('Table.hmtx');
                 return new HmtxTable(de, byte_ar);
             case Table.loca:
-                // console.log('Table.loca');
                 return new LocaTable(de, byte_ar);
             case Table.maxp:
-                // console.log('Table.maxp');
                 return new MaxpTable(de, byte_ar);
             case Table.pName:
-                // console.log('Table.pname');
                 return new NameTable(de, byte_ar);
             case Table.post:
-                // console.log('Table.post');
                 return new PostTable(de, byte_ar);
             default:
                 return t;
