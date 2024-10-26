@@ -5,7 +5,7 @@ var Color = /** @class */ (function () {
         this.range = ['#000000', '#ffffff'];
     }
     // returns a completely random color
-    Color.prototype.rndColor = function () {
+    Color.rndColor = function () {
         return '#' + ('00000' + ((Math.random() * 16777216) << 0).toString(16)).slice(-6);
     };
     // returns a random color from the range you set

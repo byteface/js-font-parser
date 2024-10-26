@@ -82,7 +82,7 @@ var FontParserTTF = /** @class */ (function () {
             console.error("Failed to get code point for character");
             return null;
         }
-        // Assuming you have some way to get platformId and encodingId
+        // TODO - we need some way to get platformId and encodingId
         var platformId = 0; // TODO - Determine the platform ID
         var encodingId = 0; // TODO - Determine the encoding ID
         var cmapFormat = this.cmap.getCmapFormat(platformId, encodingId);
@@ -95,7 +95,6 @@ var FontParserTTF = /** @class */ (function () {
             console.warn("No glyph found for code point: ".concat(codePoint));
             return null;
         }
-        // Assuming you have a method to retrieve GlyphData from the glyph index
         // return this.getGlyph(glyphIndex);
         return glyphIndex;
     };

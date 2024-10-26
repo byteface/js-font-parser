@@ -1,110 +1,39 @@
 <!DOCTYPE html>
 <html>
-<head>
-
-
-
-    <script type="text/ecmascript" src="../../com/byteface/font/utils/BinaryParser.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/data/RawFont.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/TableDirectory.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/DirectoryEntry.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/TableFactory.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/Os2Table.js"></script>    
-    <script type="text/ecmascript" src="../../com/byteface/font/table/Panose.js"></script>    
-    <script type="text/ecmascript" src="../../com/byteface/font/table/Table.js"></script>        
-    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapTable.js"></script>            
-    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfTable.js"></script>                
-    <script type="text/ecmascript" src="../../com/byteface/font/table/HeadTable.js"></script>                    
-    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapIndexEntry.js"></script>                    
-    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat0.js"></script>    
-    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat2.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat4.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/CmapFormat6.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/HheaTable.js"></script>                        
-    <script type="text/ecmascript" src="../../com/byteface/font/table/HmtxTable.js"></script>                        
-    <script type="text/ecmascript" src="../../com/byteface/font/table/LocaTable.js"></script>                        
-    <script type="text/ecmascript" src="../../com/byteface/font/table/NameTable.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/NameRecord.js"></script>    
-    <script type="text/ecmascript" src="../../com/byteface/font/table/MaxpTable.js"></script>                            
-    <script type="text/ecmascript" src="../../com/byteface/font/table/PostTable.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/GsubTable.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfSimpleDescript.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfCompositeDescript.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/Script.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/ScriptRecord.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/data/Point.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/data/GlyphData.js"></script>
-    <script type="text/ecmascript" src="../../com/byteface/font/table/GlyfCompositeComp.js"></script>
-	
-	<script type="text/ecmascript" src="../../com/byteface/font/draw/QuickFont.js"></script>
-        
-    <script type="text/ecmascript">
-        
-		var context;
-		var font;
-
-        // font loading and parsing
-        window.onload = function()
-        {
-			font = new QuickFont( "../../truetypefonts/DiscoMo.ttf" );
-			
-			var drawingCanvas = document.getElementById('myDrawing');
-			this.context = drawingCanvas.getContext('2d');
-			context.translate( 300,100 );
-
-			font.setStyle( 1, "#000000", "#ffffff", .2 );
-
-			//setStyle
-
-			// for( var i=0; i<20; i++ ){
-			// 	context = font.drawGlyph( 10, 'myDrawing' );
-			// }
-
-//			this.drawIt();		
-			
-			
-		setInterval(drawIt,1)                                                
-		}
-		
-		function drawIt()
-		{
-			this.context.translate( -200,-100 );
-			
-			for( var i=0; i<200; i++ ){
-					//		font.setStyle( Math.random()*10, "#000000", "#00ff00", .5 );
-								font.setStyle( Math.random()*1, "#000000", "#ffffff", .2 );
-				this.context = this.font.drawGlyph( 10, 'myDrawing' );
-			}
-			
-			 context.translate( 200,100 );
-			// 		
-			// 		for( var i=0; i<200; i++ ){
-			// 											font.setStyle( Math.random()*1, "#000000", "#ffffff", .2 );
-			// 			context = font.drawGlyph( 11, 'myDrawing' );
-			// 		}
-		}
-		
-		
-		
-		
-		
-
-
-    </script>    
-            
-
+<head>  
 <meta charset="utf-8">
-<title>DrawingTest</title>
-</head>
-
-
+    <title>Star Test</title>
+</head>  
 <body>
-<canvas id="myDrawing" width="500" height="500">
-<!-- <canvas id="myDrawingAlso" width="500" height="500"> -->
-
-<p>Your browser doesn't support canvas</p>
+<canvas id="myDrawing" width="800" height="800">
+    <p>Your browser doesn't support canvas</p>
 </canvas>
 
+<script type="module">
+
+    import { QuickFont } from '../../dist/draw/QuickFont.js';
+
+    const drawingCanvas = document.getElementById('myDrawing');
+    const context = drawingCanvas.getContext('2d');
+	context.translate( 300,100 );
+
+    const font = new QuickFont("../../truetypefonts/DiscoMo.ttf");
+    font.onFontLoaded().then(() => {
+        font.setStyle( 1, "#000000", "#ffffff", .2 );
+        // draw();
+        setInterval(draw, 1);
+    });
+
+    function draw()
+    {
+        context.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height); 
+
+        font.setStyle( Math.random()*10, "#000000", "#ffffff", 1 );
+        font.drawGlyph( 10, 'myDrawing' );
+
+    }
+
+</script>
+    
 </body>
 </html>

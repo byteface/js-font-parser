@@ -7,6 +7,7 @@ var QuickFont = /** @class */ (function () {
         this.FILL_STYLE = "#000000";
         this.GLOBAL_ALPHA = 1;
         this.SCALE = 0.5;
+        this.jitter = 0;
         this.fontdata = null; // Adjust type if you have a defined type for fontdata
         this.fontLoadedPromise = FontParserTTF.load(path)
             .then(function (ttf_font) {
@@ -33,9 +34,10 @@ var QuickFont = /** @class */ (function () {
         var glyphIndex = this.fontdata.getGlyphIndexByChar(char);
         return this.drawGlyph(glyphIndex, canvasId);
     };
-    QuickFont.prototype.drawGlyph = function (char, canvasId) {
+    // draws a glyph by its index (which is not particularly useful)
+    QuickFont.prototype.drawGlyph = function (index, canvasId) {
         var SCALE = this.SCALE;
-        var g = this.fontdata.getGlyph(char);
+        var g = this.fontdata.getGlyph(index);
         var drawingCanvas = document.getElementById(canvasId);
         if (!drawingCanvas) {
             console.error("Canvas not found.");
@@ -100,6 +102,55 @@ var QuickFont = /** @class */ (function () {
                 offset++;
             }
         }
+    };
+    // TODO - maybe just add jitter as a value to the original method?
+    // or extend CanvasFont and call in JitterFont or something like
+    QuickFont.prototype.addContourToShapeJitter = function (context, glyph, startIndex, count, scale) {
+        // draw each point at a random offset
+        var randomOffset = this.jitter;
+        var xShift = (Math.random() * randomOffset) - (Math.random() * randomOffset);
+        var yShift = (Math.random() * randomOffset) - (Math.random() * randomOffset);
+        if (glyph.getPoint(startIndex).endOfContour) {
+            return;
+        }
+        var offset = 0;
+        while (offset < count) {
+            var p0 = glyph.getPoint(startIndex + offset % count);
+            var p1 = glyph.getPoint(startIndex + (offset + 1) % count);
+            if (offset == 0) {
+                //window.console.log("move");
+                context.moveTo(p0.x * scale, p0.y * scale);
+            }
+            if (p0.onCurve) {
+                if (p1.onCurve) {
+                    context.lineTo((p1.x + Math.random() * xShift) * scale, (p1.y + Math.random() * yShift) * scale);
+                    offset++;
+                }
+                else {
+                    var p2 = glyph.getPoint(startIndex + (offset + 2) % count);
+                    if (p2.onCurve) {
+                        context.quadraticCurveTo((p1.x + Math.random() * xShift) * scale, (p1.y + Math.random() * yShift) * scale, (p2.x + Math.random() * xShift) * scale, (p2.y + Math.random() * xShift) * scale);
+                    }
+                    else {
+                        context.quadraticCurveTo((p1.x + Math.random() * xShift) * scale, (p1.y + Math.random() * yShift) * scale, this.midValue((p1.x + Math.random() * xShift) * scale, (p2.x + Math.random() * xShift) * scale), this.midValue(p1.y * scale, p2.y * scale));
+                    }
+                    offset += 2;
+                }
+            }
+            else {
+                if (!p1.onCurve) {
+                    context.quadraticCurveTo(p0.x * scale, p0.y * scale, this.midValue(p0.x * scale, (p1.x + Math.random() * xShift) * scale), this.midValue(p0.y * scale, p1.y * scale));
+                }
+                else {
+                    context.quadraticCurveTo(p0.x * scale, p0.y * scale, (p1.x + Math.random() * xShift) * scale, p1.y * scale);
+                }
+                offset++;
+            }
+        }
+    };
+    // how far a point randomly strays
+    QuickFont.prototype.setJitter = function (offset) {
+        this.jitter - offset;
     };
     QuickFont.prototype.midValue = function (a, b) {
         return (a + b) / 2;
