@@ -1,4 +1,6 @@
 import { ByteArray } from "../utils/ByteArray.js";
+import { LangSysRecord } from "./LangSysRecord.js";
+import { LangSys } from "./LangSys.js";
 
 export class Script {
     defaultLangSysOffset: number;

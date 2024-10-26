@@ -1,6 +1,6 @@
+import { KernSubtable } from "./KernSubtable.js";
 import { Table } from "./Table.js";
 var KernTable = /** @class */ (function () {
-    /** Creates new KernTable */
     function KernTable(de, byte_ar) {
         byte_ar.offset = de.offset;
         this.version = byte_ar.readUnsignedShort();

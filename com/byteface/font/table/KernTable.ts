@@ -1,13 +1,14 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { ITable } from "./ITable.js";
+import { KernSubtable } from "./KernSubtable.js";
 import { Table } from "./Table.js";
+
 
 export class KernTable implements ITable {
     version: number;
     nTables: number;
     tables: KernSubtable[];
 
-    /** Creates new KernTable */
     constructor(de: any, byte_ar: ByteArray) {
         byte_ar.offset = de.offset;
         this.version = byte_ar.readUnsignedShort();

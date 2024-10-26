@@ -49,9 +49,25 @@ var ByteArray = /** @class */ (function () {
         this.offset += 2; // Move the offset forward by 2 bytes for the next read
         return value;
     };
+    ByteArray.prototype.readUnsignedInt = function (offset, littleEndian) {
+        if (littleEndian === void 0) { littleEndian = false; }
+        if (offset === undefined) {
+            offset = this.offset;
+        }
+        var value = this.dataView.getUint32(offset, littleEndian);
+        this.offset += 4; // Move the offset forward by 4 bytes for the next read
+        return value;
+    };
     ByteArray.prototype.readUnsignedByte = function () {
         // Read a byte and convert it to an unsigned value
         return this.readByte() & 0xFF; // Ensure the byte is treated as unsigned
+    };
+    ByteArray.prototype.seek = function (position) {
+        // Ensure the position is within bounds
+        if (position < 0 || position >= this.dataView.byteLength) {
+            throw new RangeError("Position out of bounds");
+        }
+        this.offset = position;
     };
     return ByteArray;
 }());

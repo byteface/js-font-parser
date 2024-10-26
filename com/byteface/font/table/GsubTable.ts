@@ -3,6 +3,10 @@ import { DirectoryEntry } from "./DirectoryEntry.js";
 import { Table } from "./Table.js";
 import { ScriptList } from "./ScriptList.js";
 import { ITable } from "./ITable.js";
+import { FeatureList } from "./FeatureList.js";
+import { LookupList } from "./LookupList.js";
+import { SingleSubst } from "./SingleSubst.js";
+import { LigatureSubst } from "./LigatureSubst.js";
 
 export class GsubTable implements ITable {
     scriptList: ScriptList;

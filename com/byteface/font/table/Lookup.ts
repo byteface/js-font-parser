@@ -1,0 +1,48 @@
+// UNTESTED
+
+import { ByteArray } from "../utils/ByteArray.js";
+import { ILookupSubtableFactory } from "./ILookupSubtableFactory.js";
+import { LookupSubtable } from "./LookupSubtable";
+
+export class Lookup {
+    // LookupFlag bit enumeration
+    public static readonly IGNORE_BASE_GLYPHS: number = 0x0002;
+    public static readonly IGNORE_BASE_LIGATURES: number = 0x0004;
+    public static readonly IGNORE_BASE_MARKS: number = 0x0008;
+    public static readonly MARK_ATTACHMENT_TYPE: number = 0xFF00;
+
+    private type: number;
+    private flag: number;
+    private subTableCount: number;
+    private subTableOffsets: number[];
+    private subTables: LookupSubtable[];
+
+    constructor(factory: ILookupSubtableFactory, byte_ar: ByteArray, offset: number) {
+        byte_ar.offset = offset;
+        this.type = byte_ar.readUnsignedShort();
+        this.flag = byte_ar.readUnsignedShort();
+        this.subTableCount = byte_ar.readUnsignedShort();
+        this.subTableOffsets = new Array(this.subTableCount);
+        this.subTables = new Array(this.subTableCount);
+
+        for (let i = 0; i < this.subTableCount; i++) {
+            this.subTableOffsets[i] = byte_ar.readUnsignedShort();
+        }
+        
+        for (let j = 0; j < this.subTableCount; j++) {
+            this.subTables[j] = factory.read(this.type, byte_ar, offset + this.subTableOffsets[j]);
+        }
+    }
+
+    public getType(): number {
+        return this.type;
+    }
+
+    public getSubtableCount(): number {
+        return this.subTableCount;
+    }
+
+    public getSubtable(i: number): LookupSubtable {
+        return this.subTables[i];
+    }
+}

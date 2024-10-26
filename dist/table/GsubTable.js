@@ -1,5 +1,9 @@
 import { Table } from "./Table.js";
 import { ScriptList } from "./ScriptList.js";
+import { FeatureList } from "./FeatureList.js";
+import { LookupList } from "./LookupList.js";
+import { SingleSubst } from "./SingleSubst.js";
+import { LigatureSubst } from "./LigatureSubst.js";
 var GsubTable = /** @class */ (function () {
     function GsubTable(de, byte_ar) {
         byte_ar.offset = de.offset;

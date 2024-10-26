@@ -48,9 +48,24 @@ export class ByteArray {
         return value;
     }
 
+    readUnsignedInt(offset?: number, littleEndian: boolean = false): number {
+        if (offset === undefined) { offset = this.offset; }
+        const value = this.dataView.getUint32(offset, littleEndian);
+        this.offset += 4; // Move the offset forward by 4 bytes for the next read
+        return value;
+    }
+
     public readUnsignedByte(): number {
         // Read a byte and convert it to an unsigned value
         return this.readByte() & 0xFF; // Ensure the byte is treated as unsigned
+    }
+
+    seek(position: number): void {
+        // Ensure the position is within bounds
+        if (position < 0 || position >= this.dataView.byteLength) {
+            throw new RangeError("Position out of bounds");
+        }
+        this.offset = position;
     }
 
 

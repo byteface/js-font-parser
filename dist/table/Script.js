@@ -1,3 +1,5 @@
+import { LangSysRecord } from "./LangSysRecord.js";
+import { LangSys } from "./LangSys.js";
 var Script = /** @class */ (function () {
     function Script(byte_ar, offset) {
         byte_ar.offset = offset;
