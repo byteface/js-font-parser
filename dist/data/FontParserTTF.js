@@ -72,6 +72,33 @@ var FontParserTTF = /** @class */ (function () {
             this.glyf.run(this.maxp.numGlyphs, this.loca);
         }
     };
+    FontParserTTF.prototype.getGlyphIndexByChar = function (char) {
+        if (char.length !== 1) {
+            console.error("getGlyphByChar expects a single character");
+            return null;
+        }
+        var codePoint = char.codePointAt(0); // Convert character to Unicode code point
+        if (codePoint == null) {
+            console.error("Failed to get code point for character");
+            return null;
+        }
+        // Assuming you have some way to get platformId and encodingId
+        var platformId = 0; // TODO - Determine the platform ID
+        var encodingId = 0; // TODO - Determine the encoding ID
+        var cmapFormat = this.cmap.getCmapFormat(platformId, encodingId);
+        if (!cmapFormat) {
+            console.warn("No cmap format found for platformId: ".concat(platformId, ", encodingId: ").concat(encodingId));
+            return null;
+        }
+        var glyphIndex = cmapFormat.getGlyphIndex(codePoint);
+        if (glyphIndex == null) {
+            console.warn("No glyph found for code point: ".concat(codePoint));
+            return null;
+        }
+        // Assuming you have a method to retrieve GlyphData from the glyph index
+        // return this.getGlyph(glyphIndex);
+        return glyphIndex;
+    };
     // Get a glyph description by index
     FontParserTTF.prototype.getGlyph = function (i) {
         var _a, _b, _c, _d, _e;

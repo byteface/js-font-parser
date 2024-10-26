@@ -8,7 +8,6 @@ var QuickFont = /** @class */ (function () {
         this.GLOBAL_ALPHA = 1;
         this.SCALE = 0.5;
         this.fontdata = null; // Adjust type if you have a defined type for fontdata
-        this.wobble = 30;
         this.fontLoadedPromise = FontParserTTF.load(path)
             .then(function (ttf_font) {
             _this.fontdata = ttf_font;
@@ -30,8 +29,9 @@ var QuickFont = /** @class */ (function () {
         this.FILL_STYLE = fillStyle;
         this.GLOBAL_ALPHA = globalAlpha;
     };
-    QuickFont.prototype.setWobble = function (offset) {
-        this.wobble = offset;
+    QuickFont.prototype.drawChar = function (char, canvasId) {
+        var glyphIndex = this.fontdata.getGlyphIndexByChar(char);
+        return this.drawGlyph(glyphIndex, canvasId);
     };
     QuickFont.prototype.drawGlyph = function (char, canvasId) {
         var SCALE = this.SCALE;
@@ -54,7 +54,7 @@ var QuickFont = /** @class */ (function () {
         for (var i = 0; i < g.getPointCount(); i++) {
             counter++;
             if (g.getPoint(i).endOfContour) {
-                this.addContourToShapeWobble(context, g, firstIndex, counter, SCALE);
+                this.addContourToShape(context, g, firstIndex, counter, SCALE);
                 firstIndex = i + 1;
                 counter = 0;
             }
@@ -63,46 +63,6 @@ var QuickFont = /** @class */ (function () {
         context.stroke();
         context.fill();
         return context;
-    };
-    QuickFont.prototype.addContourToShapeWobble = function (context, glyph, startIndex, count, scale) {
-        var randomOffset = this.wobble;
-        var xShift = (Math.random() * randomOffset) - (Math.random() * randomOffset);
-        var yShift = (Math.random() * randomOffset) - (Math.random() * randomOffset);
-        if (glyph.getPoint(startIndex).endOfContour)
-            return;
-        var offset = 0;
-        while (offset < count) {
-            var p0 = glyph.getPoint(startIndex + offset % count);
-            var p1 = glyph.getPoint(startIndex + (offset + 1) % count);
-            if (offset === 0) {
-                context.moveTo(p0.x * scale, p0.y * scale);
-            }
-            if (p0.onCurve) {
-                if (p1.onCurve) {
-                    context.lineTo((p1.x + xShift) * scale, (p1.y + yShift) * scale);
-                    offset++;
-                }
-                else {
-                    var p2 = glyph.getPoint(startIndex + (offset + 2) % count);
-                    if (p2.onCurve) {
-                        context.quadraticCurveTo((p1.x + xShift) * scale, (p1.y + yShift) * scale, (p2.x + xShift) * scale, (p2.y + xShift) * scale);
-                    }
-                    else {
-                        context.quadraticCurveTo((p1.x + xShift) * scale, (p1.y + yShift) * scale, this.midValue((p1.x + xShift) * scale, (p2.x + xShift) * scale), this.midValue(p1.y * scale, p2.y * scale));
-                    }
-                    offset += 2;
-                }
-            }
-            else {
-                if (!p1.onCurve) {
-                    context.quadraticCurveTo(p0.x * scale, p0.y * scale, this.midValue(p0.x * scale, (p1.x + xShift) * scale), this.midValue(p0.y * scale, p1.y * scale));
-                }
-                else {
-                    context.quadraticCurveTo(p0.x * scale, p0.y * scale, (p1.x + xShift) * scale, p1.y * scale);
-                }
-                offset++;
-            }
-        }
     };
     QuickFont.prototype.addContourToShape = function (context, glyph, startIndex, count, scale) {
         if (glyph.getPoint(startIndex).endOfContour)

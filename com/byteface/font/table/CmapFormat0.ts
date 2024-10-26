@@ -1,6 +1,8 @@
 import { ByteArray } from "../utils/ByteArray.js";
+import { ICmapFormat } from "./ICmapFormat.js";
 
-export class CmapFormat0 {
+export class CmapFormat0 implements ICmapFormat {
+
     glyphIdArray: number[];
     first: number;
     last: number;
@@ -42,6 +44,19 @@ export class CmapFormat0 {
         } else {
             return 0;
         }
+    }
+
+    // Method to get the format type (always returns 0 for CmapFormat0)
+    getFormatType(): number {
+        return this.format;
+    }
+
+    // Method to get the glyph index for a given code point
+    getGlyphIndex(codePoint: number): number | null {
+        if (codePoint >= 0 && codePoint < this.glyphIdArray.length) {
+            return this.glyphIdArray[codePoint];
+        }
+        return null;
     }
 
     toString(): string {

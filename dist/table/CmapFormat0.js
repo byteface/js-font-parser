@@ -29,6 +29,17 @@ var CmapFormat0 = /** @class */ (function () {
             return 0;
         }
     };
+    // Method to get the format type (always returns 0 for CmapFormat0)
+    CmapFormat0.prototype.getFormatType = function () {
+        return this.format;
+    };
+    // Method to get the glyph index for a given code point
+    CmapFormat0.prototype.getGlyphIndex = function (codePoint) {
+        if (codePoint >= 0 && codePoint < this.glyphIdArray.length) {
+            return this.glyphIdArray[codePoint];
+        }
+        return null;
+    };
     CmapFormat0.prototype.toString = function () {
         return "format: ".concat(this.format, ", length: ").concat(this.length, ", version: ").concat(this.version);
     };

@@ -1,4 +1,3 @@
-import { ByteArray } from '../utils/ByteArray.js';
 import { FontParserTTF } from '../data/FontParserTTF.js';
 
 export class QuickFont {
@@ -10,20 +9,7 @@ export class QuickFont {
     private SCALE: number = 0.5;
     
     private fontdata: any = null;  // Adjust type if you have a defined type for fontdata
-    private wobble: number = 30;
 
-    // constructor(path: string) {
-    //     FontParserTTF.load(path)
-    //     .then(ttf_font => {
-    //         this.fontdata = ttf_font;
-    //     })
-    //     .catch(error => {
-    //         console.error("Failed to load font:", error);
-    //     });
-    // }
-
-
-    // Constructor sets up a font loading promise
     private fontLoadedPromise: Promise<void>;
 
     constructor(path: string) {
@@ -41,7 +27,6 @@ export class QuickFont {
         return this.fontLoadedPromise;
     }
 
-
     setProps(scale: number): void {
         this.SCALE = scale;
     }
@@ -53,13 +38,15 @@ export class QuickFont {
         this.GLOBAL_ALPHA = globalAlpha;
     }
 
-    setWobble(offset: number): void {
-        this.wobble = offset;
+    drawChar(char: string, canvasId:string): CanvasRenderingContext2D | null {
+        const glyphIndex = this.fontdata.getGlyphIndexByChar(char);
+        return this.drawGlyph(glyphIndex, canvasId);
     }
 
-    drawGlyph(char: string, canvasId: string): CanvasRenderingContext2D | null {
+    // draws a glyph by its index (which is not particularly useful)
+    drawGlyph(index: string, canvasId: string): CanvasRenderingContext2D | null {
         const SCALE = this.SCALE;
-        const g = this.fontdata.getGlyph(char);
+        const g = this.fontdata.getGlyph(index);
         const drawingCanvas = document.getElementById(canvasId) as HTMLCanvasElement;
         
         if (!drawingCanvas) {
@@ -82,7 +69,7 @@ export class QuickFont {
         for (let i = 0; i < g.getPointCount(); i++) {
             counter++;
             if (g.getPoint(i).endOfContour) {
-                this.addContourToShapeWobble(context, g, firstIndex, counter, SCALE);
+                this.addContourToShape(context, g, firstIndex, counter, SCALE);
                 firstIndex = i + 1;
                 counter = 0;
             }
@@ -92,73 +79,6 @@ export class QuickFont {
         context.stroke();
         context.fill();
         return context;
-    }
-
-    private addContourToShapeWobble(
-        context: CanvasRenderingContext2D,
-        glyph: any,
-        startIndex: number,
-        count: number,
-        scale: number
-    ): void {
-        const randomOffset = this.wobble;
-        let xShift = (Math.random() * randomOffset) - (Math.random() * randomOffset);
-        let yShift = (Math.random() * randomOffset) - (Math.random() * randomOffset);
-
-        if (glyph.getPoint(startIndex).endOfContour) return;
-
-        let offset = 0;
-
-        while (offset < count) {
-            const p0 = glyph.getPoint(startIndex + offset % count);
-            const p1 = glyph.getPoint(startIndex + (offset + 1) % count);
-
-            if (offset === 0) {
-                context.moveTo(p0.x * scale, p0.y * scale);
-            }
-
-            if (p0.onCurve) {
-                if (p1.onCurve) {
-                    context.lineTo((p1.x + xShift) * scale, (p1.y + yShift) * scale);
-                    offset++;
-                } else {
-                    const p2 = glyph.getPoint(startIndex + (offset + 2) % count);
-                    if (p2.onCurve) {
-                        context.quadraticCurveTo(
-                            (p1.x + xShift) * scale, 
-                            (p1.y + yShift) * scale, 
-                            (p2.x + xShift) * scale, 
-                            (p2.y + xShift) * scale
-                        );
-                    } else {
-                        context.quadraticCurveTo(
-                            (p1.x + xShift) * scale, 
-                            (p1.y + yShift) * scale, 
-                            this.midValue((p1.x + xShift) * scale, (p2.x + xShift) * scale), 
-                            this.midValue(p1.y * scale, p2.y * scale)
-                        );
-                    }
-                    offset += 2;
-                }
-            } else {
-                if (!p1.onCurve) {
-                    context.quadraticCurveTo(
-                        p0.x * scale, 
-                        p0.y * scale, 
-                        this.midValue(p0.x * scale, (p1.x + xShift) * scale), 
-                        this.midValue(p0.y * scale, p1.y * scale)
-                    );
-                } else {
-                    context.quadraticCurveTo(
-                        p0.x * scale, 
-                        p0.y * scale, 
-                        (p1.x + xShift) * scale, 
-                        p1.y * scale
-                    );
-                }
-                offset++;
-            }
-        }
     }
 
     private addContourToShape(

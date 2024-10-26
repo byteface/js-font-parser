@@ -90,6 +90,40 @@ export class FontParserTTF {
         }
     }
 
+
+    public getGlyphIndexByChar(char: string): GlyphData | null {
+        if (char.length !== 1) {
+            console.error("getGlyphByChar expects a single character");
+            return null;
+        }
+
+        const codePoint = char.codePointAt(0); // Convert character to Unicode code point
+        if (codePoint == null) {
+            console.error("Failed to get code point for character");
+            return null;
+        }
+
+        // TODO - we need some way to get platformId and encodingId
+        const platformId = 0; // TODO - Determine the platform ID
+        const encodingId = 0; // TODO - Determine the encoding ID
+        
+        const cmapFormat = this.cmap.getCmapFormat(platformId, encodingId);
+        if (!cmapFormat) {
+            console.warn(`No cmap format found for platformId: ${platformId}, encodingId: ${encodingId}`);
+            return null;
+        }
+
+        const glyphIndex = cmapFormat.getGlyphIndex(codePoint);
+        if (glyphIndex == null) {
+            console.warn(`No glyph found for code point: ${codePoint}`);
+            return null;
+        }
+
+        // return this.getGlyph(glyphIndex);
+        return glyphIndex;
+    }
+
+
     // Get a glyph description by index
     public getGlyph(i: number): GlyphData | null {
         const description = this.glyf?.getDescription(i);
