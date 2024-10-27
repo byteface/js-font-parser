@@ -104,7 +104,7 @@ export class FontParserTTF {
         }
 
         // TODO - we need some way to get platformId and encodingId
-        const platformId = 0; // TODO - Determine the platform ID
+        const platformId = 1; // TODO - Determine the platform ID
         const encodingId = 0; // TODO - Determine the encoding ID
         
         const cmapFormat = this.cmap.getCmapFormat(platformId, encodingId);
