@@ -1,24 +1,16 @@
 // UNTESTED
 
-import { ByteArray } from '../utils/ByteArray';
-import { CoverageFormat1 } from './CoverageFormat1';
-import { CoverageFormat2 } from './CoverageFormat2';
+// TODO - where is this used? 
+// as we changed the implmentation to have the coverageformat classes implement an interface
+
+import { ByteArray } from '../utils/ByteArray.js';
+import { CoverageFormat1 } from './CoverageFormat1.js';
+import { CoverageFormat2 } from './CoverageFormat2.js';
+import { ICoverage } from './ICoverage.js';
 
 
 export class Coverage {
-    
-    public getFormat(): number {
-        return -1;
-    }
 
-    /**
-     * @param glyphId The ID of the glyph to find.
-     * @return The index of the glyph within the coverage, or -1 if the glyph
-     * can't be found.
-     */
-    public findGlyph(glyphId: number): number {
-        return -1;
-    }
 
     /**
      * 
@@ -26,7 +18,7 @@ export class Coverage {
      * @return 
      * 
      */
-    public static read(byte_ar: ByteArray): Coverage | null {
+    public static read(byte_ar: ByteArray): ICoverage | null {
         let c: Coverage | null = null;
         const format: number = byte_ar.readUnsignedShort();
         if (format === 1) {
@@ -36,4 +28,5 @@ export class Coverage {
         }
         return c;
     }
+
 }

@@ -1,20 +1,9 @@
 // UNTESTED
-import { CoverageFormat1 } from './CoverageFormat1';
-import { CoverageFormat2 } from './CoverageFormat2';
+import { CoverageFormat1 } from './CoverageFormat1.js';
+import { CoverageFormat2 } from './CoverageFormat2.js';
 var Coverage = /** @class */ (function () {
     function Coverage() {
     }
-    Coverage.prototype.getFormat = function () {
-        return -1;
-    };
-    /**
-     * @param glyphId The ID of the glyph to find.
-     * @return The index of the glyph within the coverage, or -1 if the glyph
-     * can't be found.
-     */
-    Coverage.prototype.findGlyph = function (glyphId) {
-        return -1;
-    };
     /**
      *
      * @param byte_ar

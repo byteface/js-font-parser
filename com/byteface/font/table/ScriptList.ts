@@ -1,5 +1,4 @@
 import { ByteArray } from "../utils/ByteArray.js";
-
 import { Script } from "./Script.js";
 import { ScriptRecord } from "./ScriptRecord.js";
 

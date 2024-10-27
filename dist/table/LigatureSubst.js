@@ -13,8 +13,8 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-import { LigatureSubstFormat1 } from "./LigatureSubstFormat1";
-import { LookupSubtable } from "./LookupSubtable";
+import { LigatureSubstFormat1 } from "./LigatureSubstFormat1.js";
+import { LookupSubtable } from "./LookupSubtable.js";
 var LigatureSubst = /** @class */ (function (_super) {
     __extends(LigatureSubst, _super);
     function LigatureSubst() {

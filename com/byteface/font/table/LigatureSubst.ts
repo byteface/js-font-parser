@@ -1,6 +1,6 @@
-import { ByteArray } from "../utils/ByteArray";
-import { LigatureSubstFormat1 } from "./LigatureSubstFormat1";
-import { LookupSubtable } from "./LookupSubtable";
+import { ByteArray } from "../utils/ByteArray.js";
+import { LigatureSubstFormat1 } from "./LigatureSubstFormat1.js";
+import { LookupSubtable } from "./LookupSubtable.js";
 
 export class LigatureSubst extends LookupSubtable {
     

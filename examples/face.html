@@ -11,13 +11,13 @@
 
 <script type="module">
 
-    import { QuickFont } from '../../dist/draw/QuickFont.js';
+    import { CanvasGlyph } from '../../dist/draw/CanvasGlyph.js';
     
     const drawingCanvas = document.getElementById('myDrawing');
     const context = drawingCanvas.getContext('2d');
     context.translate( 200, 300 );
 
-    const font = new QuickFont("../../truetypefonts/20FACES.TTF");
+    const font = new CanvasGlyph("../../truetypefonts/20FACES.TTF");
     font.onFontLoaded().then(() => {
         font.setStyle(1, "#000000", "#ffffff", 0.2);
         drawIt();

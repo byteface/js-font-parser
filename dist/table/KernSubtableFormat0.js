@@ -14,8 +14,8 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-import { KerningPair } from './KerningPair';
-import { KernSubtable } from './KernSubtable';
+import { KerningPair } from './KerningPair.js';
+import { KernSubtable } from './KernSubtable.js';
 var KernSubtableFormat0 = /** @class */ (function (_super) {
     __extends(KernSubtableFormat0, _super);
     function KernSubtableFormat0(byte_ar) {

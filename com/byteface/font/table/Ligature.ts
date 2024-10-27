@@ -1,4 +1,4 @@
-import { ByteArray } from "../utils/ByteArray";
+import { ByteArray } from "../utils/ByteArray.js";
 
 export class Ligature {
     private ligGlyph: number;

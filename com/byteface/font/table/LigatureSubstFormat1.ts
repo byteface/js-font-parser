@@ -1,9 +1,10 @@
-import { ByteArray } from "../utils/ByteArray";
-import { Coverage } from "./Coverage";
-import { LigatureSet } from "./LigatureSet";
-import { LigatureSubst } from "./LigatureSubst";
+import { ByteArray } from "../utils/ByteArray.js";
+import { Coverage } from "./Coverage.js";
+import { LigatureSet } from "./LigatureSet.js";
+// import { LigatureSubst } from "./LigatureSubst.js";
+// extends LigatureSubst - TODO - may need to make interface? see SingleSubsFormat
 
-export class LigatureSubstFormat1 extends LigatureSubst {
+export class LigatureSubstFormat1 {
     private coverageOffset: number;
     private ligSetCount: number;
     private ligatureSetOffsets: number[];
@@ -11,7 +12,6 @@ export class LigatureSubstFormat1 extends LigatureSubst {
     private ligatureSets: LigatureSet[];
 
     constructor(byteAr: ByteArray, offset: number) {
-        super();
         this.coverageOffset = byteAr.readUnsignedShort();
         this.ligSetCount = byteAr.readUnsignedShort();
         this.ligatureSetOffsets = new Array(this.ligSetCount);

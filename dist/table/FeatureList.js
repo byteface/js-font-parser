@@ -1,6 +1,6 @@
 // UNTESTED
-import { FeatureRecord } from './FeatureRecord';
-import { Feature } from './Feature';
+import { FeatureRecord } from './FeatureRecord.js';
+import { Feature } from './Feature.js';
 var FeatureList = /** @class */ (function () {
     function FeatureList(byte_ar, offset) {
         byte_ar.offset = offset;

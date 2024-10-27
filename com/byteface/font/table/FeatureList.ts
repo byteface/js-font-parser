@@ -1,9 +1,9 @@
 // UNTESTED
 
-import { ByteArray } from '../utils/ByteArray';
-import { FeatureRecord } from './FeatureRecord';
-import { Feature } from './Feature';
-import { LangSys } from './LangSys';
+import { ByteArray } from '../utils/ByteArray.js';
+import { FeatureRecord } from './FeatureRecord.js';
+import { Feature } from './Feature.js';
+import { LangSys } from './LangSys.js';
 
 export class FeatureList {
     featureCount: number;

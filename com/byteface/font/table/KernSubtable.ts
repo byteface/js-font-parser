@@ -1,9 +1,9 @@
 // UNTESTED
 
-import { ByteArray } from '../utils/ByteArray';
-import { KerningPair } from './KerningPair';
-import { KernSubtableFormat0 } from './KernSubtableFormat0';
-import { KernSubtableFormat2 } from './KernSubtableFormat2';
+import { ByteArray } from '../utils/ByteArray.js';
+import { KerningPair } from './KerningPair.js';
+import { KernSubtableFormat0 } from './KernSubtableFormat0.js';
+import { KernSubtableFormat2 } from './KernSubtableFormat2.js';
 
 export class KernSubtable {
 

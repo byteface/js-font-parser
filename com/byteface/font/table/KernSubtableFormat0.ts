@@ -1,8 +1,8 @@
 // UNTESTED
 
-import { ByteArray } from '../utils/ByteArray';
-import { KerningPair } from './KerningPair';
-import { KernSubtable } from './KernSubtable';
+import { ByteArray } from '../utils/ByteArray.js';
+import { KerningPair } from './KerningPair.js';
+import { KernSubtable } from './KernSubtable.js';
 
 export class KernSubtableFormat0 extends KernSubtable {
     private nPairs: number;

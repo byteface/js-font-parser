@@ -1,16 +1,14 @@
 // UNTESTED
 
-import { ByteArray } from "../utils/ByteArray";
-import { Coverage } from './Coverage';
+import { ByteArray } from "../utils/ByteArray.js";
+import { ICoverage } from './ICoverage.js';
 
 
-export class CoverageFormat1 extends Coverage {
+export class CoverageFormat1 implements ICoverage {
     private glyphCount: number;
     private glyphIds: number[];
 
-    /** Creates new CoverageFormat1 */
-    public constructor(byte_ar: ByteArray) {
-        super(); // Call the parent constructor
+    constructor(byte_ar: ByteArray) {
         this.glyphCount = byte_ar.readUnsignedShort();
         this.glyphIds = new Array(this.glyphCount);
         for (let i: number = 0; i < this.glyphCount; i++) {
@@ -18,11 +16,11 @@ export class CoverageFormat1 extends Coverage {
         }
     }
 
-    public override getFormat(): number {
+    public getFormat(): number {
         return 1;
     }
 
-    public override findGlyph(glyphId: number): number {
+    public findGlyph(glyphId: number): number {
         for (let i: number = 0; i < this.glyphCount; i++) {
             if (this.glyphIds[i] === glyphId) {
                 return i;

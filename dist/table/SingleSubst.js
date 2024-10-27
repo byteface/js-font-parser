@@ -14,20 +14,14 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-import { LookupSubtable } from "./LookupSubtable";
-import { SingleSubstFormat1 } from "./SingleSubstFormat1";
-import { SingleSubstFormat2 } from "./SingleSubstFormat2";
+import { LookupSubtable } from "./LookupSubtable.js";
+import { SingleSubstFormat1 } from "./SingleSubstFormat1.js";
+import { SingleSubstFormat2 } from "./SingleSubstFormat2.js";
 var SingleSubst = /** @class */ (function (_super) {
     __extends(SingleSubst, _super);
     function SingleSubst() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
-    SingleSubst.prototype.getFormat = function () {
-        return -1;
-    };
-    SingleSubst.prototype.substitute = function (glyphId) {
-        return -1;
-    };
     SingleSubst.read = function (byte_ar, offset) {
         var s = null;
         byte_ar.offset = offset;

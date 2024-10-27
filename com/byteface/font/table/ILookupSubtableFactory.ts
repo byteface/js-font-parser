@@ -1,7 +1,7 @@
 // UNTESTED
 
-import { ByteArray } from "../utils/ByteArray";
-import { LookupSubtable } from "./LookupSubtable";
+import { ByteArray } from "../utils/ByteArray.js";
+import { LookupSubtable } from "./LookupSubtable.js";
 
 export interface ILookupSubtableFactory {
 	    

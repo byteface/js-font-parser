@@ -1,6 +1,6 @@
 // UNTESTED
 
-import { ByteArray } from "../utils/ByteArray";
+import { ByteArray } from "../utils/ByteArray.js";
 
 export class Feature {
     private featureParams: number;

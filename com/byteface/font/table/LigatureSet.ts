@@ -1,5 +1,5 @@
-import { ByteArray } from "../utils/ByteArray";
-import { Ligature } from "./Ligature";
+import { ByteArray } from "../utils/ByteArray.js";
+import { Ligature } from "./Ligature.js";
 
 export class LigatureSet {
     private ligatureCount: number;

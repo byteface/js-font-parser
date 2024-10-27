@@ -1,21 +1,13 @@
 // UNTESTED
 
-import { ByteArray } from "../utils/ByteArray";
-import { LookupSubtable } from "./LookupSubtable";
-import { SingleSubstFormat1 } from "./SingleSubstFormat1";
-import { SingleSubstFormat2 } from "./SingleSubstFormat2";
+import { ByteArray } from "../utils/ByteArray.js"
+import { LookupSubtable } from "./LookupSubtable.js"
+import { SingleSubstFormat1 } from "./SingleSubstFormat1.js"
+import { SingleSubstFormat2 } from "./SingleSubstFormat2.js";
 
 	
 export class SingleSubst extends LookupSubtable {
-    
-    public getFormat(): number {
-        return -1;
-    }
 
-    public substitute(glyphId: number): number {
-        return -1;
-    }
-    
     public static read(byte_ar: ByteArray, offset: number): SingleSubst | null {
         let s: SingleSubst | null = null;
         byte_ar.offset = offset;

@@ -1,8 +1,8 @@
 // UNTESTED
 
-import { ByteArray } from '../utils/ByteArray';
-import { DirectoryEntry } from './DirectoryEntry';
-import { Program } from './Program';
+import { ByteArray } from '../utils/ByteArray.js';
+import { DirectoryEntry } from './DirectoryEntry.js';
+import { Program } from './Program.js';
 
 export class PrepTable extends Program {
 

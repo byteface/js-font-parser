@@ -11,13 +11,13 @@
 
 <script type="module">
 
-    import { QuickFont } from '../../dist/draw/QuickFont.js';
+    import { CanvasGlyph } from '../../dist/draw/CanvasGlyph.js';
     
     const drawingCanvas = document.getElementById('myDrawing');
     const context = drawingCanvas.getContext('2d');
     context.translate( 100, 100 );
 
-    const font = new QuickFont("../../truetypefonts/Quill.ttf");
+    const font = new CanvasGlyph("../../truetypefonts/Quill.ttf");
     font.onFontLoaded().then(() => {
         font.setStyle(1, "#000000", "#ffffff", 0.2);
         // setInterval(drawIt,1);
@@ -26,8 +26,8 @@
     
     function drawIt()
     {
-        context = font.drawGlyph( 34, 'myDrawing' );
-        // context = font.drawChar( "A", 'myDrawing' ); // TODO - not working
+        // context = font.drawGlyph( 34, 'myDrawing' );
+        context = font.drawChar( "A", 'myDrawing' ); // TODO - not working
     }
 
 </script>

@@ -1,4 +1,4 @@
-import { Ligature } from "./Ligature";
+import { Ligature } from "./Ligature.js";
 var LigatureSet = /** @class */ (function () {
     function LigatureSet(byteAr, offset) {
         byteAr.offset = offset;

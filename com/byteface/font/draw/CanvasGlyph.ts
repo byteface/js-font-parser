@@ -1,6 +1,6 @@
 import { FontParserTTF } from '../data/FontParserTTF.js';
 
-export class QuickFont {
+export class CanvasGlyph {
 
     private LINE_WIDTH: number = 1;
     private STROKE_STYLE: string = "#000000";
