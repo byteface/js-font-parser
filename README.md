@@ -71,6 +71,7 @@ This requires a deeper understanding of the library
 - `docs/API.md`
 - `docs/PORTING.md`
 - `docs/WISHLIST.md`
+- `docs/DEMO_NOTES.md`
 
 
 

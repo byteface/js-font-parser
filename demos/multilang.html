@@ -34,6 +34,7 @@
 <script type="module">
     import { FontParserTTF } from '../dist/data/FontParserTTF.js';
     import { Debug } from '../dist/utils/Debug.js';
+    import { drawString } from './shared/glyph-render.js';
 
     const DEBUG = false;
     Debug.enabled = DEBUG;
@@ -97,7 +98,12 @@
         const url = `../truetypefonts/noto/${encodeURIComponent(sample.file)}`;
         FontParserTTF.load(url)
             .then(font => {
-                drawString(font, sample.text, canvas, 20, 160);
+                drawString(font, sample.text, canvas, {
+                    x: 20,
+                    y: 160,
+                    scale: 0.09,
+                    styles: cssStyles
+                });
             })
             .catch(error => {
                 console.error("Failed to load font:", sample.file, error);
@@ -111,116 +117,6 @@
         'line-width': '2'
     };
 
-    function applyCanvasStyles(context, styles) {
-        for (const [key, value] of Object.entries(styles)) {
-            switch (key) {
-                case 'color':
-                case 'fill':
-                case 'fillStyle':
-                    context.fillStyle = value;
-                    break;
-                case 'stroke-color':
-                case 'strokeStyle':
-                    context.strokeStyle = value;
-                    break;
-                case 'opacity':
-                case 'globalAlpha':
-                    context.globalAlpha = parseFloat(value);
-                    break;
-                case 'line-width':
-                case 'lineWidth':
-                    context.lineWidth = parseFloat(value);
-                    break;
-                default:
-                    break;
-            }
-        }
-    }
-
-    function drawString(font, text, canvas, x, y) {
-        const SCALE = 0.09;
-        const context = canvas.getContext('2d');
-        let cursorX = x;
-
-        context.save();
-        context.translate(0, y);
-        context.scale(SCALE, -SCALE);
-        applyCanvasStyles(context, cssStyles);
-
-        for (const ch of text) {
-            const glyph = font.getGlyphByChar(ch);
-            if (!glyph) {
-                cursorX += 10;
-                continue;
-            }
-
-            context.save();
-            context.translate(cursorX / SCALE, 0);
-            context.beginPath();
-
-            let firstindex = 0;
-            let counter = 0;
-            for (let i = 0; i < glyph.getPointCount(); i++) {
-                counter++;
-                if (glyph.getPoint(i).endOfContour) {
-                    addContourToShape(context, glyph, firstindex, counter);
-                    firstindex = i + 1;
-                    counter = 0;
-                }
-            }
-
-            context.closePath();
-            context.stroke();
-            context.fill();
-            context.restore();
-
-            cursorX += glyph.advanceWidth * SCALE;
-        }
-
-        context.restore();
-    }
-
-    function addContourToShape(context, glyph, startIndex, count) {
-        if (glyph.getPoint(startIndex).endOfContour) {
-            return;
-        }
-
-        let offset = 0;
-        while (offset < count) {
-            const p0 = glyph.getPoint(startIndex + offset % count);
-            const p1 = glyph.getPoint(startIndex + (offset + 1) % count);
-
-            if (offset === 0) {
-                context.moveTo(p0.x, p0.y);
-            }
-
-            if (p0.onCurve) {
-                if (p1.onCurve) {
-                    context.lineTo(p1.x, p1.y);
-                    offset++;
-                } else {
-                    const p2 = glyph.getPoint(startIndex + (offset + 2) % count);
-                    if (p2.onCurve) {
-                        context.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y);
-                    } else {
-                        context.quadraticCurveTo(p1.x, p1.y, midValue(p1.x, p2.x), midValue(p1.y, p2.y));
-                    }
-                    offset += 2;
-                }
-            } else {
-                if (!p1.onCurve) {
-                    context.quadraticCurveTo(p0.x, p0.y, midValue(p0.x, p1.x), midValue(p0.y, p1.y));
-                } else {
-                    context.quadraticCurveTo(p0.x, p0.y, p1.x, p1.y);
-                }
-                offset++;
-            }
-        }
-    }
-
-    function midValue(a, b) {
-        return (a + b) / 2;
-    }
 </script>
 </body>
 </html>
