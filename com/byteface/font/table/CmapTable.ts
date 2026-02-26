@@ -48,6 +48,16 @@ export class CmapTable implements ITable {
         return null;
     }
 
+    getCmapFormats(platformId: number, encodingId: number): any[] {
+        const matches: any[] = [];
+        for (let i = 0; i < this.numTables; i++) {
+            if (this.entries[i].platformId === platformId && this.entries[i].encodingId === encodingId) {
+                matches.push(this.formats[i]);
+            }
+        }
+        return matches;
+    }
+
     getType(): number {
         return Table.cmap;
     }

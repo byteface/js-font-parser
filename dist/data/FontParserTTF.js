@@ -74,7 +74,7 @@ var FontParserTTF = /** @class */ (function () {
     };
     FontParserTTF.prototype.getGlyphIndexByChar = function (char) {
         if (char.length !== 1) {
-            console.error("getGlyphByChar expects a single character");
+            console.error("getGlyphIndexByChar expects a single character");
             return null;
         }
         var codePoint = char.codePointAt(0); // Convert character to Unicode code point
@@ -82,29 +82,39 @@ var FontParserTTF = /** @class */ (function () {
             console.error("Failed to get code point for character");
             return null;
         }
-        // TODO - we need some way to get platformId and encodingId
-        var platformId = 3; // TODO - Determine the platform ID
-        var encodingId = 1; // TODO - Determine the encoding ID
-        var cmapFormat = this.cmap.getCmapFormat(platformId, encodingId);
-        if (!cmapFormat) {
-            console.warn("No cmap format found for platformId: ".concat(platformId, ", encodingId: ").concat(encodingId));
+        if (!this.cmap) {
+            console.warn("No cmap table available");
             return null;
         }
-        console.log(cmapFormat);
-        console.log("codePoint", codePoint);
-        // for (let codePoint = 32; codePoint <= 127; codePoint++) {
-        //     const glyphIndex = cmapFormat.mapCharCode(codePoint);
-        //     console.log(`Code Point: ${codePoint} (char: ${String.fromCodePoint(codePoint)}) => Glyph Index: ${glyphIndex}`);
-        // }
-        cmapFormat.generateMappingTable();
-        var glyphIndex = cmapFormat.getGlyphIndex(codePoint);
-        console.log("glyphIndex!!!!!!", glyphIndex);
-        if (glyphIndex == null) {
+        var cmapFormat = this.getBestCmapFormat();
+        if (!cmapFormat) {
+            console.warn("No cmap format available");
+            return null;
+        }
+        var glyphIndex = typeof cmapFormat.getGlyphIndex === "function"
+            ? cmapFormat.getGlyphIndex(codePoint)
+            : cmapFormat.mapCharCode(codePoint);
+        if (glyphIndex == null || glyphIndex === 0) {
             console.warn("No glyph found for code point: ".concat(codePoint));
             return null;
         }
-        // return this.getGlyph(glyphIndex);
         return glyphIndex;
+    };
+    FontParserTTF.prototype.getGlyphByChar = function (char) {
+        var glyphIndex = this.getGlyphIndexByChar(char);
+        if (glyphIndex == null)
+            return null;
+        return this.getGlyph(glyphIndex);
+    };
+    FontParserTTF.prototype.getGlyphIndicesForString = function (text) {
+        var indices = [];
+        for (var _i = 0, text_1 = text; _i < text_1.length; _i++) {
+            var ch = text_1[_i];
+            var idx = this.getGlyphIndexByChar(ch);
+            if (idx != null)
+                indices.push(idx);
+        }
+        return indices;
     };
     // Get a glyph description by index
     FontParserTTF.prototype.getGlyph = function (i) {
@@ -132,6 +142,38 @@ var FontParserTTF = /** @class */ (function () {
     // Return a table by type
     FontParserTTF.prototype.getTable = function (tableType) {
         return this.tables.find(function (tab) { return (tab === null || tab === void 0 ? void 0 : tab.getType()) === tableType; }) || null;
+    };
+    FontParserTTF.prototype.getBestCmapFormat = function () {
+        if (!this.cmap)
+            return null;
+        var preferred = [
+            { platformId: 3, encodingId: 1 },
+            { platformId: 3, encodingId: 10 },
+            { platformId: 0, encodingId: 4 },
+            { platformId: 0, encodingId: 3 },
+            { platformId: 0, encodingId: 1 },
+            { platformId: 1, encodingId: 0 },
+        ];
+        for (var _i = 0, preferred_1 = preferred; _i < preferred_1.length; _i++) {
+            var pref = preferred_1[_i];
+            var formats = this.cmap.getCmapFormats(pref.platformId, pref.encodingId);
+            if (formats.length > 0) {
+                return this.pickBestFormat(formats);
+            }
+        }
+        return this.cmap.formats.length > 0 ? this.pickBestFormat(this.cmap.formats) : null;
+    };
+    FontParserTTF.prototype.pickBestFormat = function (formats) {
+        if (formats.length === 0)
+            return null;
+        var order = [4, 12, 10, 8, 6, 2, 0];
+        for (var _i = 0, order_1 = order; _i < order_1.length; _i++) {
+            var fmt = order_1[_i];
+            var found = formats.find(function (f) { return (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt; });
+            if (found)
+                return found;
+        }
+        return formats[0];
     };
     return FontParserTTF;
 }());

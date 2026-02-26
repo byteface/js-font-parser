@@ -91,9 +91,9 @@ export class FontParserTTF {
     }
 
 
-    public getGlyphIndexByChar(char: string): GlyphData | null {
+    public getGlyphIndexByChar(char: string): number | null {
         if (char.length !== 1) {
-            console.error("getGlyphByChar expects a single character");
+            console.error("getGlyphIndexByChar expects a single character");
             return null;
         }
 
@@ -103,37 +103,42 @@ export class FontParserTTF {
             return null;
         }
 
-        // TODO - we need some way to get platformId and encodingId
-        const platformId = 3; // TODO - Determine the platform ID
-        const encodingId = 1; // TODO - Determine the encoding ID
-        
-        const cmapFormat = this.cmap.getCmapFormat(platformId, encodingId);
-        if (!cmapFormat) {
-            console.warn(`No cmap format found for platformId: ${platformId}, encodingId: ${encodingId}`);
+        if (!this.cmap) {
+            console.warn("No cmap table available");
             return null;
         }
 
-        console.log(cmapFormat);
-        console.log("codePoint", codePoint);
+        const cmapFormat = this.getBestCmapFormat();
+        if (!cmapFormat) {
+            console.warn("No cmap format available");
+            return null;
+        }
 
-        // for (let codePoint = 32; codePoint <= 127; codePoint++) {
-        //     const glyphIndex = cmapFormat.mapCharCode(codePoint);
-        //     console.log(`Code Point: ${codePoint} (char: ${String.fromCodePoint(codePoint)}) => Glyph Index: ${glyphIndex}`);
-        // }
+        const glyphIndex = typeof cmapFormat.getGlyphIndex === "function"
+            ? cmapFormat.getGlyphIndex(codePoint)
+            : cmapFormat.mapCharCode(codePoint);
 
-        cmapFormat.generateMappingTable();
-  
-        const glyphIndex = cmapFormat.getGlyphIndex(codePoint);
-
-        console.log("glyphIndex!!!!!!", glyphIndex);
-
-        if (glyphIndex == null) {
+        if (glyphIndex == null || glyphIndex === 0) {
             console.warn(`No glyph found for code point: ${codePoint}`);
             return null;
         }
 
-        // return this.getGlyph(glyphIndex);
         return glyphIndex;
+    }
+
+    public getGlyphByChar(char: string): GlyphData | null {
+        const glyphIndex = this.getGlyphIndexByChar(char);
+        if (glyphIndex == null) return null;
+        return this.getGlyph(glyphIndex);
+    }
+
+    public getGlyphIndicesForString(text: string): number[] {
+        const indices: number[] = [];
+        for (const ch of text) {
+            const idx = this.getGlyphIndexByChar(ch);
+            if (idx != null) indices.push(idx);
+        }
+        return indices;
     }
 
     // Get a glyph description by index
@@ -162,6 +167,38 @@ export class FontParserTTF {
     // Return a table by type
     private getTable(tableType: any): ITable | null {
         return this.tables.find(tab => tab?.getType() === tableType) || null;
+    }
+
+    private getBestCmapFormat(): any | null {
+        if (!this.cmap) return null;
+
+        const preferred = [
+            { platformId: 3, encodingId: 1 },  // Windows, Unicode BMP
+            { platformId: 3, encodingId: 10 }, // Windows, UCS-4
+            { platformId: 0, encodingId: 4 },  // Unicode, UCS-4
+            { platformId: 0, encodingId: 3 },  // Unicode, BMP
+            { platformId: 0, encodingId: 1 },  // Unicode, 1.1
+            { platformId: 1, encodingId: 0 },  // Macintosh, Roman
+        ];
+
+        for (const pref of preferred) {
+            const formats = this.cmap.getCmapFormats(pref.platformId, pref.encodingId);
+            if (formats.length > 0) {
+                return this.pickBestFormat(formats);
+            }
+        }
+
+        return this.cmap.formats.length > 0 ? this.pickBestFormat(this.cmap.formats) : null;
+    }
+
+    private pickBestFormat(formats: any[]): any | null {
+        if (formats.length === 0) return null;
+        const order = [4, 12, 10, 8, 6, 2, 0];
+        for (const fmt of order) {
+            const found = formats.find(f => (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt);
+            if (found) return found;
+        }
+        return formats[0];
     }
 //     private getTable( tableType:any )
 //     {

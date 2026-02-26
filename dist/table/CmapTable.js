@@ -33,6 +33,15 @@ var CmapTable = /** @class */ (function () {
         }
         return null;
     };
+    CmapTable.prototype.getCmapFormats = function (platformId, encodingId) {
+        var matches = [];
+        for (var i = 0; i < this.numTables; i++) {
+            if (this.entries[i].platformId === platformId && this.entries[i].encodingId === encodingId) {
+                matches.push(this.formats[i]);
+            }
+        }
+        return matches;
+    };
     CmapTable.prototype.getType = function () {
         return Table.cmap;
     };

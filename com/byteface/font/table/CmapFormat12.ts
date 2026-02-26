@@ -4,13 +4,15 @@ import { ICmapFormat } from "./ICmapFormat.js";
 export class CmapFormat12 implements ICmapFormat {
     format: number;
     length: number;
-    version: number;
+    language: number;
     numGroups: number;
     groups: { start: number; end: number; glyphId: number }[];
 
     constructor(byteArray: ByteArray) {
-        this.length = byteArray.readUnsignedShort(); // Read length
-        this.version = byteArray.readUnsignedShort(); // Read version
+        // Format 12 header: format (uint16), reserved (uint16), length (uint32), language (uint32)
+        byteArray.readUnsignedShort(); // reserved
+        this.length = byteArray.readUnsignedInt(); // Read length (uint32)
+        this.language = byteArray.readUnsignedInt(); // Read language (uint32)
         this.format = 12; // Set format number
 
         this.numGroups = byteArray.readUnsignedInt(); // Read number of groups
@@ -52,6 +54,6 @@ export class CmapFormat12 implements ICmapFormat {
     }
 
     toString(): string {
-        return `format: ${this.format}, length: ${this.length}, version: ${this.version}, numGroups: ${this.numGroups}`;
+        return `format: ${this.format}, length: ${this.length}, language: ${this.language}, numGroups: ${this.numGroups}`;
     }
 }

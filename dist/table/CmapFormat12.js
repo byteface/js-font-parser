@@ -1,7 +1,8 @@
 var CmapFormat12 = /** @class */ (function () {
     function CmapFormat12(byteArray) {
-        this.length = byteArray.readUnsignedShort(); // Read length
-        this.version = byteArray.readUnsignedShort(); // Read version
+        byteArray.readUnsignedShort(); // reserved
+        this.length = byteArray.readUnsignedInt(); // Read length (uint32)
+        this.language = byteArray.readUnsignedInt(); // Read language (uint32)
         this.format = 12; // Set format number
         this.numGroups = byteArray.readUnsignedInt(); // Read number of groups
         this.groups = []; // Initialize groups array
@@ -36,7 +37,7 @@ var CmapFormat12 = /** @class */ (function () {
         return this.getGlyphIndex(charCode);
     };
     CmapFormat12.prototype.toString = function () {
-        return "format: ".concat(this.format, ", length: ").concat(this.length, ", version: ").concat(this.version, ", numGroups: ").concat(this.numGroups);
+        return "format: ".concat(this.format, ", length: ").concat(this.length, ", language: ").concat(this.language, ", numGroups: ").concat(this.numGroups);
     };
     return CmapFormat12;
 }());

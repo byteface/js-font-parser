@@ -29,24 +29,21 @@ var GlyfTable = /** @class */ (function () {
             if (len > 0) {
                 // Create a new ByteArray, starting at the current glyph offset
                 var bittie = new ByteArray(new Uint8Array(this.buf.dataView.buffer.slice(offsetCurrent, offsetCurrent + len)));
-                // Read number of contours (2 bytes)
-                var numberOfContours = (bittie.readUnsignedByte() << 8) | bittie.readUnsignedByte();
-                if (numberOfContours > 255) {
-                    console.log('lots of contours1');
-                    // For cases where the number of contours exceeds 255, set to -1 (composite glyph)
-                    // FIXME: Add more logic for composite glyphs
+                // Read number of contours (int16). Negative means composite glyph.
+                var numberOfContours = bittie.readShort();
+                if (numberOfContours < 0) {
+                    // Composite glyph (not yet implemented)
                     this.descript.push(null);
                 }
-                else if (numberOfContours >= 0) {
+                else {
                     console.log('Adds a glyf', numberOfContours);
                     // Handle simple glyph description
                     this.descript.push(new GlyfSimpleDescript(this, numberOfContours, bittie));
                 }
-                else {
-                    console.log('composite required');
-                    // TODO: Uncomment this line when the composite description logic is ready
-                    // this.descript.push(new GlyfCompositeDescript(this, bittie));
-                }
+            }
+            else {
+                // Empty glyph; keep index alignment
+                this.descript.push(null);
             }
         }
         // Clear buffer after processing

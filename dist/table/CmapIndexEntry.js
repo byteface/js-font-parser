@@ -1,7 +1,7 @@
 var CmapIndexEntry = /** @class */ (function () {
     function CmapIndexEntry(byteArray) {
         this.platformId = byteArray.readUnsignedShort();
-        this.encodingId = byteArray.readShort();
+        this.encodingId = byteArray.readUnsignedShort();
         this.offset = byteArray.readInt();
     }
     CmapIndexEntry.prototype.toString = function () {

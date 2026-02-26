@@ -7,7 +7,7 @@ export class CmapIndexEntry {
 
     constructor(byteArray: ByteArray) {
         this.platformId = byteArray.readUnsignedShort();
-        this.encodingId = byteArray.readShort();
+        this.encodingId = byteArray.readUnsignedShort();
         this.offset = byteArray.readInt();
     }
 

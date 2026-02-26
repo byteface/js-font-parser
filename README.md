@@ -6,8 +6,28 @@ It obtains the glyph points allowing a user to draw the shapes on the canvas.
 
 ## Usage
 
-### To Include the Entire Library
-Include the bundled library in your HTML file:
+### Run The Legacy Demo (raw JS in `dist/`)
+The current demo uses the prebuilt files in `dist/` and **must** be served over HTTP.
+
+```bash
+cd /Users/byteface/Desktop/projects/js-font-parser
+python3 -m http.server 8080
+```
+
+Then open:
+`http://localhost:8080/index.html`
+
+### Include The Bundled Library
+Build a UMD bundle and include it in your HTML file:
+
+```bash
+npm install
+npm run build
+```
+
+Build output: `dist/fontparser.min.js`
+
+Then include the bundled library in your HTML file:
 
 ```html
 <script src="fontparser.min.js"></script>
@@ -16,6 +36,19 @@ Include the bundled library in your HTML file:
 Then you can use it like so...
 
 TODO -
+
+### TypeScript Usage (string rendering)
+This uses the TypeScript sources (compiled to `dist/` in this repo).
+
+```js
+import { FontParserTTF } from "./dist/data/FontParserTTF.js";
+
+FontParserTTF.load("truetypefonts/DiscoMo.ttf").then((font) => {
+  const glyph = font.getGlyphByChar("H");
+  const indices = font.getGlyphIndicesForString("hello world");
+  console.log(glyph, indices);
+});
+```
 
 
 ### To Include only what you need
@@ -36,4 +69,3 @@ In this time things have changed in the font word. i.e. more cmap formats and al
 were ported in the move to vanilla js as weren't deemed required at the time for what i used it for.
 
 Now with the help of GPT these things don't take weeks but just hours so it doesn't make sense not to port some things that were missedin the past as its trivial. However there's not tests or useages for some of these things atm. so if the .ts file has '// UNTESTED' comment at the top, then it has no current usesage examples or requirements yet within the repo. Hopefully these will come in time or prove useful later to someone.
-

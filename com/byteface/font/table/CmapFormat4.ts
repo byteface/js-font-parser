@@ -4,7 +4,6 @@ import { ICmapFormat } from "./ICmapFormat.js";
 export class CmapFormat4 implements ICmapFormat {
     format: number = 4;
     length: number = 0;
-    version: number = 0;
     language: number = 0;
     segCountX2: number;
     searchRange: number;
@@ -15,6 +14,8 @@ export class CmapFormat4 implements ICmapFormat {
     idDelta: number[];
     idRangeOffset: number[];
     glyphIdArray: number[];
+    private idRangeOffsetStart: number = 0;
+    private glyphIdArrayStart: number = 0;
     segCount: number;
     first: number = 0;
     last: number = 0;
@@ -74,16 +75,14 @@ export class CmapFormat4 implements ICmapFormat {
     
     constructor(byteArray: ByteArray) {
 
-        // Parse and log basic information
-        // this.format = 4; // For Cmap Format 4
+        // Parse basic information
         this.length = byteArray.readUnsignedShort(); // Length of this table
-        this.version = byteArray.readUnsignedShort(); // Version of the format
-        // this.language = byteArray.readUnsignedShort(); // Language code
+        this.language = byteArray.readUnsignedShort(); // Language code
         this.segCountX2 = byteArray.readUnsignedShort(); // Segment count x 2
         this.segCount = this.segCountX2 / 2; // Actual segment count
 
         console.log("Segment count:", this.segCount, "segCountX2:", this.segCountX2);
-        console.log( this.version, this.language )
+        console.log( this.language )
     
         // Initialize arrays
         this.endCode = [];
@@ -130,12 +129,13 @@ export class CmapFormat4 implements ICmapFormat {
 
         console.log("Parsing idDelta:");
         for (var j = 0; j < this.segCount; j++) {
-            this.idDelta.push(byteArray.readUnsignedShort());
+            this.idDelta.push(byteArray.readShort());
         }
         console.log(this.idDelta);
 
 
         console.log("Parsing idRangeOffset:");
+        this.idRangeOffsetStart = byteArray.offset;
         for (var j = 0; j < this.segCount; j++) {
             this.idRangeOffset.push(byteArray.readUnsignedShort());
         }
@@ -145,43 +145,15 @@ export class CmapFormat4 implements ICmapFormat {
 
 
 
-        // Build the glyph ID array
+        this.glyphIdArrayStart = byteArray.offset;
+        // Read glyphIdArray (remaining bytes in this subtable)
+        const glyphIdArrayLength = (this.length - (16 + 8 * this.segCount)) / 2;
         this.glyphIdArray = [];
-        let offset = 0;
-    
-        for (let i = 0; i < this.segCount; i++) {
-            const startCode = this.startCode[i];
-            const endCode = this.endCode[i];
-            const idDelta = this.idDelta[i];
-            const idRangeOffset = this.idRangeOffset[i];
-    
-            if (idRangeOffset === 0) {
-                for (let code = startCode; code <= endCode; code++) {
-                    this.glyphIdArray.push(code + idDelta);
-                }
-            } else {
-                for (let code = startCode; code <= endCode; code++) {
-                    const glyphIdOffset = offset + (code - startCode) * 2;
-                    this.glyphIdArray.push(byteArray.readUnsignedShort(glyphIdOffset));
-                }
-                offset += idRangeOffset;
-            }
+        for (let i = 0; i < glyphIdArrayLength; i++) {
+            this.glyphIdArray.push(byteArray.readUnsignedShort());
         }
 
-
-
-
-
-        // Debug output to verify the contents of glyphIdArray
-        console.log("Final glyphIdArray based on idDelta:", this.glyphIdArray);
-
-
-        // Debug output to verify the contents of glyphIdArray
-        
-        console.log("Final glyphIdArray:", this.glyphIdArray);
-
-        console.log( "HOW LONG IS IT!!!!!!!", this.glyphIdArray.length )
-
+        console.log("glyphIdArray length:", this.glyphIdArray.length);
         console.log("Finished parsing cmapFormat");
     }
 
@@ -203,18 +175,31 @@ export class CmapFormat4 implements ICmapFormat {
         if (charCode < 0 || charCode >= 0xFFFE) return 0;
 
         for (let i = 0; i < this.segCount; i++) {
-            if (this.endCode[i] >= charCode) {
-                if (this.startCode[i] <= charCode) {
-                    if (this.idRangeOffset[i] > 0) {
-                        return this.glyphIdArray[this.idRangeOffset[i] / 2 +
-                            (charCode - this.startCode[i]) - (this.segCount - i)];
-                    } else {
-                        return (this.idDelta[i] + charCode) % 65536;
-                    }
-                } else {
-                    break;
-                }
+            if (this.endCode[i] < charCode) {
+                continue;
             }
+            if (this.startCode[i] > charCode) {
+                break;
+            }
+
+            const idRangeOffset = this.idRangeOffset[i];
+            if (idRangeOffset === 0) {
+                return (this.idDelta[i] + charCode) & 0xffff;
+            }
+            const glyphOffset = idRangeOffset + 2 * (charCode - this.startCode[i]);
+            const absOffset = this.idRangeOffsetStart + (i * 2) + glyphOffset;
+            if (absOffset < this.glyphIdArrayStart) {
+                return 0;
+            }
+            const index = (absOffset - this.glyphIdArrayStart) / 2;
+            if (index < 0 || index >= this.glyphIdArray.length) {
+                return 0;
+            }
+            const glyphId = this.glyphIdArray[index];
+            if (glyphId === 0) {
+                return 0;
+            }
+            return (glyphId + this.idDelta[i]) & 0xffff;
         }
         return 0;
     }
@@ -227,18 +212,8 @@ export class CmapFormat4 implements ICmapFormat {
         for (let i = 0; i < this.segCount; i++) {
             const startCode = this.startCode[i];
             const endCode = this.endCode[i];
-            const idDelta = this.idDelta[i];
-            const idRangeOffset = this.idRangeOffset[i];
-            
             for (let charCode = startCode; charCode <= endCode; charCode++) {
-                let glyphIndex;
-                if (idRangeOffset > 0) {
-                    const glyphIdOffsetIndex = idRangeOffset / 2 + (charCode - startCode) - (this.segCount - i);
-                    glyphIndex = this.glyphIdArray[glyphIdOffsetIndex] || 0;
-                } else {
-                    glyphIndex = (idDelta + charCode) % 65536;
-                }
-                // console.log(charCode, glyphIndex);
+                const glyphIndex = this.mapCharCode(charCode);
                 mappingTable.push({ charCode, glyphIndex });
             }
         }
@@ -255,17 +230,10 @@ export class CmapFormat4 implements ICmapFormat {
         }
         console.log("Looking for codePoint", codePoint);
 
-        var glyphId = this.mapCharCode(codePoint); // Use existing mapping logic
+        const glyphId = this.mapCharCode(codePoint); // Use existing mapping logic
         
         console.log("Which is apparently called", glyphId);
-
-        for (let i = 0; i < this.glyphIdArray.length; i++) {
-            if (this.glyphIdArray[i] === glyphId) {
-                console.log( "😊😊😊😊 GET THE INDEX :::::", i );
-                return i; // Return the index where the glyphId was found
-            }
-        }
-        return null; // Return null if glyphId is not found
+        return glyphId;
     }
 
     getFormatType(): number {
@@ -273,7 +241,7 @@ export class CmapFormat4 implements ICmapFormat {
     }
 
     toString(): string {
-        return `format: ${this.format}, length: ${this.length}, version: ${this.version}, ` +
+        return `format: ${this.format}, length: ${this.length}, language: ${this.language}, ` +
             `segCountX2: ${this.segCountX2}, searchRange: ${this.searchRange}, ` +
             `entrySelector: ${this.entrySelector}, rangeShift: ${this.rangeShift}, ` +
             `endCode: ${this.endCode}, startCode: ${this.startCode}, ` +
