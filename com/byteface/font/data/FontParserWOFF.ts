@@ -160,6 +160,10 @@ export class FontParserWOFF {
         return this.getGlyph(idx);
     }
 
+    public getTableByType(tableType: number): ITable | null {
+        return this.getTable(tableType);
+    }
+
     // Return a table by type
     private getTable(tableType: any): ITable | null {
         return this.tables.find(tab => tab?.getType() === tableType) || null;

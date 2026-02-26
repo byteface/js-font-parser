@@ -1,0 +1,2 @@
+var ScriptTags = {};
+export { ScriptTags };

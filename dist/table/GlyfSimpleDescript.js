@@ -122,16 +122,16 @@ var GlyfSimpleDescript = /** @class */ (function () {
         // Implement resolve logic here if needed
     };
     GlyfSimpleDescript.prototype.getXMaximum = function () {
-        return 0;
+        return this.xMax;
     };
     GlyfSimpleDescript.prototype.getXMinimum = function () {
-        return 0;
+        return this.xMin;
     };
     GlyfSimpleDescript.prototype.getYMaximum = function () {
-        return 0;
+        return this.yMax;
     };
     GlyfSimpleDescript.prototype.getYMinimum = function () {
-        return 0;
+        return this.yMin;
     };
     return GlyfSimpleDescript;
 }());

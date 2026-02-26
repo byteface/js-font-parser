@@ -10,6 +10,7 @@ export interface IGlyphDescription {
 	isComposite(): boolean;
 	getPointCount(): number;
 	getContourCount(): number;
+	resolve(): void;
 
 	// Uncomment these if needed
 	// getComponentIndex(c: number): number;

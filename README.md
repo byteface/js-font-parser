@@ -36,6 +36,7 @@ Demo pages (see `demos/index.html`):
 - `demos/svg.html`
 - `demos/woff.html`
 - `demos/metadata.html`
+- `demos/features.html` (GSUB/GPOS tags)
 
 ### Noto Fonts
 The `truetypefonts/noto/` folder contains a small set of Noto fonts (SIL OFL) for multilingual demos.

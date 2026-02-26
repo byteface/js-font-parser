@@ -158,16 +158,16 @@ export class GlyfSimpleDescript implements IGlyphDescription {
 
 
     public getXMaximum(): number {
-        return 0;
+        return this.xMax;
     }
     public getXMinimum(): number {
-        return 0;
+        return this.xMin;
     }
     public getYMaximum(): number {
-        return 0;
+        return this.yMax;
     }
     public getYMinimum(): number {
-        return 0;
+        return this.yMin;
     }
 
 }

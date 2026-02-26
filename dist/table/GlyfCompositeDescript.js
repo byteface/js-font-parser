@@ -10,6 +10,8 @@ var GlyfCompositeDescript = /** @class */ (function () {
         this.components = [];
         this.beingResolved = false;
         this.resolved = false;
+        this.pointCount = 0;
+        this.contourCount = 0;
         this.parentTable = parentTable;
         this.init(bais);
     }
@@ -52,10 +54,12 @@ var GlyfCompositeDescript = /** @class */ (function () {
             var desc = this.parentTable.getDescription(comp.glyphIndex);
             if (desc != null) {
                 desc.resolve();
-                firstIndex += desc.count;
-                firstContour += desc.numberOfContours;
+                firstIndex += desc.getPointCount();
+                firstContour += desc.getContourCount();
             }
         }
+        this.pointCount = firstIndex;
+        this.contourCount = firstContour;
         this.resolved = true;
         this.beingResolved = false;
     };
@@ -70,7 +74,7 @@ var GlyfCompositeDescript = /** @class */ (function () {
     GlyfCompositeDescript.prototype.getFlags = function (i) {
         var c = this.getCompositeComp(i);
         if (c != null) {
-            var gd = this.parentTable.description(c.glyphIndex);
+            var gd = this.parentTable.getDescription(c.glyphIndex);
             return gd.getFlags(i - c.firstIndex);
         }
         return 0;
@@ -78,7 +82,7 @@ var GlyfCompositeDescript = /** @class */ (function () {
     GlyfCompositeDescript.prototype.getXCoordinate = function (i) {
         var c = this.getCompositeComp(i);
         if (c != null) {
-            var gd = this.parentTable.description(c.glyphIndex);
+            var gd = this.parentTable.getDescription(c.glyphIndex);
             var n = i - c.firstIndex;
             var x = gd.getXCoordinate(n);
             var y = gd.getYCoordinate(n);
@@ -107,6 +111,27 @@ var GlyfCompositeDescript = /** @class */ (function () {
     };
     GlyfCompositeDescript.prototype.getInstructions = function () {
         return this.instructions;
+    };
+    GlyfCompositeDescript.prototype.isComposite = function () {
+        return true;
+    };
+    GlyfCompositeDescript.prototype.getPointCount = function () {
+        return this.pointCount;
+    };
+    GlyfCompositeDescript.prototype.getContourCount = function () {
+        return this.contourCount;
+    };
+    GlyfCompositeDescript.prototype.getXMaximum = function () {
+        return this.xMax;
+    };
+    GlyfCompositeDescript.prototype.getXMinimum = function () {
+        return this.xMin;
+    };
+    GlyfCompositeDescript.prototype.getYMaximum = function () {
+        return this.yMax;
+    };
+    GlyfCompositeDescript.prototype.getYMinimum = function () {
+        return this.yMin;
     };
     GlyfCompositeDescript.onCurve = 0x01;
     GlyfCompositeDescript.xShortVector = 0x02;

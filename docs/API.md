@@ -22,6 +22,13 @@ const glyph = font.getGlyphByChar("H");           // GlyphData | null
 const indices = font.getGlyphIndicesForString("hello world");
 ```
 
+## Tables
+```js
+import { Table } from "./dist/table/Table.js";
+const gsub = font.getTableByType(Table.GSUB);
+const gpos = font.getTableByType(Table.GPOS);
+```
+
 ## Glyph Data
 ```js
 const glyph = font.getGlyph(42);
@@ -39,6 +46,12 @@ font.getAscent();
 font.getDescent();
 ```
 
+## Metadata
+```js
+font.getNameRecord(1); // family name
+font.getAllNameRecords(); // array of { nameId, record }
+```
+
 ## Notes
-- Composite glyphs are detected but not yet resolved.
-- The demos in `examples/` show how to draw contours to a canvas.
+- Composite glyphs are partially supported.
+- The demos in `demos/` show how to draw contours to a canvas.

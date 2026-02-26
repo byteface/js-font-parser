@@ -135,6 +135,9 @@ var FontParserWOFF = /** @class */ (function () {
             return null;
         return this.getGlyph(idx);
     };
+    FontParserWOFF.prototype.getTableByType = function (tableType) {
+        return this.getTable(tableType);
+    };
     // Return a table by type
     FontParserWOFF.prototype.getTable = function (tableType) {
         return this.tables.find(function (tab) { return (tab === null || tab === void 0 ? void 0 : tab.getType()) === tableType; }) || null;

@@ -1,13 +1,15 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { GlyfSimpleDescript } from "./GlyfSimpleDescript.js";
+import { GlyfCompositeDescript } from "./GlyfCompositeDescript.js";
 import { Table } from "./Table.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
 import { LocaTable } from "./LocaTable.js";
 import { Debug } from "../utils/Debug.js";
+import { IGlyphDescription } from "./IGlyphDescription.js";
 
 export class GlyfTable {
     private buf: ByteArray | null;
-    private descript: (GlyfSimpleDescript | null)[];
+    private descript: (IGlyphDescription | null)[];
 
     constructor(de: DirectoryEntry, byte_ar: ByteArray) {
         // console.log('Glyf Table')
@@ -24,7 +26,7 @@ export class GlyfTable {
         // Initialize the buffer using the sliced Uint8Array
         this.buf = new ByteArray(uint8Array); // No endian parameter
 
-        this.descript = new Array<GlyfSimpleDescript | null>(0); // Start with an empty array
+        this.descript = new Array<IGlyphDescription | null>(0); // Start with an empty array
     }
 
     run(numGlyphs: number, loca: LocaTable): void {
@@ -50,8 +52,7 @@ export class GlyfTable {
                 const numberOfContours = bittie.readShort();
                 
                 if (numberOfContours < 0) {
-                    // Composite glyph (not yet implemented)
-                    this.descript.push(null);
+                    this.descript.push(new GlyfCompositeDescript(this, bittie));
                 } else {
 
                     Debug.log('Adds a glyf', numberOfContours);
@@ -79,7 +80,7 @@ export class GlyfTable {
     
 
     // Return the description for the specified glyph index
-    public getDescription(i: number): GlyfSimpleDescript | null {
+    public getDescription(i: number): IGlyphDescription | null {
         return this.descript[i];
     }
 

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenType Features (GSUB/GPOS)</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f4f1;
+      --ink: #1b1b1b;
+      --muted: #5c5c5c;
+      --panel: #ffffff;
+      --accent: #0f4c81;
+      --border: #e1dfd8;
+    }
+    body {
+      margin: 0;
+      font-family: "PT Serif", "Georgia", serif;
+      background: radial-gradient(circle at 20% 10%, #ffffff, var(--bg));
+      color: var(--ink);
+    }
+    header {
+      padding: 24px 20px 0 20px;
+    }
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 26px;
+      font-weight: 700;
+    }
+    p {
+      margin: 0 0 14px 0;
+      color: var(--muted);
+    }
+    .wrap {
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    }
+    .card h2 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      color: var(--accent);
+    }
+    .meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    li {
+      background: #eef3f8;
+      color: #234;
+      border: 1px solid #d7e3ef;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .empty {
+      font-style: italic;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>OpenType Feature Snapshot</h1>
+    <p>GSUB and GPOS script and feature tags for a sample font.</p>
+  </header>
+  <div id="output" class="wrap"></div>
+
+  <script type="module">
+    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { Table } from '../dist/table/Table.js';
+
+    const output = document.getElementById('output');
+    const fontUrl = '../truetypefonts/noto/NotoSans-Regular.ttf';
+
+    function tagToString(tag) {
+      return String.fromCharCode(
+        (tag >> 24) & 0xff,
+        (tag >> 16) & 0xff,
+        (tag >> 8) & 0xff,
+        tag & 0xff
+      ).replace(/\0/g, '');
+    }
+
+    function listTags(items) {
+      if (!items || items.length === 0) {
+        return '<div class="empty">No tags found</div>';
+      }
+      const tags = items.map(t => `<li>${t}</li>`).join('');
+      return `<ul>${tags}</ul>`;
+    }
+
+    function renderTable(name, table, note) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const scriptTags = table?.scriptList?.scriptRecords?.map(r => tagToString(r.tag)) ?? [];
+      const featureTags = table?.featureList?.featureRecords?.map(r => tagToString(r.getTag())) ?? [];
+
+      card.innerHTML = `
+        <h2>${name}</h2>
+        <div class="meta">${note}</div>
+        <strong>Scripts</strong>
+        ${listTags(scriptTags)}
+        <div style="height:8px"></div>
+        <strong>Features</strong>
+        ${listTags(featureTags)}
+      `;
+      output.appendChild(card);
+    }
+
+    FontParserTTF.load(fontUrl)
+      .then(font => {
+        const gsub = font.getTableByType(Table.GSUB);
+        const gpos = font.getTableByType(Table.GPOS);
+
+        renderTable('GSUB', gsub, 'Glyph substitution (ligatures, alternates, etc.).');
+        renderTable('GPOS', gpos, 'Glyph positioning (kerning, marks). Subtables not parsed yet.');
+      })
+      .catch(err => {
+        output.textContent = `Failed to load font: ${err}`;
+      });
+  </script>
+</body>
+</html>

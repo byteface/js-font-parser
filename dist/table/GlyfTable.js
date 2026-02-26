@@ -1,5 +1,6 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { GlyfSimpleDescript } from "./GlyfSimpleDescript.js";
+import { GlyfCompositeDescript } from "./GlyfCompositeDescript.js";
 import { Table } from "./Table.js";
 import { Debug } from "../utils/Debug.js";
 var GlyfTable = /** @class */ (function () {
@@ -33,8 +34,7 @@ var GlyfTable = /** @class */ (function () {
                 // Read number of contours (int16). Negative means composite glyph.
                 var numberOfContours = bittie.readShort();
                 if (numberOfContours < 0) {
-                    // Composite glyph (not yet implemented)
-                    this.descript.push(null);
+                    this.descript.push(new GlyfCompositeDescript(this, bittie));
                 }
                 else {
                     Debug.log('Adds a glyf', numberOfContours);

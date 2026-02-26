@@ -2,6 +2,9 @@ import { ByteArray } from '../utils/ByteArray.js'
 import { DirectoryEntry } from './DirectoryEntry.js'
 import { Table } from './Table.js'
 import { GsubTable } from './GsubTable.js'
+import { GposTable } from './GposTable.js'
+import { CvtTable } from './CvtTable.js'
+import { FpgmTable } from './FpgmTable.js'
 import { Os2Table } from './Os2Table.js'
 import { CmapTable } from './CmapTable.js'
 import { GlyfTable } from './GlyfTable.js'
@@ -23,10 +26,16 @@ export class TableFactory {
         switch (de.tag) {
             case Table.GSUB:
                 return new GsubTable(de, byte_ar);
+            case Table.GPOS:
+                return new GposTable(de, byte_ar);
             case Table.OS_2:
                 return new Os2Table(de, byte_ar);
             case Table.cmap:
                 return new CmapTable(de, byte_ar);
+            case Table.cvt:
+                return new CvtTable(de, byte_ar);
+            case Table.fpgm:
+                return new FpgmTable(de, byte_ar);
             case Table.glyf:
                 return new GlyfTable(de, byte_ar);
             case Table.head:

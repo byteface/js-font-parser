@@ -148,6 +148,9 @@ var FontParserTTF = /** @class */ (function () {
             return [];
         return this.pName.records.map(function (r) { return ({ nameId: r.nameId, record: r.record }); });
     };
+    FontParserTTF.prototype.getTableByType = function (tableType) {
+        return this.getTable(tableType);
+    };
     // Return a table by type
     FontParserTTF.prototype.getTable = function (tableType) {
         return this.tables.find(function (tab) { return (tab === null || tab === void 0 ? void 0 : tab.getType()) === tableType; }) || null;

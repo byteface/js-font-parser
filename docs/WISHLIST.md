@@ -2,8 +2,8 @@
 
 ## Font Format Support
 - **CFF/CFF2 outlines (OTF)**: parse `CFF ` / `CFF2` tables and Type 2 charstrings.
-- **Composite glyphs**: implement `GlyfCompositeDescript` and resolve composite components.
- - **Shaping (GSUB/GPOS)**: required for Arabic, Devanagari, and many complex scripts.
+- **Shaping (GSUB/GPOS)**: parse lookup subtables and apply shaping rules for complex scripts (Arabic, Devanagari, etc).
+- **GPOS lookups**: parse positioning subtables (kern, mark, cursive, etc). Current support is header + lists only.
 
 ## Demos
 - Multilingual text demo with per-script fonts.

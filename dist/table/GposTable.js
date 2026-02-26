@@ -1,0 +1,24 @@
+import { FeatureList } from "./FeatureList.js";
+import { LookupList } from "./LookupList.js";
+import { ScriptList } from "./ScriptList.js";
+import { Table } from "./Table.js";
+var GposTable = /** @class */ (function () {
+    function GposTable(de, byte_ar) {
+        byte_ar.offset = de.offset;
+        byte_ar.readInt();
+        var scriptListOffset = byte_ar.readUnsignedShort();
+        var featureListOffset = byte_ar.readUnsignedShort();
+        var lookupListOffset = byte_ar.readUnsignedShort();
+        this.scriptList = new ScriptList(byte_ar, de.offset + scriptListOffset);
+        this.featureList = new FeatureList(byte_ar, de.offset + featureListOffset);
+        this.lookupList = new LookupList(byte_ar, de.offset + lookupListOffset, this);
+    }
+    GposTable.prototype.read = function (_type, _byte_ar, _offset) {
+        return null;
+    };
+    GposTable.prototype.getType = function () {
+        return Table.GPOS;
+    };
+    return GposTable;
+}());
+export { GposTable };

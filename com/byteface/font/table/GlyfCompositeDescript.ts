@@ -1,7 +1,8 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { GlyfCompositeComp } from './GlyfCompositeComp.js'
+import { IGlyphDescription } from "./IGlyphDescription.js";
 
-export class GlyfCompositeDescript {
+export class GlyfCompositeDescript implements IGlyphDescription {
     instructions: number[] | null = null;
 
     static onCurve = 0x01;
@@ -21,6 +22,8 @@ export class GlyfCompositeDescript {
     components: GlyfCompositeComp[] = [];
     beingResolved: boolean = false;
     resolved: boolean = false;
+    private pointCount: number = 0;
+    private contourCount: number = 0;
 
     constructor(parentTable: any, bais: ByteArray) {
         this.parentTable = parentTable;
@@ -72,11 +75,13 @@ export class GlyfCompositeDescript {
             const desc = this.parentTable.getDescription(comp.glyphIndex);
             if (desc != null) {
                 desc.resolve();
-                firstIndex += desc.count;
-                firstContour += desc.numberOfContours;
+                firstIndex += desc.getPointCount();
+                firstContour += desc.getContourCount();
             }
         }
 
+        this.pointCount = firstIndex;
+        this.contourCount = firstContour;
         this.resolved = true;
         this.beingResolved = false;
     }
@@ -93,7 +98,7 @@ export class GlyfCompositeDescript {
     getFlags(i: number): number {
         const c = this.getCompositeComp(i);
         if (c != null) {
-            const gd = this.parentTable.description(c.glyphIndex);
+            const gd = this.parentTable.getDescription(c.glyphIndex);
             return gd.getFlags(i - c.firstIndex);
         }
         return 0;
@@ -102,7 +107,7 @@ export class GlyfCompositeDescript {
     getXCoordinate(i: number): number {
         const c = this.getCompositeComp(i);
         if (c != null) {
-            const gd = this.parentTable.description(c.glyphIndex);
+            const gd = this.parentTable.getDescription(c.glyphIndex);
             const n = i - c.firstIndex;
             const x = gd.getXCoordinate(n);
             const y = gd.getYCoordinate(n);
@@ -135,5 +140,30 @@ export class GlyfCompositeDescript {
 
     getInstructions(): number[] | null {
         return this.instructions;
+    }
+
+    isComposite(): boolean {
+        return true;
+    }
+
+    getPointCount(): number {
+        return this.pointCount;
+    }
+
+    getContourCount(): number {
+        return this.contourCount;
+    }
+
+    getXMaximum(): number {
+        return this.xMax;
+    }
+    getXMinimum(): number {
+        return this.xMin;
+    }
+    getYMaximum(): number {
+        return this.yMax;
+    }
+    getYMinimum(): number {
+        return this.yMin;
     }
 }

@@ -13,7 +13,7 @@ export interface ILookupSubtableFactory {
 		 * @return 
 		 * 
 		 */		
-	    read(type:number, byte_ar:ByteArray, offset:number):LookupSubtable;
+	    read(type:number, byte_ar:ByteArray, offset:number):LookupSubtable | null;
 		
 		
 }
