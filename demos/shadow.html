@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Shadow</title>
+    <style>
+        body { margin: 0; background: #111; color: #eee; font-family: Arial, sans-serif; }
+        .label { padding: 12px 16px; }
+    </style>
+</head>
+<body>
+<div class="label">Shadow (canvas shadow)</div>
+<canvas id="myDrawing" width="900" height="600"></canvas>
+<script type="module">
+    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { drawString } from './shared/glyph-render.js';
+
+    const canvas = document.getElementById('myDrawing');
+    const ctx = canvas.getContext('2d');
+
+    FontParserTTF.load("../truetypefonts/DiscoMo.ttf")
+        .then(font => {
+            ctx.shadowColor = "#888";
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetX = 8;
+            ctx.shadowOffsetY = 8;
+            drawString(font, "shadow", canvas, {
+                x: 60,
+                y: 350,
+                scale: 0.2,
+                styles: {
+                    'color': '#ffffff',
+                    'stroke-color': '#000000',
+                    'line-width': '1',
+                    'opacity': '1'
+                }
+            });
+        })
+        .catch(err => console.error("Failed to load font:", err));
+</script>
+</body>
+</html>

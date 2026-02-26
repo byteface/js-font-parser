@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>WOFF Demo</title>
+</head>
+<body>
+<h1>WOFF Demo</h1>
+<canvas id="myDrawing" width="800" height="600"></canvas>
+
+<script type="module">
+    import { ByteArray } from '../dist/utils/ByteArray.js';
+    import { FontParserWOFF } from '../dist/data/FontParserWOFF.js';
+    import { drawGlyphToContext } from './shared/glyph-render.js';
+
+    async function loadBinaryResource(url) {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        return new Uint8Array(arrayBuffer);
+    }
+
+    const canvas = document.getElementById('myDrawing');
+    const ctx = canvas.getContext('2d');
+
+    loadBinaryResource("https://fonts.cdnfonts.com/s/74192/AestheticMidnight-WyLvv.woff")
+        .then(arrayBuffer => {
+            const byte_ar = new ByteArray(arrayBuffer);
+            const font = new FontParserWOFF(byte_ar);
+            const glyph = font.getGlyphByChar("W");
+            if (!glyph) {
+                console.warn("No glyph for W");
+                return;
+            }
+            drawGlyphToContext(ctx, glyph, {
+                x: 200,
+                y: 400,
+                scale: 0.3,
+                styles: {
+                    'color': '#000000',
+                    'stroke-color': '#000000',
+                    'line-width': '1',
+                    'opacity': '1'
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error loading WOFF:', error);
+        });
+</script>
+</body>
+</html>

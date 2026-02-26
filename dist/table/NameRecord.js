@@ -14,24 +14,30 @@ var NameRecord = /** @class */ (function () {
         var sb = "";
         byte_ar.offset = stringStorageOffset + this.stringOffset; // Set the position in the ByteArray
         if (this.platformId === Table.platformAppleUnicode) {
-            // Unicode (big-endian)
+            // Unicode (UTF-16BE)
             for (var i = 0; i < this.stringLength / 2; i++) {
-                sb += String.fromCharCode(byte_ar.readUnsignedByte());
-                sb += String.fromCharCode(byte_ar.readUnsignedByte());
+                var hi = byte_ar.readUnsignedByte();
+                var lo = byte_ar.readUnsignedByte();
+                sb += String.fromCharCode((hi << 8) | lo);
             }
         }
         else if (this.platformId === Table.platformMacintosh) {
-            // Macintosh encoding, ASCII
-            sb += String.fromCharCode(byte_ar.readUnsignedByte());
+            // Macintosh encoding, ASCII/roman fallback
+            for (var i = 0; i < this.stringLength; i++) {
+                sb += String.fromCharCode(byte_ar.readUnsignedByte());
+            }
         }
         else if (this.platformId === Table.platformISO) {
-            sb += String.fromCharCode(byte_ar.readUnsignedByte());
+            for (var i = 0; i < this.stringLength; i++) {
+                sb += String.fromCharCode(byte_ar.readUnsignedByte());
+            }
         }
         else if (this.platformId === Table.platformMicrosoft) {
-            // Microsoft encoding, Unicode
+            // Microsoft encoding, Unicode (UTF-16BE)
             for (var h = 0; h < this.stringLength / 2; h++) {
-                sb += String.fromCharCode(byte_ar.readUnsignedByte());
-                sb += String.fromCharCode(byte_ar.readUnsignedByte());
+                var hi = byte_ar.readUnsignedByte();
+                var lo = byte_ar.readUnsignedByte();
+                sb += String.fromCharCode((hi << 8) | lo);
             }
         }
         this.record = sb;

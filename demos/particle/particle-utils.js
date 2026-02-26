@@ -22,10 +22,16 @@ export function setupParticleDemo(config) {
 
     FontParserTTF.load(config.fontUrl)
         .then((font) => {
-            const glyphIndex = typeof config.glyphIndex === 'number'
-                ? config.glyphIndex
-                : Math.floor(Math.random() * (config.randomGlyphMax || 50));
-            state.particles = buildParticlesFromGlyph(font, glyphIndex, {
+            let glyph = null;
+            if (config.char) {
+                glyph = font.getGlyphByChar(config.char);
+            } else if (typeof config.glyphIndex === 'number') {
+                glyph = font.getGlyph(config.glyphIndex);
+            } else {
+                const idx = Math.floor(Math.random() * (config.randomGlyphMax || 50));
+                glyph = font.getGlyph(idx);
+            }
+            state.particles = buildParticlesFromGlyph(glyph, {
                 scale: config.scale || 0.1,
                 originX: config.originX || canvas.width * 0.2,
                 originY: config.originY || canvas.height * 0.6,
@@ -64,8 +70,7 @@ export function setupParticleDemo(config) {
     }
 }
 
-function buildParticlesFromGlyph(font, glyphIndex, opts) {
-    const glyph = font.getGlyph(glyphIndex);
+function buildParticlesFromGlyph(glyph, opts) {
     if (!glyph) return [];
     const particles = [];
     const count = glyph.getPointCount();

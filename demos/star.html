@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Star</title>
+    <style>
+        body { margin: 0; background: #111; color: #eee; font-family: Arial, sans-serif; }
+        .label { padding: 12px 16px; }
+    </style>
+</head>
+<body>
+<div class="label">Star</div>
+<canvas id="myDrawing" width="800" height="800"></canvas>
+<script type="module">
+    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { drawGlyphToContext } from './shared/glyph-render.js';
+
+    const canvas = document.getElementById('myDrawing');
+    const ctx = canvas.getContext('2d');
+    ctx.translate(300, 200);
+
+    FontParserTTF.load("../truetypefonts/DiscoMo.ttf")
+        .then(font => {
+            setInterval(() => draw(font), 80);
+        })
+        .catch(err => console.error("Failed to load font:", err));
+
+    function draw(font) {
+        ctx.clearRect(-300, -200, canvas.width, canvas.height);
+        drawGlyphToContext(ctx, font.getGlyphByChar("X"), {
+            x: 0,
+            y: 0,
+            scale: 0.3,
+            styles: {
+                'color': '#ffffff',
+                'stroke-color': '#000000',
+                'line-width': '1',
+                'opacity': '1'
+            }
+        });
+    }
+</script>
+</body>
+</html>

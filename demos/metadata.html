@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Font Metadata</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; color: #222; }
+        select { padding: 6px; margin-bottom: 12px; }
+        table { border-collapse: collapse; width: 100%; max-width: 900px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f4f4f4; }
+        .note { color: #666; margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+<h1>Font Metadata</h1>
+<div class="note">Reads the name table (where available) using the current TS parser.</div>
+<label for="fontSelect">Font:</label>
+<select id="fontSelect"></select>
+<div id="output"></div>
+
+<script type="module">
+    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+
+    const fonts = [
+        { label: 'DiscoMo.ttf', url: '../truetypefonts/DiscoMo.ttf' },
+        { label: 'JoeJack.ttf', url: '../truetypefonts/JoeJack.ttf' },
+        { label: 'NotoSans-Regular.ttf', url: '../truetypefonts/noto/NotoSans-Regular.ttf' },
+        { label: 'NotoSansHebrew-Regular.ttf', url: '../truetypefonts/noto/NotoSansHebrew-Regular.ttf' }
+    ];
+
+    const nameIdLabels = {
+        0: 'Copyright',
+        1: 'Font Family',
+        2: 'Font Subfamily',
+        3: 'Unique Subfamily',
+        4: 'Full Name',
+        5: 'Version',
+        6: 'PostScript Name',
+        7: 'Trademark',
+        8: 'Manufacturer',
+        9: 'Designer',
+        10: 'Description',
+        11: 'Vendor URL',
+        12: 'Designer URL',
+        13: 'License Description',
+        14: 'License URL',
+        16: 'Typographic Family',
+        17: 'Typographic Subfamily'
+    };
+
+    const select = document.getElementById('fontSelect');
+    const output = document.getElementById('output');
+
+    fonts.forEach((f, i) => {
+        const opt = document.createElement('option');
+        opt.value = f.url;
+        opt.textContent = f.label;
+        if (i === 0) opt.selected = true;
+        select.appendChild(opt);
+    });
+
+    select.addEventListener('change', () => loadFont(select.value));
+
+    loadFont(select.value);
+
+    function loadFont(url) {
+        output.innerHTML = 'Loading...';
+        FontParserTTF.load(url).then(font => {
+            const records = font.getAllNameRecords();
+            renderRecords(records);
+        }).catch(err => {
+            output.textContent = `Failed to load font: ${err}`;
+        });
+    }
+
+    function renderRecords(records) {
+        if (!records.length) {
+            output.textContent = 'No name records found.';
+            return;
+        }
+
+        const rows = records
+            .filter(r => r.record && r.record.trim().length > 0)
+            .map(r => ({
+                nameId: r.nameId,
+                label: nameIdLabels[r.nameId] || `Name ID ${r.nameId}`,
+                value: r.record
+            }));
+
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        thead.innerHTML = '<tr><th>Name ID</th><th>Label</th><th>Value</th></tr>';
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        rows.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${r.nameId}</td><td>${r.label}</td><td>${r.value}</td>`;
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+
+        output.innerHTML = '';
+        output.appendChild(table);
+    }
+</script>
+</body>
+</html>

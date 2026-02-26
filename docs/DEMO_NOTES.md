@@ -5,5 +5,5 @@
 - **Complex script shaping (GSUB/GPOS)** is not implemented. Arabic/Devanagari will render unshaped.
 - **Composite glyphs** are detected but not resolved yet.
 
-## Legacy Demos
-`demos/legacy/` contains older experiments that still rely on legacy JS and may not reflect the latest APIs. Use them as reference or inspiration; they may need manual fixes to run cleanly.
+## Demo Pipeline
+All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).

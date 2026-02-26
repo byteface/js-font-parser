@@ -27,21 +27,27 @@ export class NameRecord {
         byte_ar.offset = stringStorageOffset + this.stringOffset; // Set the position in the ByteArray
 
         if (this.platformId === Table.platformAppleUnicode) {
-            // Unicode (big-endian)
+            // Unicode (UTF-16BE)
             for (let i = 0; i < this.stringLength / 2; i++) {
-                sb += String.fromCharCode(byte_ar.readUnsignedByte());
-                sb += String.fromCharCode(byte_ar.readUnsignedByte());
+                const hi = byte_ar.readUnsignedByte();
+                const lo = byte_ar.readUnsignedByte();
+                sb += String.fromCharCode((hi << 8) | lo);
             }
         } else if (this.platformId === Table.platformMacintosh) {
-            // Macintosh encoding, ASCII
-            sb += String.fromCharCode(byte_ar.readUnsignedByte());
+            // Macintosh encoding, ASCII/roman fallback
+            for (let i = 0; i < this.stringLength; i++) {
+                sb += String.fromCharCode(byte_ar.readUnsignedByte());
+            }
         } else if (this.platformId === Table.platformISO) {
-            sb += String.fromCharCode(byte_ar.readUnsignedByte());
+            for (let i = 0; i < this.stringLength; i++) {
+                sb += String.fromCharCode(byte_ar.readUnsignedByte());
+            }
         } else if (this.platformId === Table.platformMicrosoft) {
-            // Microsoft encoding, Unicode
+            // Microsoft encoding, Unicode (UTF-16BE)
             for (let h = 0; h < this.stringLength / 2; h++) {
-                sb += String.fromCharCode(byte_ar.readUnsignedByte());
-                sb += String.fromCharCode(byte_ar.readUnsignedByte());
+                const hi = byte_ar.readUnsignedByte();
+                const lo = byte_ar.readUnsignedByte();
+                sb += String.fromCharCode((hi << 8) | lo);
             }
         }
 

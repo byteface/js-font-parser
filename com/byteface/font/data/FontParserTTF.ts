@@ -164,6 +164,15 @@ export class FontParserTTF {
         return this.hhea?.descender ?? 0;
     }
 
+    public getNameRecord(nameId: number): string {
+        return this.pName?.getRecord(nameId) ?? "";
+    }
+
+    public getAllNameRecords(): Array<{ nameId: number; record: string }> {
+        if (!this.pName) return [];
+        return this.pName.records.map(r => ({ nameId: r.nameId, record: r.record }));
+    }
+
     // Return a table by type
     private getTable(tableType: any): ITable | null {
         return this.tables.find(tab => tab?.getType() === tableType) || null;

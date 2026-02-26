@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Black Hole</title>
+    <style>
+        body { margin: 0; background: #111; color: #eee; font-family: Arial, sans-serif; }
+        .label { padding: 12px 16px; }
+    </style>
+</head>
+<body>
+<div class="label">Black Hole (rotating glyph)</div>
+<canvas id="myDrawing" width="800" height="800"></canvas>
+<script type="module">
+    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { drawGlyphToContext } from './shared/glyph-render.js';
+
+    const canvas = document.getElementById('myDrawing');
+    const ctx = canvas.getContext('2d');
+
+    FontParserTTF.load("../truetypefonts/DiscoMo.ttf")
+        .then(font => {
+            ctx.translate(400, 400);
+            for (let i = 0; i < 20; i++) {
+                const col = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+                drawGlyphToContext(ctx, font.getGlyphByChar("O"), {
+                    x: 0,
+                    y: 0,
+                    scale: 0.25,
+                    styles: {
+                        'color': col,
+                        'stroke-color': '#000000',
+                        'opacity': '0.6',
+                        'line-width': '1'
+                    }
+                });
+                ctx.rotate(0.35);
+            }
+        })
+        .catch(err => console.error("Failed to load font:", err));
+</script>
+</body>
+</html>

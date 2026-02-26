@@ -109,9 +109,67 @@ var FontParserWOFF = /** @class */ (function () {
         var _a, _b;
         return (_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.descender) !== null && _b !== void 0 ? _b : 0;
     };
+    FontParserWOFF.prototype.getGlyphIndexByChar = function (char) {
+        if (char.length !== 1) {
+            console.error("getGlyphIndexByChar expects a single character");
+            return null;
+        }
+        var codePoint = char.codePointAt(0);
+        if (codePoint == null)
+            return null;
+        if (!this.cmap)
+            return null;
+        var cmapFormat = this.getBestCmapFormat();
+        if (!cmapFormat)
+            return null;
+        var glyphIndex = typeof cmapFormat.getGlyphIndex === "function"
+            ? cmapFormat.getGlyphIndex(codePoint)
+            : cmapFormat.mapCharCode(codePoint);
+        if (glyphIndex == null || glyphIndex === 0)
+            return null;
+        return glyphIndex;
+    };
+    FontParserWOFF.prototype.getGlyphByChar = function (char) {
+        var idx = this.getGlyphIndexByChar(char);
+        if (idx == null)
+            return null;
+        return this.getGlyph(idx);
+    };
     // Return a table by type
     FontParserWOFF.prototype.getTable = function (tableType) {
         return this.tables.find(function (tab) { return (tab === null || tab === void 0 ? void 0 : tab.getType()) === tableType; }) || null;
+    };
+    FontParserWOFF.prototype.getBestCmapFormat = function () {
+        if (!this.cmap)
+            return null;
+        var preferred = [
+            { platformId: 3, encodingId: 1 },
+            { platformId: 3, encodingId: 10 },
+            { platformId: 0, encodingId: 4 },
+            { platformId: 0, encodingId: 3 },
+            { platformId: 0, encodingId: 1 },
+            { platformId: 1, encodingId: 0 }
+        ];
+        for (var _i = 0, preferred_1 = preferred; _i < preferred_1.length; _i++) {
+            var pref = preferred_1[_i];
+            var formats = this.cmap.getCmapFormats(pref.platformId, pref.encodingId);
+            if (formats.length > 0) {
+                return this.pickBestFormat(formats);
+            }
+        }
+        return this.cmap.formats.length > 0 ? this.pickBestFormat(this.cmap.formats) : null;
+    };
+    FontParserWOFF.prototype.pickBestFormat = function (formats) {
+        if (formats.length === 0)
+            return null;
+        var order = [4, 12, 10, 8, 6, 2, 0];
+        for (var _i = 0, order_1 = order; _i < order_1.length; _i++) {
+            var fmt = order_1[_i];
+            var found = formats.find(function (f) { return (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt; });
+            if (found)
+                return found;
+        }
+        return formats[0];
     };
     return FontParserWOFF;
 }());

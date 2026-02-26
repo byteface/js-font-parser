@@ -133,8 +133,66 @@ export class FontParserWOFF {
         return this.hhea?.descender ?? 0;
     }
 
+    public getGlyphIndexByChar(char: string): number | null {
+        if (char.length !== 1) {
+            console.error("getGlyphIndexByChar expects a single character");
+            return null;
+        }
+
+        const codePoint = char.codePointAt(0);
+        if (codePoint == null) return null;
+
+        if (!this.cmap) return null;
+        const cmapFormat = this.getBestCmapFormat();
+        if (!cmapFormat) return null;
+
+        const glyphIndex = typeof cmapFormat.getGlyphIndex === "function"
+            ? cmapFormat.getGlyphIndex(codePoint)
+            : cmapFormat.mapCharCode(codePoint);
+
+        if (glyphIndex == null || glyphIndex === 0) return null;
+        return glyphIndex;
+    }
+
+    public getGlyphByChar(char: string): GlyphData | null {
+        const idx = this.getGlyphIndexByChar(char);
+        if (idx == null) return null;
+        return this.getGlyph(idx);
+    }
+
     // Return a table by type
     private getTable(tableType: any): ITable | null {
         return this.tables.find(tab => tab?.getType() === tableType) || null;
+    }
+
+    private getBestCmapFormat(): any | null {
+        if (!this.cmap) return null;
+        const preferred = [
+            { platformId: 3, encodingId: 1 },
+            { platformId: 3, encodingId: 10 },
+            { platformId: 0, encodingId: 4 },
+            { platformId: 0, encodingId: 3 },
+            { platformId: 0, encodingId: 1 },
+            { platformId: 1, encodingId: 0 }
+        ];
+
+        for (const pref of preferred) {
+            const formats = this.cmap.getCmapFormats(pref.platformId, pref.encodingId);
+            if (formats.length > 0) {
+                return this.pickBestFormat(formats);
+            }
+        }
+
+        return this.cmap.formats.length > 0 ? this.pickBestFormat(this.cmap.formats) : null;
+    }
+
+    private pickBestFormat(formats: any[]): any | null {
+        if (formats.length === 0) return null;
+        const order = [4, 12, 10, 8, 6, 2, 0];
+        for (const fmt of order) {
+            const found = formats.find(f => (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt);
+            if (found) return found;
+        }
+        return formats[0];
     }
 }

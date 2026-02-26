@@ -139,6 +139,15 @@ var FontParserTTF = /** @class */ (function () {
         var _a, _b;
         return (_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.descender) !== null && _b !== void 0 ? _b : 0;
     };
+    FontParserTTF.prototype.getNameRecord = function (nameId) {
+        var _a, _b;
+        return (_b = (_a = this.pName) === null || _a === void 0 ? void 0 : _a.getRecord(nameId)) !== null && _b !== void 0 ? _b : "";
+    };
+    FontParserTTF.prototype.getAllNameRecords = function () {
+        if (!this.pName)
+            return [];
+        return this.pName.records.map(function (r) { return ({ nameId: r.nameId, record: r.record }); });
+    };
     // Return a table by type
     FontParserTTF.prototype.getTable = function (tableType) {
         return this.tables.find(function (tab) { return (tab === null || tab === void 0 ? void 0 : tab.getType()) === tableType; }) || null;

@@ -24,6 +24,18 @@ Demo pages (see `demos/index.html`):
 - `demos/layout-chars.html` (ported)
 - `demos/cards.html` (ported)
 - `demos/particle.html` (ported style)
+- `demos/3dglasses.html`
+- `demos/blackhole.html`
+- `demos/face.html`
+- `demos/script.html`
+- `demos/script2.html`
+- `demos/shadow.html`
+- `demos/spin.html`
+- `demos/stack.html`
+- `demos/star.html`
+- `demos/svg.html`
+- `demos/woff.html`
+- `demos/metadata.html`
 
 ### Noto Fonts
 The `truetypefonts/noto/` folder contains a small set of Noto fonts (SIL OFL) for multilingual demos.
