@@ -3,6 +3,7 @@ import { GlyfSimpleDescript } from "./GlyfSimpleDescript.js";
 import { Table } from "./Table.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
 import { LocaTable } from "./LocaTable.js";
+import { Debug } from "../utils/Debug.js";
 
 export class GlyfTable {
     private buf: ByteArray | null;
@@ -53,7 +54,7 @@ export class GlyfTable {
                     this.descript.push(null);
                 } else {
 
-                    console.log('Adds a glyf', numberOfContours)
+                    Debug.log('Adds a glyf', numberOfContours);
                     // Handle simple glyph description
                     this.descript.push(new GlyfSimpleDescript(this, numberOfContours, bittie));
                 }
@@ -73,8 +74,7 @@ export class GlyfTable {
         }
 
 
-        console.log("😊😊😊😊 TWATTY!!! 😊😊😊😊")
-        console.log(this.descript)
+        Debug.log("Glyph descriptions resolved");
     }
     
 

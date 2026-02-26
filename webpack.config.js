@@ -6,7 +6,7 @@ module.exports = {
   entry: './src/index.ts', // Your entry point
   output: {
     filename: 'fontparser.min.js',
-    path: path.resolve(__dirname, 'dist'),
+    path: path.resolve(__dirname, 'dist-build'),
     library: 'FontParser',
     libraryTarget: 'umd',
     globalObject: 'this', // To support Node.js and browser

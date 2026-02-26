@@ -1,5 +1,6 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { ICmapFormat } from "./ICmapFormat.js";
+import { Debug } from "../utils/Debug.js";
 
 export class CmapFormat4 implements ICmapFormat {
     format: number = 4;
@@ -81,8 +82,8 @@ export class CmapFormat4 implements ICmapFormat {
         this.segCountX2 = byteArray.readUnsignedShort(); // Segment count x 2
         this.segCount = this.segCountX2 / 2; // Actual segment count
 
-        console.log("Segment count:", this.segCount, "segCountX2:", this.segCountX2);
-        console.log( this.language )
+        Debug.log("Segment count:", this.segCount, "segCountX2:", this.segCountX2);
+        Debug.log(this.language);
     
         // Initialize arrays
         this.endCode = [];
@@ -94,10 +95,10 @@ export class CmapFormat4 implements ICmapFormat {
         this.entrySelector = byteArray.readUnsignedShort();
         this.rangeShift = byteArray.readUnsignedShort();
         
-        console.log("Search range:", this.searchRange, "Entry selector:", this.entrySelector, "Range shift:", this.rangeShift);
+        Debug.log("Search range:", this.searchRange, "Entry selector:", this.entrySelector, "Range shift:", this.rangeShift);
     
         // Parsing end codes
-        console.log("Parsing end codes:");
+        Debug.log("Parsing end codes:");
         this.last = -1;
         for (var i = 0; i < this.segCount; i++) {
             const endCodeValue = byteArray.readUnsignedShort();
@@ -115,7 +116,7 @@ export class CmapFormat4 implements ICmapFormat {
         // Skip reserved padding
         byteArray.readUnsignedShort(); // NOTE - these bytes will be zero
 
-        console.log("Parsing start codes:");
+        Debug.log("Parsing start codes:");
         for (var j = 0; j < this.segCount; j++) {
             this.startCode.push(byteArray.readUnsignedShort());
         }
@@ -127,19 +128,19 @@ export class CmapFormat4 implements ICmapFormat {
         // its normal for some segments to be 1 char long . so you may see same values in some array positions
 
 
-        console.log("Parsing idDelta:");
+        Debug.log("Parsing idDelta:");
         for (var j = 0; j < this.segCount; j++) {
             this.idDelta.push(byteArray.readShort());
         }
-        console.log(this.idDelta);
+        Debug.log(this.idDelta);
 
 
-        console.log("Parsing idRangeOffset:");
+        Debug.log("Parsing idRangeOffset:");
         this.idRangeOffsetStart = byteArray.offset;
         for (var j = 0; j < this.segCount; j++) {
             this.idRangeOffset.push(byteArray.readUnsignedShort());
         }
-        console.log(this.idRangeOffset);
+        Debug.log(this.idRangeOffset);
 
 
 
@@ -153,8 +154,8 @@ export class CmapFormat4 implements ICmapFormat {
             this.glyphIdArray.push(byteArray.readUnsignedShort());
         }
 
-        console.log("glyphIdArray length:", this.glyphIdArray.length);
-        console.log("Finished parsing cmapFormat");
+        Debug.log("glyphIdArray length:", this.glyphIdArray.length);
+        Debug.log("Finished parsing cmapFormat");
     }
 
 
@@ -169,7 +170,7 @@ export class CmapFormat4 implements ICmapFormat {
 
     mapCharCode(charCode: number): number {
 
-        console.log( "😊 GET THE mapCharCode :::::", charCode );
+        Debug.log("mapCharCode", charCode);
 
         // Handle out-of-bounds
         if (charCode < 0 || charCode >= 0xFFFE) return 0;
@@ -206,7 +207,7 @@ export class CmapFormat4 implements ICmapFormat {
 
 
     generateMappingTable() {
-        console.log("generateMappingTable");
+        Debug.log("generateMappingTable");
         const mappingTable = [];
     
         for (let i = 0; i < this.segCount; i++) {
@@ -218,7 +219,7 @@ export class CmapFormat4 implements ICmapFormat {
             }
         }
     
-        console.table(mappingTable);
+        Debug.table(mappingTable);
         return mappingTable;
     }
 
@@ -228,11 +229,11 @@ export class CmapFormat4 implements ICmapFormat {
         if (codePoint < this.first || codePoint > this.last) {
             return null; // Out of range
         }
-        console.log("Looking for codePoint", codePoint);
+        Debug.log("Looking for codePoint", codePoint);
 
         const glyphId = this.mapCharCode(codePoint); // Use existing mapping logic
         
-        console.log("Which is apparently called", glyphId);
+        Debug.log("Which is apparently called", glyphId);
         return glyphId;
     }
 

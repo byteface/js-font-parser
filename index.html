@@ -1,277 +1,51 @@
 <!DOCTYPE HTML>
 <html lang="en">
-
 <head>
-    <title>TTF FontParser Example</title>
+    <title>JS Font Parser Demos</title>
     <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            color: #222;
+        }
+        h1 {
+            margin-bottom: 8px;
+        }
+        p {
+            margin-top: 0;
+            color: #555;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin: 8px 0;
+        }
+        a {
+            color: #0b57d0;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        code {
+            background: #f3f3f3;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
-<canvas id="myDrawing" width="800" height="800">
-    <p>Your browser doesn't support canvas</p>
-</canvas>
-    
-<!-- <script type="text/javascript" src="js/jquery.min.js"></script> -->
-
-<script type="module">
-
-    import { FontParserTTF } from './dist/data/FontParserTTF.js';
-
-    let font = null;
-    const GRID_SIZE = 25; // Adjust this based on the number of glyphs and desired grid size
-    const CELL_SIZE = 30; // Width and height for each glyph cell
-
-    FontParserTTF.load("truetypefonts/DiscoMo.ttf")
-        .then(ttf_font => {
-            font = ttf_font;
-            drawGrid();
-            drawString(font, "hello world", 20, 200);
-            debugCmap(font, "hello world");
-        })
-        .catch(error => {
-            console.error("Failed to load font:", error);
-        });
-
-
-    // Define your styles in a CSS-like object
-    const cssStyles = {
-        'color': '#3498db',
-        'stroke-color': '#000000',
-        'opacity': '1',
-        'line-width': '2',
-
-        'shadow-color': '#95a5a6',
-        'shadow-blur': '10',
-        'shadow-offset-x': '4',
-        'shadow-offset-y': '4',
-        // 'transform': 'scale(1.2, 1.2) rotate(0.5)'
-    };
-
-    function applyCanvasStyles(context, styles) {
-        for (const [key, value] of Object.entries(styles)) {
-            switch (key) {
-                case 'color':
-                case 'fill':
-                case 'fillStyle':
-                    context.fillStyle = value;
-                    break;
-                case 'stroke-color':
-                case 'strokeStyle':
-                    context.strokeStyle = value;
-                    break;
-                case 'opacity':
-                case 'globalAlpha':
-                    context.globalAlpha = parseFloat(value);
-                    break;
-                case 'line-width':
-                case 'lineWidth':
-                    context.lineWidth = parseFloat(value);
-                    break;
-                case 'line-cap':
-                case 'lineCap':
-                    context.lineCap = value;
-                    break;
-                case 'line-join':
-                case 'lineJoin':
-                    context.lineJoin = value;
-                    break;
-                case 'miter-limit':
-                case 'miterLimit':
-                    context.miterLimit = parseFloat(value);
-                    break;
-                case 'shadow-color':
-                case 'shadowColor':
-                    context.shadowColor = value;
-                    break;
-                case 'shadow-blur':
-                case 'shadowBlur':
-                    context.shadowBlur = parseFloat(value);
-                    break;
-                case 'shadow-offset-x':
-                case 'shadowOffsetX':
-                    context.shadowOffsetX = parseFloat(value);
-                    break;
-                case 'shadow-offset-y':
-                case 'shadowOffsetY':
-                    context.shadowOffsetY = parseFloat(value);
-                    break;
-                // case 'transform': 
-                //     const transforms = value.split(" ");
-                //     transforms.forEach(transform => {
-                //         const [type, arg] = transform.split("(");
-                //         const args = arg.slice(0, -1).split(",").map(Number);
-                //         if (type === "scale") context.scale(...args);
-                //         else if (type === "rotate") context.rotate(args[0]);
-                //         else if (type === "translate") context.translate(...args);
-                //     });
-                //     break;
-                // Additional CSS properties can be added here
-                default:
-                    console.warn(`Unsupported style property: ${key}`);
-            }
-        }
-    }
-
-    function drawGrid() {
-        const drawingCanvas = document.getElementById('myDrawing');
-        const context = drawingCanvas.getContext('2d');
-        let charIndex = 0;
-        const maxGlyphs = font.getNumGlyphs ? font.getNumGlyphs() : Infinity;
-
-        // Loop to position glyphs in a grid
-        for (let row = 0; row < GRID_SIZE; row++) {
-            for (let col = 0; col < GRID_SIZE; col++) {
-                if (charIndex >= maxGlyphs) {
-                    return;
-                }
-                drawGlyph(font, charIndex, context, col * CELL_SIZE, row * CELL_SIZE);
-                charIndex++;
-            }
-        }
-    }
-
-    function drawString(font, text, x, y) {
-        const SCALE = 0.08;
-        const drawingCanvas = document.getElementById('myDrawing');
-        const context = drawingCanvas.getContext('2d');
-        let cursorX = x;
-
-        context.save();
-        context.translate(0, y);
-        context.scale(SCALE, -SCALE);
-        applyCanvasStyles(context, cssStyles);
-
-        for (const ch of text) {
-            const glyph = font.getGlyphByChar(ch);
-            if (!glyph) {
-                cursorX += 10;
-                continue;
-            }
-
-            context.save();
-            context.translate(cursorX / SCALE, 0);
-            context.beginPath();
-
-            let firstindex = 0;
-            let counter = 0;
-            for (let i = 0; i < glyph.getPointCount(); i++) {
-                counter++;
-                if (glyph.getPoint(i).endOfContour) {
-                    addContourToShape(context, glyph, firstindex, counter);
-                    firstindex = i + 1;
-                    counter = 0;
-                }
-            }
-
-            context.closePath();
-            context.stroke();
-            context.fill();
-            context.restore();
-
-            cursorX += glyph.advanceWidth * SCALE;
-        }
-
-        context.restore();
-    }
-
-    function debugCmap(font, text) {
-        const cmap = font.cmap || font._cmap || null;
-        if (!cmap) {
-            console.warn("No cmap on font");
-            return;
-        }
-
-        const entries = (cmap.entries || []).map((e, i) => ({
-            i,
-            platformId: e.platformId,
-            encodingId: e.encodingId,
-            format: (cmap.formats && cmap.formats[i] && (cmap.formats[i].getFormatType?.() || cmap.formats[i].format)) || "?"
-        }));
-
-        console.table(entries);
-
-        const chars = Array.from(text);
-        const map = chars.map((ch) => {
-            const code = ch.codePointAt(0);
-            const glyphIndex = font.getGlyphIndexByChar(ch);
-            return { ch, code, glyphIndex };
-        });
-        console.table(map);
-    }
-
-    function drawGlyph(font, char, context, x, y) {
-        const SCALE = 0.04;
-        const glyph = font.getGlyph(char);
-        if (!glyph) {
-            return;
-        }
-        context.save();
-        context.translate(x + CELL_SIZE / 2, y + CELL_SIZE / 2); // Center glyph in each cell
-        context.scale(SCALE, -SCALE);
-
-        // context.strokeStyle = "#333";
-        // context.fillStyle = "#666";
-        applyCanvasStyles(context, cssStyles);
-
-        context.beginPath();
-        let firstindex = 0;
-        let counter = 0;
-
-        for (let i = 0; i < glyph.getPointCount(); i++) {
-            counter++;
-            if (glyph.getPoint(i).endOfContour) {
-                addContourToShape(context, glyph, firstindex, counter);
-                firstindex = i + 1;
-                counter = 0;
-            }
-        }
-
-        context.closePath();
-        context.stroke();
-        context.fill();
-        context.restore();
-    }
-
-    function addContourToShape(context, glyph, startIndex, count) {
-        if (glyph.getPoint(startIndex).endOfContour) {
-            return;
-        }
-
-        let offset = 0;
-        while (offset < count) {
-            const p0 = glyph.getPoint(startIndex + offset % count);
-            const p1 = glyph.getPoint(startIndex + (offset + 1) % count);
-
-            if (offset === 0) {
-                context.moveTo(p0.x, p0.y);
-            }
-
-            if (p0.onCurve) {
-                if (p1.onCurve) {
-                    context.lineTo(p1.x, p1.y);
-                    offset++;
-                } else {
-                    const p2 = glyph.getPoint(startIndex + (offset + 2) % count);
-                    if (p2.onCurve) {
-                        context.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y);
-                    } else {
-                        context.quadraticCurveTo(p1.x, p1.y, midValue(p1.x, p2.x), midValue(p1.y, p2.y));
-                    }
-                    offset += 2;
-                }
-            } else {
-                if (!p1.onCurve) {
-                    context.quadraticCurveTo(p0.x, p0.y, midValue(p0.x, p1.x), midValue(p0.y, p1.y));
-                } else {
-                    context.quadraticCurveTo(p0.x, p0.y, p1.x, p1.y);
-                }
-                offset++;
-            }
-        }
-    }
-
-    function midValue(a, b) {
-        return (a + b) / 2;
-    }
-</script>
+    <h1>JS Font Parser</h1>
+    <p>Pick a demo:</p>
+    <ul>
+        <li><a href="examples/string.html">String demo (hello world)</a></li>
+        <li><a href="examples/grid.html">Grid demo (glyph index grid)</a></li>
+    </ul>
+    <p>
+        Run a local server from this folder and open
+        <code>http://localhost:8080/index.html</code>.
+    </p>
 </body>
 </html>

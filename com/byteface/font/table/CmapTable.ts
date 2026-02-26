@@ -4,6 +4,7 @@ import { CmapFormat } from "./CmapFormat.js";
 import { Table } from "./Table.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
 import { ITable } from "./ITable.js";
+import { Debug } from "../utils/Debug.js";
 
 export class CmapTable implements ITable {
     version: number;
@@ -27,7 +28,7 @@ export class CmapTable implements ITable {
         // Get each of the tables
         this.formats = [];
         for (let j = 0; j < this.numTables; j++) {
-            console.log('Theres a table', j);
+            Debug.log('Theres a table', j);
             byteArray.offset = fp + this.entries[j].offset;
             const format = byteArray.readUnsignedShort();
             // const cmf = new CmapFormat(byteArray);
@@ -35,7 +36,7 @@ export class CmapTable implements ITable {
             this.formats.push(value);
         }
 
-        console.log( this.toString() );
+        Debug.log(this.toString());
     }
 
     getCmapFormat(platformId: number, encodingId: number): any | null {

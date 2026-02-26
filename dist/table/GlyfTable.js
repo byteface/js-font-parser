@@ -1,6 +1,7 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { GlyfSimpleDescript } from "./GlyfSimpleDescript.js";
 import { Table } from "./Table.js";
+import { Debug } from "../utils/Debug.js";
 var GlyfTable = /** @class */ (function () {
     function GlyfTable(de, byte_ar) {
         // console.log('Glyf Table')
@@ -36,7 +37,7 @@ var GlyfTable = /** @class */ (function () {
                     this.descript.push(null);
                 }
                 else {
-                    console.log('Adds a glyf', numberOfContours);
+                    Debug.log('Adds a glyf', numberOfContours);
                     // Handle simple glyph description
                     this.descript.push(new GlyfSimpleDescript(this, numberOfContours, bittie));
                 }
@@ -54,8 +55,7 @@ var GlyfTable = /** @class */ (function () {
                 continue;
             this.descript[j].resolve();
         }
-        console.log("😊😊😊😊 TWATTY!!! 😊😊😊😊");
-        console.log(this.descript);
+        Debug.log("Glyph descriptions resolved");
     };
     // Return the description for the specified glyph index
     GlyfTable.prototype.getDescription = function (i) {

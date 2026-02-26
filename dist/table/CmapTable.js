@@ -1,6 +1,7 @@
 import { CmapIndexEntry } from "./CmapIndexEntry.js";
 import { CmapFormat } from "./CmapFormat.js";
 import { Table } from "./Table.js";
+import { Debug } from "../utils/Debug.js";
 var CmapTable = /** @class */ (function () {
     function CmapTable(de, byteArray) {
         byteArray.offset = de.offset;
@@ -15,14 +16,14 @@ var CmapTable = /** @class */ (function () {
         // Get each of the tables
         this.formats = [];
         for (var j = 0; j < this.numTables; j++) {
-            console.log('Theres a table', j);
+            Debug.log('Theres a table', j);
             byteArray.offset = fp + this.entries[j].offset;
             var format = byteArray.readUnsignedShort();
             // const cmf = new CmapFormat(byteArray);
             var value = CmapFormat.create(format, byteArray);
             this.formats.push(value);
         }
-        console.log(this.toString());
+        Debug.log(this.toString());
     }
     CmapTable.prototype.getCmapFormat = function (platformId, encodingId) {
         // Find the requested format

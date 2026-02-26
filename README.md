@@ -6,8 +6,8 @@ It obtains the glyph points allowing a user to draw the shapes on the canvas.
 
 ## Usage
 
-### Run The Legacy Demo (raw JS in `dist/`)
-The current demo uses the prebuilt files in `dist/` and **must** be served over HTTP.
+### Run The Demos (raw JS in `dist/`)
+The demos use the prebuilt files in `dist/` and **must** be served over HTTP.
 
 ```bash
 cd /Users/byteface/Desktop/projects/js-font-parser
@@ -17,6 +17,10 @@ python3 -m http.server 8080
 Then open:
 `http://localhost:8080/index.html`
 
+Demo pages:
+- `examples/string.html` (string rendering)
+- `examples/grid.html` (glyph index grid)
+
 ### Include The Bundled Library
 Build a UMD bundle and include it in your HTML file:
 
@@ -25,7 +29,7 @@ npm install
 npm run build
 ```
 
-Build output: `dist/fontparser.min.js`
+Build output: `dist-build/fontparser.min.js`
 
 Then include the bundled library in your HTML file:
 
@@ -54,6 +58,10 @@ FontParserTTF.load("truetypefonts/DiscoMo.ttf").then((font) => {
 ### To Include only what you need
 
 This requires a deeper understanding of the library
+
+### Docs
+- `docs/API.md`
+- `docs/PORTING.md`
 
 
 
