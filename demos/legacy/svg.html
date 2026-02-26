@@ -22,8 +22,8 @@
     <div id="svg-container"></div>
 
     <script type="module">
-        import { ByteArray } from './dist/utils/ByteArray.js';
-        import { RawFont } from './dist/data/RawFont.js';
+        import { ByteArray } from '../../dist/utils/ByteArray.js';
+        import { RawFont } from '../../dist/data/RawFont.js';
 
         async function loadBinaryResource(url) {
             const response = await fetch(url);
@@ -33,7 +33,7 @@
         }
 
         async function initializeFont() {
-            const byteData = await loadBinaryResource("truetypefonts/DiscoMo.ttf");
+            const byteData = await loadBinaryResource("../../truetypefonts/DiscoMo.ttf");
             const byte_ar = new ByteArray(byteData);
             return new RawFont(byte_ar);
         }
