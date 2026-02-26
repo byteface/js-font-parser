@@ -17,10 +17,12 @@ python3 -m http.server 8080
 Then open:
 `http://localhost:8080/index.html`
 
-Demo pages:
-- `examples/string.html` (string rendering)
-- `examples/grid.html` (glyph index grid)
-- `examples/multilang.html` (multilingual samples)
+Demo pages (see `demos/index.html`):
+- `demos/string.html` (string rendering)
+- `demos/grid.html` (glyph index grid)
+- `demos/multilang.html` (multilingual samples)
+- `demos/layout-chars.html` (ported)
+- `demos/cards.html` (ported)
 
 ### Noto Fonts
 The `truetypefonts/noto/` folder contains a small set of Noto fonts (SIL OFL) for multilingual demos.

@@ -1,0 +1,119 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>Layout Chars (Ported)</title>
+    <meta charset="utf-8">
+</head>
+<body>
+<canvas id="myDrawing" width="1000" height="800">
+    <p>Your browser doesn't support canvas</p>
+</canvas>
+
+<script type="module">
+    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { Debug } from '../dist/utils/Debug.js';
+
+    const DEBUG = false;
+    Debug.enabled = DEBUG;
+
+    const GRID_SIZE = 10;
+    const CELL_SIZE = 80;
+    const SCALE = 0.08;
+
+    FontParserTTF.load("../truetypefonts/DiscoMo.ttf")
+        .then(font => {
+            drawGrid(font);
+        })
+        .catch(error => {
+            console.error("Failed to load font:", error);
+        });
+
+    function drawGrid(font) {
+        const canvas = document.getElementById('myDrawing');
+        const context = canvas.getContext('2d');
+        let glyphIndex = 0;
+        const maxGlyphs = font.getNumGlyphs ? font.getNumGlyphs() : Infinity;
+
+        for (let row = 0; row < GRID_SIZE; row++) {
+            for (let col = 0; col < GRID_SIZE; col++) {
+                if (glyphIndex >= maxGlyphs) {
+                    return;
+                }
+                drawGlyph(font, glyphIndex, context, col * CELL_SIZE, row * CELL_SIZE);
+                glyphIndex++;
+            }
+        }
+    }
+
+    function drawGlyph(font, index, context, x, y) {
+        const glyph = font.getGlyph(index);
+        if (!glyph) return;
+
+        context.save();
+        context.translate(x + CELL_SIZE / 2, y + CELL_SIZE / 2);
+        context.scale(SCALE, -SCALE);
+        context.fillStyle = "#000000";
+        context.strokeStyle = "#000000";
+        context.lineWidth = 1;
+
+        context.beginPath();
+        let firstindex = 0;
+        let counter = 0;
+        for (let i = 0; i < glyph.getPointCount(); i++) {
+            counter++;
+            if (glyph.getPoint(i).endOfContour) {
+                addContourToShape(context, glyph, firstindex, counter);
+                firstindex = i + 1;
+                counter = 0;
+            }
+        }
+        context.closePath();
+        context.stroke();
+        context.fill();
+        context.restore();
+    }
+
+    function addContourToShape(context, glyph, startIndex, count) {
+        if (glyph.getPoint(startIndex).endOfContour) {
+            return;
+        }
+
+        let offset = 0;
+        while (offset < count) {
+            const p0 = glyph.getPoint(startIndex + offset % count);
+            const p1 = glyph.getPoint(startIndex + (offset + 1) % count);
+
+            if (offset === 0) {
+                context.moveTo(p0.x, p0.y);
+            }
+
+            if (p0.onCurve) {
+                if (p1.onCurve) {
+                    context.lineTo(p1.x, p1.y);
+                    offset++;
+                } else {
+                    const p2 = glyph.getPoint(startIndex + (offset + 2) % count);
+                    if (p2.onCurve) {
+                        context.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y);
+                    } else {
+                        context.quadraticCurveTo(p1.x, p1.y, midValue(p1.x, p2.x), midValue(p1.y, p2.y));
+                    }
+                    offset += 2;
+                }
+            } else {
+                if (!p1.onCurve) {
+                    context.quadraticCurveTo(p0.x, p0.y, midValue(p0.x, p1.x), midValue(p0.y, p1.y));
+                } else {
+                    context.quadraticCurveTo(p0.x, p0.y, p1.x, p1.y);
+                }
+                offset++;
+            }
+        }
+    }
+
+    function midValue(a, b) {
+        return (a + b) / 2;
+    }
+</script>
+</body>
+</html>
