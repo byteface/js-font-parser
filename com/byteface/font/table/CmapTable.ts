@@ -27,12 +27,15 @@ export class CmapTable implements ITable {
         // Get each of the tables
         this.formats = [];
         for (let j = 0; j < this.numTables; j++) {
+            console.log('Theres a table', j);
             byteArray.offset = fp + this.entries[j].offset;
             const format = byteArray.readUnsignedShort();
-            const cmf = new CmapFormat(byteArray);
+            // const cmf = new CmapFormat(byteArray);
             const value = CmapFormat.create(format, byteArray);
             this.formats.push(value);
         }
+
+        console.log( this.toString() );
     }
 
     getCmapFormat(platformId: number, encodingId: number): any | null {

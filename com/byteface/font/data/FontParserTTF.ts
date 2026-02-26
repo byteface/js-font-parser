@@ -104,8 +104,8 @@ export class FontParserTTF {
         }
 
         // TODO - we need some way to get platformId and encodingId
-        const platformId = 1; // TODO - Determine the platform ID
-        const encodingId = 0; // TODO - Determine the encoding ID
+        const platformId = 3; // TODO - Determine the platform ID
+        const encodingId = 1; // TODO - Determine the encoding ID
         
         const cmapFormat = this.cmap.getCmapFormat(platformId, encodingId);
         if (!cmapFormat) {
@@ -113,7 +113,20 @@ export class FontParserTTF {
             return null;
         }
 
+        console.log(cmapFormat);
+        console.log("codePoint", codePoint);
+
+        // for (let codePoint = 32; codePoint <= 127; codePoint++) {
+        //     const glyphIndex = cmapFormat.mapCharCode(codePoint);
+        //     console.log(`Code Point: ${codePoint} (char: ${String.fromCodePoint(codePoint)}) => Glyph Index: ${glyphIndex}`);
+        // }
+
+        cmapFormat.generateMappingTable();
+  
         const glyphIndex = cmapFormat.getGlyphIndex(codePoint);
+
+        console.log("glyphIndex!!!!!!", glyphIndex);
+
         if (glyphIndex == null) {
             console.warn(`No glyph found for code point: ${codePoint}`);
             return null;
@@ -122,7 +135,6 @@ export class FontParserTTF {
         // return this.getGlyph(glyphIndex);
         return glyphIndex;
     }
-
 
     // Get a glyph description by index
     public getGlyph(i: number): GlyphData | null {

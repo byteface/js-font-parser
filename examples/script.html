@@ -17,7 +17,11 @@
     const context = drawingCanvas.getContext('2d');
     context.translate( 100, 100 );
 
-    const font = new CanvasGlyph("../../truetypefonts/Quill.ttf");
+    // const font = new CanvasGlyph("../../truetypefonts/Quill.ttf");
+    // const font = new CanvasGlyph("../../truetypefonts/Playwrite_GB_S/PlaywriteGBS-VariableFont_wght.ttf");
+    const font = new CanvasGlyph("../../truetypefonts/JoeJack.ttf");
+    
+    
     font.onFontLoaded().then(() => {
         font.setStyle(1, "#000000", "#ffffff", 0.2);
         // setInterval(drawIt,1);
@@ -26,8 +30,35 @@
     
     function drawIt()
     {
-        // context = font.drawGlyph( 34, 'myDrawing' );
-        context = font.drawChar( "A", 'myDrawing' ); // TODO - not working
+        // font.drawGlyph( 98, 'myDrawing' );
+        // font.drawGlyph( 77, 'myDrawing' );
+        // font.drawGlyph( 65, 'myDrawing' );
+        // font.drawGlyph( 1, 'myDrawing' );
+        // font.drawGlyph( 102, 'myDrawing' );
+        font.drawChar( "A", 'myDrawing' ); // TODO - not working
+        
+        // font.drawChar( "D", 'myDrawing' ); // TODO - not working <<<<< interesting
+        // font.drawChar( "E", 'myDrawing' ); // TODO - not working <<<<< interesting
+        // context = font.drawGlyph( 65, 'myDrawing' );
+        // context = font.drawGlyph( 66, 'myDrawing' );
+        // context = font.drawGlyph( 68, 'myDrawing' );
+        // font.drawChar( "B", 'myDrawing' ); // TODO - not working
+        // font.drawChar( "C", 'myDrawing' ); // TODO - not working
+        // font.drawChar( "D", 'myDrawing' ); // TODO - not working
+
+        // font.drawGlyph( 526, 'myDrawing' );
+        
+        // font.drawChar( "4", 'myDrawing' ); // TODO - not working <<<<< interesting
+
+        // font.drawChar( "S", 'myDrawing' ); // TODO - not working <<<<< interesting
+        // font.drawChar( "T", 'myDrawing' ); // TODO - not working <<<<< interesting
+        // font.drawChar( "U", 'myDrawing' ); // TODO - not working <<<<< interesting
+        // font.drawChar( "V", 'myDrawing' ); // TODO - not working <<<<< interesting
+        // font.drawChar( "W", 'myDrawing' ); // TODO - not working <<<<< interesting
+        // font.drawChar( "X", 'myDrawing' ); // TODO - not working <<<<< interesting
+        // font.drawChar( "Y", 'myDrawing' ); // TODO - not working <<<<< interesting
+        // font.drawChar( "Z", 'myDrawing' ); // TODO - not working <<<<< interesting
+
     }
 
 </script>

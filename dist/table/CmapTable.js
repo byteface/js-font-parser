@@ -15,12 +15,14 @@ var CmapTable = /** @class */ (function () {
         // Get each of the tables
         this.formats = [];
         for (var j = 0; j < this.numTables; j++) {
+            console.log('Theres a table', j);
             byteArray.offset = fp + this.entries[j].offset;
             var format = byteArray.readUnsignedShort();
-            var cmf = new CmapFormat(byteArray);
+            // const cmf = new CmapFormat(byteArray);
             var value = CmapFormat.create(format, byteArray);
             this.formats.push(value);
         }
+        console.log(this.toString());
     }
     CmapTable.prototype.getCmapFormat = function (platformId, encodingId) {
         // Find the requested format

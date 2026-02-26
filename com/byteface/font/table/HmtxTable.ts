@@ -17,11 +17,6 @@ export class HmtxTable implements ITable {
         this.hMetrics = null;
         this.leftSideBearing = null;
 
-        // TODO - don't trust this. as it was sliced off before
-        // Initialize buf with byte_ar data
-        // this.buf = new ByteArray(byte_ar.dataView);
-        // this.buf = byte_ar; // Directly assign the ByteArray
-
         const start = byte_ar.offset;
         const length = de.length;
 

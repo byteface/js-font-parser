@@ -11,7 +11,6 @@ import { ICoverage } from './ICoverage.js';
 
 export class Coverage {
 
-
     /**
      * 
      * @param byte_ar

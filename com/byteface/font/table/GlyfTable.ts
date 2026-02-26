@@ -49,6 +49,7 @@ export class GlyfTable {
                 const numberOfContours = (bittie.readUnsignedByte() << 8) | bittie.readUnsignedByte();
                 
                 if (numberOfContours > 255) {
+                    console.log('lots of contours1')
                     // For cases where the number of contours exceeds 255, set to -1 (composite glyph)
                     // FIXME: Add more logic for composite glyphs
                     this.descript.push(null);
@@ -58,6 +59,7 @@ export class GlyfTable {
                     // Handle simple glyph description
                     this.descript.push(new GlyfSimpleDescript(this, numberOfContours, bittie));
                 } else {
+                    console.log('composite required');
                     // TODO: Uncomment this line when the composite description logic is ready
                     // this.descript.push(new GlyfCompositeDescript(this, bittie));
                 }
@@ -72,6 +74,10 @@ export class GlyfTable {
             if (!this.descript[j]) continue;
             this.descript[j].resolve();
         }
+
+
+        console.log("😊😊😊😊 TWATTY!!! 😊😊😊😊")
+        console.log(this.descript)
     }
     
 

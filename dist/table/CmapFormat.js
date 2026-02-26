@@ -6,14 +6,17 @@ import { CmapFormat8 } from "./CmapFormat8.js";
 import { CmapFormat10 } from "./CmapFormat10.js";
 import { CmapFormat12 } from "./CmapFormat12.js";
 var CmapFormat = /** @class */ (function () {
-    function CmapFormat(byte_ar) {
+    function CmapFormat() {
         this.format = 0;
         this.length = 0;
         this.version = 0;
-        this.length = byte_ar.readUnsignedShort();
-        this.version = byte_ar.readUnsignedShort();
     }
+    // constructor(byte_ar: ByteArray) {
+    // this.length = byte_ar.readUnsignedShort();
+    // this.version = byte_ar.readUnsignedShort();
+    // }
     CmapFormat.create = function (format, byte_ar) {
+        console.log("cmap create", format);
         switch (format) {
             case 0:
                 return new CmapFormat0(byte_ar);

@@ -12,12 +12,15 @@ export class CmapFormat {
     length: number = 0;
     version: number = 0;
 
-    constructor(byte_ar: ByteArray) {
-        this.length = byte_ar.readUnsignedShort();
-        this.version = byte_ar.readUnsignedShort();
-    }
+    // constructor(byte_ar: ByteArray) {
+        // this.length = byte_ar.readUnsignedShort();
+        // this.version = byte_ar.readUnsignedShort();
+    // }
 
     static create(format: number, byte_ar: ByteArray): CmapFormat | null {
+
+        console.log("cmap create", format);
+
         switch (format) {
             case 0:
                 return new CmapFormat0(byte_ar);

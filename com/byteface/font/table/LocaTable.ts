@@ -9,29 +9,15 @@ export class LocaTable implements ITable {
     private factor: number = 0;
 
     constructor(de: DirectoryEntry, byte_ar: ByteArray) {
-        byte_ar.offset = de.offset; // Set the position in the ByteArray
-
-        // this.offsets = [];
-        // this.factor = 0;
-        // const extractedData = new Uint8Array(byte_ar.dataView.buffer).subarray(byte_ar.offset, byte_ar.offset + de.length);
-        // this.buf =  new ByteArray(extractedData);
+        byte_ar.offset = de.offset;
 
         // console.log('locaTable', byte_ar.offset, de.length)
         // console.log(`Buffer length: ${byte_ar.dataView.byteLength}`);
 
-        // Extract the portion of the data corresponding to de.offset and de.length
-        // const extractedData = new Uint8Array(byte_ar.dataView.buffer, byte_ar.offset, de.length);
-
         const extractedData = new Uint8Array(byte_ar.dataView.buffer.slice(byte_ar.offset, byte_ar.offset + de.length));
-
-        // console.log('Bytes:', extractedData.byteLength);
-
-        // Create a new ByteArray using the extracted data
-        // this.buf = new ByteArray(extractedData);
         this.buf = new ByteArray(extractedData);
 
         // console.log('Buffer Bytes:', this.buf.dataView.byteLength);
-        
         // console.log('New Buffer First Bytes:', Array.from(new Uint8Array(byte_ar.dataView.buffer, byte_ar.offset, 16)));
 
     }

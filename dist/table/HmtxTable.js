@@ -6,10 +6,6 @@ var HmtxTable = /** @class */ (function () {
         byte_ar.offset = de.offset;
         this.hMetrics = null;
         this.leftSideBearing = null;
-        // TODO - don't trust this. as it was sliced off before
-        // Initialize buf with byte_ar data
-        // this.buf = new ByteArray(byte_ar.dataView);
-        // this.buf = byte_ar; // Directly assign the ByteArray
         var start = byte_ar.offset;
         var length = de.length;
         // Create a new ArrayBuffer from the DataView

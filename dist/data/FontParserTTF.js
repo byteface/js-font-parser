@@ -83,14 +83,22 @@ var FontParserTTF = /** @class */ (function () {
             return null;
         }
         // TODO - we need some way to get platformId and encodingId
-        var platformId = 0; // TODO - Determine the platform ID
-        var encodingId = 0; // TODO - Determine the encoding ID
+        var platformId = 3; // TODO - Determine the platform ID
+        var encodingId = 1; // TODO - Determine the encoding ID
         var cmapFormat = this.cmap.getCmapFormat(platformId, encodingId);
         if (!cmapFormat) {
             console.warn("No cmap format found for platformId: ".concat(platformId, ", encodingId: ").concat(encodingId));
             return null;
         }
+        console.log(cmapFormat);
+        console.log("codePoint", codePoint);
+        // for (let codePoint = 32; codePoint <= 127; codePoint++) {
+        //     const glyphIndex = cmapFormat.mapCharCode(codePoint);
+        //     console.log(`Code Point: ${codePoint} (char: ${String.fromCodePoint(codePoint)}) => Glyph Index: ${glyphIndex}`);
+        // }
+        cmapFormat.generateMappingTable();
         var glyphIndex = cmapFormat.getGlyphIndex(codePoint);
+        console.log("glyphIndex!!!!!!", glyphIndex);
         if (glyphIndex == null) {
             console.warn("No glyph found for code point: ".concat(codePoint));
             return null;

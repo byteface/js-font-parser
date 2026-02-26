@@ -32,6 +32,7 @@ var GlyfTable = /** @class */ (function () {
                 // Read number of contours (2 bytes)
                 var numberOfContours = (bittie.readUnsignedByte() << 8) | bittie.readUnsignedByte();
                 if (numberOfContours > 255) {
+                    console.log('lots of contours1');
                     // For cases where the number of contours exceeds 255, set to -1 (composite glyph)
                     // FIXME: Add more logic for composite glyphs
                     this.descript.push(null);
@@ -42,6 +43,7 @@ var GlyfTable = /** @class */ (function () {
                     this.descript.push(new GlyfSimpleDescript(this, numberOfContours, bittie));
                 }
                 else {
+                    console.log('composite required');
                     // TODO: Uncomment this line when the composite description logic is ready
                     // this.descript.push(new GlyfCompositeDescript(this, bittie));
                 }
@@ -55,6 +57,8 @@ var GlyfTable = /** @class */ (function () {
                 continue;
             this.descript[j].resolve();
         }
+        console.log("😊😊😊😊 TWATTY!!! 😊😊😊😊");
+        console.log(this.descript);
     };
     // Return the description for the specified glyph index
     GlyfTable.prototype.getDescription = function (i) {
