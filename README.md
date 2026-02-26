@@ -20,6 +20,11 @@ Then open:
 Demo pages:
 - `examples/string.html` (string rendering)
 - `examples/grid.html` (glyph index grid)
+- `examples/multilang.html` (multilingual samples)
+
+### Noto Fonts
+The `truetypefonts/noto/` folder contains a small set of Noto fonts (SIL OFL) for multilingual demos.
+Arabic/Devanagari shaping is not implemented yet, so those scripts will render unshaped outlines.
 
 ### Include The Bundled Library
 Build a UMD bundle and include it in your HTML file:
@@ -62,6 +67,7 @@ This requires a deeper understanding of the library
 ### Docs
 - `docs/API.md`
 - `docs/PORTING.md`
+- `docs/WISHLIST.md`
 
 
 
