@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Particle p1</title>
+    <style>
+        body { margin: 0; background: #0d0f14; color: #e6e6e6; font-family: Arial, sans-serif; }
+        .label { padding: 10px 16px; }
+    </style>
+</head>
+<body>
+<div class="label">p1 - DiscoMo, gravity to mouse, bounce</div>
+<canvas id="myDrawing" width="800" height="800"></canvas>
+<script type="module">
+    import { setupParticleDemo } from './particle-utils.js';
+    setupParticleDemo({
+        fontUrl: '../../truetypefonts/DiscoMo.ttf',
+        canvasId: 'myDrawing',
+        color: '#ffffff',
+        scale: 0.12,
+        glyphIndex: 45,
+        maxSpeed: 20,
+        damp: 0.6,
+        gravToMouse: true,
+        gravStrength: 1000,
+        edgeBehavior: 'bounce',
+        pointSize: 2
+    });
+</script>
+</body>
+</html>

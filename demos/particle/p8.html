@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Particle p8</title>
+    <style>
+        body { margin: 0; background: #0d0f14; color: #e6e6e6; font-family: Arial, sans-serif; }
+        .label { padding: 10px 16px; }
+        .note { padding: 0 16px 10px; color: #aaa; }
+    </style>
+</head>
+<body>
+<div class="label">p8 - Gotham (OTF)</div>
+<div class="note">Note: CFF OTF outlines are not supported yet. This demo will likely fail.</div>
+<canvas id="myDrawing" width="2000" height="1200"></canvas>
+<script type="module">
+    import { setupParticleDemo } from './particle-utils.js';
+    setupParticleDemo({
+        fontUrl: '../../truetypefonts/GothamNarrow-Ultra.otf',
+        canvasId: 'myDrawing',
+        color: '#ffffff',
+        scale: 0.2,
+        randomGlyphMax: 50,
+        maxSpeed: 25,
+        damp: 0.6,
+        gravToMouse: true,
+        gravStrength: 1000,
+        edgeBehavior: 'bounce',
+        pointSize: 2
+    });
+</script>
+</body>
+</html>

@@ -26,13 +26,15 @@
     const canvas = document.getElementById('c');
     const ctx = canvas.getContext('2d');
 
-    const text = "HELLO";
+    const text = "HELLO WORLD";
     const scale = 0.09;
     const particles = [];
+    let scatter = false;
 
     FontParserTTF.load("../truetypefonts/DiscoMo.ttf")
         .then(font => {
             buildParticles(font, text);
+            setTimeout(() => { scatter = true; }, 5000);
             animate();
         })
         .catch(error => console.error("Failed to load font:", error));
@@ -71,10 +73,12 @@
         ctx.fillStyle = "#61dafb";
 
         for (const p of particles) {
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vx *= 0.985;
-            p.vy *= 0.985;
+            if (scatter) {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vx *= 0.985;
+                p.vy *= 0.985;
+            }
 
             ctx.fillRect(p.x, p.y, 2, 2);
         }
