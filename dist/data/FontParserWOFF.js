@@ -335,7 +335,7 @@ var FontParserWOFF = /** @class */ (function () {
             return null;
         if (!this.cmap)
             return null;
-        var cmapFormat = this.getBestCmapFormat();
+        var cmapFormat = this.getBestCmapFormatFor(codePoint);
         if (!cmapFormat)
             return null;
         var glyphIndex = typeof cmapFormat.getGlyphIndex === "function"
@@ -434,12 +434,12 @@ var FontParserWOFF = /** @class */ (function () {
     FontParserWOFF.prototype.getTable = function (tableType) {
         return this.tables.find(function (tab) { return (tab === null || tab === void 0 ? void 0 : tab.getType()) === tableType; }) || null;
     };
-    FontParserWOFF.prototype.getBestCmapFormat = function () {
+    FontParserWOFF.prototype.getBestCmapFormatFor = function (codePoint) {
         if (!this.cmap)
             return null;
         var preferred = [
-            { platformId: 3, encodingId: 1 },
             { platformId: 3, encodingId: 10 },
+            { platformId: 3, encodingId: 1 },
             { platformId: 0, encodingId: 4 },
             { platformId: 0, encodingId: 3 },
             { platformId: 0, encodingId: 1 },
@@ -457,7 +457,7 @@ var FontParserWOFF = /** @class */ (function () {
     FontParserWOFF.prototype.pickBestFormat = function (formats) {
         if (formats.length === 0)
             return null;
-        var order = [4, 12, 10, 8, 6, 2, 0];
+        var order = [12, 4, 10, 8, 6, 2, 0];
         var _loop_2 = function (fmt) {
             var found = formats.find(function (f) { return (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt; });
             if (found)

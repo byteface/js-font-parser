@@ -98,7 +98,7 @@ var FontParserTTF = /** @class */ (function () {
             console.warn("No cmap table available");
             return null;
         }
-        var cmapFormat = this.getBestCmapFormat();
+        var cmapFormat = this.getBestCmapFormatFor(codePoint);
         if (!cmapFormat) {
             console.warn("No cmap format available");
             return null;
@@ -107,7 +107,6 @@ var FontParserTTF = /** @class */ (function () {
             ? cmapFormat.getGlyphIndex(codePoint)
             : cmapFormat.mapCharCode(codePoint);
         if (glyphIndex == null || glyphIndex === 0) {
-            console.warn("No glyph found for code point: ".concat(codePoint));
             return null;
         }
         return glyphIndex;
@@ -272,12 +271,12 @@ var FontParserTTF = /** @class */ (function () {
     FontParserTTF.prototype.getTable = function (tableType) {
         return this.tables.find(function (tab) { return (tab === null || tab === void 0 ? void 0 : tab.getType()) === tableType; }) || null;
     };
-    FontParserTTF.prototype.getBestCmapFormat = function () {
+    FontParserTTF.prototype.getBestCmapFormatFor = function (codePoint) {
         if (!this.cmap)
             return null;
         var preferred = [
-            { platformId: 3, encodingId: 1 }, // Windows, Unicode BMP
             { platformId: 3, encodingId: 10 }, // Windows, UCS-4
+            { platformId: 3, encodingId: 1 }, // Windows, Unicode BMP
             { platformId: 0, encodingId: 4 }, // Unicode, UCS-4
             { platformId: 0, encodingId: 3 }, // Unicode, BMP
             { platformId: 0, encodingId: 1 }, // Unicode, 1.1
@@ -295,7 +294,7 @@ var FontParserTTF = /** @class */ (function () {
     FontParserTTF.prototype.pickBestFormat = function (formats) {
         if (formats.length === 0)
             return null;
-        var order = [4, 12, 10, 8, 6, 2, 0];
+        var order = [12, 4, 10, 8, 6, 2, 0];
         var _loop_2 = function (fmt) {
             var found = formats.find(function (f) { return (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt; });
             if (found)

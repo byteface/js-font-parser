@@ -212,7 +212,7 @@
             outlineContainer.innerHTML = svg;
         }
 
-        function renderColorGlyphs(text) {
+        function renderColorGlyphs(text, colr) {
             const ctx = colorCanvas.getContext("2d");
             if (!ctx || !font) return;
             ctx.clearRect(0, 0, colorCanvas.width, colorCanvas.height);
@@ -226,8 +226,26 @@
             const baseline = colorCanvas.height * 0.7;
 
             const glyphs = Array.from(text).map(ch => font.getGlyphIndexByChar(ch)).filter(g => g != null);
-            if (glyphs.length === 0) {
-                colorInfo.textContent = "No glyphs found for this text in the selected font.";
+
+            if (glyphs.length === 0 && colr?.baseGlyphRecords?.length) {
+                colorInfo.textContent = "No glyphs found for that text; showing first COLR glyphs instead.";
+                const cell = 140;
+                const cols = Math.max(1, Math.floor(colorCanvas.width / cell));
+                const limit = Math.min(colr.baseGlyphRecords.length, cols * 2);
+                for (let i = 0; i < limit; i++) {
+                    const col = i % cols;
+                    const row = Math.floor(i / cols);
+                    const x = 20 + col * cell;
+                    const y = baseline - row * cell * 0.8;
+                    const glyphId = colr.baseGlyphRecords[i].glyphId;
+                    CanvasRenderer.drawColorGlyph(font, glyphId, colorCanvas, {
+                        x,
+                        y,
+                        scale,
+                        fallbackFill: "#6b4e3d"
+                    });
+                }
+                return;
             }
 
             CanvasRenderer.drawColorString(font, text, colorCanvas, {
@@ -266,7 +284,7 @@
             } else {
                 colorInfo.textContent = "Rendered with COLR/CPAL layers.";
             }
-            renderColorGlyphs(text);
+            renderColorGlyphs(text, colr);
             renderOutlineGlyph(text);
         }
 

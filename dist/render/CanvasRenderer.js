@@ -235,8 +235,8 @@ var CanvasRenderer = /** @class */ (function () {
         var cursorX = x;
         context.save();
         context.translate(0, y);
-        for (var _i = 0, text_2 = text; _i < text_2.length; _i++) {
-            var ch = text_2[_i];
+        for (var _i = 0, _f = Array.from(text); _i < _f.length; _i++) {
+            var ch = _f[_i];
             var glyphIndex = typeof font.getGlyphIndexByChar === 'function'
                 ? font.getGlyphIndexByChar(ch)
                 : null;

@@ -256,7 +256,7 @@ export class CanvasRenderer {
         context.save();
         context.translate(0, y);
 
-        for (const ch of text) {
+        for (const ch of Array.from(text)) {
             const glyphIndex = typeof font.getGlyphIndexByChar === 'function'
                 ? font.getGlyphIndexByChar(ch)
                 : null;

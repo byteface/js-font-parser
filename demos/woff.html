@@ -15,7 +15,7 @@
     const canvas = document.getElementById('myDrawing');
     const ctx = canvas.getContext('2d');
 
-    FontParserWOFF.load("https://cdn.jsdelivr.net/npm/opensans-font@1.0.0/OpenSans-Regular.woff")
+    FontParserWOFF.load("https://cdn.jsdelivr.net/fontsource/fonts/open-sauce-one@latest/latin-400-normal.woff")
         .then(font => {
             const glyph = font.getGlyphByChar("W");
             if (!glyph) {

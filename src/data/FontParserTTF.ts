@@ -123,7 +123,7 @@ export class FontParserTTF {
             return null;
         }
 
-        const cmapFormat = this.getBestCmapFormat();
+        const cmapFormat = this.getBestCmapFormatFor(codePoint);
         if (!cmapFormat) {
             console.warn("No cmap format available");
             return null;
@@ -134,7 +134,6 @@ export class FontParserTTF {
             : cmapFormat.mapCharCode(codePoint);
 
         if (glyphIndex == null || glyphIndex === 0) {
-            console.warn(`No glyph found for code point: ${codePoint}`);
             return null;
         }
 
@@ -296,12 +295,12 @@ export class FontParserTTF {
         return this.tables.find(tab => tab?.getType() === tableType) || null;
     }
 
-    private getBestCmapFormat(): any | null {
+    private getBestCmapFormatFor(codePoint: number): any | null {
         if (!this.cmap) return null;
 
         const preferred = [
-            { platformId: 3, encodingId: 1 },  // Windows, Unicode BMP
             { platformId: 3, encodingId: 10 }, // Windows, UCS-4
+            { platformId: 3, encodingId: 1 },  // Windows, Unicode BMP
             { platformId: 0, encodingId: 4 },  // Unicode, UCS-4
             { platformId: 0, encodingId: 3 },  // Unicode, BMP
             { platformId: 0, encodingId: 1 },  // Unicode, 1.1
@@ -320,7 +319,7 @@ export class FontParserTTF {
 
     private pickBestFormat(formats: any[]): any | null {
         if (formats.length === 0) return null;
-        const order = [4, 12, 10, 8, 6, 2, 0];
+        const order = [12, 4, 10, 8, 6, 2, 0];
         for (const fmt of order) {
             const found = formats.find(f => (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt);
             if (found) return found;
