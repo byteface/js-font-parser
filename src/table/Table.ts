@@ -6,6 +6,9 @@ export class Table {
     static readonly EBDT = 0x45424454; // Embedded bitmap data
     static readonly EBLC = 0x45424c43; // Embedded bitmap location data
     static readonly EBSC = 0x45425343; // Embedded bitmap scaling data
+    static readonly COLR = 0x434f4c52; // Color glyph layers
+    static readonly CPAL = 0x4350414c; // Color palette
+    static readonly SVG = 0x53564720;  // SVG glyph data
     static readonly GDEF = 0x47444546; // Glyph definition data [OpenType]
     static readonly GPOS = 0x47504f53; // Glyph positioning data [OpenType]
     static readonly GSUB = 0x47535542; // Glyph substitution data [OpenType]

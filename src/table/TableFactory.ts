@@ -16,6 +16,9 @@ import { LocaTable } from './LocaTable.js'
 import { MaxpTable } from './MaxpTable.js'
 import { NameTable } from './NameTable.js'
 import { PostTable } from './PostTable.js'
+import { CpalTable } from './CpalTable.js'
+import { ColrTable } from './ColrTable.js'
+import { SvgTable } from './SvgTable.js'
 
 
 export class TableFactory {
@@ -55,6 +58,12 @@ export class TableFactory {
                 return new NameTable(de, byte_ar);
             case Table.post:
                 return new PostTable(de, byte_ar);
+            case Table.CPAL:
+                return new CpalTable(de, byte_ar);
+            case Table.COLR:
+                return new ColrTable(de, byte_ar);
+            case Table.SVG:
+                return new SvgTable(de, byte_ar);
             default:
                 return t;
         }

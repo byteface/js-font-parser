@@ -39,6 +39,7 @@ Demo pages (see `demos/index.html`):
 - `demos/path-tracing.html` (SVG stroke tracing)
 - `demos/morphing.html` (glyph morphing)
 - `demos/breathing.html` (organic motion)
+- `demos/color-font.html` (COLR/CPAL/SVG table inspection)
 - `demos/woff.html`
 - `demos/metadata.html`
 - `demos/features.html` (GSUB/GPOS tags)
