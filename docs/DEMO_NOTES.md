@@ -26,3 +26,4 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 - `demos/ribbon.html` animates glyph outlines into a ribbon wave.
 - `demos/particle-word.html` explodes and reassembles glyph points.
 - `demos/orbit.html` orbits glyphs around a ring with depth scaling.
+- `demos/glyph-inspector.html` shows contour data, points, bearings, and bounding boxes.

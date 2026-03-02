@@ -1,0 +1,411 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>Glyph Inspector</title>
+    <meta charset="utf-8">
+    <style>
+        :root { color-scheme: light; }
+        body {
+            margin: 24px;
+            font-family: "Source Serif 4", "Georgia", serif;
+            background: radial-gradient(circle at 20% 10%, #ffffff, #eef2f4);
+            color: #15171b;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 28px; }
+        .panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #ffffff;
+            border: 1px solid #dbe2e7;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(20, 30, 60, 0.08);
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #4e5a6b;
+        }
+        select, input[type="text"], input[type="number"] {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #dbe2e7;
+            font-size: 14px;
+            min-width: 180px;
+            background: #fbfcff;
+        }
+        input[type="checkbox"] { transform: translateY(2px); }
+        button {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #2f4f7a;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(260px, 320px) 1fr;
+            gap: 16px;
+        }
+        .card {
+            background: #ffffff;
+            border: 1px solid #dbe2e7;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 6px 20px rgba(20, 30, 60, 0.06);
+        }
+        canvas {
+            width: 100%;
+            height: 360px;
+            border: 1px dashed #dbe2e7;
+            border-radius: 12px;
+            background: #fbfcff;
+        }
+        .gridCanvas {
+            height: 520px;
+        }
+        .info {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #2a2f36;
+        }
+        .info strong { color: #111; }
+        .hint { margin-top: 8px; color: #4e5a6b; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Glyph Inspector</h1>
+    <div class="panel">
+        <label>
+            Font
+            <select id="fontSelect"></select>
+        </label>
+        <label>
+            Glyph Index
+            <input id="glyphInput" type="number" min="0" value="0" />
+        </label>
+        <label>
+            Character
+            <input id="charInput" type="text" value="A" />
+        </label>
+        <button id="prevBtn">Prev</button>
+        <button id="nextBtn">Next</button>
+        <label><span>Fill</span><input id="fillToggle" type="checkbox" checked /></label>
+        <label><span>Outline</span><input id="outlineToggle" type="checkbox" checked /></label>
+        <label><span>Points</span><input id="pointsToggle" type="checkbox" checked /></label>
+        <label><span>Handles</span><input id="handlesToggle" type="checkbox" checked /></label>
+        <label><span>Indices</span><input id="indexToggle" type="checkbox" /></label>
+        <label><span>BBox</span><input id="bboxToggle" type="checkbox" checked /></label>
+    </div>
+
+    <div class="layout">
+        <div class="card">
+            <div class="info" id="meta"></div>
+            <div class="hint">Click a glyph in the grid to inspect it.</div>
+            <canvas id="gridCanvas" class="gridCanvas" width="320" height="520"></canvas>
+        </div>
+        <div class="card">
+            <canvas id="inspectCanvas" width="900" height="360"></canvas>
+        </div>
+    </div>
+
+    <script type="module">
+        import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+        import { Table } from '../dist/table/Table.js';
+
+        const fontSelect = document.getElementById('fontSelect');
+        const glyphInput = document.getElementById('glyphInput');
+        const charInput = document.getElementById('charInput');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const fillToggle = document.getElementById('fillToggle');
+        const outlineToggle = document.getElementById('outlineToggle');
+        const pointsToggle = document.getElementById('pointsToggle');
+        const handlesToggle = document.getElementById('handlesToggle');
+        const indexToggle = document.getElementById('indexToggle');
+        const bboxToggle = document.getElementById('bboxToggle');
+        const gridCanvas = document.getElementById('gridCanvas');
+        const inspectCanvas = document.getElementById('inspectCanvas');
+        const meta = document.getElementById('meta');
+        const gridCtx = gridCanvas.getContext('2d');
+        const inspectCtx = inspectCanvas.getContext('2d');
+
+        const fonts = [
+            { name: 'DiscoMo', url: '../truetypefonts/DiscoMo.ttf' },
+            { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' },
+            { name: 'JoeJack', url: '../truetypefonts/JoeJack.ttf' },
+            { name: 'Quill', url: '../truetypefonts/Quill.ttf' },
+            { name: 'Noto Sans', url: '../truetypefonts/noto/NotoSans-Regular.ttf' }
+        ];
+
+        const cache = new Map();
+        let font = null;
+        let glyphCount = 0;
+        const cell = 48;
+        let gridCols = 6;
+
+        function populateFonts() {
+            fontSelect.innerHTML = '';
+            fonts.forEach((f, i) => {
+                const opt = document.createElement('option');
+                opt.value = String(i);
+                opt.textContent = f.name;
+                fontSelect.appendChild(opt);
+            });
+        }
+
+        async function loadFont(url) {
+            if (cache.has(url)) return cache.get(url);
+            const f = await FontParserTTF.load(url);
+            cache.set(url, f);
+            return f;
+        }
+
+        function clear(ctx, canvas) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fbfcff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function getContours(points) {
+            const contours = [];
+            let current = [];
+            for (const p of points) {
+                current.push(p);
+                if (p.endOfContour) {
+                    contours.push(current);
+                    current = [];
+                }
+            }
+            if (current.length) contours.push(current);
+            return contours;
+        }
+
+        function contourArea(contour) {
+            let area = 0;
+            for (let i = 0; i < contour.length; i++) {
+                const p0 = contour[i];
+                const p1 = contour[(i + 1) % contour.length];
+                area += (p0.x * p1.y) - (p1.x * p0.y);
+            }
+            return area / 2;
+        }
+
+        function drawContourPath(ctx, contour) {
+            if (!contour.length) return;
+            let offset = 0;
+            const count = contour.length;
+            const get = (i) => contour[(i + count) % count];
+
+            const p0 = get(0);
+            ctx.moveTo(p0.x, p0.y);
+
+            while (offset < count) {
+                const a = get(offset);
+                const b = get(offset + 1);
+                if (a.onCurve) {
+                    if (b.onCurve) {
+                        ctx.lineTo(b.x, b.y);
+                        offset++;
+                    } else {
+                        const c = get(offset + 2);
+                        if (c.onCurve) {
+                            ctx.quadraticCurveTo(b.x, b.y, c.x, c.y);
+                        } else {
+                            ctx.quadraticCurveTo(b.x, b.y, (b.x + c.x) / 2, (b.y + c.y) / 2);
+                        }
+                        offset += 2;
+                    }
+                } else {
+                    if (!b.onCurve) {
+                        ctx.quadraticCurveTo(a.x, a.y, (a.x + b.x) / 2, (a.y + b.y) / 2);
+                    } else {
+                        ctx.quadraticCurveTo(a.x, a.y, b.x, b.y);
+                    }
+                    offset++;
+                }
+            }
+        }
+
+        function renderGrid() {
+            clear(gridCtx, gridCanvas);
+            if (!font) return;
+            const cols = gridCols;
+            const rows = Math.ceil(glyphCount / cols);
+            gridCanvas.height = rows * cell + 20;
+            clear(gridCtx, gridCanvas);
+            gridCtx.strokeStyle = '#e2e6ef';
+
+            for (let i = 0; i < glyphCount; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const x = col * cell;
+                const y = row * cell;
+
+                gridCtx.strokeRect(x, y, cell, cell);
+                const glyph = font.getGlyph(i);
+                if (glyph) {
+                    gridCtx.save();
+                    gridCtx.translate(x + cell * 0.5, y + cell * 0.7);
+                    gridCtx.scale(0.03, -0.03);
+                    gridCtx.beginPath();
+                    const contours = getContours(glyph.points ?? []);
+                    contours.forEach(c => drawContourPath(gridCtx, c));
+                    gridCtx.fillStyle = '#2f4f7a';
+                    gridCtx.fill();
+                    gridCtx.restore();
+                }
+            }
+        }
+
+        function renderInspector() {
+            clear(inspectCtx, inspectCanvas);
+            if (!font) return;
+            const idx = Number(glyphInput.value) || 0;
+            const glyph = font.getGlyph(idx);
+            if (!glyph || !glyph.points) {
+                meta.innerHTML = '<strong>No glyph data.</strong>';
+                return;
+            }
+
+            const points = glyph.points;
+            const contours = getContours(points);
+            const head = font.getTableByType(Table.head);
+            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const scale = 240 / unitsPerEm;
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            points.forEach(p => {
+                minX = Math.min(minX, p.x);
+                minY = Math.min(minY, p.y);
+                maxX = Math.max(maxX, p.x);
+                maxY = Math.max(maxY, p.y);
+            });
+            const bboxWidth = maxX - minX;
+            const bboxHeight = maxY - minY;
+            const rightBearing = glyph.advanceWidth - bboxWidth - glyph.leftSideBearing;
+
+            const winding = contours.map(c => contourArea(c) >= 0 ? 'CCW' : 'CW');
+
+            meta.innerHTML = `
+                <div><strong>Glyph Index:</strong> ${idx}</div>
+                <div><strong>Contours:</strong> ${contours.length}</div>
+                <div><strong>Points:</strong> ${points.length}</div>
+                <div><strong>Advance Width:</strong> ${glyph.advanceWidth}</div>
+                <div><strong>Left Side Bearing:</strong> ${glyph.leftSideBearing}</div>
+                <div><strong>Right Side Bearing:</strong> ${rightBearing.toFixed(2)}</div>
+                <div><strong>Bounding Box:</strong> [${minX}, ${minY}] to [${maxX}, ${maxY}]</div>
+                <div><strong>Winding:</strong> ${winding.join(', ') || 'n/a'}</div>
+                <div><strong>Anchors:</strong> not parsed (GPOS)</div>
+            `;
+
+            inspectCtx.save();
+            inspectCtx.translate(180, inspectCanvas.height * 0.7);
+            inspectCtx.scale(scale, -scale);
+
+            if (fillToggle.checked || outlineToggle.checked) {
+                inspectCtx.beginPath();
+                contours.forEach(c => drawContourPath(inspectCtx, c));
+                if (fillToggle.checked) {
+                    inspectCtx.fillStyle = 'rgba(58, 79, 122, 0.18)';
+                    inspectCtx.fill();
+                }
+                if (outlineToggle.checked) {
+                    inspectCtx.strokeStyle = '#2f4f7a';
+                    inspectCtx.lineWidth = 3 / scale;
+                    inspectCtx.stroke();
+                }
+            }
+
+            if (bboxToggle.checked) {
+                inspectCtx.strokeStyle = '#c04b3b';
+                inspectCtx.lineWidth = 2 / scale;
+                inspectCtx.strokeRect(minX, minY, bboxWidth, bboxHeight);
+            }
+
+            if (handlesToggle.checked) {
+                inspectCtx.strokeStyle = '#8b97ad';
+                inspectCtx.lineWidth = 1.5 / scale;
+                points.forEach((p, i) => {
+                    if (p.onCurve) return;
+                    const prev = points[(i - 1 + points.length) % points.length];
+                    const next = points[(i + 1) % points.length];
+                    inspectCtx.beginPath();
+                    inspectCtx.moveTo(prev.x, prev.y);
+                    inspectCtx.lineTo(p.x, p.y);
+                    inspectCtx.lineTo(next.x, next.y);
+                    inspectCtx.stroke();
+                });
+            }
+
+            if (pointsToggle.checked) {
+                points.forEach((p, i) => {
+                    inspectCtx.beginPath();
+                    inspectCtx.fillStyle = p.onCurve ? '#2f4f7a' : '#f39c12';
+                    inspectCtx.arc(p.x, p.y, 6 / scale, 0, Math.PI * 2);
+                    inspectCtx.fill();
+
+                    if (indexToggle.checked) {
+                        inspectCtx.save();
+                        inspectCtx.scale(1, -1);
+                        inspectCtx.fillStyle = '#1a1d24';
+                        inspectCtx.font = `${14 / scale}px serif`;
+                        inspectCtx.fillText(String(i), p.x + 8 / scale, -p.y - 8 / scale);
+                        inspectCtx.restore();
+                    }
+                });
+            }
+
+            inspectCtx.restore();
+        }
+
+        function selectGlyph(idx) {
+            glyphInput.value = String(Math.max(0, Math.min(glyphCount - 1, idx)));
+            renderInspector();
+        }
+
+        gridCanvas.addEventListener('click', (event) => {
+            const rect = gridCanvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            const col = Math.floor(x / cell);
+            const row = Math.floor(y / cell);
+            const idx = row * gridCols + col;
+            selectGlyph(idx);
+        });
+
+        async function loadAndRender() {
+            const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+            font = await loadFont(selected.url);
+            glyphCount = font.getNumGlyphs();
+            gridCols = Math.max(4, Math.floor(gridCanvas.width / cell));
+            renderGrid();
+            renderInspector();
+        }
+
+        fontSelect.addEventListener('change', loadAndRender);
+        glyphInput.addEventListener('input', () => selectGlyph(Number(glyphInput.value)));
+        charInput.addEventListener('input', () => {
+            const idx = font?.getGlyphIndexByChar(charInput.value) ?? 0;
+            selectGlyph(idx);
+        });
+        prevBtn.addEventListener('click', () => selectGlyph(Number(glyphInput.value) - 1));
+        nextBtn.addEventListener('click', () => selectGlyph(Number(glyphInput.value) + 1));
+        [fillToggle, outlineToggle, pointsToggle, handlesToggle, indexToggle, bboxToggle].forEach(el => {
+            el.addEventListener('change', renderInspector);
+        });
+
+        populateFonts();
+        loadAndRender();
+    </script>
+</body>
+</html>
