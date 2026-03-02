@@ -1,45 +1,146 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Stack</title>
-    <style>
-        body { margin: 0; background: #111; color: #eee; font-family: Arial, sans-serif; }
-        .label { padding: 12px 16px; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Extruded Stack Demo</title>
+  <style>
+    :root { --bg:#f5f3ef; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e1ded8; --accent:#4a4a3a; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    .controls { display:flex; flex-wrap:wrap; gap:14px; align-items:center; padding:0 20px 16px; }
+    label { font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent); display:flex; flex-direction:column; gap:6px; }
+    select, input[type="text"], input[type="range"] { padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:#fff; min-width:200px; }
+    canvas { width:100%; height:360px; border:1px dashed var(--border); border-radius:12px; background:#fff; }
+    .panel { padding:0 20px 32px; }
+  </style>
 </head>
 <body>
-<div class="label">Stack</div>
-<canvas id="myDrawing" width="800" height="800"></canvas>
-<script type="module">
+  <header>
+    <h1>Extruded Stack</h1>
+    <p>Renders a 3D-like extrusion by stacking glyph outlines with depth + angle controls.</p>
+  </header>
+  <div class="controls">
+    <label>
+      Font
+      <select id="fontSelect"></select>
+    </label>
+    <label>
+      Text
+      <input id="textInput" value="STACK" />
+    </label>
+    <label>
+      Size
+      <input id="sizeInput" type="range" min="60" max="220" value="140" />
+    </label>
+    <label>
+      Depth
+      <input id="depthInput" type="range" min="5" max="60" value="24" />
+    </label>
+    <label>
+      Angle
+      <input id="angleInput" type="range" min="0" max="360" value="225" />
+    </label>
+    <label>
+      Spread
+      <input id="spreadInput" type="range" min="2" max="30" value="10" />
+    </label>
+  </div>
+  <div class="panel">
+    <canvas id="canvas" width="1200" height="360"></canvas>
+  </div>
+
+  <script type="module">
     import { FontParserTTF } from '../dist/data/FontParserTTF.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+    import { Table } from '../dist/table/Table.js';
 
-    const canvas = document.getElementById('myDrawing');
+    const fontSelect = document.getElementById('fontSelect');
+    const textInput = document.getElementById('textInput');
+    const sizeInput = document.getElementById('sizeInput');
+    const depthInput = document.getElementById('depthInput');
+    const angleInput = document.getElementById('angleInput');
+    const spreadInput = document.getElementById('spreadInput');
+    const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
-    FontParserTTF.load("../truetypefonts/DiscoMo.ttf")
-        .then(font => {
-            const glyph = font.getGlyphByChar("D");
-            let x = 200;
-            let y = 300;
-            for (let i = 0; i < 80; i++) {
-                CanvasRenderer.drawGlyphToContext(ctx, glyph, {
-                    x,
-                    y,
-                    scale: 0.2,
-                    styles: {
-                        fillStyle: '#000000',
-                        strokeStyle: '#ffffff',
-                        lineWidth: '1',
-                        globalAlpha: '0.5'
-                    }
-                });
-                x += 2;
-                y += 2;
-            }
-        })
-        .catch(err => console.error("Failed to load font:", err));
-</script>
+    const fonts = [
+      { name: 'DiscoMo', url: '../truetypefonts/DiscoMo.ttf' },
+      { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' },
+      { name: 'JoeJack', url: '../truetypefonts/JoeJack.ttf' },
+      { name: 'Quill', url: '../truetypefonts/Quill.ttf' },
+      { name: 'Noto Sans', url: '../truetypefonts/noto/NotoSans-Regular.ttf' }
+    ];
+
+    const cache = new Map();
+
+    function populate() {
+      fontSelect.innerHTML = '';
+      fonts.forEach((f, i) => {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = f.name;
+        fontSelect.appendChild(opt);
+      });
+    }
+
+    async function loadFont(url) {
+      if (cache.has(url)) return cache.get(url);
+      const font = await FontParserTTF.load(url);
+      cache.set(url, font);
+      return font;
+    }
+
+    function clear() {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    async function render() {
+      const font = await loadFont(fonts[Number(fontSelect.value)]?.url ?? fonts[0].url);
+      const text = textInput.value || '';
+      const sizePx = Number(sizeInput.value);
+      const depth = Number(depthInput.value);
+      const angle = (Number(angleInput.value) * Math.PI) / 180;
+      const spread = Number(spreadInput.value);
+
+      const head = font.getTableByType(Table.head);
+      const unitsPerEm = head?.unitsPerEm ?? 1000;
+      const scale = sizePx / unitsPerEm;
+
+      clear();
+
+      const baseX = 40;
+      const baseY = canvas.height * 0.7;
+      const dx = Math.cos(angle) * spread;
+      const dy = Math.sin(angle) * spread;
+
+      for (let i = depth; i >= 0; i--) {
+        const shade = Math.floor(30 + (1 - i / Math.max(depth, 1)) * 160);
+        const color = `rgb(${shade}, ${shade}, ${shade})`;
+        CanvasRenderer.drawString(font, text, canvas, {
+          x: baseX + dx * i,
+          y: baseY + dy * i,
+          scale,
+          spacing: 6,
+          styles: { fillStyle: color, strokeStyle: color, lineWidth: 1 }
+        });
+      }
+    }
+
+    fontSelect.addEventListener('change', render);
+    textInput.addEventListener('input', render);
+    sizeInput.addEventListener('input', render);
+    depthInput.addEventListener('input', render);
+    angleInput.addEventListener('input', render);
+    spreadInput.addEventListener('input', render);
+
+    populate();
+    render();
+  </script>
 </body>
 </html>

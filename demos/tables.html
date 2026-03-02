@@ -74,7 +74,14 @@
 <body>
   <header>
     <h1>Font Tables Overview</h1>
-    <p>Quick summaries of parsed tables for a sample font.</p>
+    <p>Quick summaries of parsed tables for a selected font.</p>
+    <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+      <label style="font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:#5b6170;">
+        Font
+        <select id="fontSelect" style="margin-left:8px; padding:6px 10px; border-radius:8px; border:1px solid var(--border); background:#fff;">
+        </select>
+      </label>
+    </div>
   </header>
   <div id="grid" class="grid"></div>
 
@@ -83,7 +90,18 @@
     import { Table } from '../dist/table/Table.js';
 
     const grid = document.getElementById('grid');
-    const fontUrl = '../truetypefonts/noto/NotoSans-Regular.ttf';
+    const fontSelect = document.getElementById('fontSelect');
+    const fonts = [
+      { name: 'Noto Sans', url: '../truetypefonts/noto/NotoSans-Regular.ttf' },
+      { name: 'Noto Sans Hebrew', url: '../truetypefonts/noto/NotoSansHebrew-Regular.ttf' },
+      { name: 'Noto Sans Thai', url: '../truetypefonts/noto/NotoSansThaiLooped-Regular.ttf' },
+      { name: 'Noto Sans Devanagari', url: '../truetypefonts/noto/NotoSansDevanagari-Regular.ttf' },
+      { name: 'Noto Naskh Arabic', url: '../truetypefonts/noto/NotoNaskhArabic-Regular.ttf' },
+      { name: 'DiscoMo', url: '../truetypefonts/DiscoMo.ttf' },
+      { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' },
+      { name: 'Quill', url: '../truetypefonts/Quill.ttf' },
+      { name: 'Twemoji Mozilla (color)', url: '../truetypefonts/color/TwemojiMozilla.ttf' }
+    ];
 
     const tableSpecs = [
       { tag: Table.cmap, name: 'cmap', desc: 'Character to glyph mapping.' },
@@ -144,16 +162,34 @@
       grid.appendChild(card);
     }
 
-    FontParserTTF.load(fontUrl)
-      .then(font => {
-        tableSpecs.forEach(spec => {
-          const table = font.getTableByType(spec.tag);
-          renderCard(spec, table);
-        });
-      })
-      .catch(err => {
-        grid.textContent = `Failed to load font: ${err}`;
+    function populateFonts() {
+      fontSelect.innerHTML = '';
+      fonts.forEach((f, i) => {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = f.name;
+        fontSelect.appendChild(opt);
       });
+    }
+
+    function loadAndRender() {
+      grid.innerHTML = '';
+      const fontUrl = fonts[Number(fontSelect.value)]?.url ?? fonts[0].url;
+      FontParserTTF.load(fontUrl)
+        .then(font => {
+          tableSpecs.forEach(spec => {
+            const table = font.getTableByType(spec.tag);
+            renderCard(spec, table);
+          });
+        })
+        .catch(err => {
+          grid.textContent = `Failed to load font: ${err}`;
+        });
+    }
+
+    populateFonts();
+    fontSelect.addEventListener('change', loadAndRender);
+    loadAndRender();
   </script>
 </body>
 </html>

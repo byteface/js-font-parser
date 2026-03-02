@@ -19,11 +19,7 @@ Then open:
 
 Demo pages (see `demos/index.html`):
 - `demos/string.html` (string rendering)
-- `demos/grid.html` (glyph index grid)
 - `demos/multilang.html` (multilingual samples)
-- `demos/layout-chars.html` (ported)
-- `demos/cards.html` (ported)
-- `demos/layout-text.html` (GSUB + kerning layout)
 - `demos/metrics.html` (metrics + rulers)
 - `demos/gsub.html` (ligature substitution)
 - `demos/kerning.html`
@@ -34,7 +30,6 @@ Demo pages (see `demos/index.html`):
 - `demos/script2.html`
 - `demos/shadow.html`
 - `demos/stack.html`
-- `demos/svg.html`
 - `demos/svg-export.html` (export string to SVG)
 - `demos/path-tracing.html` (SVG stroke tracing)
 - `demos/morphing.html` (glyph morphing)

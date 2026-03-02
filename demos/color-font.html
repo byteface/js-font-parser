@@ -114,7 +114,7 @@
         </label>
         <label>
             Text
-            <input id="textInput" type="text" value="😀 😃 😄 😁 😆 😅 😂 🤣 🥰 😎" />
+            <input id="textInput" type="text" value="😀😁😂🤣😃😄😅😆😉😊😍😘😜" />
         </label>
         <label>
             Size
@@ -224,6 +224,11 @@
             const unitsPerEm = head?.unitsPerEm ?? 1000;
             const scale = sizePx / unitsPerEm;
             const baseline = colorCanvas.height * 0.7;
+
+            const glyphs = Array.from(text).map(ch => font.getGlyphIndexByChar(ch)).filter(g => g != null);
+            if (glyphs.length === 0) {
+                colorInfo.textContent = "No glyphs found for this text in the selected font.";
+            }
 
             CanvasRenderer.drawColorString(font, text, colorCanvas, {
                 x: 20,

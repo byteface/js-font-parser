@@ -23,6 +23,7 @@
   </header>
   <div class="wrap">
     <div class="panel">
+      <select id="fontSelect" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); margin-bottom:10px;"></select>
       <input id="textInput" value="office official affine" />
       <canvas id="plain" width="900" height="200"></canvas>
     </div>
@@ -36,16 +37,41 @@
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const input = document.getElementById('textInput');
+    const fontSelect = document.getElementById('fontSelect');
     const plainCanvas = document.getElementById('plain');
     const gsubCanvas = document.getElementById('gsub');
 
+    const fonts = [
+      { name: 'Noto Sans', url: '../truetypefonts/noto/NotoSans-Regular.ttf' },
+      { name: 'DiscoMo', url: '../truetypefonts/DiscoMo.ttf' },
+      { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' },
+      { name: 'Quill', url: '../truetypefonts/Quill.ttf' }
+    ];
+    const cache = new Map();
     let font = null;
-    FontParserTTF.load('../truetypefonts/noto/NotoSans-Regular.ttf').then(f => {
-      font = f;
-      render();
-    });
+
+    function populateFonts() {
+      fontSelect.innerHTML = '';
+      fonts.forEach((f, i) => {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = f.name;
+        fontSelect.appendChild(opt);
+      });
+    }
+
+    async function loadFont(url) {
+      if (cache.has(url)) return cache.get(url);
+      const f = await FontParserTTF.load(url);
+      cache.set(url, f);
+      return f;
+    }
 
     input.addEventListener('input', render);
+    fontSelect.addEventListener('change', async () => {
+      font = await loadFont(fonts[Number(fontSelect.value)]?.url ?? fonts[0].url);
+      render();
+    });
 
     function render() {
       if (!font) return;
@@ -57,9 +83,12 @@
 
       CanvasRenderer.drawString(font, text, plainCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
 
-      const glyphs = font.getGlyphIndicesForStringWithGsub(text, ['liga']);
-      CanvasRenderer.drawGlyphIndices(font, glyphs, gsubCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
+      const layout = font.layoutString(text, { gsubFeatures: ['liga'] });
+      CanvasRenderer.drawLayout(font, layout, gsubCanvas, { x: 20, y: 140, scale: 0.12, styles: { fillStyle: '#111', strokeStyle: '#111' } });
     }
+
+    populateFonts();
+    loadFont(fonts[0].url).then(f => { font = f; render(); });
   </script>
 </body>
 </html>

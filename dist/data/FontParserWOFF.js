@@ -1,3 +1,50 @@
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (g && (g = 0, op[0] && (_ = 0)), _) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+};
 import { ByteArray } from '../utils/ByteArray.js';
 import { Table } from '../table/Table.js';
 import { TableDirectory } from '../table/TableDirectory.js';
@@ -5,7 +52,7 @@ import { TableFactory } from '../table/TableFactory.js';
 import { GlyphData } from './GlyphData.js';
 import { LigatureSubstFormat1 } from '../table/LigatureSubstFormat1.js';
 var FontParserWOFF = /** @class */ (function () {
-    function FontParserWOFF(byteData) {
+    function FontParserWOFF(byteData, options) {
         // Define properties
         this.os2 = null;
         this.cmap = null;
@@ -24,23 +71,35 @@ var FontParserWOFF = /** @class */ (function () {
         // Table directory and tables
         this.tableDir = null;
         this.tables = [];
-        this.init(byteData);
+        if ((options === null || options === void 0 ? void 0 : options.format) === 'sfnt') {
+            this.parseTTF(byteData);
+        }
+        else {
+            this.init(byteData);
+        }
     }
     FontParserWOFF.load = function (url) {
-        return fetch(url)
-            .then(function (response) {
-            if (!response.ok)
-                throw new Error("HTTP error! Status: ".concat(response.status));
-            return response.arrayBuffer();
-        })
-            .then(function (arrayBuffer) { return new ByteArray(new Uint8Array(arrayBuffer)); })
-            .then(function (byteArray) { return new FontParserWOFF(byteArray); })
-            .catch(function (error) {
-            console.error('Error loading font:', error);
-            throw error;
+        return __awaiter(this, void 0, void 0, function () {
+            var response, buffer, sfnt;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, fetch(url)];
+                    case 1:
+                        response = _a.sent();
+                        if (!response.ok)
+                            throw new Error("HTTP error! Status: ".concat(response.status));
+                        return [4 /*yield*/, response.arrayBuffer()];
+                    case 2:
+                        buffer = _a.sent();
+                        return [4 /*yield*/, this.decodeWoffToSfnt(buffer)];
+                    case 3:
+                        sfnt = _a.sent();
+                        return [2 /*return*/, new FontParserWOFF(new ByteArray(sfnt), { format: 'sfnt' })];
+                }
+            });
         });
     };
-    // Initialize the FontParserWOFF instance
+    // Initialize the FontParserWOFF instance (legacy sync path; expects uncompressed WOFF)
     FontParserWOFF.prototype.init = function (byteData) {
         // Read the WOFF header
         var woffVersion = byteData.readUInt(); // 4 bytes
@@ -65,12 +124,115 @@ var FontParserWOFF = /** @class */ (function () {
             // Store table information for later extraction
             this.tables.push({ tag: tag, offset: offsetTable, length: lengthTable });
         }
-        // Extract and parse the underlying TTF data
-        // (Assuming tables are in a contiguous block after the WOFF header)
-        // const ttfData = byteData.subarray(woffNumTables * 12 + 44); // Calculate the TTF data position
-        // Assuming byteData is an instance of ByteArray, convert it to Uint8Array
-        var ttfData = new Uint8Array(byteData.dataView.buffer, byteData.dataView.byteOffset, byteData.dataView.byteLength).subarray(woffNumTables * 12 + 44);
+        // Legacy path assumes uncompressed WOFF with contiguous tables (not generally safe).
+        // Prefer FontParserWOFF.load which rebuilds an sfnt buffer with decompression support.
+        var ttfData = new Uint8Array(byteData.dataView.buffer, byteData.dataView.byteOffset, byteData.dataView.byteLength);
         this.parseTTF(new ByteArray(ttfData));
+    };
+    FontParserWOFF.readUint32 = function (view, offset) {
+        return view.getUint32(offset, false);
+    };
+    FontParserWOFF.readUint16 = function (view, offset) {
+        return view.getUint16(offset, false);
+    };
+    FontParserWOFF.inflate = function (data) {
+        return __awaiter(this, void 0, void 0, function () {
+            var stream, response, decompressed, buffer;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (typeof DecompressionStream === 'undefined') {
+                            throw new Error('WOFF decompression requires DecompressionStream (not available).');
+                        }
+                        stream = new DecompressionStream('deflate');
+                        response = new Response(data).body;
+                        if (!response)
+                            throw new Error('Failed to create response body for decompression.');
+                        decompressed = response.pipeThrough(stream);
+                        return [4 /*yield*/, new Response(decompressed).arrayBuffer()];
+                    case 1:
+                        buffer = _a.sent();
+                        return [2 /*return*/, new Uint8Array(buffer)];
+                }
+            });
+        });
+    };
+    FontParserWOFF.decodeWoffToSfnt = function (buffer) {
+        return __awaiter(this, void 0, void 0, function () {
+            var view, signature, flavor, length, numTables, totalSfntSize, tableDirOffset, entries, i, offset, maxPower, searchRange, entrySelector, rangeShift, sfntBuffer, sfntView, dataOffset, tableRecords, _i, entries_1, entry, aligned, tableData, decoded, target;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        view = new DataView(buffer);
+                        signature = this.readUint32(view, 0);
+                        if (signature !== 0x774f4646) {
+                            throw new Error('Not a valid WOFF file.');
+                        }
+                        flavor = this.readUint32(view, 4);
+                        length = this.readUint32(view, 8);
+                        numTables = this.readUint16(view, 12);
+                        totalSfntSize = this.readUint32(view, 16);
+                        tableDirOffset = 44;
+                        entries = [];
+                        for (i = 0; i < numTables; i++) {
+                            offset = tableDirOffset + i * 20;
+                            entries.push({
+                                tag: this.readUint32(view, offset),
+                                offset: this.readUint32(view, offset + 4),
+                                compLength: this.readUint32(view, offset + 8),
+                                origLength: this.readUint32(view, offset + 12),
+                                checksum: this.readUint32(view, offset + 16)
+                            });
+                        }
+                        entries.sort(function (a, b) { return a.tag - b.tag; });
+                        maxPower = Math.pow(2, Math.floor(Math.log2(numTables)));
+                        searchRange = maxPower * 16;
+                        entrySelector = Math.log2(maxPower);
+                        rangeShift = numTables * 16 - searchRange;
+                        sfntBuffer = new ArrayBuffer(totalSfntSize);
+                        sfntView = new DataView(sfntBuffer);
+                        sfntView.setUint32(0, flavor, false);
+                        sfntView.setUint16(4, numTables, false);
+                        sfntView.setUint16(6, searchRange, false);
+                        sfntView.setUint16(8, entrySelector, false);
+                        sfntView.setUint16(10, rangeShift, false);
+                        dataOffset = 12 + numTables * 16;
+                        tableRecords = [];
+                        _i = 0, entries_1 = entries;
+                        _a.label = 1;
+                    case 1:
+                        if (!(_i < entries_1.length)) return [3 /*break*/, 5];
+                        entry = entries_1[_i];
+                        aligned = (dataOffset + 3) & ~3;
+                        dataOffset = aligned;
+                        tableRecords.push(__assign(__assign({}, entry), { sfntOffset: dataOffset }));
+                        tableData = new Uint8Array(buffer, entry.offset, entry.compLength);
+                        decoded = tableData;
+                        if (!(entry.compLength < entry.origLength)) return [3 /*break*/, 3];
+                        return [4 /*yield*/, this.inflate(tableData)];
+                    case 2:
+                        decoded = _a.sent();
+                        _a.label = 3;
+                    case 3:
+                        target = new Uint8Array(sfntBuffer, dataOffset, entry.origLength);
+                        target.set(decoded.subarray(0, entry.origLength));
+                        dataOffset += entry.origLength;
+                        _a.label = 4;
+                    case 4:
+                        _i++;
+                        return [3 /*break*/, 1];
+                    case 5:
+                        tableRecords.forEach(function (record, i) {
+                            var base = 12 + i * 16;
+                            sfntView.setUint32(base, record.tag, false);
+                            sfntView.setUint32(base + 4, record.checksum, false);
+                            sfntView.setUint32(base + 8, record.sfntOffset, false);
+                            sfntView.setUint32(base + 12, record.origLength, false);
+                        });
+                        return [2 /*return*/, new Uint8Array(sfntBuffer)];
+                }
+            });
+        });
     };
     FontParserWOFF.prototype.parseTTF = function (byteData) {
         var _a, _b, _c, _d;

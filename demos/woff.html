@@ -9,26 +9,14 @@
 <canvas id="myDrawing" width="800" height="600"></canvas>
 
 <script type="module">
-    import { ByteArray } from '../dist/utils/ByteArray.js';
     import { FontParserWOFF } from '../dist/data/FontParserWOFF.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
-
-    async function loadBinaryResource(url) {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const arrayBuffer = await response.arrayBuffer();
-        return new Uint8Array(arrayBuffer);
-    }
 
     const canvas = document.getElementById('myDrawing');
     const ctx = canvas.getContext('2d');
 
-    loadBinaryResource("https://fonts.cdnfonts.com/s/74192/AestheticMidnight-WyLvv.woff")
-        .then(arrayBuffer => {
-            const byte_ar = new ByteArray(arrayBuffer);
-            const font = new FontParserWOFF(byte_ar);
+    FontParserWOFF.load("https://cdn.jsdelivr.net/npm/opensans-font@1.0.0/OpenSans-Regular.woff")
+        .then(font => {
             const glyph = font.getGlyphByChar("W");
             if (!glyph) {
                 console.warn("No glyph for W");

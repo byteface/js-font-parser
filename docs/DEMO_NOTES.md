@@ -14,7 +14,6 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 - `demos/svg-export.html` exports strings to SVG paths.
 - `demos/gsub.html` previews GSUB ligature substitutions (when available).
 - `demos/kerning.html` previews kerning adjustments from the kern table.
-- `demos/layout-text.html` uses GSUB + kerning to build a layout.
 - `demos/metrics.html` shows rulers + measurements for a single glyph and a sentence.
 - `demos/path-tracing.html` uses SVG paths to trace strokes over time.
 - `demos/morphing.html` morphs glyph point clouds between letters/words.
@@ -23,3 +22,4 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 - `demos/color-font.html` uses COLR/CPAL rendering with a built-in color font and outlines as fallback.
 - `demos/font-library.html` loads fonts from CDN or URL and renders text/icons.
 - `demos/all-glyphs.html` renders every glyph from the selected font in a grid.
+- `demos/stack.html` renders extruded text with depth/angle controls.
