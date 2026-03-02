@@ -19,4 +19,5 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 - `demos/path-tracing.html` uses SVG paths to trace strokes over time.
 - `demos/morphing.html` morphs glyph point clouds between letters/words.
 - `demos/breathing.html` applies organic wobble to contours.
+- `demos/emotion.html` bundles breathing, melting, and angry motion styles.
 - `demos/color-font.html` inspects COLR/CPAL/SVG tables and renders SVG glyphs when present.
