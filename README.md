@@ -31,6 +31,7 @@ Demo pages (see `demos/index.html`):
 - `demos/shadow.html`
 - `demos/stack.html`
 - `demos/svg.html`
+- `demos/svg-export.html` (export string to SVG)
 - `demos/woff.html`
 - `demos/metadata.html`
 - `demos/features.html` (GSUB/GPOS tags)

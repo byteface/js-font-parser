@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SVG Export</title>
+  <style>
+    :root {
+      --bg: #f8f6f2;
+      --ink: #1d1b17;
+      --muted: #6a6358;
+      --panel: #ffffff;
+      --border: #e6e0d7;
+      --accent: #944b0c;
+    }
+    body {
+      margin: 0;
+      font-family: "Alegreya", "Georgia", serif;
+      background: radial-gradient(circle at 10% 20%, #ffffff, var(--bg));
+      color: var(--ink);
+    }
+    header {
+      padding: 22px 20px 10px 20px;
+    }
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 28px;
+    }
+    p { color: var(--muted); margin: 0 0 16px 0; }
+    .wrap {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      padding: 16px 20px 32px 20px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    }
+    textarea {
+      width: 100%;
+      min-height: 280px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    .preview {
+      min-height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: #fbfaf8;
+    }
+    input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SVG Export</h1>
+    <p>Export a string to SVG paths using the parser.</p>
+  </header>
+  <div class="wrap">
+    <div class="panel">
+      <input id="textInput" value="Hello World" />
+      <button id="exportBtn">Export SVG</button>
+      <div class="preview" id="preview"></div>
+    </div>
+    <div class="panel">
+      <textarea id="svgOutput" spellcheck="false"></textarea>
+    </div>
+  </div>
+
+  <script type="module">
+    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { SVGFont } from '../dist/draw/SVGFont.js';
+
+    const preview = document.getElementById('preview');
+    const output = document.getElementById('svgOutput');
+    const btn = document.getElementById('exportBtn');
+    const input = document.getElementById('textInput');
+
+    let cachedFont = null;
+
+    FontParserTTF.load('../truetypefonts/DiscoMo.ttf').then(font => {
+      cachedFont = font;
+      render();
+    });
+
+    function render() {
+      if (!cachedFont) return;
+      const text = input.value;
+      const svg = SVGFont.exportStringSvg(cachedFont, text, { scale: 0.08, stroke: '#111', fill: 'none' });
+      output.value = svg;
+      preview.innerHTML = svg;
+    }
+
+    btn.addEventListener('click', render);
+  </script>
+</body>
+</html>

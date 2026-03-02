@@ -11,3 +11,4 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 ## Feature Coverage
 - `demos/features.html` shows GSUB/GPOS script and feature tags. GPOS subtables are not parsed yet.
 - `demos/tables.html` shows per-table summaries and presence/absence.
+- `demos/svg-export.html` exports strings to SVG paths.

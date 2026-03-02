@@ -11,3 +11,15 @@
 
 ## Docs
 - [x] Expanded API docs with rendering helpers and common patterns.
+
+## Top 10 Next
+1. CFF/CFF2 (OTF) outlines
+2. GSUB shaping engine (apply substitutions to strings)
+3. GPOS positioning (kerning/marks/cursive)
+4. Script + language selection and feature toggles
+5. Full SVG font export (OTF/TTF to embedded SVG font)
+6. WOFF2 support
+7. Better layout engine (line breaking, alignment)
+8. Robust composite glyph rendering across more fonts
+9. Golden-image tests for demo rendering
+10. Expanded metadata API (name/OS2/post convenience surface)
