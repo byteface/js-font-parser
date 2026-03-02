@@ -27,3 +27,5 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 - `demos/particle-word.html` explodes and reassembles glyph points.
 - `demos/orbit.html` orbits glyphs around a ring with depth scaling.
 - `demos/glyph-inspector.html` shows contour data, points, bearings, and bounding boxes.
+- `demos/marks.html` positions combining marks using GPOS anchors.
+- `demos/variable-font.html` lists fvar axes (no gvar interpolation yet).

@@ -55,6 +55,13 @@ export class ByteArray {
         return value;
     }
 
+    readFixed(offset?: number): number {
+        if (offset === undefined) { offset = this.offset; }
+        const value = this.dataView.getInt32(offset, false);
+        this.offset += 4;
+        return value / 65536;
+    }
+
     public readUnsignedByte(): number {
         // Read a byte and convert it to an unsigned value
         return this.readByte() & 0xFF; // Ensure the byte is treated as unsigned

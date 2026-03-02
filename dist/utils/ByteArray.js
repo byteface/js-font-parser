@@ -58,6 +58,14 @@ var ByteArray = /** @class */ (function () {
         this.offset += 4; // Move the offset forward by 4 bytes for the next read
         return value;
     };
+    ByteArray.prototype.readFixed = function (offset) {
+        if (offset === undefined) {
+            offset = this.offset;
+        }
+        var value = this.dataView.getInt32(offset, false);
+        this.offset += 4;
+        return value / 65536;
+    };
     ByteArray.prototype.readUnsignedByte = function () {
         // Read a byte and convert it to an unsigned value
         return this.readByte() & 0xFF; // Ensure the byte is treated as unsigned

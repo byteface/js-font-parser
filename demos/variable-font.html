@@ -1,0 +1,192 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>Variable Font Explorer</title>
+    <meta charset="utf-8">
+    <style>
+        :root { color-scheme: light; }
+        body {
+            margin: 24px;
+            font-family: "Fraunces", "Georgia", serif;
+            background: radial-gradient(circle at 20% 10%, #ffffff, #eef2f6);
+            color: #15171b;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 28px; }
+        .panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #ffffff;
+            border: 1px solid #dbe2e7;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(20, 30, 60, 0.08);
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #4e5a6b;
+        }
+        select, input[type="text"], input[type="range"] {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #dbe2e7;
+            font-size: 14px;
+            min-width: 200px;
+            background: #fbfcff;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(240px, 320px) 1fr;
+            gap: 16px;
+        }
+        .card {
+            background: #ffffff;
+            border: 1px solid #dbe2e7;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 6px 20px rgba(20, 30, 60, 0.06);
+        }
+        canvas {
+            width: 100%;
+            height: 320px;
+            border: 1px dashed #dbe2e7;
+            border-radius: 12px;
+            background: #fbfcff;
+        }
+        .axis { margin-bottom: 12px; }
+        .axis label { font-size: 11px; }
+        .hint { margin-top: 8px; color: #4e5a6b; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Variable Font Explorer</h1>
+    <div class="panel">
+        <label>
+            Font
+            <select id="fontSelect"></select>
+        </label>
+        <label>
+            Text
+            <input id="textInput" value="VARIABLE" />
+        </label>
+    </div>
+
+    <div class="layout">
+        <div class="card">
+            <div id="axes"></div>
+            <div class="hint">Axes are read from `fvar`. Contour interpolation (gvar) is not implemented yet.</div>
+        </div>
+        <div class="card">
+            <canvas id="canvas" width="900" height="320"></canvas>
+        </div>
+    </div>
+
+    <script type="module">
+        import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+        import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+        import { Table } from '../dist/table/Table.js';
+
+        const fontSelect = document.getElementById('fontSelect');
+        const textInput = document.getElementById('textInput');
+        const axesContainer = document.getElementById('axes');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const fonts = [
+            { name: 'Playwrite GB S Variable', url: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-VariableFont_wght.ttf' },
+            { name: 'Playwrite GB S Italic Variable', url: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-Italic-VariableFont_wght.ttf' }
+        ];
+
+        const cache = new Map();
+        let font = null;
+        let axes = [];
+
+        function populateFonts() {
+            fontSelect.innerHTML = '';
+            fonts.forEach((f, i) => {
+                const opt = document.createElement('option');
+                opt.value = String(i);
+                opt.textContent = f.name;
+                fontSelect.appendChild(opt);
+            });
+        }
+
+        async function loadFont(url) {
+            if (cache.has(url)) return cache.get(url);
+            const f = await FontParserTTF.load(url);
+            cache.set(url, f);
+            return f;
+        }
+
+        function clear() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fbfcff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function renderText() {
+            if (!font) return;
+            clear();
+            const head = font.getTableByType(Table.head);
+            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const scale = 160 / unitsPerEm;
+            CanvasRenderer.drawString(font, textInput.value, canvas, {
+                x: 40,
+                y: 220,
+                scale,
+                spacing: 4,
+                styles: { fillStyle: '#2f4f7a', strokeStyle: '#2f4f7a', lineWidth: 1 }
+            });
+        }
+
+        function renderAxes(fvar) {
+            axesContainer.innerHTML = '';
+            if (!fvar || !fvar.axes?.length) {
+                axesContainer.innerHTML = '<div class="hint">No fvar table found.</div>';
+                return;
+            }
+            axes = fvar.axes.map(axis => ({ ...axis, value: axis.defaultValue }));
+
+            axes.forEach((axis, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'axis';
+                const label = document.createElement('label');
+                label.textContent = `${axis.name} (${axis.minValue} → ${axis.maxValue})`;
+                const slider = document.createElement('input');
+                slider.type = 'range';
+                slider.min = String(axis.minValue);
+                slider.max = String(axis.maxValue);
+                slider.step = '1';
+                slider.value = String(axis.defaultValue);
+                slider.addEventListener('input', () => {
+                    axis.value = Number(slider.value);
+                });
+                wrapper.appendChild(label);
+                wrapper.appendChild(slider);
+                axesContainer.appendChild(wrapper);
+            });
+        }
+
+        async function loadAndRender() {
+            const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+            font = await loadFont(selected.url);
+            const fvar = font.getTableByType(Table.fvar);
+            renderAxes(fvar);
+            renderText();
+        }
+
+        fontSelect.addEventListener('change', loadAndRender);
+        textInput.addEventListener('input', renderText);
+
+        populateFonts();
+        loadAndRender();
+    </script>
+</body>
+</html>
