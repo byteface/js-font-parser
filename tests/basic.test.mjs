@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { ByteArray } from '../dist/utils/ByteArray.js';
 import { FontParserTTF } from '../dist/data/FontParserTTF.js';
 import { Table } from '../dist/table/Table.js';
-import { SVGFont } from '../dist/draw/SVGFont.js';
+import { SVGFont } from '../dist/render/SVGFont.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
