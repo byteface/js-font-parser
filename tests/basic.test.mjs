@@ -45,3 +45,16 @@ test('exports SVG for a string', () => {
   assert.ok(svg.includes('<svg'), 'expected svg output');
   assert.ok(svg.includes('<path'), 'expected svg path output');
 });
+
+test('gsub ligature mapping does not expand glyph count', () => {
+  const font = loadFont('truetypefonts/noto/NotoSans-Regular.ttf');
+  const plain = font.getGlyphIndicesForString('office');
+  const shaped = font.getGlyphIndicesForStringWithGsub('office', ['liga']);
+  assert.ok(shaped.length <= plain.length, 'expected GSUB shaping to not expand glyph count');
+});
+
+test('kerning API returns a number', () => {
+  const font = loadFont('truetypefonts/noto/NotoSans-Regular.ttf');
+  const value = font.getKerningValue('A', 'V');
+  assert.ok(typeof value === 'number', 'expected kerning value to be a number');
+});

@@ -33,4 +33,8 @@ export class LookupList {
         }
         return null;
     }
+
+    public getLookups(): Lookup[] {
+        return this.lookups;
+    }
 }

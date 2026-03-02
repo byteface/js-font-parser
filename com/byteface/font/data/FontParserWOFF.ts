@@ -14,6 +14,8 @@ import { TableDirectory } from '../table/TableDirectory.js';
 import { TableFactory } from '../table/TableFactory.js';
 import { GlyphData } from './GlyphData.js';
 import { ITable } from '../table/ITable.js';
+import { GsubTable } from '../table/GsubTable.js';
+import { LigatureSubstFormat1 } from '../table/LigatureSubstFormat1.js';
 
 export class FontParserWOFF {
     // Define properties
@@ -27,6 +29,8 @@ export class FontParserWOFF {
     private maxp: MaxpTable | null = null;
     private pName: NameTable | null = null;
     private post: PostTable | null = null;
+    private gsub: GsubTable | null = null;
+    private kern: any | null = null;
 
     // Table directory and tables
     private tableDir: TableDirectory | null = null;
@@ -97,6 +101,8 @@ export class FontParserWOFF {
         this.maxp = this.getTable(Table.maxp) as MaxpTable | null;
         this.pName = this.getTable(Table.pName) as NameTable | null;
         this.post = this.getTable(Table.post) as PostTable | null;
+        this.gsub = this.getTable(Table.GSUB) as GsubTable | null;
+        this.kern = this.getTable(Table.kern) as any | null;
 
         // Initialize the tables
         if (this.hmtx && this.maxp) {
@@ -158,6 +164,52 @@ export class FontParserWOFF {
         const idx = this.getGlyphIndexByChar(char);
         if (idx == null) return null;
         return this.getGlyph(idx);
+    }
+
+    public getGlyphIndicesForStringWithGsub(text: string, featureTags: string[] = ["liga"]): number[] {
+        const glyphs = [];
+        for (const ch of text) {
+            const idx = this.getGlyphIndexByChar(ch);
+            if (idx != null) glyphs.push(idx);
+        }
+        if (!this.gsub || glyphs.length === 0) return glyphs;
+
+        const subtables = this.gsub.getSubtablesForFeatures(featureTags);
+        let result = glyphs.slice();
+        for (const st of subtables) {
+            if (!st) continue;
+
+            if (typeof (st as any).substitute === "function") {
+                result = result.map(g => (st as any).substitute(g));
+                continue;
+            }
+
+            if (st instanceof LigatureSubstFormat1) {
+                const lig = st as LigatureSubstFormat1;
+                const next: number[] = [];
+                let i = 0;
+                while (i < result.length) {
+                    const match = lig.tryLigature(result, i);
+                    if (match) {
+                        next.push(match.glyphId);
+                        i += match.length;
+                    } else {
+                        next.push(result[i]);
+                        i += 1;
+                    }
+                }
+                result = next;
+            }
+        }
+        return result;
+    }
+
+    public getKerningValueByGlyphs(leftGlyph: number, rightGlyph: number): number {
+        if (!this.kern) return 0;
+        if (typeof this.kern.getKerningValue === "function") {
+            return this.kern.getKerningValue(leftGlyph, rightGlyph) ?? 0;
+        }
+        return 0;
     }
 
     public getTableByType(tableType: number): ITable | null {

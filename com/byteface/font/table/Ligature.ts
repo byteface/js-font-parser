@@ -17,8 +17,16 @@ export class Ligature {
     public getGlyphCount(): number {
         return this.compCount;
     }
-    
+
+    public getLigatureGlyph(): number {
+        return this.ligGlyph;
+    }
+
     public getGlyphId(i: number): number {
         return (i === 0) ? this.ligGlyph : this.components[i - 1];
+    }
+
+    public getComponents(): number[] {
+        return this.components.slice();
     }
 }

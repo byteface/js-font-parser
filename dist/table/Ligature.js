@@ -10,8 +10,14 @@ var Ligature = /** @class */ (function () {
     Ligature.prototype.getGlyphCount = function () {
         return this.compCount;
     };
+    Ligature.prototype.getLigatureGlyph = function () {
+        return this.ligGlyph;
+    };
     Ligature.prototype.getGlyphId = function (i) {
         return (i === 0) ? this.ligGlyph : this.components[i - 1];
+    };
+    Ligature.prototype.getComponents = function () {
+        return this.components.slice();
     };
     return Ligature;
 }());

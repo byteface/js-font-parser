@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kerning Demo</title>
+  <style>
+    :root { --bg:#f7f3ef; --ink:#1f1a16; --muted:#6a5f57; --panel:#fff; --border:#e5ded6; }
+    body { margin:0; font-family:"Crimson Text", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    .wrap { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; padding:16px 20px 32px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    canvas { width:100%; height:200px; border:1px dashed var(--border); border-radius:10px; background:#fff; }
+    input { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); margin-bottom:10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Kerning Demo</h1>
+    <p>Shows text rendered with default spacing vs kern table adjustments.</p>
+  </header>
+  <div class="wrap">
+    <div class="panel">
+      <input id="textInput" value="AVATAR WA To" />
+      <canvas id="plain" width="900" height="200"></canvas>
+    </div>
+    <div class="panel">
+      <canvas id="kerned" width="900" height="200"></canvas>
+    </div>
+  </div>
+
+  <script type="module">
+    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { drawString, drawStringWithKerning } from './shared/glyph-render.js';
+
+    const input = document.getElementById('textInput');
+    const plainCanvas = document.getElementById('plain');
+    const kernCanvas = document.getElementById('kerned');
+
+    let font = null;
+    FontParserTTF.load('../truetypefonts/noto/NotoSans-Regular.ttf').then(f => {
+      font = f;
+      render();
+    });
+
+    input.addEventListener('input', render);
+
+    function render() {
+      if (!font) return;
+      const text = input.value;
+      const ctxPlain = plainCanvas.getContext('2d');
+      const ctxKern = kernCanvas.getContext('2d');
+      ctxPlain.clearRect(0,0,plainCanvas.width,plainCanvas.height);
+      ctxKern.clearRect(0,0,kernCanvas.width,kernCanvas.height);
+
+      drawString(font, text, plainCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
+      drawStringWithKerning(font, text, kernCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
+    }
+  </script>
+</body>
+</html>

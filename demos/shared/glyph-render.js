@@ -139,6 +139,72 @@ export function drawString(font, text, canvas, options) {
     context.restore();
 }
 
+export function drawStringWithKerning(font, text, canvas, options) {
+    const scale = options.scale ?? 0.1;
+    const x = options.x ?? 0;
+    const y = options.y ?? 0;
+    const spacing = options.spacing ?? 0;
+    const context = canvas.getContext('2d');
+
+    let cursorX = x;
+    context.save();
+    context.translate(0, y);
+
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const glyph = font.getGlyphByChar(ch);
+        if (!glyph) {
+            cursorX += spacing;
+            continue;
+        }
+
+        let kern = 0;
+        if (i < text.length - 1 && typeof font.getKerningValue === 'function') {
+            kern = font.getKerningValue(ch, text[i + 1]) * scale;
+        }
+
+        drawGlyphToContext(context, glyph, {
+            x: cursorX / 1,
+            y: 0,
+            scale,
+            styles: options.styles
+        });
+
+        cursorX += glyph.advanceWidth * scale + spacing + kern;
+    }
+
+    context.restore();
+}
+
+export function drawGlyphIndices(font, glyphIndices, canvas, options) {
+    const scale = options.scale ?? 0.1;
+    const x = options.x ?? 0;
+    const y = options.y ?? 0;
+    const spacing = options.spacing ?? 0;
+    const context = canvas.getContext('2d');
+
+    let cursorX = x;
+    context.save();
+    context.translate(0, y);
+
+    for (const idx of glyphIndices) {
+        const glyph = font.getGlyph(idx);
+        if (!glyph) {
+            cursorX += spacing;
+            continue;
+        }
+        drawGlyphToContext(context, glyph, {
+            x: cursorX / 1,
+            y: 0,
+            scale,
+            styles: options.styles
+        });
+        cursorX += glyph.advanceWidth * scale + spacing;
+    }
+
+    context.restore();
+}
+
 function midValue(a, b) {
     return (a + b) / 2;
 }

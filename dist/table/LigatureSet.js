@@ -13,6 +13,9 @@ var LigatureSet = /** @class */ (function () {
             this.ligatures[j] = new Ligature(byteAr);
         }
     }
+    LigatureSet.prototype.getLigatures = function () {
+        return this.ligatures;
+    };
     return LigatureSet;
 }());
 export { LigatureSet };

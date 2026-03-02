@@ -8,6 +8,8 @@ import { LookupList } from "./LookupList.js";
 import { SingleSubst } from "./SingleSubst.js";
 import { LigatureSubst } from "./LigatureSubst.js";
 import { LookupSubtable } from "./LookupSubtable.js";
+import { Script } from "./Script.js";
+import { LangSys } from "./LangSys.js";
 
 export class GsubTable implements ITable {
     scriptList: ScriptList;
@@ -64,6 +66,62 @@ export class GsubTable implements ITable {
                 break;
         }
         return s;
+    }
+
+    getScriptList(): ScriptList {
+        return this.scriptList;
+    }
+
+    getFeatureList(): FeatureList {
+        return this.featureList;
+    }
+
+    getLookupList(): LookupList {
+        return this.lookupList;
+    }
+
+    findPreferredScript(tags: string[] = ["DFLT", "latn"]): Script | null {
+        for (const tag of tags) {
+            const script = this.scriptList.findScript(tag);
+            if (script) return script;
+        }
+        const records = this.scriptList.getScriptRecords();
+        if (records.length > 0) {
+            const fallbackTag = String.fromCharCode(
+                (records[0].tag >> 24) & 0xff,
+                (records[0].tag >> 16) & 0xff,
+                (records[0].tag >> 8) & 0xff,
+                records[0].tag & 0xff
+            );
+            return this.scriptList.findScript(fallbackTag);
+        }
+        return null;
+    }
+
+    getDefaultLangSys(script: Script | null): LangSys | null {
+        if (!script) return null;
+        return script.getDefaultLangSys();
+    }
+
+    getSubtablesForFeatures(featureTags: string[], scriptTags: string[] = ["DFLT", "latn"]): LookupSubtable[] {
+        const script = this.findPreferredScript(scriptTags);
+        const langSys = this.getDefaultLangSys(script);
+        if (!langSys) return [];
+
+        const subtables: LookupSubtable[] = [];
+        for (const tag of featureTags) {
+            const feature = this.featureList.findFeature(langSys, tag);
+            if (!feature) continue;
+            for (let i = 0; i < feature.getLookupCount(); i++) {
+                const lookup = this.lookupList.getLookup(feature, i);
+                if (!lookup) continue;
+                for (let j = 0; j < lookup.getSubtableCount(); j++) {
+                    const st = lookup.getSubtable(j);
+                    if (st) subtables.push(st);
+                }
+            }
+        }
+        return subtables;
     }
 
     getType(): number {

@@ -1,6 +1,8 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { ITable } from "./ITable.js";
 import { KernSubtable } from "./KernSubtable.js";
+import { KernSubtableFormat0 } from "./KernSubtableFormat0.js";
+import { KernSubtableFormat2 } from "./KernSubtableFormat2.js";
 import { Table } from "./Table.js";
 
 
@@ -16,7 +18,33 @@ export class KernTable implements ITable {
         this.tables = new Array<KernSubtable | null>(this.nTables);
 
         for (let i = 0; i < this.nTables; i++) {
-            this.tables[i] = KernSubtable.read(byte_ar);
+            const start = byte_ar.offset;
+            // subtable header
+            byte_ar.readUnsignedShort(); // version
+            const length = byte_ar.readUnsignedShort();
+            const coverage = byte_ar.readUnsignedShort();
+            const format = coverage >> 8;
+
+            let table: KernSubtable | null = null;
+            switch (format) {
+                case 0:
+                    table = new KernSubtableFormat0(byte_ar);
+                    break;
+                case 2:
+                    table = new KernSubtableFormat2(byte_ar);
+                    break;
+                default:
+                    console.warn(`Unsupported KernSubtable format: ${format}`);
+                    break;
+            }
+
+            // Ensure we move to the end of the subtable
+            const expectedEnd = start + length;
+            if (byte_ar.offset < expectedEnd) {
+                byte_ar.offset = expectedEnd;
+            }
+
+            this.tables[i] = table;
         }
     }
 
@@ -26,6 +54,15 @@ export class KernTable implements ITable {
 
     getSubtable(i: number): KernSubtable | null {
         return this.tables[i];
+    }
+
+    getKerningValue(leftGlyph: number, rightGlyph: number): number {
+        for (const subtable of this.tables) {
+            if (subtable && subtable instanceof KernSubtableFormat0) {
+                return subtable.getKerningValue(leftGlyph, rightGlyph);
+            }
+        }
+        return 0;
     }
 
     getType(): number {

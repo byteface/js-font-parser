@@ -6,6 +6,7 @@ import { FpgmTable } from './FpgmTable.js';
 import { Os2Table } from './Os2Table.js';
 import { CmapTable } from './CmapTable.js';
 import { GlyfTable } from './GlyfTable.js';
+import { KernTable } from './KernTable.js';
 import { HeadTable } from './HeadTable.js';
 import { HheaTable } from './HheaTable.js';
 import { HmtxTable } from './HmtxTable.js';
@@ -39,6 +40,8 @@ var TableFactory = /** @class */ (function () {
                 return new HheaTable(de, byte_ar);
             case Table.hmtx:
                 return new HmtxTable(de, byte_ar);
+            case Table.kern:
+                return new KernTable(de, byte_ar);
             case Table.loca:
                 return new LocaTable(de, byte_ar);
             case Table.maxp:

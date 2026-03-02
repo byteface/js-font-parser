@@ -50,6 +50,60 @@ var GsubTable = /** @class */ (function () {
         }
         return s;
     };
+    GsubTable.prototype.getScriptList = function () {
+        return this.scriptList;
+    };
+    GsubTable.prototype.getFeatureList = function () {
+        return this.featureList;
+    };
+    GsubTable.prototype.getLookupList = function () {
+        return this.lookupList;
+    };
+    GsubTable.prototype.findPreferredScript = function (tags) {
+        if (tags === void 0) { tags = ["DFLT", "latn"]; }
+        for (var _i = 0, tags_1 = tags; _i < tags_1.length; _i++) {
+            var tag = tags_1[_i];
+            var script = this.scriptList.findScript(tag);
+            if (script)
+                return script;
+        }
+        var records = this.scriptList.getScriptRecords();
+        if (records.length > 0) {
+            var fallbackTag = String.fromCharCode((records[0].tag >> 24) & 0xff, (records[0].tag >> 16) & 0xff, (records[0].tag >> 8) & 0xff, records[0].tag & 0xff);
+            return this.scriptList.findScript(fallbackTag);
+        }
+        return null;
+    };
+    GsubTable.prototype.getDefaultLangSys = function (script) {
+        if (!script)
+            return null;
+        return script.getDefaultLangSys();
+    };
+    GsubTable.prototype.getSubtablesForFeatures = function (featureTags, scriptTags) {
+        if (scriptTags === void 0) { scriptTags = ["DFLT", "latn"]; }
+        var script = this.findPreferredScript(scriptTags);
+        var langSys = this.getDefaultLangSys(script);
+        if (!langSys)
+            return [];
+        var subtables = [];
+        for (var _i = 0, featureTags_1 = featureTags; _i < featureTags_1.length; _i++) {
+            var tag = featureTags_1[_i];
+            var feature = this.featureList.findFeature(langSys, tag);
+            if (!feature)
+                continue;
+            for (var i = 0; i < feature.getLookupCount(); i++) {
+                var lookup = this.lookupList.getLookup(feature, i);
+                if (!lookup)
+                    continue;
+                for (var j = 0; j < lookup.getSubtableCount(); j++) {
+                    var st = lookup.getSubtable(j);
+                    if (st)
+                        subtables.push(st);
+                }
+            }
+        }
+        return subtables;
+    };
     GsubTable.prototype.getType = function () {
         return Table.GSUB;
     };

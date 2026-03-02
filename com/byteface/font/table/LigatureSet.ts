@@ -21,4 +21,8 @@ export class LigatureSet {
             this.ligatures[j] = new Ligature(byteAr);
         }
     }
+
+    public getLigatures(): Ligature[] {
+        return this.ligatures;
+    }
 }

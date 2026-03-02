@@ -27,6 +27,10 @@ export class ScriptList {
         return this.scriptRecords[i];
     }
 
+    getScriptRecords(): ScriptRecord[] {
+        return this.scriptRecords;
+    }
+
     findScript(tag: string): Script | null {
         if (tag.length !== 4) {
             return null;

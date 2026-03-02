@@ -20,6 +20,9 @@ var LookupList = /** @class */ (function () {
         }
         return null;
     };
+    LookupList.prototype.getLookups = function () {
+        return this.lookups;
+    };
     return LookupList;
 }());
 export { LookupList };

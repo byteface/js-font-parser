@@ -40,4 +40,8 @@ export class Script {
             this.defaultLangSys = null; // Explicitly set to null if no default LangSys
         }
     }
+
+    getDefaultLangSys(): LangSys | null {
+        return this.defaultLangSys;
+    }
 }

@@ -1,6 +1,8 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { Coverage } from "./Coverage.js";
+import { ICoverage } from "./ICoverage.js";
 import { LigatureSet } from "./LigatureSet.js";
+import { Ligature } from "./Ligature.js";
 // import { LigatureSubst } from "./LigatureSubst.js";
 // extends LigatureSubst - TODO - may need to make interface? see SingleSubsFormat
 
@@ -8,7 +10,7 @@ export class LigatureSubstFormat1 {
     private coverageOffset: number;
     private ligSetCount: number;
     private ligatureSetOffsets: number[];
-    private coverage: Coverage | null;
+    private coverage: ICoverage | null;
     private ligatureSets: LigatureSet[];
 
     constructor(byteAr: ByteArray, offset: number) {
@@ -31,5 +33,41 @@ export class LigatureSubstFormat1 {
 
     public getFormat(): number {
         return 1;
+    }
+
+    public getCoverage(): ICoverage | null {
+        return this.coverage;
+    }
+
+    public getLigatureSets(): LigatureSet[] {
+        return this.ligatureSets;
+    }
+
+    public tryLigature(glyphs: number[], index: number): { glyphId: number; length: number } | null {
+        if (!this.coverage) return null;
+        const coverageIndex = this.coverage.findGlyph(glyphs[index]);
+        if (coverageIndex < 0) return null;
+
+        const ligSet = this.ligatureSets[coverageIndex];
+        if (!ligSet) return null;
+
+        for (const lig of ligSet.getLigatures()) {
+            const components = lig.getComponents();
+            if (components.length === 0) continue;
+
+            let match = true;
+            for (let i = 0; i < components.length; i++) {
+                if (glyphs[index + 1 + i] !== components[i]) {
+                    match = false;
+                    break;
+                }
+            }
+
+            if (match) {
+                return { glyphId: lig.getLigatureGlyph(), length: components.length + 1 };
+            }
+        }
+
+        return null;
     }
 }

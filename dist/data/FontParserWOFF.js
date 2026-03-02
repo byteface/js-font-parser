@@ -3,6 +3,7 @@ import { Table } from '../table/Table.js';
 import { TableDirectory } from '../table/TableDirectory.js';
 import { TableFactory } from '../table/TableFactory.js';
 import { GlyphData } from './GlyphData.js';
+import { LigatureSubstFormat1 } from '../table/LigatureSubstFormat1.js';
 var FontParserWOFF = /** @class */ (function () {
     function FontParserWOFF(byteData) {
         // Define properties
@@ -16,6 +17,8 @@ var FontParserWOFF = /** @class */ (function () {
         this.maxp = null;
         this.pName = null;
         this.post = null;
+        this.gsub = null;
+        this.kern = null;
         // Table directory and tables
         this.tableDir = null;
         this.tables = [];
@@ -75,6 +78,8 @@ var FontParserWOFF = /** @class */ (function () {
         this.maxp = this.getTable(Table.maxp);
         this.pName = this.getTable(Table.pName);
         this.post = this.getTable(Table.post);
+        this.gsub = this.getTable(Table.GSUB);
+        this.kern = this.getTable(Table.kern);
         // Initialize the tables
         if (this.hmtx && this.maxp) {
             this.hmtx.run((_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.numberOfHMetrics) !== null && _b !== void 0 ? _b : 0, this.maxp.numGlyphs - ((_d = (_c = this.hhea) === null || _c === void 0 ? void 0 : _c.numberOfHMetrics) !== null && _d !== void 0 ? _d : 0));
@@ -135,6 +140,59 @@ var FontParserWOFF = /** @class */ (function () {
             return null;
         return this.getGlyph(idx);
     };
+    FontParserWOFF.prototype.getGlyphIndicesForStringWithGsub = function (text, featureTags) {
+        if (featureTags === void 0) { featureTags = ["liga"]; }
+        var glyphs = [];
+        for (var _i = 0, text_1 = text; _i < text_1.length; _i++) {
+            var ch = text_1[_i];
+            var idx = this.getGlyphIndexByChar(ch);
+            if (idx != null)
+                glyphs.push(idx);
+        }
+        if (!this.gsub || glyphs.length === 0)
+            return glyphs;
+        var subtables = this.gsub.getSubtablesForFeatures(featureTags);
+        var result = glyphs.slice();
+        var _loop_1 = function (st) {
+            if (!st)
+                return "continue";
+            if (typeof st.substitute === "function") {
+                result = result.map(function (g) { return st.substitute(g); });
+                return "continue";
+            }
+            if (st instanceof LigatureSubstFormat1) {
+                var lig = st;
+                var next = [];
+                var i = 0;
+                while (i < result.length) {
+                    var match = lig.tryLigature(result, i);
+                    if (match) {
+                        next.push(match.glyphId);
+                        i += match.length;
+                    }
+                    else {
+                        next.push(result[i]);
+                        i += 1;
+                    }
+                }
+                result = next;
+            }
+        };
+        for (var _a = 0, subtables_1 = subtables; _a < subtables_1.length; _a++) {
+            var st = subtables_1[_a];
+            _loop_1(st);
+        }
+        return result;
+    };
+    FontParserWOFF.prototype.getKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
+        var _a;
+        if (!this.kern)
+            return 0;
+        if (typeof this.kern.getKerningValue === "function") {
+            return (_a = this.kern.getKerningValue(leftGlyph, rightGlyph)) !== null && _a !== void 0 ? _a : 0;
+        }
+        return 0;
+    };
     FontParserWOFF.prototype.getTableByType = function (tableType) {
         return this.getTable(tableType);
     };
@@ -166,14 +224,14 @@ var FontParserWOFF = /** @class */ (function () {
         if (formats.length === 0)
             return null;
         var order = [4, 12, 10, 8, 6, 2, 0];
-        var _loop_1 = function (fmt) {
+        var _loop_2 = function (fmt) {
             var found = formats.find(function (f) { return (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt; });
             if (found)
                 return { value: found };
         };
         for (var _i = 0, order_1 = order; _i < order_1.length; _i++) {
             var fmt = order_1[_i];
-            var state_1 = _loop_1(fmt);
+            var state_1 = _loop_2(fmt);
             if (typeof state_1 === "object")
                 return state_1.value;
         }

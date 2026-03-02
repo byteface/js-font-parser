@@ -45,4 +45,8 @@ export class FeatureList {
         }
         return null;
     }
+
+    getFeatureRecords(): FeatureRecord[] {
+        return this.featureRecords;
+    }
 }

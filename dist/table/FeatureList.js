@@ -31,6 +31,9 @@ var FeatureList = /** @class */ (function () {
         }
         return null;
     };
+    FeatureList.prototype.getFeatureRecords = function () {
+        return this.featureRecords;
+    };
     return FeatureList;
 }());
 export { FeatureList };

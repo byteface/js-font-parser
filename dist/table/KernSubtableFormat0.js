@@ -25,6 +25,12 @@ var KernSubtableFormat0 = /** @class */ (function (_super) {
         _this.entrySelector = byte_ar.readUnsignedShort();
         _this.rangeShift = byte_ar.readUnsignedShort();
         _this.kerningPairs = Array.from({ length: _this.nPairs }, function () { return new KerningPair(byte_ar); });
+        _this.pairMap = new Map();
+        for (var _i = 0, _a = _this.kerningPairs; _i < _a.length; _i++) {
+            var pair = _a[_i];
+            var key = (pair.getLeft() << 16) | pair.getRight();
+            _this.pairMap.set(key, pair.getValue());
+        }
         return _this;
     }
     KernSubtableFormat0.prototype.getKerningPairCount = function () {
@@ -33,6 +39,11 @@ var KernSubtableFormat0 = /** @class */ (function (_super) {
     KernSubtableFormat0.prototype.getKerningPair = function (i) {
         var _a;
         return (_a = this.kerningPairs[i]) !== null && _a !== void 0 ? _a : null;
+    };
+    KernSubtableFormat0.prototype.getKerningValue = function (leftGlyph, rightGlyph) {
+        var _a;
+        var key = (leftGlyph << 16) | rightGlyph;
+        return (_a = this.pairMap.get(key)) !== null && _a !== void 0 ? _a : 0;
     };
     return KernSubtableFormat0;
 }(KernSubtable));

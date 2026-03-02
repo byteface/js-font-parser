@@ -16,6 +16,9 @@ var ScriptList = /** @class */ (function () {
     ScriptList.prototype.getScriptRecord = function (i) {
         return this.scriptRecords[i];
     };
+    ScriptList.prototype.getScriptRecords = function () {
+        return this.scriptRecords;
+    };
     ScriptList.prototype.findScript = function (tag) {
         if (tag.length !== 4) {
             return null;

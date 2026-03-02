@@ -29,6 +29,9 @@ var Script = /** @class */ (function () {
             this.defaultLangSys = null; // Explicitly set to null if no default LangSys
         }
     }
+    Script.prototype.getDefaultLangSys = function () {
+        return this.defaultLangSys;
+    };
     return Script;
 }());
 export { Script };
