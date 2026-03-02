@@ -248,13 +248,25 @@
                 return;
             }
 
-            CanvasRenderer.drawColorString(font, text, colorCanvas, {
-                x: 20,
-                y: baseline,
-                scale,
-                spacing: 12,
-                fallbackFill: "#6b4e3d"
-            });
+            let cursorX = 20;
+            for (const ch of Array.from(text)) {
+                const glyphId = font.getGlyphIndexByChar(ch);
+                if (glyphId == null) {
+                    cursorX += unitsPerEm * scale * 0.4;
+                    continue;
+                }
+                CanvasRenderer.drawColorGlyph(font, glyphId, colorCanvas, {
+                    x: cursorX,
+                    y: baseline,
+                    scale,
+                    fallbackFill: "#6b4e3d"
+                });
+                const glyph = font.getGlyph(glyphId);
+                const advance = glyph?.advanceWidth && glyph.advanceWidth > 0
+                    ? glyph.advanceWidth
+                    : unitsPerEm * 0.8;
+                cursorX += advance * scale + 8;
+            }
         }
 
         async function loadBuiltInFont(url) {

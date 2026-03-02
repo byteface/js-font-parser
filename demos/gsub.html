@@ -29,6 +29,7 @@
     </div>
     <div class="panel">
       <canvas id="gsub" width="900" height="200"></canvas>
+      <div id="info" style="margin-top:10px; font-size:12px; color:var(--muted);"></div>
     </div>
   </div>
 
@@ -40,6 +41,7 @@
     const fontSelect = document.getElementById('fontSelect');
     const plainCanvas = document.getElementById('plain');
     const gsubCanvas = document.getElementById('gsub');
+    const info = document.getElementById('info');
 
     const fonts = [
       { name: 'Noto Sans', url: '../truetypefonts/noto/NotoSans-Regular.ttf' },
@@ -85,6 +87,13 @@
 
       const layout = font.layoutString(text, { gsubFeatures: ['liga'] });
       CanvasRenderer.drawLayout(font, layout, gsubCanvas, { x: 20, y: 140, scale: 0.12, styles: { fillStyle: '#111', strokeStyle: '#111' } });
+
+      const plainGlyphs = font.getGlyphIndicesForString(text);
+      const gsubGlyphs = font.getGlyphIndicesForStringWithGsub(text, ['liga']);
+      const diff = plainGlyphs.length - gsubGlyphs.length;
+      info.textContent = diff > 0
+        ? `Ligatures found: ${diff} substitutions`
+        : 'No ligature substitutions detected for this string/font.';
     }
 
     populateFonts();

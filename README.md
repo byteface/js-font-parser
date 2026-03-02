@@ -25,9 +25,6 @@ Demo pages (see `demos/index.html`):
 - `demos/kerning.html`
 - `demos/particle.html` (ported style)
 - `demos/3dglasses.html`
-- `demos/blackhole.html`
-- `demos/script.html`
-- `demos/script2.html`
 - `demos/shadow.html`
 - `demos/stack.html`
 - `demos/svg-export.html` (export string to SVG)

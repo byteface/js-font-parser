@@ -19,15 +19,19 @@
 <body>
   <header>
     <h1>Kerning Demo</h1>
-    <p>Shows text rendered with default spacing vs kern table adjustments.</p>
+    <p>Shows text rendered with default spacing vs kern table adjustments (exaggerated).</p>
   </header>
   <div class="wrap">
     <div class="panel">
-      <input id="textInput" value="AVATAR WA To" />
+      <select id="fontSelect" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); margin-bottom:10px;"></select>
+      <input id="textInput" value="AVATAR WA To VA" />
+      <label style="display:block; font-size:12px; color:var(--muted); margin-bottom:8px;">Kerning strength</label>
+      <input id="kernInput" type="range" min="1" max="6" value="3" />
       <canvas id="plain" width="900" height="200"></canvas>
     </div>
     <div class="panel">
       <canvas id="kerned" width="900" height="200"></canvas>
+      <div id="kernInfo" style="margin-top:10px; font-size:12px; color:var(--muted);"></div>
     </div>
   </div>
 
@@ -36,16 +40,44 @@
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const input = document.getElementById('textInput');
+    const fontSelect = document.getElementById('fontSelect');
+    const kernInput = document.getElementById('kernInput');
     const plainCanvas = document.getElementById('plain');
     const kernCanvas = document.getElementById('kerned');
+    const kernInfo = document.getElementById('kernInfo');
 
+    const fonts = [
+      { name: 'Noto Sans', url: '../truetypefonts/noto/NotoSans-Regular.ttf' },
+      { name: 'DiscoMo', url: '../truetypefonts/DiscoMo.ttf' },
+      { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' },
+      { name: 'Quill', url: '../truetypefonts/Quill.ttf' }
+    ];
+    const cache = new Map();
     let font = null;
-    FontParserTTF.load('../truetypefonts/noto/NotoSans-Regular.ttf').then(f => {
-      font = f;
-      render();
-    });
+
+    function populateFonts() {
+      fontSelect.innerHTML = '';
+      fonts.forEach((f, i) => {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = f.name;
+        fontSelect.appendChild(opt);
+      });
+    }
+
+    async function loadFont(url) {
+      if (cache.has(url)) return cache.get(url);
+      const f = await FontParserTTF.load(url);
+      cache.set(url, f);
+      return f;
+    }
 
     input.addEventListener('input', render);
+    kernInput.addEventListener('input', render);
+    fontSelect.addEventListener('change', async () => {
+      font = await loadFont(fonts[Number(fontSelect.value)]?.url ?? fonts[0].url);
+      render();
+    });
 
     function render() {
       if (!font) return;
@@ -55,9 +87,22 @@
       ctxPlain.clearRect(0,0,plainCanvas.width,plainCanvas.height);
       ctxKern.clearRect(0,0,kernCanvas.width,kernCanvas.height);
 
+      const kernScale = Number(kernInput.value);
       CanvasRenderer.drawString(font, text, plainCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
-      CanvasRenderer.drawStringWithKerning(font, text, kernCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
+      CanvasRenderer.drawStringWithKerning(font, text, kernCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, kerningScale: kernScale, styles: { fillStyle: '#111', strokeStyle: '#111' } });
+
+      const pairs = [];
+      for (let i = 0; i < text.length - 1; i++) {
+        const a = text[i];
+        const b = text[i + 1];
+        const v = font.getKerningValue(a, b);
+        if (v) pairs.push(`${a}${b}: ${v}`);
+      }
+      kernInfo.textContent = pairs.length > 0 ? `Kerning pairs: ${pairs.join(' | ')}` : 'No kerning pairs found in this string.';
     }
+
+    populateFonts();
+    loadFont(fonts[0].url).then(f => { font = f; render(); });
   </script>
 </body>
 </html>

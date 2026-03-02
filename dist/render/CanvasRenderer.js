@@ -122,12 +122,13 @@ var CanvasRenderer = /** @class */ (function () {
         context.restore();
     };
     CanvasRenderer.drawStringWithKerning = function (font, text, canvas, options) {
-        var _a, _b, _c, _d;
+        var _a, _b, _c, _d, _e;
         if (options === void 0) { options = {}; }
         var scale = (_a = options.scale) !== null && _a !== void 0 ? _a : 0.1;
         var x = (_b = options.x) !== null && _b !== void 0 ? _b : 0;
         var y = (_c = options.y) !== null && _c !== void 0 ? _c : 0;
         var spacing = (_d = options.spacing) !== null && _d !== void 0 ? _d : 0;
+        var kerningScale = (_e = options.kerningScale) !== null && _e !== void 0 ? _e : 1;
         var context = canvas.getContext('2d');
         if (!context)
             return;
@@ -143,7 +144,7 @@ var CanvasRenderer = /** @class */ (function () {
             }
             var kern = 0;
             if (i < text.length - 1 && typeof font.getKerningValue === 'function') {
-                kern = font.getKerningValue(ch, text[i + 1]) * scale;
+                kern = font.getKerningValue(ch, text[i + 1]) * scale * kerningScale;
             }
             this.drawGlyphToContext(context, glyph, {
                 x: cursorX,

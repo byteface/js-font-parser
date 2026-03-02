@@ -379,14 +379,24 @@ export class FontParserWOFF {
 
     private getBestCmapFormatFor(codePoint: number): any | null {
         if (!this.cmap) return null;
-        const preferred = [
-            { platformId: 3, encodingId: 10 },
-            { platformId: 3, encodingId: 1 },
-            { platformId: 0, encodingId: 4 },
-            { platformId: 0, encodingId: 3 },
-            { platformId: 0, encodingId: 1 },
-            { platformId: 1, encodingId: 0 }
-        ];
+        const prefersUcs4 = codePoint > 0xffff;
+        const preferred = prefersUcs4
+            ? [
+                { platformId: 3, encodingId: 10 },
+                { platformId: 0, encodingId: 4 },
+                { platformId: 3, encodingId: 1 },
+                { platformId: 0, encodingId: 3 },
+                { platformId: 0, encodingId: 1 },
+                { platformId: 1, encodingId: 0 }
+            ]
+            : [
+                { platformId: 3, encodingId: 1 },
+                { platformId: 0, encodingId: 3 },
+                { platformId: 0, encodingId: 1 },
+                { platformId: 3, encodingId: 10 },
+                { platformId: 0, encodingId: 4 },
+                { platformId: 1, encodingId: 0 }
+            ];
 
         for (const pref of preferred) {
             const formats = this.cmap.getCmapFormats(pref.platformId, pref.encodingId);
@@ -400,7 +410,7 @@ export class FontParserWOFF {
 
     private pickBestFormat(formats: any[]): any | null {
         if (formats.length === 0) return null;
-        const order = [12, 4, 10, 8, 6, 2, 0];
+        const order = [4, 12, 10, 8, 6, 2, 0];
         for (const fmt of order) {
             const found = formats.find(f => (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt);
             if (found) return found;

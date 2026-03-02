@@ -19,6 +19,7 @@ export type CanvasDrawOptions = {
     styles?: CanvasStyleOptions;
     paletteIndex?: number;
     fallbackFill?: string;
+    kerningScale?: number;
 };
 
 export class CanvasRenderer {
@@ -141,6 +142,7 @@ export class CanvasRenderer {
         const x = options.x ?? 0;
         const y = options.y ?? 0;
         const spacing = options.spacing ?? 0;
+        const kerningScale = options.kerningScale ?? 1;
         const context = canvas.getContext('2d');
         if (!context) return;
 
@@ -158,7 +160,7 @@ export class CanvasRenderer {
 
             let kern = 0;
             if (i < text.length - 1 && typeof font.getKerningValue === 'function') {
-                kern = font.getKerningValue(ch, text[i + 1]) * scale;
+                kern = font.getKerningValue(ch, text[i + 1]) * scale * kerningScale;
             }
 
             this.drawGlyphToContext(context, glyph, {

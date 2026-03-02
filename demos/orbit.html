@@ -76,11 +76,10 @@
         </label>
     </div>
     <canvas id="canvas" width="1200" height="360"></canvas>
-    <div class="hint">Each glyph orbits around a ring, scaling for depth.</div>
+    <div class="hint">Glyph points orbit the ring — a pure point-cloud visualization.</div>
 
     <script type="module">
         import { FontParserTTF } from '../dist/data/FontParserTTF.js';
-        import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
         import { Table } from '../dist/table/Table.js';
 
         const fontSelect = document.getElementById('fontSelect');
@@ -145,22 +144,28 @@
             for (let i = 0; i < count; i++) {
                 const ch = text[i] ?? ' ';
                 const glyph = font.getGlyphByChar(ch);
-                if (!glyph) continue;
+                if (!glyph || !glyph.points) continue;
 
                 const angle = time + (i / count) * Math.PI * 2;
                 const depth = (Math.sin(angle) + 1) / 2;
                 const orbitScale = scale * (0.6 + depth * 0.8);
                 const x = centerX + Math.cos(angle) * radius;
                 const y = centerY + Math.sin(angle) * radius * 0.6;
-                const alpha = 0.3 + depth * 0.7;
+                const alpha = 0.25 + depth * 0.75;
 
                 ctx.globalAlpha = alpha;
-                CanvasRenderer.drawGlyphToContext(ctx, glyph, {
-                    x,
-                    y,
-                    scale: orbitScale,
-                    styles: { fillStyle: '#24433a', strokeStyle: '#24433a', lineWidth: 1 }
-                });
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.scale(orbitScale, -orbitScale);
+                ctx.fillStyle = '#24433a';
+
+                for (let p = 0; p < glyph.points.length; p += 2) {
+                    const pt = glyph.points[p];
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, 8 / orbitScale, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
             }
 
             ctx.globalAlpha = 1;

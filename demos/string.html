@@ -48,11 +48,23 @@
         canvas.height = 220;
         block.appendChild(canvas);
 
+        const status = document.createElement("div");
+        status.style.fontSize = "12px";
+        status.style.color = "#666";
+        status.style.marginTop = "6px";
+        block.appendChild(status);
+
         container.appendChild(block);
 
         const url = `../truetypefonts/${encodeURIComponent(file)}`;
         FontParserTTF.load(url)
             .then(font => {
+                const hasGlyf = !!font.getTableByType(0x676c7966);
+                const hasCff = !!font.getTableByType(0x43464620);
+                if (!hasGlyf && hasCff) {
+                    status.textContent = "CFF/OTF outlines not supported yet.";
+                    return;
+                }
                 CanvasRenderer.drawString(font, "hello world", canvas, {
                     x: 20,
                     y: 160,

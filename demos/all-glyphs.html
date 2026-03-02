@@ -176,6 +176,15 @@
             const scaleFactor = Number(scaleInput.value) / 100;
             const showIndex = indexInput.checked;
 
+            const hasGlyf = !!font.getTableByType(Table.glyf);
+            const hasCff = !!font.getTableByType(Table.CFF);
+            if (!hasGlyf && hasCff) {
+                clearCanvas(canvas.width, canvas.height);
+                status.textContent = "CFF/OTF outlines are not supported yet.";
+                status.classList.add("warn");
+                return;
+            }
+
             const head = font.getTableByType(Table.head);
             const unitsPerEm = head?.unitsPerEm ?? 1000;
             const scale = (cell * scaleFactor) / unitsPerEm;

@@ -6,37 +6,49 @@
 </head>
 <body>
 <h1>WOFF Demo</h1>
-<canvas id="myDrawing" width="800" height="600"></canvas>
+<div style="margin-bottom:12px;">
+    <label>Text:
+        <input id="textInput" value="Hello WOFF" />
+    </label>
+</div>
+<canvas id="myDrawing" width="900" height="360"></canvas>
 
 <script type="module">
     import { FontParserWOFF } from '../dist/data/FontParserWOFF.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const canvas = document.getElementById('myDrawing');
+    const textInput = document.getElementById('textInput');
     const ctx = canvas.getContext('2d');
 
+    let font = null;
     FontParserWOFF.load("https://cdn.jsdelivr.net/fontsource/fonts/open-sauce-one@latest/latin-400-normal.woff")
-        .then(font => {
-            const glyph = font.getGlyphByChar("W");
-            if (!glyph) {
-                console.warn("No glyph for W");
-                return;
-            }
-            CanvasRenderer.drawGlyphToContext(ctx, glyph, {
-                x: 200,
-                y: 400,
-                scale: 0.3,
-                styles: {
-                    fillStyle: '#000000',
-                    strokeStyle: '#000000',
-                    lineWidth: '1',
-                    globalAlpha: '1'
-                }
-            });
+        .then(f => {
+            font = f;
+            render();
         })
         .catch(error => {
             console.error('Error loading WOFF:', error);
         });
+
+    textInput.addEventListener('input', render);
+
+    function render() {
+        if (!font) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        CanvasRenderer.drawString(font, textInput.value, canvas, {
+            x: 40,
+            y: 220,
+            scale: 0.18,
+            spacing: 2,
+            styles: {
+                fillStyle: '#000000',
+                strokeStyle: '#000000',
+                lineWidth: '1',
+                globalAlpha: '1'
+            }
+        });
+    }
 </script>
 </body>
 </html>

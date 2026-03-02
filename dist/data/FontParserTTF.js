@@ -274,14 +274,24 @@ var FontParserTTF = /** @class */ (function () {
     FontParserTTF.prototype.getBestCmapFormatFor = function (codePoint) {
         if (!this.cmap)
             return null;
-        var preferred = [
-            { platformId: 3, encodingId: 10 }, // Windows, UCS-4
-            { platformId: 3, encodingId: 1 }, // Windows, Unicode BMP
-            { platformId: 0, encodingId: 4 }, // Unicode, UCS-4
-            { platformId: 0, encodingId: 3 }, // Unicode, BMP
-            { platformId: 0, encodingId: 1 }, // Unicode, 1.1
-            { platformId: 1, encodingId: 0 }, // Macintosh, Roman
-        ];
+        var prefersUcs4 = codePoint > 0xffff;
+        var preferred = prefersUcs4
+            ? [
+                { platformId: 3, encodingId: 10 }, // Windows, UCS-4
+                { platformId: 0, encodingId: 4 }, // Unicode, UCS-4
+                { platformId: 3, encodingId: 1 }, // Windows, Unicode BMP
+                { platformId: 0, encodingId: 3 }, // Unicode, BMP
+                { platformId: 0, encodingId: 1 }, // Unicode, 1.1
+                { platformId: 1, encodingId: 0 }, // Macintosh, Roman
+            ]
+            : [
+                { platformId: 3, encodingId: 1 }, // Windows, Unicode BMP
+                { platformId: 0, encodingId: 3 }, // Unicode, BMP
+                { platformId: 0, encodingId: 1 }, // Unicode, 1.1
+                { platformId: 3, encodingId: 10 }, // Windows, UCS-4
+                { platformId: 0, encodingId: 4 }, // Unicode, UCS-4
+                { platformId: 1, encodingId: 0 }, // Macintosh, Roman
+            ];
         for (var _i = 0, preferred_1 = preferred; _i < preferred_1.length; _i++) {
             var pref = preferred_1[_i];
             var formats = this.cmap.getCmapFormats(pref.platformId, pref.encodingId);
@@ -294,7 +304,7 @@ var FontParserTTF = /** @class */ (function () {
     FontParserTTF.prototype.pickBestFormat = function (formats) {
         if (formats.length === 0)
             return null;
-        var order = [12, 4, 10, 8, 6, 2, 0];
+        var order = [4, 12, 10, 8, 6, 2, 0];
         var _loop_2 = function (fmt) {
             var found = formats.find(function (f) { return (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt; });
             if (found)
