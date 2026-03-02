@@ -13,7 +13,7 @@
 <canvas id="myDrawing" width="900" height="600"></canvas>
 <script type="module">
     import { FontParserTTF } from '../dist/data/FontParserTTF.js';
-    import { drawString } from './shared/glyph-render.js';
+    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const canvas = document.getElementById('myDrawing');
     const ctx = canvas.getContext('2d');
@@ -24,15 +24,15 @@
             ctx.shadowBlur = 20;
             ctx.shadowOffsetX = 8;
             ctx.shadowOffsetY = 8;
-            drawString(font, "shadow", canvas, {
+            CanvasRenderer.drawString(font, "shadow", canvas, {
                 x: 60,
                 y: 350,
                 scale: 0.2,
                 styles: {
-                    'color': '#ffffff',
-                    'stroke-color': '#000000',
-                    'line-width': '1',
-                    'opacity': '1'
+                    fillStyle: '#ffffff',
+                    strokeStyle: '#000000',
+                    lineWidth: '1',
+                    globalAlpha: '1'
                 }
             });
         })

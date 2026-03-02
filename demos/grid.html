@@ -12,7 +12,7 @@
 <script type="module">
     import { FontParserTTF } from '../dist/data/FontParserTTF.js';
     import { Debug } from '../dist/utils/Debug.js';
-    import { drawGlyphToContext } from './shared/glyph-render.js';
+    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const DEBUG = false;
     Debug.enabled = DEBUG;
@@ -31,14 +31,14 @@
         });
 
     const cssStyles = {
-        'color': '#3498db',
-        'stroke-color': '#000000',
-        'opacity': '1',
-        'line-width': '2',
-        'shadow-color': '#95a5a6',
-        'shadow-blur': '10',
-        'shadow-offset-x': '4',
-        'shadow-offset-y': '4'
+        fillStyle: '#3498db',
+        strokeStyle: '#000000',
+        globalAlpha: 1,
+        lineWidth: 2,
+        shadowColor: '#95a5a6',
+        shadowBlur: 10,
+        shadowOffsetX: 4,
+        shadowOffsetY: 4
     };
 
     function drawGrid() {
@@ -63,7 +63,7 @@
         if (!glyph) {
             return;
         }
-        drawGlyphToContext(context, glyph, {
+        CanvasRenderer.drawGlyphToContext(context, glyph, {
             x: x + CELL_SIZE / 2,
             y: y + CELL_SIZE / 2,
             scale: 0.04,

@@ -10,7 +10,7 @@
 <script type="module">
     import { FontParserTTF } from '../dist/data/FontParserTTF.js';
     import { Debug } from '../dist/utils/Debug.js';
-    import { drawString } from './shared/glyph-render.js';
+    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const DEBUG = false;
     Debug.enabled = DEBUG;
@@ -53,7 +53,7 @@
         const url = `../truetypefonts/${encodeURIComponent(file)}`;
         FontParserTTF.load(url)
             .then(font => {
-                drawString(font, "hello world", canvas, {
+                CanvasRenderer.drawString(font, "hello world", canvas, {
                     x: 20,
                     y: 160,
                     scale: 0.1,
@@ -66,14 +66,14 @@
     });
 
     const cssStyles = {
-        'color': '#3498db',
-        'stroke-color': '#000000',
-        'opacity': '1',
-        'line-width': '2',
-        'shadow-color': '#95a5a6',
-        'shadow-blur': '10',
-        'shadow-offset-x': '4',
-        'shadow-offset-y': '4'
+        fillStyle: '#3498db',
+        strokeStyle: '#000000',
+        globalAlpha: 1,
+        lineWidth: 2,
+        shadowColor: '#95a5a6',
+        shadowBlur: 10,
+        shadowOffsetX: 4,
+        shadowOffsetY: 4
     };
 
 </script>

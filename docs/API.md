@@ -39,6 +39,18 @@ if (glyph) {
 }
 ```
 
+## Canvas Rendering
+```js
+import { CanvasRenderer } from "./dist/render/CanvasRenderer.js";
+
+CanvasRenderer.drawString(font, "Hello", canvas, {
+  x: 20,
+  y: 140,
+  scale: 0.12,
+  styles: { fillStyle: "#111", strokeStyle: "#111" }
+});
+```
+
 ## Metrics
 ```js
 font.getNumGlyphs();

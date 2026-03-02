@@ -13,7 +13,7 @@
 <canvas id="myDrawing" width="1000" height="500"></canvas>
 <script type="module">
     import { FontParserTTF } from '../dist/data/FontParserTTF.js';
-    import { drawString } from './shared/glyph-render.js';
+    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const canvas = document.getElementById('myDrawing');
     const ctx = canvas.getContext('2d');
@@ -21,26 +21,26 @@
     FontParserTTF.load("../truetypefonts/JoeJack.ttf")
         .then(font => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawString(font, "BYTEFACE", canvas, {
+            CanvasRenderer.drawString(font, "BYTEFACE", canvas, {
                 x: 120,
                 y: 300,
                 scale: 0.2,
                 styles: {
-                    'color': '#ff0033',
-                    'stroke-color': '#ff0033',
-                    'line-width': '1',
-                    'opacity': '0.9'
+                    fillStyle: '#ff0033',
+                    strokeStyle: '#ff0033',
+                    lineWidth: '1',
+                    globalAlpha: '0.9'
                 }
             });
-            drawString(font, "BYTEFACE", canvas, {
+            CanvasRenderer.drawString(font, "BYTEFACE", canvas, {
                 x: 130,
                 y: 290,
                 scale: 0.2,
                 styles: {
-                    'color': '#00e5ff',
-                    'stroke-color': '#00e5ff',
-                    'line-width': '1',
-                    'opacity': '0.9'
+                    fillStyle: '#00e5ff',
+                    strokeStyle: '#00e5ff',
+                    lineWidth: '1',
+                    globalAlpha: '0.9'
                 }
             });
         })

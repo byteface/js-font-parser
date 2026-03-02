@@ -33,7 +33,7 @@
 
   <script type="module">
     import { FontParserTTF } from '../dist/data/FontParserTTF.js';
-    import { drawString, drawGlyphIndices } from './shared/glyph-render.js';
+    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const input = document.getElementById('textInput');
     const plainCanvas = document.getElementById('plain');
@@ -55,10 +55,10 @@
       ctxPlain.clearRect(0,0,plainCanvas.width,plainCanvas.height);
       ctxGsub.clearRect(0,0,gsubCanvas.width,gsubCanvas.height);
 
-      drawString(font, text, plainCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
+      CanvasRenderer.drawString(font, text, plainCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
 
       const glyphs = font.getGlyphIndicesForStringWithGsub(text, ['liga']);
-      drawGlyphIndices(font, glyphs, gsubCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
+      CanvasRenderer.drawGlyphIndices(font, glyphs, gsubCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
     }
   </script>
 </body>

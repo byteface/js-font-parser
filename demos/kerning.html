@@ -33,7 +33,7 @@
 
   <script type="module">
     import { FontParserTTF } from '../dist/data/FontParserTTF.js';
-    import { drawString, drawStringWithKerning } from './shared/glyph-render.js';
+    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const input = document.getElementById('textInput');
     const plainCanvas = document.getElementById('plain');
@@ -55,8 +55,8 @@
       ctxPlain.clearRect(0,0,plainCanvas.width,plainCanvas.height);
       ctxKern.clearRect(0,0,kernCanvas.width,kernCanvas.height);
 
-      drawString(font, text, plainCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
-      drawStringWithKerning(font, text, kernCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
+      CanvasRenderer.drawString(font, text, plainCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
+      CanvasRenderer.drawStringWithKerning(font, text, kernCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
     }
   </script>
 </body>

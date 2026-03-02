@@ -11,7 +11,7 @@
 <script type="module">
     import { ByteArray } from '../dist/utils/ByteArray.js';
     import { FontParserWOFF } from '../dist/data/FontParserWOFF.js';
-    import { drawGlyphToContext } from './shared/glyph-render.js';
+    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     async function loadBinaryResource(url) {
         const response = await fetch(url);
@@ -34,15 +34,15 @@
                 console.warn("No glyph for W");
                 return;
             }
-            drawGlyphToContext(ctx, glyph, {
+            CanvasRenderer.drawGlyphToContext(ctx, glyph, {
                 x: 200,
                 y: 400,
                 scale: 0.3,
                 styles: {
-                    'color': '#000000',
-                    'stroke-color': '#000000',
-                    'line-width': '1',
-                    'opacity': '1'
+                    fillStyle: '#000000',
+                    strokeStyle: '#000000',
+                    lineWidth: '1',
+                    globalAlpha: '1'
                 }
             });
         })

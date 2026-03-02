@@ -50,6 +50,13 @@ npm test
 ```
 
 Tests use Node's built-in test runner and the prebuilt `dist/` outputs.
+
+## Minified Build
+```sh
+npm run build
+```
+
+Output is written to `dist-build/fontparser.min.js`. See `minifyTest.html` for a simple usage example.
 Arabic/Devanagari shaping is not implemented yet, so those scripts will render unshaped outlines.
 
 ### Include The Bundled Library

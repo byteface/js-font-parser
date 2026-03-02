@@ -1,4 +1,5 @@
 import { FontParserTTF } from '../data/FontParserTTF.js';
+import { CanvasRenderer } from '../render/CanvasRenderer.js';
 var CanvasGlyph = /** @class */ (function () {
     function CanvasGlyph(path) {
         var _this = this;
@@ -46,62 +47,19 @@ var CanvasGlyph = /** @class */ (function () {
         var context = drawingCanvas.getContext('2d');
         if (!context)
             return null;
-        context.lineWidth = this.LINE_WIDTH;
-        context.strokeStyle = this.STROKE_STYLE;
-        context.fillStyle = this.FILL_STYLE;
-        context.globalAlpha = this.GLOBAL_ALPHA;
-        context.beginPath();
-        var firstIndex = 0;
-        var counter = 0;
-        for (var i = 0; i < g.getPointCount(); i++) {
-            counter++;
-            if (g.getPoint(i).endOfContour) {
-                this.addContourToShape(context, g, firstIndex, counter, SCALE);
-                firstIndex = i + 1;
-                counter = 0;
-            }
-        }
-        context.closePath();
-        context.stroke();
-        context.fill();
+        var styles = {
+            lineWidth: this.LINE_WIDTH,
+            strokeStyle: this.STROKE_STYLE,
+            fillStyle: this.FILL_STYLE,
+            globalAlpha: this.GLOBAL_ALPHA,
+        };
+        CanvasRenderer.drawGlyphToContext(context, g, {
+            scale: SCALE,
+            x: 0,
+            y: 0,
+            styles: styles,
+        });
         return context;
-    };
-    CanvasGlyph.prototype.addContourToShape = function (context, glyph, startIndex, count, scale) {
-        if (glyph.getPoint(startIndex).endOfContour)
-            return;
-        var offset = 0;
-        while (offset < count) {
-            var p0 = glyph.getPoint(startIndex + offset % count);
-            var p1 = glyph.getPoint(startIndex + (offset + 1) % count);
-            if (offset === 0) {
-                context.moveTo(p0.x * scale, p0.y * scale);
-            }
-            if (p0.onCurve) {
-                if (p1.onCurve) {
-                    context.lineTo(p1.x * scale, p1.y * scale);
-                    offset++;
-                }
-                else {
-                    var p2 = glyph.getPoint(startIndex + (offset + 2) % count);
-                    if (p2.onCurve) {
-                        context.quadraticCurveTo(p1.x * scale, p1.y * scale, p2.x * scale, p2.y * scale);
-                    }
-                    else {
-                        context.quadraticCurveTo(p1.x * scale, p1.y * scale, this.midValue(p1.x * scale, p2.x * scale), this.midValue(p1.y * scale, p2.y * scale));
-                    }
-                    offset += 2;
-                }
-            }
-            else {
-                if (!p1.onCurve) {
-                    context.quadraticCurveTo(p0.x * scale, p0.y * scale, this.midValue(p0.x * scale, p1.x * scale), this.midValue(p0.y * scale, p1.y * scale));
-                }
-                else {
-                    context.quadraticCurveTo(p0.x * scale, p0.y * scale, p1.x * scale, p1.y * scale);
-                }
-                offset++;
-            }
-        }
     };
     // TODO - maybe just add jitter as a value to the original method?
     // or extend CanvasFont and call in JitterFont or something like
@@ -150,13 +108,34 @@ var CanvasGlyph = /** @class */ (function () {
     };
     // how far a point randomly strays
     CanvasGlyph.prototype.setJitter = function (offset) {
-        this.jitter - offset;
+        this.jitter = offset;
     };
     CanvasGlyph.prototype.midValue = function (a, b) {
         return (a + b) / 2;
     };
     CanvasGlyph.prototype.clearCanvas = function (context, canvas) {
         context.clearRect(0, 0, canvas.width, canvas.height);
+    };
+    CanvasGlyph.prototype.drawString = function (text, canvasId, options) {
+        if (options === void 0) { options = {}; }
+        var canvas = document.getElementById(canvasId);
+        if (!canvas)
+            return;
+        CanvasRenderer.drawString(this.fontdata, text, canvas, options);
+    };
+    CanvasGlyph.prototype.drawStringWithKerning = function (text, canvasId, options) {
+        if (options === void 0) { options = {}; }
+        var canvas = document.getElementById(canvasId);
+        if (!canvas)
+            return;
+        CanvasRenderer.drawStringWithKerning(this.fontdata, text, canvas, options);
+    };
+    CanvasGlyph.prototype.drawLayout = function (layout, canvasId, options) {
+        if (options === void 0) { options = {}; }
+        var canvas = document.getElementById(canvasId);
+        if (!canvas)
+            return;
+        CanvasRenderer.drawLayout(this.fontdata, layout, canvas, options);
     };
     return CanvasGlyph;
 }());

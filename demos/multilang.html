@@ -34,7 +34,7 @@
 <script type="module">
     import { FontParserTTF } from '../dist/data/FontParserTTF.js';
     import { Debug } from '../dist/utils/Debug.js';
-    import { drawString } from './shared/glyph-render.js';
+    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const DEBUG = false;
     Debug.enabled = DEBUG;
@@ -98,7 +98,7 @@
         const url = `../truetypefonts/noto/${encodeURIComponent(sample.file)}`;
         FontParserTTF.load(url)
             .then(font => {
-                drawString(font, sample.text, canvas, {
+                CanvasRenderer.drawString(font, sample.text, canvas, {
                     x: 20,
                     y: 160,
                     scale: 0.09,
@@ -111,10 +111,10 @@
     });
 
     const cssStyles = {
-        'color': '#1f5fbf',
-        'stroke-color': '#000000',
-        'opacity': '1',
-        'line-width': '2'
+        fillStyle: '#1f5fbf',
+        strokeStyle: '#000000',
+        globalAlpha: '1',
+        lineWidth: '2'
     };
 
 </script>

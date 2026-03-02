@@ -30,7 +30,7 @@
 
   <script type="module">
     import { FontParserTTF } from '../dist/data/FontParserTTF.js';
-    import { drawLayout } from './shared/glyph-render.js';
+    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const input = document.getElementById('textInput');
     const canvas = document.getElementById('layout');
@@ -50,7 +50,7 @@
       ctx.clearRect(0,0,canvas.width,canvas.height);
 
       const layout = font.layoutString(text, { gsubFeatures: ['liga'] });
-      drawLayout(font, layout, canvas, { x: 20, y: 150, scale: 0.12, styles: { fillStyle: '#12231f', strokeStyle: '#12231f' } });
+      CanvasRenderer.drawLayout(font, layout, canvas, { x: 20, y: 150, scale: 0.12, styles: { fillStyle: '#12231f', strokeStyle: '#12231f' } });
     }
   </script>
 </body>

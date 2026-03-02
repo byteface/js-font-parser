@@ -12,7 +12,7 @@
 <script type="module">
     import { FontParserTTF } from '../dist/data/FontParserTTF.js';
     import { Debug } from '../dist/utils/Debug.js';
-    import { drawGlyphToContext } from './shared/glyph-render.js';
+    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const DEBUG = false;
     Debug.enabled = DEBUG;
@@ -49,15 +49,15 @@
     function drawGlyph(font, index, context, x, y) {
         const glyph = font.getGlyph(index);
         if (!glyph) return;
-        drawGlyphToContext(context, glyph, {
+        CanvasRenderer.drawGlyphToContext(context, glyph, {
             x: x + CELL_SIZE / 2,
             y: y + CELL_SIZE / 2,
             scale: SCALE,
             styles: {
-                'color': '#000000',
-                'stroke-color': '#000000',
-                'line-width': '1',
-                'opacity': '1'
+                fillStyle: '#000000',
+                strokeStyle: '#000000',
+                lineWidth: '1',
+                globalAlpha: '1'
             }
         });
     }

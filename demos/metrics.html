@@ -110,7 +110,7 @@
 
   <script type="module">
     import { FontParserTTF } from '../dist/data/FontParserTTF.js';
-    import { drawLayout, drawGlyphToContext } from './shared/glyph-render.js';
+    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const fontSelect = document.getElementById('fontSelect');
     const scaleInput = document.getElementById('scaleInput');
@@ -173,7 +173,7 @@
 
       drawRulers(ctx, charCanvas.width, charCanvas.height, baselineY, ascenderY, descenderY);
 
-      drawGlyphToContext(ctx, glyph, {
+      CanvasRenderer.drawGlyphToContext(ctx, glyph, {
         x: 80,
         y: baselineY,
         scale,
@@ -198,7 +198,7 @@
       drawRulers(ctx, textCanvas.width, textCanvas.height, baselineY, ascenderY, descenderY);
 
       const layout = font.layoutString(text, { gsubFeatures: ['liga'] });
-      drawLayout(font, layout, textCanvas, {
+      CanvasRenderer.drawLayout(font, layout, textCanvas, {
         x: 40,
         y: baselineY,
         scale,
