@@ -1,6 +1,4 @@
 node_modules/
 .DS_Store
 dist-build/
-dist/com/
-dist/src/
 **/.DS_Store

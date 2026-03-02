@@ -1,0 +1,245 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>Path Tracing Demo</title>
+    <meta charset="utf-8">
+    <style>
+        :root {
+            color-scheme: light;
+        }
+        body {
+            margin: 24px;
+            font-family: "Georgia", "Times New Roman", serif;
+            color: #1b1b1b;
+            background: linear-gradient(180deg, #f7f5f0 0%, #efe7dd 100%);
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+        }
+        .panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #ffffff;
+            border: 1px solid #e3d8cc;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(20, 10, 0, 0.08);
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b5a49;
+        }
+        input[type="text"], select {
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #d4c7b8;
+            font-size: 14px;
+            min-width: 220px;
+            background: #fffdf9;
+        }
+        input[type="range"] {
+            width: 160px;
+        }
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #2b5b47;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        button.secondary {
+            background: #cfa66b;
+        }
+        #stage {
+            border-radius: 16px;
+            padding: 18px;
+            background: #fffaf4;
+            border: 1px solid #e3d8cc;
+            min-height: 320px;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+        }
+        #svgRoot {
+            width: 100%;
+            height: 360px;
+        }
+        .hint {
+            margin-top: 10px;
+            color: #6b5a49;
+            font-size: 12px;
+        }
+        @keyframes traceStroke {
+            to { stroke-dashoffset: 0; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Path Tracing (SVG)</h1>
+    <div class="panel">
+        <label>
+            Font
+            <select id="fontSelect">
+                <option value="../truetypefonts/Quill.ttf">Quill (script)</option>
+                <option value="../truetypefonts/AUGIE___.TTF">Augie</option>
+                <option value="../truetypefonts/JoeJack.ttf">JoeJack</option>
+                <option value="../truetypefonts/DiscoMo.ttf">DiscoMo</option>
+            </select>
+        </label>
+        <label>
+            Text
+            <input id="textInput" type="text" value="Hello world" />
+        </label>
+        <label>
+            Size
+            <input id="sizeInput" type="range" min="80" max="240" value="140" />
+        </label>
+        <label>
+            Speed (sec)
+            <input id="speedInput" type="range" min="2" max="14" value="6" />
+        </label>
+        <label>
+            Stroke
+            <input id="strokeInput" type="color" value="#1b1b1b" />
+        </label>
+        <label>
+            Width
+            <input id="widthInput" type="range" min="1" max="10" value="3" />
+        </label>
+        <button id="renderBtn">Render + Trace</button>
+        <button id="replayBtn" class="secondary">Replay</button>
+    </div>
+    <div id="stage">
+        <svg id="svgRoot" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div class="hint">Tip: use script fonts to see the stroke flow. This demo uses SVG paths derived from glyph outlines.</div>
+
+    <script type="module">
+        import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+        import { SVGFont } from "../dist/render/SVGFont.js";
+        import { Table } from "../dist/table/Table.js";
+
+        const fontSelect = document.getElementById("fontSelect");
+        const textInput = document.getElementById("textInput");
+        const sizeInput = document.getElementById("sizeInput");
+        const speedInput = document.getElementById("speedInput");
+        const strokeInput = document.getElementById("strokeInput");
+        const widthInput = document.getElementById("widthInput");
+        const renderBtn = document.getElementById("renderBtn");
+        const replayBtn = document.getElementById("replayBtn");
+        const svgRoot = document.getElementById("svgRoot");
+
+        const fontCache = new Map();
+        let currentPath = null;
+
+        function clearSvg() {
+            while (svgRoot.firstChild) {
+                svgRoot.removeChild(svgRoot.firstChild);
+            }
+        }
+
+        async function loadFont(url) {
+            if (fontCache.has(url)) return fontCache.get(url);
+            const font = await FontParserTTF.load(url);
+            fontCache.set(url, font);
+            return font;
+        }
+
+        function buildPath(font, text, scale) {
+            const layout = font.layoutString(text, { gsubFeatures: ["liga"] });
+            let penX = 0;
+            let d = "";
+
+            for (const item of layout) {
+                const glyph = font.getGlyph(item.glyphIndex);
+                if (!glyph) {
+                    penX += (item.xAdvance ?? 0) * scale;
+                    continue;
+                }
+                d += SVGFont.glyphToPath(glyph, scale, penX + (item.xOffset ?? 0) * scale, 0);
+                penX += (item.xAdvance ?? 0) * scale;
+            }
+
+            return { d, width: Math.max(1, penX) };
+        }
+
+        function renderSvg(font, text, sizePx, stroke, strokeWidth, traceSeconds) {
+            clearSvg();
+
+            const head = font.getTableByType(Table.head);
+            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const scale = sizePx / unitsPerEm;
+            const ascent = font.getAscent() * scale;
+            const descent = font.getDescent() * scale;
+            const height = (font.getAscent() - font.getDescent()) * scale;
+
+            const { d, width } = buildPath(font, text, scale);
+
+            const svg = svgRoot;
+            svg.setAttribute("viewBox", `0 ${-ascent} ${width} ${height}`);
+            svg.setAttribute("preserveAspectRatio", "xMinYMin meet");
+
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("d", d);
+            path.setAttribute("fill", "none");
+            path.setAttribute("stroke", stroke);
+            path.setAttribute("stroke-width", String(strokeWidth));
+            path.setAttribute("stroke-linecap", "round");
+            path.setAttribute("stroke-linejoin", "round");
+
+            svg.appendChild(path);
+
+            const length = path.getTotalLength();
+            path.style.strokeDasharray = `${length}`;
+            path.style.strokeDashoffset = `${length}`;
+            path.style.animation = "none";
+            path.getBoundingClientRect();
+            path.style.animation = `traceStroke ${traceSeconds}s linear forwards`;
+
+            currentPath = path;
+        }
+
+        async function render() {
+            const fontUrl = fontSelect.value;
+            const text = textInput.value || "";
+            const sizePx = Number(sizeInput.value);
+            const traceSeconds = Number(speedInput.value);
+            const stroke = strokeInput.value;
+            const strokeWidth = Number(widthInput.value);
+
+            const font = await loadFont(fontUrl);
+            renderSvg(font, text, sizePx, stroke, strokeWidth, traceSeconds);
+        }
+
+        function replay() {
+            if (!currentPath) return;
+            const duration = Number(speedInput.value);
+            const length = currentPath.getTotalLength();
+            currentPath.style.strokeDasharray = `${length}`;
+            currentPath.style.strokeDashoffset = `${length}`;
+            currentPath.style.animation = "none";
+            currentPath.getBoundingClientRect();
+            currentPath.style.animation = `traceStroke ${duration}s linear forwards`;
+        }
+
+        renderBtn.addEventListener("click", render);
+        replayBtn.addEventListener("click", replay);
+        fontSelect.addEventListener("change", render);
+        textInput.addEventListener("change", render);
+        sizeInput.addEventListener("input", render);
+        strokeInput.addEventListener("change", render);
+        widthInput.addEventListener("input", render);
+
+        render();
+    </script>
+</body>
+</html>
