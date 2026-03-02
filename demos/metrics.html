@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Font Metrics Demo</title>
+  <style>
+    :root {
+      --bg: #f2efe9;
+      --ink: #1e1b16;
+      --muted: #6a5f57;
+      --panel: #ffffff;
+      --border: #e5ded6;
+      --accent: #7b4d2a;
+    }
+    body {
+      margin: 0;
+      font-family: "Cormorant Garamond", "Georgia", serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    header {
+      padding: 22px 20px 10px;
+    }
+    h1 { margin: 0 0 6px; font-size: 28px; }
+    p { margin: 0 0 14px; color: var(--muted); }
+    .wrap {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      padding: 16px 20px 32px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    canvas {
+      width: 100%;
+      height: 260px;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: #fffaf5;
+    }
+    label { font-size: 12px; color: var(--muted); display:block; margin: 6px 0 4px; }
+    select, input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .meta {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: pre-wrap;
+      background: #fbf8f3;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Font Metrics Demo</h1>
+    <p>Visualize ascender/descender, baseline, advance widths, and glyph bounds.</p>
+  </header>
+
+  <div class="wrap">
+    <div class="panel">
+      <div class="row">
+        <div>
+          <label for="fontSelect">Font</label>
+          <select id="fontSelect">
+            <option value="../truetypefonts/DiscoMo.ttf">DiscoMo.ttf</option>
+            <option value="../truetypefonts/noto/NotoSans-Regular.ttf">NotoSans-Regular.ttf</option>
+            <option value="../truetypefonts/noto/NotoSansHebrew-Regular.ttf">NotoSansHebrew-Regular.ttf</option>
+            <option value="../truetypefonts/noto/NotoSansDevanagari-Regular.ttf">NotoSansDevanagari-Regular.ttf</option>
+            <option value="../truetypefonts/noto/NotoSansThaiLooped-Regular.ttf">NotoSansThaiLooped-Regular.ttf</option>
+          </select>
+        </div>
+        <div>
+          <label for="scaleInput">Scale</label>
+          <input id="scaleInput" type="number" min="0.02" max="0.5" step="0.01" value="0.12" />
+        </div>
+      </div>
+
+      <label for="charInput">Single Character</label>
+      <input id="charInput" value="A" maxlength="2" />
+
+      <label for="textInput">Sentence</label>
+      <input id="textInput" value="The quick brown fox jumps over the lazy dog" />
+    </div>
+
+    <div class="panel">
+      <canvas id="charCanvas" width="900" height="260"></canvas>
+      <div id="charMeta" class="meta"></div>
+    </div>
+
+    <div class="panel">
+      <canvas id="textCanvas" width="900" height="260"></canvas>
+      <div id="textMeta" class="meta"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { drawLayout, drawGlyphToContext } from './shared/glyph-render.js';
+
+    const fontSelect = document.getElementById('fontSelect');
+    const scaleInput = document.getElementById('scaleInput');
+    const charInput = document.getElementById('charInput');
+    const textInput = document.getElementById('textInput');
+
+    const charCanvas = document.getElementById('charCanvas');
+    const textCanvas = document.getElementById('textCanvas');
+    const charMeta = document.getElementById('charMeta');
+    const textMeta = document.getElementById('textMeta');
+
+    let font = null;
+
+    async function loadFont() {
+      font = await FontParserTTF.load(fontSelect.value);
+      render();
+    }
+
+    function drawRulers(ctx, width, height, baselineY, ascenderY, descenderY) {
+      ctx.save();
+      ctx.strokeStyle = '#c7b9aa';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+
+      // baseline
+      ctx.beginPath();
+      ctx.moveTo(0, baselineY);
+      ctx.lineTo(width, baselineY);
+      ctx.stroke();
+
+      // ascender
+      ctx.beginPath();
+      ctx.moveTo(0, ascenderY);
+      ctx.lineTo(width, ascenderY);
+      ctx.stroke();
+
+      // descender
+      ctx.beginPath();
+      ctx.moveTo(0, descenderY);
+      ctx.lineTo(width, descenderY);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function renderChar() {
+      const ctx = charCanvas.getContext('2d');
+      ctx.clearRect(0, 0, charCanvas.width, charCanvas.height);
+
+      const scale = parseFloat(scaleInput.value);
+      const ch = charInput.value || 'A';
+      const glyph = font.getGlyphByChar(ch);
+      if (!glyph) return;
+
+      const ascent = font.getAscent();
+      const descent = font.getDescent();
+      const baselineY = 180;
+      const ascenderY = baselineY - ascent * scale;
+      const descenderY = baselineY - descent * scale;
+
+      drawRulers(ctx, charCanvas.width, charCanvas.height, baselineY, ascenderY, descenderY);
+
+      drawGlyphToContext(ctx, glyph, {
+        x: 80,
+        y: baselineY,
+        scale,
+        styles: { fillStyle: '#1e1b16', strokeStyle: '#1e1b16', lineWidth: 1 }
+      });
+
+      charMeta.textContent = `Glyph index: ${font.getGlyphIndexByChar(ch)}\nAdvance width: ${glyph.advanceWidth}\nLeft side bearing: ${glyph.leftSideBearing}\nAscent: ${ascent}\nDescent: ${descent}`;
+    }
+
+    function renderText() {
+      const ctx = textCanvas.getContext('2d');
+      ctx.clearRect(0, 0, textCanvas.width, textCanvas.height);
+
+      const scale = parseFloat(scaleInput.value);
+      const text = textInput.value || '';
+      const ascent = font.getAscent();
+      const descent = font.getDescent();
+      const baselineY = 180;
+      const ascenderY = baselineY - ascent * scale;
+      const descenderY = baselineY - descent * scale;
+
+      drawRulers(ctx, textCanvas.width, textCanvas.height, baselineY, ascenderY, descenderY);
+
+      const layout = font.layoutString(text, { gsubFeatures: ['liga'] });
+      drawLayout(font, layout, textCanvas, {
+        x: 40,
+        y: baselineY,
+        scale,
+        styles: { fillStyle: '#1e1b16', strokeStyle: '#1e1b16', lineWidth: 1 }
+      });
+
+      const advanceTotal = layout.reduce((sum, g) => sum + g.xAdvance, 0);
+      textMeta.textContent = `Glyphs: ${layout.length}\nAdvance sum: ${advanceTotal}\nAscent: ${ascent}\nDescent: ${descent}`;
+    }
+
+    function render() {
+      if (!font) return;
+      renderChar();
+      renderText();
+    }
+
+    fontSelect.addEventListener('change', loadFont);
+    scaleInput.addEventListener('input', render);
+    charInput.addEventListener('input', render);
+    textInput.addEventListener('input', render);
+
+    loadFont();
+  </script>
+</body>
+</html>

@@ -24,6 +24,7 @@ Demo pages (see `demos/index.html`):
 - `demos/layout-chars.html` (ported)
 - `demos/cards.html` (ported)
 - `demos/layout-text.html` (GSUB + kerning layout)
+- `demos/metrics.html` (metrics + rulers)
 - `demos/gsub.html` (ligature substitution)
 - `demos/kerning.html`
 - `demos/particle.html` (ported style)

@@ -15,3 +15,4 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 - `demos/gsub.html` previews GSUB ligature substitutions (when available).
 - `demos/kerning.html` previews kerning adjustments from the kern table.
 - `demos/layout-text.html` uses GSUB + kerning to build a layout.
+- `demos/metrics.html` shows rulers + measurements for a single glyph and a sentence.
