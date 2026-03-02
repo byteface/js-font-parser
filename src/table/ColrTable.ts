@@ -134,6 +134,15 @@ export class ColrTable implements ITable {
         }
     }
 
+    getLayersForGlyph(glyphId: number): ColrLayerRecord[] {
+        if (this.baseGlyphRecords.length === 0 || this.layerRecords.length === 0) return [];
+        const record = this.baseGlyphRecords.find(r => r.glyphId === glyphId);
+        if (!record) return [];
+        const start = record.firstLayerIndex;
+        const end = start + record.numLayers;
+        return this.layerRecords.slice(start, end);
+    }
+
     getType(): string | number {
         return Table.COLR;
     }

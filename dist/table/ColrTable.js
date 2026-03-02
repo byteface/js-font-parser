@@ -102,6 +102,16 @@ var ColrTable = /** @class */ (function () {
             }
         }
     }
+    ColrTable.prototype.getLayersForGlyph = function (glyphId) {
+        if (this.baseGlyphRecords.length === 0 || this.layerRecords.length === 0)
+            return [];
+        var record = this.baseGlyphRecords.find(function (r) { return r.glyphId === glyphId; });
+        if (!record)
+            return [];
+        var start = record.firstLayerIndex;
+        var end = start + record.numLayers;
+        return this.layerRecords.slice(start, end);
+    };
     ColrTable.prototype.getType = function () {
         return Table.COLR;
     };

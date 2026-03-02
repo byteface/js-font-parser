@@ -49,6 +49,9 @@ Demo pages (see `demos/index.html`):
 ### Noto Fonts
 The `truetypefonts/noto/` folder contains a small set of Noto fonts (SIL OFL) for multilingual demos.
 
+### Color Fonts
+The `truetypefonts/color/` folder includes `TwemojiMozilla.ttf` (COLR/CPAL). See `truetypefonts/color/README.md` for attribution and licenses.
+
 ## Tests
 ```sh
 npm test

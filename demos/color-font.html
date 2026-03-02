@@ -103,12 +103,22 @@
     <h1>Color Font Tables (COLR/CPAL/SVG)</h1>
     <div class="panel">
         <label>
-            Font file
+            Built-in font
+            <select id="fontSelect">
+                <option value="../truetypefonts/color/TwemojiMozilla.ttf">Twemoji Mozilla (COLR/CPAL)</option>
+            </select>
+        </label>
+        <label>
+            Or upload
             <input id="fileInput" type="file" accept=".ttf,.otf,.woff,.woff2" />
         </label>
         <label>
-            Glyph (char)
-            <input id="charInput" type="text" value="😀" />
+            Text
+            <input id="textInput" type="text" value="😀 😃 😄 😁 😆 😅 😂 🤣 🥰 😎" />
+        </label>
+        <label>
+            Size
+            <input id="sizeInput" type="range" min="80" max="220" value="140" />
         </label>
         <button id="renderBtn">Parse + Render</button>
     </div>
@@ -126,9 +136,9 @@
         </div>
         <div class="row" style="margin-top: 16px;">
             <div class="card" style="flex: 2;">
-                <h3>SVG Glyph (if available)</h3>
-                <div id="svgInfo">No SVG glyph loaded.</div>
-                <div id="svgContainer"></div>
+                <h3>COLR/CPAL Render</h3>
+                <div id="colorInfo">No color render yet.</div>
+                <canvas id="colorCanvas" width="1200" height="260"></canvas>
             </div>
             <div class="card" style="flex: 1;">
                 <h3>Outline Fallback</h3>
@@ -137,7 +147,7 @@
             </div>
         </div>
         <div class="hint">
-            Tip: download a color emoji font (e.g. Noto Color Emoji) and load it here. If the SVG table is gzip-compressed, this demo will report it but won’t decompress yet.
+            This demo uses a built-in COLR/CPAL font. Upload your own to compare. SVG glyphs are not rendered here.
         </div>
     </div>
 
@@ -146,15 +156,18 @@
         import { ByteArray } from "../dist/utils/ByteArray.js";
         import { Table } from "../dist/table/Table.js";
         import { SVGFont } from "../dist/render/SVGFont.js";
+        import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
 
+        const fontSelect = document.getElementById("fontSelect");
         const fileInput = document.getElementById("fileInput");
-        const charInput = document.getElementById("charInput");
+        const textInput = document.getElementById("textInput");
+        const sizeInput = document.getElementById("sizeInput");
         const renderBtn = document.getElementById("renderBtn");
         const tableInfo = document.getElementById("tableInfo");
         const paletteInfo = document.getElementById("paletteInfo");
         const palette = document.getElementById("palette");
-        const svgInfo = document.getElementById("svgInfo");
-        const svgContainer = document.getElementById("svgContainer");
+        const colorInfo = document.getElementById("colorInfo");
+        const colorCanvas = document.getElementById("colorCanvas");
         const outlineInfo = document.getElementById("outlineInfo");
         const outlineContainer = document.getElementById("outlineContainer");
 
@@ -162,8 +175,9 @@
 
         function clearContainers() {
             palette.innerHTML = "";
-            svgContainer.innerHTML = "";
             outlineContainer.innerHTML = "";
+            const ctx = colorCanvas.getContext("2d");
+            if (ctx) ctx.clearRect(0, 0, colorCanvas.width, colorCanvas.height);
         }
 
         function setTableInfo(cpal, colr, svg) {
@@ -190,27 +204,6 @@
             });
         }
 
-        function renderSvgGlyph(svgTable, glyphId) {
-            svgContainer.innerHTML = "";
-            if (!svgTable) {
-                svgInfo.textContent = "No SVG table.";
-                return false;
-            }
-            const { svgText, isCompressed } = svgTable.getSvgDocumentForGlyph(glyphId);
-            if (isCompressed) {
-                svgInfo.innerHTML = "SVG data is gzip-compressed; decompression not implemented yet.";
-                svgInfo.classList.add("warn");
-                return false;
-            }
-            if (!svgText) {
-                svgInfo.textContent = "No SVG glyph found for this character.";
-                return false;
-            }
-            svgInfo.textContent = "SVG glyph loaded.";
-            svgContainer.innerHTML = svgText;
-            return true;
-        }
-
         function renderOutlineGlyph(text) {
             outlineContainer.innerHTML = "";
             if (!font) return;
@@ -219,13 +212,41 @@
             outlineContainer.innerHTML = svg;
         }
 
-        async function parseAndRender() {
-            const file = fileInput.files && fileInput.files[0];
-            if (!file) return;
+        function renderColorGlyphs(text) {
+            const ctx = colorCanvas.getContext("2d");
+            if (!ctx || !font) return;
+            ctx.clearRect(0, 0, colorCanvas.width, colorCanvas.height);
+            ctx.fillStyle = "#fff9f6";
+            ctx.fillRect(0, 0, colorCanvas.width, colorCanvas.height);
 
+            const sizePx = Number(sizeInput.value);
+            const head = font.getTableByType(Table.head);
+            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const scale = sizePx / unitsPerEm;
+            const baseline = colorCanvas.height * 0.7;
+
+            CanvasRenderer.drawColorString(font, text, colorCanvas, {
+                x: 20,
+                y: baseline,
+                scale,
+                spacing: 12,
+                fallbackFill: "#6b4e3d"
+            });
+        }
+
+        async function loadBuiltInFont(url) {
+            return FontParserTTF.load(url);
+        }
+
+        async function parseAndRender() {
             clearContainers();
-            const buffer = await file.arrayBuffer();
-            font = new FontParserTTF(new ByteArray(new Uint8Array(buffer)));
+            const file = fileInput.files && fileInput.files[0];
+            if (file) {
+                const buffer = await file.arrayBuffer();
+                font = new FontParserTTF(new ByteArray(new Uint8Array(buffer)));
+            } else {
+                font = await loadBuiltInFont(fontSelect.value);
+            }
 
             const cpal = font.getTableByType(Table.CPAL);
             const colr = font.getTableByType(Table.COLR);
@@ -234,21 +255,25 @@
             setTableInfo(cpal, colr, svg);
             renderPalette(cpal);
 
-            const char = charInput.value || "";
-            const glyphId = char ? font.getGlyphIndexByChar(char) : null;
-            if (glyphId != null) {
-                const didSvg = renderSvgGlyph(svg, glyphId);
-                if (!didSvg) {
-                    renderOutlineGlyph(char);
-                }
+            const text = textInput.value || "";
+            if (!colr || !cpal) {
+                colorInfo.textContent = "COLR/CPAL tables not found in this font.";
             } else {
-                svgInfo.textContent = "Glyph not found for character.";
-                renderOutlineGlyph(char);
+                colorInfo.textContent = "Rendered with COLR/CPAL layers.";
             }
+            renderColorGlyphs(text);
+            renderOutlineGlyph(text);
         }
 
         renderBtn.addEventListener("click", parseAndRender);
-        charInput.addEventListener("change", parseAndRender);
+        textInput.addEventListener("change", parseAndRender);
+        sizeInput.addEventListener("input", parseAndRender);
+        fontSelect.addEventListener("change", () => {
+            fileInput.value = "";
+            parseAndRender();
+        });
+
+        parseAndRender();
     </script>
 </body>
 </html>

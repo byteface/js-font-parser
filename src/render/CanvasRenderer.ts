@@ -17,6 +17,8 @@ export type CanvasDrawOptions = {
     y?: number;
     spacing?: number;
     styles?: CanvasStyleOptions;
+    paletteIndex?: number;
+    fallbackFill?: string;
 };
 
 export class CanvasRenderer {
@@ -197,6 +199,84 @@ export class CanvasRenderer {
                 styles: options.styles
             });
             cursorX += glyph.advanceWidth * scale + spacing;
+        }
+
+        context.restore();
+    }
+
+    static drawColorGlyph(
+        font: any,
+        glyphIndex: number,
+        canvas: HTMLCanvasElement,
+        options: CanvasDrawOptions = {}
+    ): void {
+        const scale = options.scale ?? 0.1;
+        const x = options.x ?? 0;
+        const y = options.y ?? 0;
+        const context = canvas.getContext('2d');
+        if (!context) return;
+
+        const layers = typeof font.getColorLayersForGlyph === 'function'
+            ? font.getColorLayersForGlyph(glyphIndex, options.paletteIndex ?? 0)
+            : [];
+
+        if (!layers || layers.length === 0) {
+            const glyph = font.getGlyph(glyphIndex);
+            if (!glyph) return;
+            this.drawGlyphToContext(context, glyph, { x, y, scale, styles: options.styles });
+            return;
+        }
+
+        for (const layer of layers) {
+            const glyph = font.getGlyph(layer.glyphId);
+            if (!glyph) continue;
+            const fill = layer.color ?? options.fallbackFill ?? options.styles?.fillStyle ?? '#111';
+            this.drawGlyphToContext(context, glyph, {
+                x,
+                y,
+                scale,
+                styles: {
+                    fillStyle: fill,
+                    strokeStyle: 'rgba(0,0,0,0)',
+                    lineWidth: 0
+                }
+            });
+        }
+    }
+
+    static drawColorString(font: any, text: string, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
+        const scale = options.scale ?? 0.1;
+        const x = options.x ?? 0;
+        const y = options.y ?? 0;
+        const spacing = options.spacing ?? 0;
+        const context = canvas.getContext('2d');
+        if (!context) return;
+
+        let cursorX = x;
+        context.save();
+        context.translate(0, y);
+
+        for (const ch of text) {
+            const glyphIndex = typeof font.getGlyphIndexByChar === 'function'
+                ? font.getGlyphIndexByChar(ch)
+                : null;
+
+            if (glyphIndex == null) {
+                cursorX += spacing;
+                continue;
+            }
+
+            this.drawColorGlyph(font, glyphIndex, canvas, {
+                x: cursorX,
+                y: 0,
+                scale,
+                paletteIndex: options.paletteIndex,
+                fallbackFill: options.fallbackFill,
+                styles: options.styles
+            });
+
+            const glyph = font.getGlyph(glyphIndex);
+            cursorX += (glyph?.advanceWidth ?? 0) * scale + spacing;
         }
 
         context.restore();

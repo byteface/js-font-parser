@@ -19,6 +19,8 @@ var FontParserTTF = /** @class */ (function () {
         this.post = null;
         this.gsub = null;
         this.kern = null;
+        this.colr = null;
+        this.cpal = null;
         // Table directory and tables
         this.tableDir = null;
         this.tables = [];
@@ -66,6 +68,8 @@ var FontParserTTF = /** @class */ (function () {
         this.post = this.getTable(Table.post);
         this.gsub = this.getTable(Table.GSUB);
         this.kern = this.getTable(Table.kern);
+        this.colr = this.getTable(Table.COLR);
+        this.cpal = this.getTable(Table.CPAL);
         // Initialize the tables
         if (this.hmtx && this.maxp) {
             this.hmtx.run((_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.numberOfHMetrics) !== null && _b !== void 0 ? _b : 0, this.maxp.numGlyphs - ((_d = (_c = this.hhea) === null || _c === void 0 ? void 0 : _c.numberOfHMetrics) !== null && _d !== void 0 ? _d : 0));
@@ -220,6 +224,34 @@ var FontParserTTF = /** @class */ (function () {
     FontParserTTF.prototype.getDescent = function () {
         var _a, _b;
         return (_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.descender) !== null && _b !== void 0 ? _b : 0;
+    };
+    FontParserTTF.prototype.getColorLayersForGlyph = function (glyphId, paletteIndex) {
+        var _a, _b;
+        if (paletteIndex === void 0) { paletteIndex = 0; }
+        if (!this.colr)
+            return [];
+        var layers = this.colr.getLayersForGlyph(glyphId);
+        if (layers.length === 0)
+            return [];
+        var palette = (_b = (_a = this.cpal) === null || _a === void 0 ? void 0 : _a.getPalette(paletteIndex)) !== null && _b !== void 0 ? _b : [];
+        return layers.map(function (layer) {
+            if (layer.paletteIndex === 0xffff) {
+                return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
+            }
+            var color = palette[layer.paletteIndex];
+            if (!color) {
+                return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
+            }
+            var rgba = "rgba(".concat(color.red, ", ").concat(color.green, ", ").concat(color.blue, ", ").concat(color.alpha / 255, ")");
+            return { glyphId: layer.glyphId, color: rgba, paletteIndex: layer.paletteIndex };
+        });
+    };
+    FontParserTTF.prototype.getColorLayersForChar = function (char, paletteIndex) {
+        if (paletteIndex === void 0) { paletteIndex = 0; }
+        var glyphId = this.getGlyphIndexByChar(char);
+        if (glyphId == null)
+            return [];
+        return this.getColorLayersForGlyph(glyphId, paletteIndex);
     };
     FontParserTTF.prototype.getNameRecord = function (nameId) {
         var _a, _b;

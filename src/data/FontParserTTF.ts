@@ -16,6 +16,8 @@ import { GlyphData } from './GlyphData.js';
 import { ITable } from '../table/ITable.js';
 import { GsubTable } from '../table/GsubTable.js';
 import { LigatureSubstFormat1 } from '../table/LigatureSubstFormat1.js';
+import { ColrTable } from '../table/ColrTable.js';
+import { CpalTable } from '../table/CpalTable.js';
 
 export class FontParserTTF {
     // Define properties
@@ -31,6 +33,8 @@ export class FontParserTTF {
     private post: PostTable | null = null;
     private gsub: GsubTable | null = null;
     private kern: any | null = null;
+    private colr: ColrTable | null = null;
+    private cpal: CpalTable | null = null;
 
     // Table directory and tables
     private tableDir: TableDirectory | null = null;
@@ -83,6 +87,8 @@ export class FontParserTTF {
         this.post = this.getTable(Table.post) as PostTable | null;
         this.gsub = this.getTable(Table.GSUB) as GsubTable | null;
         this.kern = this.getTable(Table.kern) as any | null;
+        this.colr = this.getTable(Table.COLR) as ColrTable | null;
+        this.cpal = this.getTable(Table.CPAL) as CpalTable | null;
 
         // Initialize the tables
         if (this.hmtx && this.maxp) {
@@ -242,6 +248,31 @@ export class FontParserTTF {
     // Get the descent value
     public getDescent(): number {
         return this.hhea?.descender ?? 0;
+    }
+
+    public getColorLayersForGlyph(glyphId: number, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
+        if (!this.colr) return [];
+        const layers = this.colr.getLayersForGlyph(glyphId);
+        if (layers.length === 0) return [];
+
+        const palette = this.cpal?.getPalette(paletteIndex) ?? [];
+        return layers.map(layer => {
+            if (layer.paletteIndex === 0xffff) {
+                return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
+            }
+            const color = palette[layer.paletteIndex];
+            if (!color) {
+                return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
+            }
+            const rgba = `rgba(${color.red}, ${color.green}, ${color.blue}, ${color.alpha / 255})`;
+            return { glyphId: layer.glyphId, color: rgba, paletteIndex: layer.paletteIndex };
+        });
+    }
+
+    public getColorLayersForChar(char: string, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
+        const glyphId = this.getGlyphIndexByChar(char);
+        if (glyphId == null) return [];
+        return this.getColorLayersForGlyph(glyphId, paletteIndex);
     }
 
     public getNameRecord(nameId: number): string {
