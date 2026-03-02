@@ -17,3 +17,5 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 - `demos/layout-text.html` uses GSUB + kerning to build a layout.
 - `demos/metrics.html` shows rulers + measurements for a single glyph and a sentence.
 - `demos/path-tracing.html` uses SVG paths to trace strokes over time.
+- `demos/morphing.html` morphs glyph point clouds between letters/words.
+- `demos/breathing.html` applies organic wobble to contours.

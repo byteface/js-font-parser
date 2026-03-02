@@ -1,0 +1,287 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>Morphing Letters</title>
+    <meta charset="utf-8">
+    <style>
+        :root { color-scheme: light; }
+        body {
+            margin: 24px;
+            font-family: "Georgia", "Times New Roman", serif;
+            background: radial-gradient(circle at top, #f5f4ff 0%, #efeef8 45%, #e8e3f0 100%);
+            color: #1b1b1b;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 28px; }
+        .panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #ffffff;
+            border: 1px solid #d9d4e6;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(20, 10, 40, 0.08);
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #5b5670;
+        }
+        input[type="text"], select {
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #cec7dd;
+            font-size: 14px;
+            min-width: 220px;
+            background: #fbfaff;
+        }
+        input[type="range"] { width: 160px; }
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #3b2f60;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        button.secondary { background: #7c68a4; }
+        #stage {
+            border-radius: 16px;
+            padding: 18px;
+            background: #ffffff;
+            border: 1px solid #d9d4e6;
+            min-height: 360px;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+        }
+        canvas {
+            width: 100%;
+            height: 360px;
+            display: block;
+        }
+        .hint {
+            margin-top: 10px;
+            color: #5b5670;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Morphing Letters</h1>
+    <div class="panel">
+        <label>
+            Font
+            <select id="fontSelect">
+                <option value="../truetypefonts/DiscoMo.ttf">DiscoMo</option>
+                <option value="../truetypefonts/AUGIE___.TTF">Augie</option>
+                <option value="../truetypefonts/JoeJack.ttf">JoeJack</option>
+                <option value="../truetypefonts/Quill.ttf">Quill (script)</option>
+            </select>
+        </label>
+        <label>
+            Word A
+            <input id="wordA" type="text" value="WAVE" />
+        </label>
+        <label>
+            Word B
+            <input id="wordB" type="text" value="WORD" />
+        </label>
+        <label>
+            Morph Speed
+            <input id="speedInput" type="range" min="1" max="10" value="5" />
+        </label>
+        <label>
+            Size
+            <input id="sizeInput" type="range" min="80" max="240" value="140" />
+        </label>
+        <label>
+            Points
+            <input id="pointInput" type="range" min="80" max="480" value="240" />
+        </label>
+        <button id="renderBtn">Render</button>
+        <button id="swapBtn" class="secondary">Swap</button>
+    </div>
+    <div id="stage">
+        <canvas id="canvas" width="1200" height="360"></canvas>
+    </div>
+    <div class="hint">This demo morphs point clouds between glyphs. For best results, use equal-length words.</div>
+
+    <script type="module">
+        import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+        import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
+
+        const fontSelect = document.getElementById("fontSelect");
+        const wordAInput = document.getElementById("wordA");
+        const wordBInput = document.getElementById("wordB");
+        const speedInput = document.getElementById("speedInput");
+        const sizeInput = document.getElementById("sizeInput");
+        const pointInput = document.getElementById("pointInput");
+        const renderBtn = document.getElementById("renderBtn");
+        const swapBtn = document.getElementById("swapBtn");
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        const fontCache = new Map();
+        let font = null;
+        let animId = null;
+
+        function getScale(font, sizePx) {
+            const unitsPerEm = font.getTableByType(0)?.unitsPerEm ?? 1000;
+            return sizePx / unitsPerEm;
+        }
+
+        function samplePoints(glyph, targetCount) {
+            const count = glyph.getPointCount();
+            if (count === 0) return [];
+            const points = [];
+            for (let i = 0; i < targetCount; i++) {
+                const t = targetCount === 1 ? 0 : i / (targetCount - 1);
+                const idx = Math.min(count - 1, Math.round(t * (count - 1)));
+                const p = glyph.getPoint(idx);
+                points.push({
+                    x: p.x,
+                    y: p.y,
+                    onCurve: p.onCurve,
+                    endOfContour: p.endOfContour
+                });
+            }
+            return points;
+        }
+
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+
+        function makeGlyph(points) {
+            return {
+                points,
+                getPoint(i) { return points[i]; },
+                getPointCount() { return points.length; }
+            };
+        }
+
+        function drawPointGlyph(points, x, y, scale, color) {
+            const glyph = makeGlyph(points);
+            CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+                x,
+                y,
+                scale,
+                styles: {
+                    fillStyle: "rgba(0,0,0,0)",
+                    strokeStyle: color,
+                    lineWidth: 2
+                }
+            });
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, -scale);
+            ctx.fillStyle = color;
+            for (const p of points) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 8 / scale, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function buildMorphPoints(glyphA, glyphB, t, targetCount) {
+            const a = samplePoints(glyphA, targetCount);
+            const b = samplePoints(glyphB, targetCount);
+            return a.map((p, i) => ({
+                x: lerp(p.x, b[i].x, t),
+                y: lerp(p.y, b[i].y, t),
+                onCurve: p.onCurve,
+                endOfContour: p.endOfContour
+            }));
+        }
+
+        async function loadFont(url) {
+            if (fontCache.has(url)) return fontCache.get(url);
+            const f = await FontParserTTF.load(url);
+            fontCache.set(url, f);
+            return f;
+        }
+
+        function clear() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#fdfcff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function normalizeWord(word) {
+            return word.toUpperCase().replace(/\s+/g, "");
+        }
+
+        function render() {
+            if (!font) return;
+            const wordA = normalizeWord(wordAInput.value);
+            const wordB = normalizeWord(wordBInput.value);
+            if (!wordA || !wordB) return;
+            const maxLen = Math.max(wordA.length, wordB.length);
+            const a = wordA.padEnd(maxLen, " ");
+            const b = wordB.padEnd(maxLen, " ");
+
+            const sizePx = Number(sizeInput.value);
+            const scale = getScale(font, sizePx);
+            const targetPoints = Number(pointInput.value);
+            const speed = Number(speedInput.value);
+
+            const glyphPairs = [];
+            for (let i = 0; i < maxLen; i++) {
+                const ga = font.getGlyphByChar(a[i]) || font.getGlyphByChar(" ");
+                const gb = font.getGlyphByChar(b[i]) || font.getGlyphByChar(" ");
+                if (!ga || !gb) continue;
+                glyphPairs.push({ ga, gb });
+            }
+
+            let t = 0;
+            let dir = 1;
+
+            const draw = () => {
+                clear();
+                const baseline = canvas.height * 0.68;
+                let penX = 80;
+                const color = "#3b2f60";
+
+                glyphPairs.forEach((pair) => {
+                    const points = buildMorphPoints(pair.ga, pair.gb, t, targetPoints);
+                    drawPointGlyph(points, penX, baseline, scale, color);
+                    const advance = (pair.ga.advanceWidth + pair.gb.advanceWidth) * 0.5 * scale;
+                    penX += advance + 12;
+                });
+
+                t += dir * 0.008 * speed;
+                if (t >= 1) { t = 1; dir = -1; }
+                if (t <= 0) { t = 0; dir = 1; }
+                animId = requestAnimationFrame(draw);
+            };
+
+            if (animId) cancelAnimationFrame(animId);
+            draw();
+        }
+
+        async function boot() {
+            font = await loadFont(fontSelect.value);
+            render();
+        }
+
+        renderBtn.addEventListener("click", render);
+        swapBtn.addEventListener("click", () => {
+            const a = wordAInput.value;
+            wordAInput.value = wordBInput.value;
+            wordBInput.value = a;
+            render();
+        });
+        fontSelect.addEventListener("change", boot);
+
+        boot();
+    </script>
+</body>
+</html>
