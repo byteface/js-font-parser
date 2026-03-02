@@ -31,7 +31,8 @@ var KernSubtableFormat0 = /** @class */ (function (_super) {
         return this.nPairs;
     };
     KernSubtableFormat0.prototype.getKerningPair = function (i) {
-        return this.kerningPairs[i];
+        var _a;
+        return (_a = this.kerningPairs[i]) !== null && _a !== void 0 ? _a : null;
     };
     return KernSubtableFormat0;
 }(KernSubtable));

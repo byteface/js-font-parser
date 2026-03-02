@@ -8,6 +8,7 @@ var Debug = /** @class */ (function () {
         }
         if (!Debug.enabled)
             return;
+        // eslint-disable-next-line no-console
         console.log.apply(console, args);
     };
     Debug.table = function () {
@@ -17,6 +18,7 @@ var Debug = /** @class */ (function () {
         }
         if (!Debug.enabled)
             return;
+        // eslint-disable-next-line no-console
         console.table.apply(console, args);
     };
     Debug.warn = function () {
@@ -26,6 +28,7 @@ var Debug = /** @class */ (function () {
         }
         if (!Debug.enabled)
             return;
+        // eslint-disable-next-line no-console
         console.warn.apply(console, args);
     };
     Debug.enabled = false;

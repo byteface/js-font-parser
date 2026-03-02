@@ -51,9 +51,10 @@ var GlyfTable = /** @class */ (function () {
         this.buf = null;
         // Resolve all glyphs
         for (var j = 0; j < numGlyphs; j++) {
-            if (!this.descript[j])
+            var desc = this.descript[j];
+            if (!desc)
                 continue;
-            this.descript[j].resolve();
+            desc.resolve();
         }
         Debug.log("Glyph descriptions resolved");
     };
@@ -201,4 +202,4 @@ init: function(de, byte_ar)
 
 });
 
-*/ 
+*/

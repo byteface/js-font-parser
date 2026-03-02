@@ -13,9 +13,9 @@ export class KernSubtable {
         return -1;
     }
 
-    getKerningPair(i: number): KerningPair {
+    getKerningPair(i: number): KerningPair | null {
         console.warn("Attempting to retrieve kerning pair, but method is unimplemented.");
-        return new KerningPair(new ByteArray());
+        return null;
     }
 
     static read(byte_ar: ByteArray): KernSubtable | null {

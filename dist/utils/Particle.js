@@ -70,7 +70,7 @@ var Particle = /** @class */ (function () {
         this.__turnToPath = bTurn;
     };
     Particle.prototype.update = function () {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
         var dx;
         var dy;
         var distSQ;
@@ -113,13 +113,13 @@ var Particle = /** @class */ (function () {
                     this.vy += (ty - this.y) * this.repelMouseK;
                 }
             }
-            for (var _i = 0, _l = this.__springPoints; _i < _l.length; _i++) {
-                var sp = _l[_i];
+            for (var _i = 0, _t = this.__springPoints; _i < _t.length; _i++) {
+                var sp = _t[_i];
                 this.vx += (sp.x - this.x) * ((_c = sp.k) !== null && _c !== void 0 ? _c : 1);
                 this.vy += (sp.y - this.y) * ((_d = sp.k) !== null && _d !== void 0 ? _d : 1);
             }
-            for (var _m = 0, _o = this.gravPoints; _m < _o.length; _m++) {
-                var gp = _o[_m];
+            for (var _u = 0, _v = this.gravPoints; _u < _v.length; _u++) {
+                var gp = _v[_u];
                 dx = gp.x - this.x;
                 dy = gp.y - this.y;
                 distSQ = dx * dx + dy * dy;
@@ -128,8 +128,8 @@ var Particle = /** @class */ (function () {
                 this.vx += force * dx / dist;
                 this.vy += force * dy / dist;
             }
-            for (var _p = 0, _q = this.__repelPoints; _p < _q.length; _p++) {
-                var rp = _q[_p];
+            for (var _w = 0, _x = this.__repelPoints; _w < _x.length; _w++) {
+                var rp = _x[_w];
                 dx = rp.x - this.x;
                 dy = rp.y - this.y;
                 dist = Math.sqrt(dx * dx + dy * dy);
@@ -140,29 +140,32 @@ var Particle = /** @class */ (function () {
                     this.vy += (ty - this.y) * ((_k = rp.k) !== null && _k !== void 0 ? _k : 1);
                 }
             }
-            for (var _r = 0, _s = this.__springClips; _r < _s.length; _r++) {
-                var sc = _s[_r];
-                clip = sc.clip;
-                k = sc.k;
+            for (var _y = 0, _z = this.__springClips; _y < _z.length; _y++) {
+                var sc = _z[_y];
+                var scAny = sc;
+                clip = ((_l = scAny.clip) !== null && _l !== void 0 ? _l : scAny);
+                k = (_m = scAny.k) !== null && _m !== void 0 ? _m : this.__k;
                 this.vx += (clip.x - this.x) * k;
                 this.vy += (clip.y - this.y) * k;
             }
-            for (var _t = 0, _u = this.gravClips; _t < _u.length; _t++) {
-                var gc_1 = _u[_t];
-                clip = gc_1.clip;
+            for (var _0 = 0, _1 = this.gravClips; _0 < _1.length; _0++) {
+                var gc_1 = _1[_0];
+                var gcAny = gc_1;
+                clip = ((_o = gcAny.clip) !== null && _o !== void 0 ? _o : gcAny);
                 dx = clip.x - this.x;
                 dy = clip.y - this.y;
                 distSQ = dx * dx + dy * dy;
                 dist = Math.sqrt(distSQ);
-                force = gc_1.force / distSQ;
+                force = ((_p = gcAny.force) !== null && _p !== void 0 ? _p : 0) / distSQ;
                 this.vx += force * dx / dist;
                 this.vy += force * dy / dist;
             }
-            for (var _v = 0, _w = this.__repelClips; _v < _w.length; _v++) {
-                var rc = _w[_v];
-                clip = rc.clip;
-                minDist = rc.minDist;
-                k = rc.k;
+            for (var _2 = 0, _3 = this.__repelClips; _2 < _3.length; _2++) {
+                var rc = _3[_2];
+                var rcAny = rc;
+                clip = ((_q = rcAny.clip) !== null && _q !== void 0 ? _q : rcAny);
+                minDist = (_r = rcAny.minDist) !== null && _r !== void 0 ? _r : 0;
+                k = (_s = rcAny.k) !== null && _s !== void 0 ? _s : this.repelMouseK;
                 dx = clip.x - this.x;
                 dy = clip.y - this.y;
                 dist = Math.sqrt(dx * dx + dy * dy);

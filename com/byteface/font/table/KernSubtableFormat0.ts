@@ -24,7 +24,7 @@ export class KernSubtableFormat0 extends KernSubtable {
         return this.nPairs;
     }
 
-    override getKerningPair(i: number): KerningPair {
-        return this.kerningPairs[i];
+    override getKerningPair(i: number): KerningPair | null {
+        return this.kerningPairs[i] ?? null;
     }
 }

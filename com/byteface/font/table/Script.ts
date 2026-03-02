@@ -5,9 +5,9 @@ import { LangSys } from "./LangSys.js";
 export class Script {
     defaultLangSysOffset: number;
     langSysCount: number;
-    langSysRecords: LangSysRecord[] | null;
+    langSysRecords: LangSysRecord[];
     defaultLangSys: LangSys | null;
-    langSys: LangSys[] | null;
+    langSys: LangSys[];
 
     constructor(byte_ar: ByteArray, offset: number) {
         byte_ar.offset = offset;
@@ -15,24 +15,22 @@ export class Script {
         this.defaultLangSysOffset = byte_ar.readUnsignedShort();
         this.langSysCount = byte_ar.readUnsignedShort();
 
+        this.langSysRecords = [];
         if (this.langSysCount > 0) {
             this.langSysRecords = new Array(this.langSysCount);
             for (let i = 0; i < this.langSysCount; i++) {
                 this.langSysRecords[i] = new LangSysRecord(byte_ar);
             }
-        } else {
-            this.langSysRecords = null; // Explicitly set to null if no records
         }
 
         // Read the LangSys tables
+        this.langSys = [];
         if (this.langSysCount > 0) {
             this.langSys = new Array(this.langSysCount);
             for (let j = 0; j < this.langSysCount; j++) {
                 byte_ar.offset = offset + this.langSysRecords[j].getOffset();
                 this.langSys[j] = new LangSys(byte_ar);
             }
-        } else {
-            this.langSys = null; // Explicitly set to null if no LangSys
         }
 
         if (this.defaultLangSysOffset > 0) {

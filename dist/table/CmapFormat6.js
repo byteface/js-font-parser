@@ -14,6 +14,13 @@ var CmapFormat6 = /** @class */ (function () {
     CmapFormat6.prototype.getFirst = function () {
         return this.firstCode; // Return the first character code
     };
+    CmapFormat6.prototype.getFormatType = function () {
+        return this.format;
+    };
+    CmapFormat6.prototype.getGlyphIndex = function (codePoint) {
+        var value = this.mapCharCode(codePoint);
+        return value === 0 ? null : value;
+    };
     CmapFormat6.prototype.getLast = function () {
         // Calculate the last code based on firstCode and entryCount
         return this.firstCode + this.entryCount - 1;

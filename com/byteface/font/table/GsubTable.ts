@@ -7,6 +7,7 @@ import { FeatureList } from "./FeatureList.js";
 import { LookupList } from "./LookupList.js";
 import { SingleSubst } from "./SingleSubst.js";
 import { LigatureSubst } from "./LigatureSubst.js";
+import { LookupSubtable } from "./LookupSubtable.js";
 
 export class GsubTable implements ITable {
     scriptList: ScriptList;
@@ -40,8 +41,8 @@ export class GsubTable implements ITable {
      * 5 - Context - Replace one or more glyphs in context 
      * 6 - Chaining - Context Replace one or more glyphs in chained context
      */
-    read(type: number, byte_ar: ByteArray, offset: number): Substitution | null {
-        let s: Substitution | null = null;
+    read(type: number, byte_ar: ByteArray, offset: number): LookupSubtable | null {
+        let s: LookupSubtable | null = null;
         switch (type) {
             case 1:
                 s = SingleSubst.read(byte_ar, offset);

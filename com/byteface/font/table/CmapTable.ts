@@ -1,6 +1,7 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { CmapIndexEntry } from "./CmapIndexEntry.js";
 import { CmapFormat } from "./CmapFormat.js";
+import { ICmapFormat } from "./ICmapFormat.js";
 import { Table } from "./Table.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
 import { ITable } from "./ITable.js";
@@ -10,7 +11,7 @@ export class CmapTable implements ITable {
     version: number;
     numTables: number;
     entries: CmapIndexEntry[];
-    formats: any[]; // Change to a specific type based on CmapFormat
+    formats: Array<ICmapFormat | null>;
 
     constructor(de:DirectoryEntry, byteArray: ByteArray) {
         byteArray.offset = de.offset;
@@ -39,21 +40,22 @@ export class CmapTable implements ITable {
         Debug.log(this.toString());
     }
 
-    getCmapFormat(platformId: number, encodingId: number): any | null {
+    getCmapFormat(platformId: number, encodingId: number): ICmapFormat | null {
         // Find the requested format
         for (let i = 0; i < this.numTables; i++) {
             if (this.entries[i].platformId === platformId && this.entries[i].encodingId === encodingId) {
-                return this.formats[i];
+                return this.formats[i] ?? null;
             }
         }
         return null;
     }
 
-    getCmapFormats(platformId: number, encodingId: number): any[] {
-        const matches: any[] = [];
+    getCmapFormats(platformId: number, encodingId: number): ICmapFormat[] {
+        const matches: ICmapFormat[] = [];
         for (let i = 0; i < this.numTables; i++) {
             if (this.entries[i].platformId === platformId && this.entries[i].encodingId === encodingId) {
-                matches.push(this.formats[i]);
+                const fmt = this.formats[i];
+                if (fmt) matches.push(fmt);
             }
         }
         return matches;
@@ -73,7 +75,8 @@ export class CmapTable implements ITable {
 
         // Get each of the tables
         for (let i = 0; i < this.numTables; i++) {
-            sb.push(`\t${this.formats[i].toString()}\n`);
+            const fmt = this.formats[i];
+            sb.push(`\t${fmt ? fmt.toString() : "unknown cmap format"}\n`);
         }
 
         return sb.join('');

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Font Tables Overview</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f2f3f7;
+      --ink: #1e1f24;
+      --muted: #5b6170;
+      --panel: #ffffff;
+      --accent: #2f5e8a;
+      --border: #e3e6ee;
+    }
+    body {
+      margin: 0;
+      font-family: "Source Serif 4", "Georgia", serif;
+      background: radial-gradient(circle at 20% 10%, #ffffff, var(--bg));
+      color: var(--ink);
+    }
+    header {
+      padding: 24px 20px 6px 20px;
+    }
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 28px;
+      font-weight: 700;
+    }
+    p {
+      margin: 0 0 16px 0;
+      color: var(--muted);
+    }
+    .grid {
+      padding: 16px 20px 32px 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    }
+    .card h2 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      color: var(--accent);
+    }
+    .desc {
+      color: var(--muted);
+      margin: 0 0 10px 0;
+    }
+    pre {
+      background: #f7f9fc;
+      border: 1px solid #e6ecf3;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 320px;
+      overflow: auto;
+    }
+    .missing {
+      color: #a14d4d;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Font Tables Overview</h1>
+    <p>Quick summaries of parsed tables for a sample font.</p>
+  </header>
+  <div id="grid" class="grid"></div>
+
+  <script type="module">
+    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { Table } from '../dist/table/Table.js';
+
+    const grid = document.getElementById('grid');
+    const fontUrl = '../truetypefonts/noto/NotoSans-Regular.ttf';
+
+    const tableSpecs = [
+      { tag: Table.cmap, name: 'cmap', desc: 'Character to glyph mapping.' },
+      { tag: Table.head, name: 'head', desc: 'Font header and global metrics.' },
+      { tag: Table.hhea, name: 'hhea', desc: 'Horizontal header.' },
+      { tag: Table.hmtx, name: 'hmtx', desc: 'Horizontal metrics.' },
+      { tag: Table.maxp, name: 'maxp', desc: 'Maximum profile (glyph counts).'},
+      { tag: Table.pName, name: 'name', desc: 'Naming records.' },
+      { tag: Table.post, name: 'post', desc: 'PostScript information.' },
+      { tag: Table.OS_2, name: 'OS/2', desc: 'OS/2 and Windows metrics.' },
+      { tag: Table.loca, name: 'loca', desc: 'Glyph locations.' },
+      { tag: Table.glyf, name: 'glyf', desc: 'Glyph outlines (TrueType).' },
+      { tag: Table.kern, name: 'kern', desc: 'Kerning pairs.' },
+      { tag: Table.GSUB, name: 'GSUB', desc: 'Glyph substitution.' },
+      { tag: Table.GPOS, name: 'GPOS', desc: 'Glyph positioning.' },
+      { tag: Table.cvt, name: 'cvt ', desc: 'Control value table (hinting).'},
+      { tag: Table.fpgm, name: 'fpgm', desc: 'Font program (hinting).'},
+      { tag: Table.prep, name: 'prep', desc: 'Control value program.' },
+    ];
+
+    function summarizeValue(value) {
+      if (value == null) return null;
+      if (Array.isArray(value)) return `Array(${value.length})`;
+      if (typeof value === 'object') return '[Object]';
+      return value;
+    }
+
+    function summarizeTable(table) {
+      if (!table) return null;
+      const output = {};
+      for (const key of Object.keys(table)) {
+        output[key] = summarizeValue(table[key]);
+      }
+      return output;
+    }
+
+    function renderCard(spec, table) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const heading = `${spec.name}`;
+      card.innerHTML = `<h2>${heading}</h2><p class="desc">${spec.desc}</p>`;
+
+      if (!table) {
+        const missing = document.createElement('div');
+        missing.className = 'missing';
+        missing.textContent = 'Table not present in this font.';
+        card.appendChild(missing);
+        grid.appendChild(card);
+        return;
+      }
+
+      const pre = document.createElement('pre');
+      pre.textContent = JSON.stringify(summarizeTable(table), null, 2);
+      card.appendChild(pre);
+      grid.appendChild(card);
+    }
+
+    FontParserTTF.load(fontUrl)
+      .then(font => {
+        tableSpecs.forEach(spec => {
+          const table = font.getTableByType(spec.tag);
+          renderCard(spec, table);
+        });
+      })
+      .catch(err => {
+        grid.textContent = `Failed to load font: ${err}`;
+      });
+  </script>
+</body>
+</html>

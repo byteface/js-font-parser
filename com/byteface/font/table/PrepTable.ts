@@ -3,6 +3,7 @@
 import { ByteArray } from '../utils/ByteArray.js';
 import { DirectoryEntry } from './DirectoryEntry.js';
 import { Program } from './Program.js';
+import { Table } from './Table.js';
 
 export class PrepTable extends Program {
 
@@ -13,6 +14,6 @@ export class PrepTable extends Program {
     }
 
     public getType(): number {
-        return this.prep; // Ensure `prep` is defined in the class or inherited
+        return Table.prep;
     }
 }

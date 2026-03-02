@@ -18,7 +18,7 @@ export class Coverage {
      * 
      */
     public static read(byte_ar: ByteArray): ICoverage | null {
-        let c: Coverage | null = null;
+        let c: ICoverage | null = null;
         const format: number = byte_ar.readUnsignedShort();
         if (format === 1) {
             c = new CoverageFormat1(byte_ar);

@@ -1,2 +1,1 @@
-var ScriptTags = {};
-export { ScriptTags };
+export var ScriptTags = {};

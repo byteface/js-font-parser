@@ -26,20 +26,25 @@ Demo pages (see `demos/index.html`):
 - `demos/particle.html` (ported style)
 - `demos/3dglasses.html`
 - `demos/blackhole.html`
-- `demos/face.html`
 - `demos/script.html`
 - `demos/script2.html`
 - `demos/shadow.html`
-- `demos/spin.html`
 - `demos/stack.html`
-- `demos/star.html`
 - `demos/svg.html`
 - `demos/woff.html`
 - `demos/metadata.html`
 - `demos/features.html` (GSUB/GPOS tags)
+- `demos/tables.html` (table overview)
 
 ### Noto Fonts
 The `truetypefonts/noto/` folder contains a small set of Noto fonts (SIL OFL) for multilingual demos.
+
+## Tests
+```sh
+npm test
+```
+
+Tests use Node's built-in test runner and the prebuilt `dist/` outputs.
 Arabic/Devanagari shaping is not implemented yet, so those scripts will render unshaped outlines.
 
 ### Include The Bundled Library

@@ -58,8 +58,7 @@ var CmapFormat4 = /** @class */ (function () {
         this.glyphIdArrayStart = 0;
         this.first = 0;
         this.last = 0;
-        // Parse and log basic information
-        // this.format = 4; // For Cmap Format 4
+        // Parse basic information
         this.length = byteArray.readUnsignedShort(); // Length of this table
         this.language = byteArray.readUnsignedShort(); // Language code
         this.segCountX2 = byteArray.readUnsignedShort(); // Segment count x 2

@@ -15,6 +15,7 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 import { Program } from './Program.js';
+import { Table } from './Table.js';
 var PrepTable = /** @class */ (function (_super) {
     __extends(PrepTable, _super);
     function PrepTable(de, byte_ar) {
@@ -24,7 +25,7 @@ var PrepTable = /** @class */ (function (_super) {
         return _this;
     }
     PrepTable.prototype.getType = function () {
-        return this.prep; // Ensure `prep` is defined in the class or inherited
+        return Table.prep;
     };
     return PrepTable;
 }(Program));

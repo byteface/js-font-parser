@@ -26,10 +26,11 @@ var CmapTable = /** @class */ (function () {
         Debug.log(this.toString());
     }
     CmapTable.prototype.getCmapFormat = function (platformId, encodingId) {
+        var _a;
         // Find the requested format
         for (var i = 0; i < this.numTables; i++) {
             if (this.entries[i].platformId === platformId && this.entries[i].encodingId === encodingId) {
-                return this.formats[i];
+                return (_a = this.formats[i]) !== null && _a !== void 0 ? _a : null;
             }
         }
         return null;
@@ -38,7 +39,9 @@ var CmapTable = /** @class */ (function () {
         var matches = [];
         for (var i = 0; i < this.numTables; i++) {
             if (this.entries[i].platformId === platformId && this.entries[i].encodingId === encodingId) {
-                matches.push(this.formats[i]);
+                var fmt = this.formats[i];
+                if (fmt)
+                    matches.push(fmt);
             }
         }
         return matches;
@@ -54,7 +57,8 @@ var CmapTable = /** @class */ (function () {
         }
         // Get each of the tables
         for (var i = 0; i < this.numTables; i++) {
-            sb.push("\t".concat(this.formats[i].toString(), "\n"));
+            var fmt = this.formats[i];
+            sb.push("\t".concat(fmt ? fmt.toString() : "unknown cmap format", "\n"));
         }
         return sb.join('');
     };

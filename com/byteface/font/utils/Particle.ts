@@ -77,9 +77,9 @@ class Particle {
     private __springPoints: Point[] = [];
     gravPoints: Point[] = [];
     private __repelPoints: Point[] = [];
-    private __springClips: { clip: Point; k: number }[] = [];
-    gravClips: { clip: Point; force: number }[] = [];
-    private __repelClips: { clip: Point; minDist: number; k: number }[] = [];
+    private __springClips: Array<Point | { clip: Point; k: number }> = [];
+    gravClips: Array<Point | { clip: Point; force: number }> = [];
+    private __repelClips: Array<Point | { clip: Point; minDist: number; k: number }> = [];
 
     constructor() {
         this.__bounds = {
@@ -125,7 +125,7 @@ class Particle {
         let tx: number;
         let ty: number;
         let point: Point;
-        let clip: { clip: Point; k: number };
+        let clip: Point;
         let k: number;
         let minDist: number;
 
@@ -196,28 +196,31 @@ class Particle {
             }
 
             for (const sc of this.__springClips) {
-                clip = sc.clip;
-                k = sc.k;
+                const scAny = sc as any;
+                clip = (scAny.clip ?? scAny) as Point;
+                k = scAny.k ?? this.__k;
                 this.vx += (clip.x - this.x) * k;
                 this.vy += (clip.y - this.y) * k;
             }
 
             for (const gc of this.gravClips) {
-                clip = gc.clip;
+                const gcAny = gc as any;
+                clip = (gcAny.clip ?? gcAny) as Point;
                 dx = clip.x - this.x;
                 dy = clip.y - this.y;
 
                 distSQ = dx * dx + dy * dy;
                 dist = Math.sqrt(distSQ);
-                force = gc.force / distSQ;
+                force = (gcAny.force ?? 0) / distSQ;
                 this.vx += force * dx / dist;
                 this.vy += force * dy / dist;
             }
 
             for (const rc of this.__repelClips) {
-                clip = rc.clip;
-                minDist = rc.minDist;
-                k = rc.k;
+                const rcAny = rc as any;
+                clip = (rcAny.clip ?? rcAny) as Point;
+                minDist = rcAny.minDist ?? 0;
+                k = rcAny.k ?? this.repelMouseK;
                 dx = clip.x - this.x;
                 dy = clip.y - this.y;
 

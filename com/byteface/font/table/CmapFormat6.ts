@@ -28,6 +28,15 @@ export class CmapFormat6 implements ICmapFormat {
         return this.firstCode; // Return the first character code
     }
 
+    getFormatType(): number {
+        return this.format;
+    }
+
+    getGlyphIndex(codePoint: number): number | null {
+        const value = this.mapCharCode(codePoint);
+        return value === 0 ? null : value;
+    }
+
     getLast(): number {
         // Calculate the last code based on firstCode and entryCount
         return this.firstCode + this.entryCount - 1;

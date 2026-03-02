@@ -1,5 +1,6 @@
 var CmapFormat12 = /** @class */ (function () {
     function CmapFormat12(byteArray) {
+        // Format 12 header: format (uint16), reserved (uint16), length (uint32), language (uint32)
         byteArray.readUnsignedShort(); // reserved
         this.length = byteArray.readUnsignedInt(); // Read length (uint32)
         this.language = byteArray.readUnsignedInt(); // Read language (uint32)

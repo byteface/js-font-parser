@@ -70,8 +70,9 @@ export class GlyfTable {
 
         // Resolve all glyphs
         for (let j = 0; j < numGlyphs; j++) {
-            if (!this.descript[j]) continue;
-            this.descript[j].resolve();
+            const desc = this.descript[j];
+            if (!desc) continue;
+            desc.resolve();
         }
 
 

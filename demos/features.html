@@ -113,6 +113,18 @@
       card.className = 'card';
       const scriptTags = table?.scriptList?.scriptRecords?.map(r => tagToString(r.tag)) ?? [];
       const featureTags = table?.featureList?.featureRecords?.map(r => tagToString(r.getTag())) ?? [];
+      const lookupCount = table?.lookupList?.lookupCount ?? table?.lookupList?.lookups?.length ?? 0;
+      const lookupTypes = [];
+      if (table?.lookupList?.lookups) {
+        for (const lookup of table.lookupList.lookups) {
+          if (lookup && typeof lookup.getType === 'function') {
+            lookupTypes.push(lookup.getType());
+          }
+        }
+      }
+      const lookupSummary = lookupTypes.length > 0
+        ? lookupTypes.reduce((acc, t) => (acc[t] = (acc[t] ?? 0) + 1, acc), {})
+        : null;
 
       card.innerHTML = `
         <h2>${name}</h2>
@@ -122,6 +134,10 @@
         <div style="height:8px"></div>
         <strong>Features</strong>
         ${listTags(featureTags)}
+        <div style="height:8px"></div>
+        <strong>Lookups</strong>
+        <div class="meta">Count: ${lookupCount}</div>
+        ${lookupSummary ? `<pre>${JSON.stringify(lookupSummary, null, 2)}</pre>` : '<div class="empty">No lookup data</div>'}
       `;
       output.appendChild(card);
     }
