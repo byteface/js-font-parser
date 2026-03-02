@@ -1,0 +1,210 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>Glyph Ribbon</title>
+    <meta charset="utf-8">
+    <style>
+        :root { color-scheme: light; }
+        body {
+            margin: 24px;
+            font-family: "Fraunces", "Georgia", serif;
+            background: radial-gradient(circle at 20% 10%, #ffffff, #eef1f6);
+            color: #12131a;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 28px; }
+        .panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #ffffff;
+            border: 1px solid #dde2ea;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(20, 30, 60, 0.08);
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #53607b;
+        }
+        select, input[type="text"], input[type="range"] {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #dde2ea;
+            font-size: 14px;
+            min-width: 200px;
+            background: #fbfcff;
+        }
+        canvas {
+            width: 100%;
+            height: 360px;
+            border: 1px solid #dde2ea;
+            border-radius: 14px;
+            background: #fdfdff;
+        }
+        .hint { margin-top: 8px; color: #53607b; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Glyph Ribbon</h1>
+    <div class="panel">
+        <label>
+            Font
+            <select id="fontSelect"></select>
+        </label>
+        <label>
+            Text
+            <input id="textInput" value="RIBBON" />
+        </label>
+        <label>
+            Size
+            <input id="sizeInput" type="range" min="60" max="220" value="140" />
+        </label>
+        <label>
+            Wave
+            <input id="waveInput" type="range" min="4" max="60" value="26" />
+        </label>
+        <label>
+            Speed
+            <input id="speedInput" type="range" min="1" max="10" value="4" />
+        </label>
+        <label>
+            Density
+            <input id="densityInput" type="range" min="1" max="8" value="3" />
+        </label>
+    </div>
+    <canvas id="canvas" width="1200" height="360"></canvas>
+    <div class="hint">Glyph outlines become a wave-driven ribbon of points.</div>
+
+    <script type="module">
+        import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+        import { Table } from '../dist/table/Table.js';
+
+        const fontSelect = document.getElementById('fontSelect');
+        const textInput = document.getElementById('textInput');
+        const sizeInput = document.getElementById('sizeInput');
+        const waveInput = document.getElementById('waveInput');
+        const speedInput = document.getElementById('speedInput');
+        const densityInput = document.getElementById('densityInput');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const fonts = [
+            { name: 'DiscoMo', url: '../truetypefonts/DiscoMo.ttf' },
+            { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' },
+            { name: 'JoeJack', url: '../truetypefonts/JoeJack.ttf' },
+            { name: 'Quill', url: '../truetypefonts/Quill.ttf' },
+            { name: 'Noto Sans', url: '../truetypefonts/noto/NotoSans-Regular.ttf' }
+        ];
+
+        const cache = new Map();
+        let font = null;
+        let points = [];
+
+        function populate() {
+            fontSelect.innerHTML = '';
+            fonts.forEach((f, i) => {
+                const opt = document.createElement('option');
+                opt.value = String(i);
+                opt.textContent = f.name;
+                fontSelect.appendChild(opt);
+            });
+        }
+
+        async function loadFont(url) {
+            if (cache.has(url)) return cache.get(url);
+            const f = await FontParserTTF.load(url);
+            cache.set(url, f);
+            return f;
+        }
+
+        function buildPoints() {
+            if (!font) return [];
+            const text = textInput.value || '';
+            const head = font.getTableByType(Table.head);
+            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const sizePx = Number(sizeInput.value);
+            const scale = sizePx / unitsPerEm;
+
+            const sampled = [];
+            let penX = 40;
+            const density = Number(densityInput.value);
+
+            for (const ch of Array.from(text)) {
+                const glyph = font.getGlyphByChar(ch);
+                if (!glyph || !glyph.points) {
+                    penX += sizePx * 0.3;
+                    continue;
+                }
+                for (let i = 0; i < glyph.points.length; i += density) {
+                    const p = glyph.points[i];
+                    sampled.push({
+                        x: penX + p.x * scale,
+                        y: p.y * scale,
+                        phase: i * 0.1
+                    });
+                }
+                penX += glyph.advanceWidth * scale + 12;
+            }
+            return sampled;
+        }
+
+        function clear() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fdfdff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        let time = 0;
+        function render() {
+            if (!font) return;
+            clear();
+            const wave = Number(waveInput.value);
+            const speed = Number(speedInput.value) * 0.01;
+            const baseline = canvas.height * 0.65;
+
+            ctx.save();
+            ctx.translate(0, baseline);
+            ctx.fillStyle = '#2c3245';
+
+            for (const p of points) {
+                const wobble = Math.sin(time + p.phase + p.x * 0.01) * wave;
+                const y = -p.y + wobble;
+                const alpha = 0.4 + 0.6 * Math.cos(time + p.phase);
+                ctx.globalAlpha = Math.max(0.1, alpha);
+                ctx.beginPath();
+                ctx.arc(p.x, y, 2.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+            time += speed;
+            requestAnimationFrame(render);
+        }
+
+        async function rebuild() {
+            const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+            font = await loadFont(selected.url);
+            points = buildPoints();
+        }
+
+        function trigger() { rebuild(); }
+
+        fontSelect.addEventListener('change', trigger);
+        textInput.addEventListener('input', trigger);
+        sizeInput.addEventListener('input', trigger);
+        densityInput.addEventListener('input', trigger);
+        waveInput.addEventListener('input', () => {});
+        speedInput.addEventListener('input', () => {});
+
+        populate();
+        rebuild().then(render);
+    </script>
+</body>
+</html>

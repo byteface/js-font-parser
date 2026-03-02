@@ -23,3 +23,6 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 - `demos/font-library.html` loads fonts from CDN or URL and renders text/icons.
 - `demos/all-glyphs.html` renders every glyph from the selected font in a grid.
 - `demos/stack.html` renders extruded text with depth/angle controls.
+- `demos/ribbon.html` animates glyph outlines into a ribbon wave.
+- `demos/particle-word.html` explodes and reassembles glyph points.
+- `demos/orbit.html` orbits glyphs around a ring with depth scaling.

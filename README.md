@@ -38,6 +38,9 @@ Demo pages (see `demos/index.html`):
 - `demos/color-font.html` (COLR/CPAL table inspection)
 - `demos/font-library.html` (CDN font loader)
 - `demos/all-glyphs.html` (render every glyph)
+- `demos/ribbon.html` (glyph ribbon motion)
+- `demos/particle-word.html` (particle assemble/explode)
+- `demos/orbit.html` (orbiting glyphs)
 - `demos/woff.html`
 - `demos/metadata.html`
 - `demos/features.html` (GSUB/GPOS tags)

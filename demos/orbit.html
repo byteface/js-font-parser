@@ -1,0 +1,186 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>Glyph Orbit</title>
+    <meta charset="utf-8">
+    <style>
+        :root { color-scheme: light; }
+        body {
+            margin: 24px;
+            font-family: "Cormorant Garamond", "Georgia", serif;
+            background: radial-gradient(circle at 20% 10%, #ffffff, #eef4f2);
+            color: #121517;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 28px; }
+        .panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #ffffff;
+            border: 1px solid #d7e2dc;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(20, 40, 30, 0.08);
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #4d6458;
+        }
+        select, input[type="text"], input[type="range"] {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #d7e2dc;
+            font-size: 14px;
+            min-width: 200px;
+            background: #fbfdfc;
+        }
+        canvas {
+            width: 100%;
+            height: 360px;
+            border: 1px solid #d7e2dc;
+            border-radius: 14px;
+            background: #fbfdfc;
+        }
+        .hint { margin-top: 8px; color: #4d6458; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Glyph Orbit</h1>
+    <div class="panel">
+        <label>
+            Font
+            <select id="fontSelect"></select>
+        </label>
+        <label>
+            Text
+            <input id="textInput" value="ORBIT" />
+        </label>
+        <label>
+            Size
+            <input id="sizeInput" type="range" min="40" max="160" value="90" />
+        </label>
+        <label>
+            Radius
+            <input id="radiusInput" type="range" min="120" max="320" value="220" />
+        </label>
+        <label>
+            Speed
+            <input id="speedInput" type="range" min="1" max="10" value="4" />
+        </label>
+    </div>
+    <canvas id="canvas" width="1200" height="360"></canvas>
+    <div class="hint">Each glyph orbits around a ring, scaling for depth.</div>
+
+    <script type="module">
+        import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+        import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+        import { Table } from '../dist/table/Table.js';
+
+        const fontSelect = document.getElementById('fontSelect');
+        const textInput = document.getElementById('textInput');
+        const sizeInput = document.getElementById('sizeInput');
+        const radiusInput = document.getElementById('radiusInput');
+        const speedInput = document.getElementById('speedInput');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const fonts = [
+            { name: 'DiscoMo', url: '../truetypefonts/DiscoMo.ttf' },
+            { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' },
+            { name: 'JoeJack', url: '../truetypefonts/JoeJack.ttf' },
+            { name: 'Quill', url: '../truetypefonts/Quill.ttf' },
+            { name: 'Noto Sans', url: '../truetypefonts/noto/NotoSans-Regular.ttf' }
+        ];
+
+        const cache = new Map();
+        let font = null;
+        let time = 0;
+
+        function populate() {
+            fontSelect.innerHTML = '';
+            fonts.forEach((f, i) => {
+                const opt = document.createElement('option');
+                opt.value = String(i);
+                opt.textContent = f.name;
+                fontSelect.appendChild(opt);
+            });
+        }
+
+        async function loadFont(url) {
+            if (cache.has(url)) return cache.get(url);
+            const f = await FontParserTTF.load(url);
+            cache.set(url, f);
+            return f;
+        }
+
+        function clear() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fbfdfc';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function draw() {
+            if (!font) return;
+            clear();
+
+            const text = Array.from(textInput.value || '');
+            const head = font.getTableByType(Table.head);
+            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const sizePx = Number(sizeInput.value);
+            const scale = sizePx / unitsPerEm;
+            const radius = Number(radiusInput.value);
+            const speed = Number(speedInput.value) * 0.004;
+
+            const centerX = canvas.width * 0.5;
+            const centerY = canvas.height * 0.5;
+            const count = Math.max(1, text.length);
+
+            for (let i = 0; i < count; i++) {
+                const ch = text[i] ?? ' ';
+                const glyph = font.getGlyphByChar(ch);
+                if (!glyph) continue;
+
+                const angle = time + (i / count) * Math.PI * 2;
+                const depth = (Math.sin(angle) + 1) / 2;
+                const orbitScale = scale * (0.6 + depth * 0.8);
+                const x = centerX + Math.cos(angle) * radius;
+                const y = centerY + Math.sin(angle) * radius * 0.6;
+                const alpha = 0.3 + depth * 0.7;
+
+                ctx.globalAlpha = alpha;
+                CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+                    x,
+                    y,
+                    scale: orbitScale,
+                    styles: { fillStyle: '#24433a', strokeStyle: '#24433a', lineWidth: 1 }
+                });
+            }
+
+            ctx.globalAlpha = 1;
+            time += speed;
+            requestAnimationFrame(draw);
+        }
+
+        async function rebuild() {
+            const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+            font = await loadFont(selected.url);
+        }
+
+        fontSelect.addEventListener('change', rebuild);
+        textInput.addEventListener('input', () => {});
+        sizeInput.addEventListener('input', () => {});
+        radiusInput.addEventListener('input', () => {});
+        speedInput.addEventListener('input', () => {});
+
+        populate();
+        rebuild().then(draw);
+    </script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>Particle Word</title>
+    <meta charset="utf-8">
+    <style>
+        :root { color-scheme: light; }
+        body {
+            margin: 24px;
+            font-family: "Bodoni Moda", "Georgia", serif;
+            background: radial-gradient(circle at 20% 10%, #ffffff, #f1efe9);
+            color: #111214;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 28px; }
+        .panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #ffffff;
+            border: 1px solid #e0dbd0;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(30, 20, 10, 0.08);
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6d5f4e;
+        }
+        select, input[type="text"], input[type="range"] {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #e0dbd0;
+            font-size: 14px;
+            min-width: 200px;
+            background: #fffdf9;
+        }
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #6d5f4e;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        canvas {
+            width: 100%;
+            height: 360px;
+            border: 1px solid #e0dbd0;
+            border-radius: 14px;
+            background: #fffdf9;
+        }
+        .hint { margin-top: 8px; color: #6d5f4e; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Particle Word</h1>
+    <div class="panel">
+        <label>
+            Font
+            <select id="fontSelect"></select>
+        </label>
+        <label>
+            Text
+            <input id="textInput" value="BREATH" />
+        </label>
+        <label>
+            Size
+            <input id="sizeInput" type="range" min="60" max="220" value="150" />
+        </label>
+        <label>
+            Scatter
+            <input id="scatterInput" type="range" min="10" max="220" value="120" />
+        </label>
+        <button id="toggleBtn">Explode / Gather</button>
+    </div>
+    <canvas id="canvas" width="1200" height="360"></canvas>
+    <div class="hint">Particles disperse and reassemble into the glyph outlines.</div>
+
+    <script type="module">
+        import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+        import { Table } from '../dist/table/Table.js';
+
+        const fontSelect = document.getElementById('fontSelect');
+        const textInput = document.getElementById('textInput');
+        const sizeInput = document.getElementById('sizeInput');
+        const scatterInput = document.getElementById('scatterInput');
+        const toggleBtn = document.getElementById('toggleBtn');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const fonts = [
+            { name: 'DiscoMo', url: '../truetypefonts/DiscoMo.ttf' },
+            { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' },
+            { name: 'JoeJack', url: '../truetypefonts/JoeJack.ttf' },
+            { name: 'Quill', url: '../truetypefonts/Quill.ttf' },
+            { name: 'Noto Sans', url: '../truetypefonts/noto/NotoSans-Regular.ttf' }
+        ];
+
+        const cache = new Map();
+        let font = null;
+        let particles = [];
+        let exploded = false;
+
+        function populate() {
+            fontSelect.innerHTML = '';
+            fonts.forEach((f, i) => {
+                const opt = document.createElement('option');
+                opt.value = String(i);
+                opt.textContent = f.name;
+                fontSelect.appendChild(opt);
+            });
+        }
+
+        async function loadFont(url) {
+            if (cache.has(url)) return cache.get(url);
+            const f = await FontParserTTF.load(url);
+            cache.set(url, f);
+            return f;
+        }
+
+        function buildParticles() {
+            if (!font) return [];
+            const text = textInput.value || '';
+            const head = font.getTableByType(Table.head);
+            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const sizePx = Number(sizeInput.value);
+            const scale = sizePx / unitsPerEm;
+
+            const pts = [];
+            let penX = 40;
+            const baseline = canvas.height * 0.65;
+
+            for (const ch of Array.from(text)) {
+                const glyph = font.getGlyphByChar(ch);
+                if (!glyph || !glyph.points) {
+                    penX += sizePx * 0.3;
+                    continue;
+                }
+                for (let i = 0; i < glyph.points.length; i += 2) {
+                    const p = glyph.points[i];
+                    pts.push({
+                        x: penX + p.x * scale,
+                        y: baseline - p.y * scale,
+                        vx: 0,
+                        vy: 0,
+                        tx: penX + p.x * scale,
+                        ty: baseline - p.y * scale
+                    });
+                }
+                penX += glyph.advanceWidth * scale + 12;
+            }
+            return pts;
+        }
+
+        function scatterParticles() {
+            const scatter = Number(scatterInput.value);
+            particles.forEach(p => {
+                p.tx = p.x + (Math.random() - 0.5) * scatter;
+                p.ty = p.y + (Math.random() - 0.5) * scatter;
+            });
+        }
+
+        function gatherParticles() {
+            particles.forEach(p => {
+                p.tx = p.x;
+                p.ty = p.y;
+            });
+        }
+
+        function clear() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fffdf9';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function tick() {
+            clear();
+            ctx.fillStyle = '#3a3228';
+
+            particles.forEach(p => {
+                const ax = (p.tx - p.x) * 0.02;
+                const ay = (p.ty - p.y) * 0.02;
+                p.vx = (p.vx + ax) * 0.85;
+                p.vy = (p.vy + ay) * 0.85;
+                p.x += p.vx;
+                p.y += p.vy;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            requestAnimationFrame(tick);
+        }
+
+        async function rebuild() {
+            const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+            font = await loadFont(selected.url);
+            particles = buildParticles();
+            if (exploded) {
+                scatterParticles();
+            } else {
+                gatherParticles();
+            }
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            exploded = !exploded;
+            if (exploded) {
+                scatterParticles();
+            } else {
+                gatherParticles();
+            }
+        });
+
+        fontSelect.addEventListener('change', rebuild);
+        textInput.addEventListener('input', rebuild);
+        sizeInput.addEventListener('input', rebuild);
+        scatterInput.addEventListener('input', () => { if (exploded) scatterParticles(); });
+
+        populate();
+        rebuild().then(tick);
+    </script>
+</body>
+</html>
