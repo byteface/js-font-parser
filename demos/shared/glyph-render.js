@@ -205,6 +205,31 @@ export function drawGlyphIndices(font, glyphIndices, canvas, options) {
     context.restore();
 }
 
+export function drawLayout(font, layout, canvas, options) {
+    const scale = options.scale ?? 0.1;
+    const x = options.x ?? 0;
+    const y = options.y ?? 0;
+    const context = canvas.getContext('2d');
+
+    let cursorX = x;
+    context.save();
+    context.translate(0, y);
+
+    for (const item of layout) {
+        const glyph = font.getGlyph(item.glyphIndex);
+        if (!glyph) continue;
+        drawGlyphToContext(context, glyph, {
+            x: cursorX + (item.xOffset ?? 0) * scale,
+            y: 0,
+            scale,
+            styles: options.styles
+        });
+        cursorX += (item.xAdvance ?? 0) * scale;
+    }
+
+    context.restore();
+}
+
 function midValue(a, b) {
     return (a + b) / 2;
 }

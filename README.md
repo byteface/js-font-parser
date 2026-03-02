@@ -23,6 +23,7 @@ Demo pages (see `demos/index.html`):
 - `demos/multilang.html` (multilingual samples)
 - `demos/layout-chars.html` (ported)
 - `demos/cards.html` (ported)
+- `demos/layout-text.html` (GSUB + kerning layout)
 - `demos/gsub.html` (ligature substitution)
 - `demos/kerning.html`
 - `demos/particle.html` (ported style)

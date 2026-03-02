@@ -14,3 +14,4 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 - `demos/svg-export.html` exports strings to SVG paths.
 - `demos/gsub.html` previews GSUB ligature substitutions (when available).
 - `demos/kerning.html` previews kerning adjustments from the kern table.
+- `demos/layout-text.html` uses GSUB + kerning to build a layout.

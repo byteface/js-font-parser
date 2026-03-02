@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Layout Demo</title>
+  <style>
+    :root { --bg:#f4f7f6; --ink:#12231f; --muted:#4c6b62; --panel:#fff; --border:#dfe7e3; }
+    body { margin:0; font-family:"Libre Baskerville", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    .wrap { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; padding:16px 20px 32px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    canvas { width:100%; height:220px; border:1px dashed var(--border); border-radius:10px; background:#fff; }
+    input { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); margin-bottom:10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Layout Demo</h1>
+    <p>Uses GSUB + kerning to compute a glyph layout.</p>
+  </header>
+  <div class="wrap">
+    <div class="panel">
+      <input id="textInput" value="AVATAR office official" />
+      <canvas id="layout" width="900" height="220"></canvas>
+    </div>
+  </div>
+
+  <script type="module">
+    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { drawLayout } from './shared/glyph-render.js';
+
+    const input = document.getElementById('textInput');
+    const canvas = document.getElementById('layout');
+
+    let font = null;
+    FontParserTTF.load('../truetypefonts/noto/NotoSans-Regular.ttf').then(f => {
+      font = f;
+      render();
+    });
+
+    input.addEventListener('input', render);
+
+    function render() {
+      if (!font) return;
+      const text = input.value;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      const layout = font.layoutString(text, { gsubFeatures: ['liga'] });
+      drawLayout(font, layout, canvas, { x: 20, y: 150, scale: 0.12, styles: { fillStyle: '#12231f', strokeStyle: '#12231f' } });
+    }
+  </script>
+</body>
+</html>

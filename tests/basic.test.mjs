@@ -58,3 +58,10 @@ test('kerning API returns a number', () => {
   const value = font.getKerningValue('A', 'V');
   assert.ok(typeof value === 'number', 'expected kerning value to be a number');
 });
+
+test('layout returns positioned glyphs', () => {
+  const font = loadFont('truetypefonts/noto/NotoSans-Regular.ttf');
+  const layout = font.layoutString('AVATAR', { gsubFeatures: ['liga'] });
+  assert.ok(layout.length > 0, 'expected layout entries');
+  assert.ok(typeof layout[0].xAdvance === 'number', 'expected xAdvance');
+});

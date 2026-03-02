@@ -197,6 +197,30 @@ export class FontParserTTF {
         return this.getKerningValueByGlyphs(left, right);
     }
 
+    public layoutString(text: string, options: { gsubFeatures?: string[] } = {}): Array<{ glyphIndex: number; xAdvance: number; xOffset: number }> {
+        const gsubFeatures = options.gsubFeatures ?? ["liga"];
+        const glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures);
+
+        const positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number }> = [];
+        for (let i = 0; i < glyphIndices.length; i++) {
+            const glyphIndex = glyphIndices[i];
+            const glyph = this.getGlyph(glyphIndex);
+            if (!glyph) continue;
+
+            let kern = 0;
+            if (i < glyphIndices.length - 1) {
+                kern = this.getKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
+            }
+
+            positioned.push({
+                glyphIndex,
+                xAdvance: glyph.advanceWidth + kern,
+                xOffset: 0,
+            });
+        }
+        return positioned;
+    }
+
     // Get a glyph description by index
     public getGlyph(i: number): GlyphData | null {
         const description = this.glyf?.getDescription(i);

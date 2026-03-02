@@ -175,6 +175,29 @@ var FontParserTTF = /** @class */ (function () {
             return 0;
         return this.getKerningValueByGlyphs(left, right);
     };
+    FontParserTTF.prototype.layoutString = function (text, options) {
+        var _a;
+        if (options === void 0) { options = {}; }
+        var gsubFeatures = (_a = options.gsubFeatures) !== null && _a !== void 0 ? _a : ["liga"];
+        var glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures);
+        var positioned = [];
+        for (var i = 0; i < glyphIndices.length; i++) {
+            var glyphIndex = glyphIndices[i];
+            var glyph = this.getGlyph(glyphIndex);
+            if (!glyph)
+                continue;
+            var kern = 0;
+            if (i < glyphIndices.length - 1) {
+                kern = this.getKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
+            }
+            positioned.push({
+                glyphIndex: glyphIndex,
+                xAdvance: glyph.advanceWidth + kern,
+                xOffset: 0,
+            });
+        }
+        return positioned;
+    };
     // Get a glyph description by index
     FontParserTTF.prototype.getGlyph = function (i) {
         var _a, _b, _c, _d, _e;
