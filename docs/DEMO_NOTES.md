@@ -22,3 +22,4 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 - `demos/emotion.html` bundles breathing, melting, and angry motion styles.
 - `demos/color-font.html` uses COLR/CPAL rendering with a built-in color font and outlines as fallback.
 - `demos/font-library.html` loads fonts from CDN or URL and renders text/icons.
+- `demos/all-glyphs.html` renders every glyph from the selected font in a grid.

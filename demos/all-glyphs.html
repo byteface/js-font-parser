@@ -1,0 +1,245 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>All Glyphs Grid</title>
+    <meta charset="utf-8">
+    <style>
+        :root { color-scheme: light; }
+        body {
+            margin: 24px;
+            font-family: "Georgia", "Times New Roman", serif;
+            background: radial-gradient(circle at top, #f6f6f2 0%, #ecebe4 50%, #e1dfd4 100%);
+            color: #1b1b1b;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 28px; }
+        .panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #ffffff;
+            border: 1px solid #d8d6cb;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(30, 20, 10, 0.08);
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #5d5648;
+        }
+        select, input[type="range"] {
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #d8d6cb;
+            font-size: 14px;
+            min-width: 220px;
+            background: #fbfbf8;
+        }
+        input[type="checkbox"] { transform: translateY(2px); }
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #4b463d;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        #stage {
+            border-radius: 16px;
+            padding: 18px;
+            background: #ffffff;
+            border: 1px solid #d8d6cb;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+        }
+        canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .hint {
+            margin-top: 10px;
+            color: #5d5648;
+            font-size: 12px;
+        }
+        .warn { color: #a33a2a; }
+    </style>
+</head>
+<body>
+    <h1>All Glyphs Grid</h1>
+    <div class="panel">
+        <label>
+            Font
+            <select id="fontSelect"></select>
+        </label>
+        <label>
+            Cell Size
+            <input id="cellInput" type="range" min="40" max="160" value="100" />
+        </label>
+        <label>
+            Scale
+            <input id="scaleInput" type="range" min="20" max="140" value="60" />
+        </label>
+        <label>
+            Show Index
+            <input id="indexInput" type="checkbox" checked />
+        </label>
+        <button id="renderBtn">Render</button>
+    </div>
+    <div id="stage">
+        <canvas id="canvas" width="1200" height="800"></canvas>
+        <div id="status" class="hint"></div>
+    </div>
+
+    <script type="module">
+        import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+        import { FontParserWOFF } from "../dist/data/FontParserWOFF.js";
+        import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
+        import { Table } from "../dist/table/Table.js";
+
+        const fontSelect = document.getElementById("fontSelect");
+        const cellInput = document.getElementById("cellInput");
+        const scaleInput = document.getElementById("scaleInput");
+        const indexInput = document.getElementById("indexInput");
+        const renderBtn = document.getElementById("renderBtn");
+        const canvas = document.getElementById("canvas");
+        const status = document.getElementById("status");
+        const ctx = canvas.getContext("2d");
+
+        const fonts = [
+            { name: "2006 Team", url: "../truetypefonts/2006 Team.ttf" },
+            { name: "20FACES", url: "../truetypefonts/20FACES.TTF" },
+            { name: "AUGIE", url: "../truetypefonts/AUGIE___.TTF" },
+            { name: "Aims in your Life", url: "../truetypefonts/Aims in your Life normal.ttf" },
+            { name: "CARDS", url: "../truetypefonts/CARDS.TTF" },
+            { name: "DiscoMo", url: "../truetypefonts/DiscoMo.ttf" },
+            { name: "ELLO", url: "../truetypefonts/ELLO____.TTF" },
+            { name: "Gotham Narrow Ultra (OTF)", url: "../truetypefonts/GothamNarrow-Ultra.otf" },
+            { name: "JoeJack", url: "../truetypefonts/JoeJack.ttf" },
+            { name: "Playwrite GB S", url: "../truetypefonts/Playwrite_GB_S" },
+            { name: "Quill", url: "../truetypefonts/Quill.ttf" },
+            { name: "RENAV", url: "../truetypefonts/RENAV___.TTF" },
+            { name: "ZWISDOM", url: "../truetypefonts/ZWISDOM.ttf" },
+            { name: "slkscr", url: "../truetypefonts/slkscr.ttf" },
+            { name: "Twemoji Mozilla (color)", url: "../truetypefonts/color/TwemojiMozilla.ttf" },
+            { name: "Noto Sans Regular", url: "../truetypefonts/noto/NotoSans-Regular.ttf" },
+            { name: "Noto Sans Hebrew", url: "../truetypefonts/noto/NotoSansHebrew-Regular.ttf" },
+            { name: "Noto Sans Thai", url: "../truetypefonts/noto/NotoSansThaiLooped-Regular.ttf" },
+            { name: "Noto Sans Devanagari", url: "../truetypefonts/noto/NotoSansDevanagari-Regular.ttf" },
+            { name: "Noto Naskh Arabic", url: "../truetypefonts/noto/NotoNaskhArabic-Regular.ttf" }
+        ];
+
+        const cache = new Map();
+
+        function populateFonts() {
+            fontSelect.innerHTML = "";
+            fonts.forEach((f, i) => {
+                const option = document.createElement("option");
+                option.value = String(i);
+                option.textContent = f.name;
+                fontSelect.appendChild(option);
+            });
+        }
+
+        function isWoff(url) {
+            return url.toLowerCase().endsWith(".woff");
+        }
+
+        async function loadFont(url) {
+            if (cache.has(url)) return cache.get(url);
+            let font;
+            if (isWoff(url)) {
+                font = await FontParserWOFF.load(url);
+            } else {
+                font = await FontParserTTF.load(url);
+            }
+            cache.set(url, font);
+            return font;
+        }
+
+        function clearCanvas(width, height) {
+            if (!ctx) return;
+            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = "#fbfbf8";
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        function renderGrid(font) {
+            if (!ctx) return;
+            const cell = Number(cellInput.value);
+            const scaleFactor = Number(scaleInput.value) / 100;
+            const showIndex = indexInput.checked;
+
+            const head = font.getTableByType(Table.head);
+            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const scale = (cell * scaleFactor) / unitsPerEm;
+
+            const glyphCount = font.getNumGlyphs();
+            const cols = Math.max(1, Math.floor(canvas.width / cell));
+            const rows = Math.ceil(glyphCount / cols);
+            const height = rows * cell + 40;
+
+            canvas.height = height;
+            clearCanvas(canvas.width, height);
+
+            ctx.strokeStyle = "#e6e3da";
+            ctx.lineWidth = 1;
+            ctx.font = "11px serif";
+            ctx.fillStyle = "#5d5648";
+
+            for (let i = 0; i < glyphCount; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const x = col * cell;
+                const y = row * cell;
+
+                ctx.strokeRect(x, y, cell, cell);
+
+                const glyph = font.getGlyph(i);
+                if (glyph) {
+                    CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+                        x: x + cell * 0.5,
+                        y: y + cell * 0.7,
+                        scale,
+                        styles: { fillStyle: "#2f2a22", strokeStyle: "#2f2a22", lineWidth: 1 }
+                    });
+                }
+
+                if (showIndex) {
+                    ctx.fillText(String(i), x + 6, y + 14);
+                }
+            }
+
+            status.textContent = `Glyphs: ${glyphCount} | Columns: ${cols} | Rows: ${rows}`;
+        }
+
+        async function render() {
+            const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+            status.textContent = `Loading ${selected.name}...`;
+            status.classList.remove("warn");
+            try {
+                const font = await loadFont(selected.url);
+                renderGrid(font);
+            } catch (err) {
+                status.textContent = `Failed to load font: ${err}`;
+                status.classList.add("warn");
+            }
+        }
+
+        renderBtn.addEventListener("click", render);
+        fontSelect.addEventListener("change", render);
+        cellInput.addEventListener("input", render);
+        scaleInput.addEventListener("input", render);
+        indexInput.addEventListener("change", render);
+
+        populateFonts();
+        render();
+    </script>
+</body>
+</html>

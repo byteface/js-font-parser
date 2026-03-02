@@ -42,6 +42,7 @@ Demo pages (see `demos/index.html`):
 - `demos/emotion.html` (breathing/melting/angry)
 - `demos/color-font.html` (COLR/CPAL table inspection)
 - `demos/font-library.html` (CDN font loader)
+- `demos/all-glyphs.html` (render every glyph)
 - `demos/woff.html`
 - `demos/metadata.html`
 - `demos/features.html` (GSUB/GPOS tags)
