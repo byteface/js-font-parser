@@ -40,7 +40,8 @@ Demo pages (see `demos/index.html`):
 - `demos/morphing.html` (glyph morphing)
 - `demos/breathing.html` (organic motion)
 - `demos/emotion.html` (breathing/melting/angry)
-- `demos/color-font.html` (COLR/CPAL/SVG table inspection)
+- `demos/color-font.html` (COLR/CPAL table inspection)
+- `demos/font-library.html` (CDN font loader)
 - `demos/woff.html`
 - `demos/metadata.html`
 - `demos/features.html` (GSUB/GPOS tags)

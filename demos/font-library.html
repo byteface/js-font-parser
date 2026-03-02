@@ -1,0 +1,257 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>Font Library (CDN)</title>
+    <meta charset="utf-8">
+    <style>
+        :root { color-scheme: light; }
+        body {
+            margin: 24px;
+            font-family: "Georgia", "Times New Roman", serif;
+            background: radial-gradient(circle at top, #f2f6ff 0%, #e7ecf7 50%, #dce2f2 100%);
+            color: #1b1b1b;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 28px; }
+        .panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #ffffff;
+            border: 1px solid #d6dbe8;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(20, 30, 60, 0.08);
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #4a5671;
+        }
+        input[type="text"], select {
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #d6dbe8;
+            font-size: 14px;
+            min-width: 220px;
+            background: #fbfcff;
+        }
+        input[type="range"] { width: 160px; }
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #2f4f7a;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        button.secondary { background: #6c7ea3; }
+        #stage {
+            border-radius: 16px;
+            padding: 18px;
+            background: #ffffff;
+            border: 1px solid #d6dbe8;
+            min-height: 360px;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+        }
+        canvas {
+            width: 100%;
+            height: 360px;
+            display: block;
+        }
+        .hint {
+            margin-top: 10px;
+            color: #4a5671;
+            font-size: 12px;
+        }
+        .warn { color: #a33a2a; }
+    </style>
+</head>
+<body>
+    <h1>Font Library (CDN)</h1>
+    <div class="panel">
+        <label>
+            Catalog
+            <select id="fontSelect"></select>
+        </label>
+        <label>
+            Or URL
+            <input id="urlInput" type="text" placeholder="https://.../font.ttf" />
+        </label>
+        <label>
+            Text
+            <input id="textInput" type="text" value="The quick brown fox jumps over the lazy dog." />
+        </label>
+        <label>
+            Size
+            <input id="sizeInput" type="range" min="60" max="220" value="140" />
+        </label>
+        <label>
+            Mode
+            <select id="modeSelect">
+                <option value="outline">Outline</option>
+                <option value="color">Color (COLR/CPAL)</option>
+            </select>
+        </label>
+        <button id="renderBtn">Load + Render</button>
+        <button id="iconBtn" class="secondary">Icon Sample</button>
+    </div>
+    <div id="stage">
+        <canvas id="canvas" width="1200" height="360"></canvas>
+        <div id="status" class="hint"></div>
+    </div>
+
+    <script type="module">
+        import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+        import { FontParserWOFF } from "../dist/data/FontParserWOFF.js";
+        import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
+        import { Table } from "../dist/table/Table.js";
+
+        const fontSelect = document.getElementById("fontSelect");
+        const urlInput = document.getElementById("urlInput");
+        const textInput = document.getElementById("textInput");
+        const sizeInput = document.getElementById("sizeInput");
+        const modeSelect = document.getElementById("modeSelect");
+        const renderBtn = document.getElementById("renderBtn");
+        const iconBtn = document.getElementById("iconBtn");
+        const canvas = document.getElementById("canvas");
+        const status = document.getElementById("status");
+        const ctx = canvas.getContext("2d");
+
+        const catalog = [
+            {
+                name: "Twemoji Mozilla (local, COLR/CPAL)",
+                url: "../truetypefonts/color/TwemojiMozilla.ttf",
+                type: "ttf",
+                tags: ["color", "local"]
+            },
+            {
+                name: "Open Sans Regular (CDN)",
+                url: "https://cdn.jsdelivr.net/npm/opensans-font@1.0.0/OpenSans-Regular.ttf",
+                type: "ttf",
+                tags: ["text", "cdn"]
+            },
+            {
+                name: "Open Sans Bold (CDN)",
+                url: "https://cdn.jsdelivr.net/npm/opensans-font@1.0.0/OpenSans-Bold.ttf",
+                type: "ttf",
+                tags: ["text", "cdn"]
+            },
+            {
+                name: "Font Awesome Solid (CDN)",
+                url: "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/webfonts/fa-solid-900.ttf",
+                type: "ttf",
+                tags: ["icons", "cdn"]
+            }
+        ];
+
+        const cache = new Map();
+
+        function populateCatalog() {
+            fontSelect.innerHTML = "";
+            catalog.forEach((item, i) => {
+                const option = document.createElement("option");
+                option.value = String(i);
+                option.textContent = item.name;
+                fontSelect.appendChild(option);
+            });
+        }
+
+        function isWoff(url) {
+            return url.toLowerCase().endsWith(".woff");
+        }
+
+        async function loadFont(url) {
+            if (cache.has(url)) return cache.get(url);
+            let font;
+            if (isWoff(url)) {
+                font = await FontParserWOFF.load(url);
+            } else {
+                font = await FontParserTTF.load(url);
+            }
+            cache.set(url, font);
+            return font;
+        }
+
+        function clearCanvas() {
+            if (!ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#fbfcff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function renderFont(font, text) {
+            if (!ctx) return;
+            clearCanvas();
+
+            const head = font.getTableByType(Table.head);
+            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const sizePx = Number(sizeInput.value);
+            const scale = sizePx / unitsPerEm;
+            const baseline = canvas.height * 0.7;
+            const mode = modeSelect.value;
+
+            if (mode === "color") {
+                CanvasRenderer.drawColorString(font, text, canvas, {
+                    x: 20,
+                    y: baseline,
+                    scale,
+                    spacing: 12,
+                    fallbackFill: "#2f4f7a"
+                });
+                status.textContent = "Rendered with color layers if available, otherwise outline fallback.";
+            } else {
+                CanvasRenderer.drawString(font, text, canvas, {
+                    x: 20,
+                    y: baseline,
+                    scale,
+                    spacing: 12,
+                    styles: { fillStyle: "#2f4f7a", strokeStyle: "#2f4f7a", lineWidth: 1 }
+                });
+                status.textContent = "Rendered with outlines.";
+            }
+        }
+
+        async function loadAndRender() {
+            const customUrl = urlInput.value.trim();
+            const selected = catalog[Number(fontSelect.value)] ?? catalog[0];
+            const url = customUrl || selected.url;
+
+            status.textContent = `Loading font: ${url}`;
+            status.classList.remove("warn");
+
+            try {
+                const font = await loadFont(url);
+                const text = textInput.value || "";
+                renderFont(font, text);
+            } catch (err) {
+                status.textContent = `Failed to load font. CORS or format issues? ${err}`;
+                status.classList.add("warn");
+            }
+        }
+
+        iconBtn.addEventListener("click", () => {
+            textInput.value = "\uf007 \uf013 \uf0c7 \uf0f3 \uf0f4";
+            modeSelect.value = "outline";
+            loadAndRender();
+        });
+
+        renderBtn.addEventListener("click", loadAndRender);
+        fontSelect.addEventListener("change", () => {
+            urlInput.value = "";
+            loadAndRender();
+        });
+        sizeInput.addEventListener("input", loadAndRender);
+        modeSelect.addEventListener("change", loadAndRender);
+
+        populateCatalog();
+        loadAndRender();
+    </script>
+</body>
+</html>

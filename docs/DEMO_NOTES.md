@@ -20,5 +20,5 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 - `demos/morphing.html` morphs glyph point clouds between letters/words.
 - `demos/breathing.html` applies organic wobble to contours.
 - `demos/emotion.html` bundles breathing, melting, and angry motion styles.
-- `demos/color-font.html` inspects COLR/CPAL/SVG tables and renders SVG glyphs when present.
-- `demos/color-font.html` now uses COLR/CPAL rendering with a built-in color font and outlines as fallback.
+- `demos/color-font.html` uses COLR/CPAL rendering with a built-in color font and outlines as fallback.
+- `demos/font-library.html` loads fonts from CDN or URL and renders text/icons.

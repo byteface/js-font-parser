@@ -104,9 +104,12 @@ export class FontParserTTF {
 
 
     public getGlyphIndexByChar(char: string): number | null {
-        if (char.length !== 1) {
-            console.error("getGlyphIndexByChar expects a single character");
+        if (!char || char.length === 0) {
+            console.error("getGlyphIndexByChar expects a character");
             return null;
+        }
+        if (char.length > 2) {
+            console.warn("getGlyphIndexByChar received multiple characters; using the first code point");
         }
 
         const codePoint = char.codePointAt(0); // Convert character to Unicode code point
