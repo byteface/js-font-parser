@@ -2,6 +2,7 @@ import { FeatureList } from "./FeatureList.js";
 import { LookupList } from "./LookupList.js";
 import { ScriptList } from "./ScriptList.js";
 import { Table } from "./Table.js";
+import { MarkBasePosFormat1 } from "./MarkBasePosFormat1.js";
 var GposTable = /** @class */ (function () {
     function GposTable(de, byte_ar) {
         byte_ar.offset = de.offset;
@@ -14,6 +15,9 @@ var GposTable = /** @class */ (function () {
         this.lookupList = new LookupList(byte_ar, de.offset + lookupListOffset, this);
     }
     GposTable.prototype.read = function (_type, _byte_ar, _offset) {
+        if (_type === 4) {
+            return new MarkBasePosFormat1(_byte_ar, _offset);
+        }
         return null;
     };
     GposTable.prototype.getType = function () {

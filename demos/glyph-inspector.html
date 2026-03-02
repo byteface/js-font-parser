@@ -104,6 +104,7 @@
         <label><span>Points</span><input id="pointsToggle" type="checkbox" checked /></label>
         <label><span>Handles</span><input id="handlesToggle" type="checkbox" checked /></label>
         <label><span>Indices</span><input id="indexToggle" type="checkbox" /></label>
+        <label><span>Anchors</span><input id="anchorToggle" type="checkbox" checked /></label>
         <label><span>BBox</span><input id="bboxToggle" type="checkbox" checked /></label>
     </div>
 
@@ -132,6 +133,7 @@
         const pointsToggle = document.getElementById('pointsToggle');
         const handlesToggle = document.getElementById('handlesToggle');
         const indexToggle = document.getElementById('indexToggle');
+        const anchorToggle = document.getElementById('anchorToggle');
         const bboxToggle = document.getElementById('bboxToggle');
         const gridCanvas = document.getElementById('gridCanvas');
         const inspectCanvas = document.getElementById('inspectCanvas');
@@ -296,6 +298,11 @@
 
             const winding = contours.map(c => contourArea(c) >= 0 ? 'CCW' : 'CW');
 
+            const anchors = font.getMarkAnchorsForGlyph ? font.getMarkAnchorsForGlyph(idx) : [];
+            const anchorSummary = anchors.length
+                ? anchors.map(a => `${a.type}[${a.classIndex}] (${a.x}, ${a.y})`).join(', ')
+                : 'none';
+
             meta.innerHTML = `
                 <div><strong>Glyph Index:</strong> ${idx}</div>
                 <div><strong>Contours:</strong> ${contours.length}</div>
@@ -305,7 +312,7 @@
                 <div><strong>Right Side Bearing:</strong> ${rightBearing.toFixed(2)}</div>
                 <div><strong>Bounding Box:</strong> [${minX}, ${minY}] to [${maxX}, ${maxY}]</div>
                 <div><strong>Winding:</strong> ${winding.join(', ') || 'n/a'}</div>
-                <div><strong>Anchors:</strong> not parsed (GPOS)</div>
+                <div><strong>Anchors:</strong> ${anchorSummary}</div>
             `;
 
             inspectCtx.save();
@@ -365,6 +372,15 @@
                 });
             }
 
+            if (anchorToggle.checked && anchors.length) {
+                anchors.forEach(anchor => {
+                    inspectCtx.beginPath();
+                    inspectCtx.fillStyle = anchor.type === 'mark' ? '#f39c12' : '#27ae60';
+                    inspectCtx.arc(anchor.x, anchor.y, 10 / scale, 0, Math.PI * 2);
+                    inspectCtx.fill();
+                });
+            }
+
             inspectCtx.restore();
         }
 
@@ -400,7 +416,7 @@
         });
         prevBtn.addEventListener('click', () => selectGlyph(Number(glyphInput.value) - 1));
         nextBtn.addEventListener('click', () => selectGlyph(Number(glyphInput.value) + 1));
-        [fillToggle, outlineToggle, pointsToggle, handlesToggle, indexToggle, bboxToggle].forEach(el => {
+        [fillToggle, outlineToggle, pointsToggle, handlesToggle, indexToggle, anchorToggle, bboxToggle].forEach(el => {
             el.addEventListener('change', renderInspector);
         });
 

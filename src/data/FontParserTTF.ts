@@ -18,6 +18,8 @@ import { GsubTable } from '../table/GsubTable.js';
 import { LigatureSubstFormat1 } from '../table/LigatureSubstFormat1.js';
 import { ColrTable } from '../table/ColrTable.js';
 import { CpalTable } from '../table/CpalTable.js';
+import { GposTable } from '../table/GposTable.js';
+import { MarkBasePosFormat1 } from '../table/MarkBasePosFormat1.js';
 
 export class FontParserTTF {
     // Define properties
@@ -35,6 +37,7 @@ export class FontParserTTF {
     private kern: any | null = null;
     private colr: ColrTable | null = null;
     private cpal: CpalTable | null = null;
+    private gpos: GposTable | null = null;
 
     // Table directory and tables
     private tableDir: TableDirectory | null = null;
@@ -89,6 +92,7 @@ export class FontParserTTF {
         this.kern = this.getTable(Table.kern) as any | null;
         this.colr = this.getTable(Table.COLR) as ColrTable | null;
         this.cpal = this.getTable(Table.CPAL) as CpalTable | null;
+        this.gpos = this.getTable(Table.GPOS) as GposTable | null;
 
         // Initialize the tables
         if (this.hmtx && this.maxp) {
@@ -275,6 +279,38 @@ export class FontParserTTF {
         const glyphId = this.getGlyphIndexByChar(char);
         if (glyphId == null) return [];
         return this.getColorLayersForGlyph(glyphId, paletteIndex);
+    }
+
+    public getMarkAnchorsForGlyph(glyphId: number): Array<{ type: 'mark' | 'base'; classIndex: number; x: number; y: number }> {
+        if (!this.gpos) return [];
+        const anchors: Array<{ type: 'mark' | 'base'; classIndex: number; x: number; y: number }> = [];
+        const lookups = this.gpos.lookupList?.getLookups?.() ?? [];
+        for (const lookup of lookups) {
+            if (!lookup || lookup.getType() !== 4) continue;
+            for (let i = 0; i < lookup.getSubtableCount(); i++) {
+                const st = lookup.getSubtable(i);
+                if (!(st instanceof MarkBasePosFormat1)) continue;
+                const markIndex = st.markCoverage?.findGlyph(glyphId) ?? -1;
+                if (markIndex >= 0 && st.markArray) {
+                    const record = st.markArray.marks[markIndex];
+                    if (record?.anchor) {
+                        anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                    }
+                }
+                const baseIndex = st.baseCoverage?.findGlyph(glyphId) ?? -1;
+                if (baseIndex >= 0 && st.baseArray) {
+                    const base = st.baseArray.baseRecords[baseIndex];
+                    if (base?.anchors) {
+                        base.anchors.forEach((anchor, classIndex) => {
+                            if (anchor) {
+                                anchors.push({ type: 'base', classIndex, x: anchor.x, y: anchor.y });
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        return anchors;
     }
 
     public getNameRecord(nameId: number): string {

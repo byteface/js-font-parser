@@ -4,6 +4,7 @@ import { TableDirectory } from '../table/TableDirectory.js';
 import { TableFactory } from '../table/TableFactory.js';
 import { GlyphData } from './GlyphData.js';
 import { LigatureSubstFormat1 } from '../table/LigatureSubstFormat1.js';
+import { MarkBasePosFormat1 } from '../table/MarkBasePosFormat1.js';
 var FontParserTTF = /** @class */ (function () {
     function FontParserTTF(byteData) {
         // Define properties
@@ -21,6 +22,7 @@ var FontParserTTF = /** @class */ (function () {
         this.kern = null;
         this.colr = null;
         this.cpal = null;
+        this.gpos = null;
         // Table directory and tables
         this.tableDir = null;
         this.tables = [];
@@ -70,6 +72,7 @@ var FontParserTTF = /** @class */ (function () {
         this.kern = this.getTable(Table.kern);
         this.colr = this.getTable(Table.COLR);
         this.cpal = this.getTable(Table.CPAL);
+        this.gpos = this.getTable(Table.GPOS);
         // Initialize the tables
         if (this.hmtx && this.maxp) {
             this.hmtx.run((_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.numberOfHMetrics) !== null && _b !== void 0 ? _b : 0, this.maxp.numGlyphs - ((_d = (_c = this.hhea) === null || _c === void 0 ? void 0 : _c.numberOfHMetrics) !== null && _d !== void 0 ? _d : 0));
@@ -254,6 +257,42 @@ var FontParserTTF = /** @class */ (function () {
         if (glyphId == null)
             return [];
         return this.getColorLayersForGlyph(glyphId, paletteIndex);
+    };
+    FontParserTTF.prototype.getMarkAnchorsForGlyph = function (glyphId) {
+        var _a, _b, _c, _d, _e, _f, _g;
+        if (!this.gpos)
+            return [];
+        var anchors = [];
+        var lookups = (_c = (_b = (_a = this.gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : [];
+        for (var _i = 0, lookups_1 = lookups; _i < lookups_1.length; _i++) {
+            var lookup = lookups_1[_i];
+            if (!lookup || lookup.getType() !== 4)
+                continue;
+            for (var i = 0; i < lookup.getSubtableCount(); i++) {
+                var st = lookup.getSubtable(i);
+                if (!(st instanceof MarkBasePosFormat1))
+                    continue;
+                var markIndex = (_e = (_d = st.markCoverage) === null || _d === void 0 ? void 0 : _d.findGlyph(glyphId)) !== null && _e !== void 0 ? _e : -1;
+                if (markIndex >= 0 && st.markArray) {
+                    var record = st.markArray.marks[markIndex];
+                    if (record === null || record === void 0 ? void 0 : record.anchor) {
+                        anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                    }
+                }
+                var baseIndex = (_g = (_f = st.baseCoverage) === null || _f === void 0 ? void 0 : _f.findGlyph(glyphId)) !== null && _g !== void 0 ? _g : -1;
+                if (baseIndex >= 0 && st.baseArray) {
+                    var base = st.baseArray.baseRecords[baseIndex];
+                    if (base === null || base === void 0 ? void 0 : base.anchors) {
+                        base.anchors.forEach(function (anchor, classIndex) {
+                            if (anchor) {
+                                anchors.push({ type: 'base', classIndex: classIndex, x: anchor.x, y: anchor.y });
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        return anchors;
     };
     FontParserTTF.prototype.getNameRecord = function (nameId) {
         var _a, _b;
