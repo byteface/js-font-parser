@@ -47,10 +47,10 @@
     const kernInfo = document.getElementById('kernInfo');
 
     const fonts = [
-      { name: 'Noto Sans', url: '../truetypefonts/noto/NotoSans-Regular.ttf' },
-      { name: 'DiscoMo', url: '../truetypefonts/DiscoMo.ttf' },
-      { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' },
-      { name: 'Quill', url: '../truetypefonts/Quill.ttf' }
+      { name: 'DiscoMo (kern table)', url: '../truetypefonts/DiscoMo.ttf' },
+      { name: 'CARDS (kern table)', url: '../truetypefonts/CARDS.TTF' },
+      { name: 'Noto Sans (GPOS)', url: '../truetypefonts/noto/NotoSans-Regular.ttf' },
+      { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' }
     ];
     const cache = new Map();
     let font = null;
@@ -98,7 +98,10 @@
         const v = font.getKerningValue(a, b);
         if (v) pairs.push(`${a}${b}: ${v}`);
       }
-      kernInfo.textContent = pairs.length > 0 ? `Kerning pairs: ${pairs.join(' | ')}` : 'No kerning pairs found in this string.';
+      const kernTable = font.getTableByType?.(0x6b65726e);
+      const gposTable = font.getTableByType?.(0x47504f53);
+      const tables = `kern: ${kernTable ? 'yes' : 'no'}, gpos: ${gposTable ? 'yes' : 'no'}`;
+      kernInfo.textContent = pairs.length > 0 ? `Kerning pairs: ${pairs.join(' | ')} | ${tables}` : `No kerning pairs found in this string. | ${tables}`;
     }
 
     populateFonts();

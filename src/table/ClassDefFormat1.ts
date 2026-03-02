@@ -20,4 +20,10 @@ export class ClassDefFormat1 extends ClassDef {
     public override getFormat(): number {
         return 1;
     }
+
+    public override getGlyphClass(glyphId: number): number {
+        const index = glyphId - this.startGlyph;
+        if (index < 0 || index >= this.glyphCount) return 0;
+        return this.classValues[index] ?? 0;
+    }
 }

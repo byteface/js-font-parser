@@ -20,6 +20,11 @@ import { ColrTable } from '../table/ColrTable.js';
 import { CpalTable } from '../table/CpalTable.js';
 import { GposTable } from '../table/GposTable.js';
 import { MarkBasePosFormat1 } from '../table/MarkBasePosFormat1.js';
+import { MarkLigPosFormat1 } from '../table/MarkLigPosFormat1.js';
+import { MarkMarkPosFormat1 } from '../table/MarkMarkPosFormat1.js';
+import { CursivePosFormat1 } from '../table/CursivePosFormat1.js';
+import { PairPosFormat1 } from '../table/PairPosFormat1.js';
+import { PairPosFormat2 } from '../table/PairPosFormat2.js';
 
 export class FontParserTTF {
     // Define properties
@@ -202,11 +207,29 @@ export class FontParserTTF {
         return 0;
     }
 
+    public getGposKerningValueByGlyphs(leftGlyph: number, rightGlyph: number): number {
+        if (!this.gpos) return 0;
+        const lookups = this.gpos.lookupList?.getLookups?.() ?? [];
+        let value = 0;
+        for (const lookup of lookups) {
+            if (!lookup || lookup.getType() !== 2) continue;
+            for (let i = 0; i < lookup.getSubtableCount(); i++) {
+                const st = lookup.getSubtable(i);
+                if (st instanceof PairPosFormat1 || st instanceof PairPosFormat2) {
+                    value += st.getKerning(leftGlyph, rightGlyph);
+                }
+            }
+        }
+        return value;
+    }
+
     public getKerningValue(leftChar: string, rightChar: string): number {
         const left = this.getGlyphIndexByChar(leftChar);
         const right = this.getGlyphIndexByChar(rightChar);
         if (left == null || right == null) return 0;
-        return this.getKerningValueByGlyphs(left, right);
+        const kern = this.getKerningValueByGlyphs(left, right);
+        if (kern !== 0) return kern;
+        return this.getGposKerningValueByGlyphs(left, right);
     }
 
     public layoutString(text: string, options: { gsubFeatures?: string[] } = {}): Array<{ glyphIndex: number; xAdvance: number; xOffset: number }> {
@@ -222,6 +245,9 @@ export class FontParserTTF {
             let kern = 0;
             if (i < glyphIndices.length - 1) {
                 kern = this.getKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
+                if (kern === 0) {
+                    kern = this.getGposKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
+                }
             }
 
             positioned.push({
@@ -281,31 +307,78 @@ export class FontParserTTF {
         return this.getColorLayersForGlyph(glyphId, paletteIndex);
     }
 
-    public getMarkAnchorsForGlyph(glyphId: number): Array<{ type: 'mark' | 'base'; classIndex: number; x: number; y: number }> {
+    public getMarkAnchorsForGlyph(glyphId: number): Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number }> {
         if (!this.gpos) return [];
-        const anchors: Array<{ type: 'mark' | 'base'; classIndex: number; x: number; y: number }> = [];
+        const anchors: Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number }> = [];
         const lookups = this.gpos.lookupList?.getLookups?.() ?? [];
         for (const lookup of lookups) {
-            if (!lookup || lookup.getType() !== 4) continue;
+            if (!lookup) continue;
             for (let i = 0; i < lookup.getSubtableCount(); i++) {
                 const st = lookup.getSubtable(i);
-                if (!(st instanceof MarkBasePosFormat1)) continue;
-                const markIndex = st.markCoverage?.findGlyph(glyphId) ?? -1;
-                if (markIndex >= 0 && st.markArray) {
-                    const record = st.markArray.marks[markIndex];
-                    if (record?.anchor) {
-                        anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                if (st instanceof MarkBasePosFormat1) {
+                    const markIndex = st.markCoverage?.findGlyph(glyphId) ?? -1;
+                    if (markIndex >= 0 && st.markArray) {
+                        const record = st.markArray.marks[markIndex];
+                        if (record?.anchor) {
+                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                        }
+                    }
+                    const baseIndex = st.baseCoverage?.findGlyph(glyphId) ?? -1;
+                    if (baseIndex >= 0 && st.baseArray) {
+                        const base = st.baseArray.baseRecords[baseIndex];
+                        if (base?.anchors) {
+                            base.anchors.forEach((anchor, classIndex) => {
+                                if (anchor) {
+                                    anchors.push({ type: 'base', classIndex, x: anchor.x, y: anchor.y });
+                                }
+                            });
+                        }
                     }
                 }
-                const baseIndex = st.baseCoverage?.findGlyph(glyphId) ?? -1;
-                if (baseIndex >= 0 && st.baseArray) {
-                    const base = st.baseArray.baseRecords[baseIndex];
-                    if (base?.anchors) {
-                        base.anchors.forEach((anchor, classIndex) => {
+                if (st instanceof MarkLigPosFormat1) {
+                    const markIndex = st.markCoverage?.findGlyph(glyphId) ?? -1;
+                    if (markIndex >= 0 && st.markArray) {
+                        const record = st.markArray.marks[markIndex];
+                        if (record?.anchor) {
+                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                        }
+                    }
+                    const ligIndex = st.ligatureCoverage?.findGlyph(glyphId) ?? -1;
+                    if (ligIndex >= 0 && st.ligatureArray) {
+                        const lig = st.ligatureArray.ligatures[ligIndex];
+                        lig?.components?.forEach((component) => {
+                            component.forEach((anchor, classIndex) => {
+                                if (anchor) {
+                                    anchors.push({ type: 'ligature', classIndex, x: anchor.x, y: anchor.y });
+                                }
+                            });
+                        });
+                    }
+                }
+                if (st instanceof MarkMarkPosFormat1) {
+                    const mark1Index = st.mark1Coverage?.findGlyph(glyphId) ?? -1;
+                    if (mark1Index >= 0 && st.mark1Array) {
+                        const record = st.mark1Array.marks[mark1Index];
+                        if (record?.anchor) {
+                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                        }
+                    }
+                    const mark2Index = st.mark2Coverage?.findGlyph(glyphId) ?? -1;
+                    if (mark2Index >= 0 && st.mark2Array) {
+                        const record = st.mark2Array.records[mark2Index];
+                        record?.anchors?.forEach((anchor, classIndex) => {
                             if (anchor) {
-                                anchors.push({ type: 'base', classIndex, x: anchor.x, y: anchor.y });
+                                anchors.push({ type: 'mark2', classIndex, x: anchor.x, y: anchor.y });
                             }
                         });
+                    }
+                }
+                if (st instanceof CursivePosFormat1) {
+                    const idx = st.coverage?.findGlyph(glyphId) ?? -1;
+                    if (idx >= 0) {
+                        const record = st.entryExitRecords[idx];
+                        if (record?.entry) anchors.push({ type: 'cursive-entry', classIndex: 0, x: record.entry.x, y: record.entry.y });
+                        if (record?.exit) anchors.push({ type: 'cursive-exit', classIndex: 0, x: record.exit.x, y: record.exit.y });
                     }
                 }
             }

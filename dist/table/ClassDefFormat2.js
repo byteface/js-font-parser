@@ -14,7 +14,6 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 import { ClassDef } from "./ClassDef.js";
-import { RangeRecord } from "./RangeRecord.js";
 var ClassDefFormat2 = /** @class */ (function (_super) {
     __extends(ClassDefFormat2, _super);
     function ClassDefFormat2(byte_ar) {
@@ -22,12 +21,24 @@ var ClassDefFormat2 = /** @class */ (function (_super) {
         _this.classRangeCount = byte_ar.readUnsignedShort();
         _this.classRangeRecords = new Array(_this.classRangeCount);
         for (var i = 0; i < _this.classRangeCount; i++) {
-            _this.classRangeRecords[i] = new RangeRecord(byte_ar);
+            var start = byte_ar.readUnsignedShort();
+            var end = byte_ar.readUnsignedShort();
+            var classValue = byte_ar.readUnsignedShort();
+            _this.classRangeRecords[i] = { start: start, end: end, classValue: classValue };
         }
         return _this;
     }
     ClassDefFormat2.prototype.getFormat = function () {
         return 2;
+    };
+    ClassDefFormat2.prototype.getGlyphClass = function (glyphId) {
+        for (var _i = 0, _a = this.classRangeRecords; _i < _a.length; _i++) {
+            var record = _a[_i];
+            if (glyphId >= record.start && glyphId <= record.end) {
+                return record.classValue;
+            }
+        }
+        return 0;
     };
     return ClassDefFormat2;
 }(ClassDef));

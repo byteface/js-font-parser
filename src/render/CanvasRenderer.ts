@@ -20,6 +20,7 @@ export type CanvasDrawOptions = {
     paletteIndex?: number;
     fallbackFill?: string;
     kerningScale?: number;
+    fallbackAdvance?: number;
 };
 
 export class CanvasRenderer {
@@ -278,7 +279,9 @@ export class CanvasRenderer {
             });
 
             const glyph = font.getGlyph(glyphIndex);
-            cursorX += (glyph?.advanceWidth ?? 0) * scale + spacing;
+            const advance = glyph?.advanceWidth ?? 0;
+            const fallbackAdvance = options.fallbackAdvance ?? 0;
+            cursorX += (advance > 0 ? advance : fallbackAdvance) * scale + spacing;
         }
 
         context.restore();

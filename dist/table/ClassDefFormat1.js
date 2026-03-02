@@ -29,6 +29,13 @@ var ClassDefFormat1 = /** @class */ (function (_super) {
     ClassDefFormat1.prototype.getFormat = function () {
         return 1;
     };
+    ClassDefFormat1.prototype.getGlyphClass = function (glyphId) {
+        var _a;
+        var index = glyphId - this.startGlyph;
+        if (index < 0 || index >= this.glyphCount)
+            return 0;
+        return (_a = this.classValues[index]) !== null && _a !== void 0 ? _a : 0;
+    };
     return ClassDefFormat1;
 }(ClassDef));
 export { ClassDefFormat1 };

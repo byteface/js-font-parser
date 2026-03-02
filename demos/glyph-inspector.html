@@ -375,7 +375,13 @@
             if (anchorToggle.checked && anchors.length) {
                 anchors.forEach(anchor => {
                     inspectCtx.beginPath();
-                    inspectCtx.fillStyle = anchor.type === 'mark' ? '#f39c12' : '#27ae60';
+                    let color = '#27ae60';
+                    if (anchor.type === 'mark') color = '#f39c12';
+                    if (anchor.type === 'ligature') color = '#8e44ad';
+                    if (anchor.type === 'mark2') color = '#e67e22';
+                    if (anchor.type === 'cursive-entry') color = '#16a085';
+                    if (anchor.type === 'cursive-exit') color = '#2980b9';
+                    inspectCtx.fillStyle = color;
                     inspectCtx.arc(anchor.x, anchor.y, 10 / scale, 0, Math.PI * 2);
                     inspectCtx.fill();
                 });

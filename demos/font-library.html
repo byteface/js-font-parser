@@ -133,14 +133,14 @@
             },
             {
                 name: "Open Sans Regular (CDN)",
-                url: "https://cdn.jsdelivr.net/npm/opensans-font@1.0.0/OpenSans-Regular.ttf",
-                type: "ttf",
+                url: "https://cdn.jsdelivr.net/fontsource/fonts/open-sans@latest/latin-400-normal.woff",
+                type: "woff",
                 tags: ["text", "cdn"]
             },
             {
                 name: "Open Sans Bold (CDN)",
-                url: "https://cdn.jsdelivr.net/npm/opensans-font@1.0.0/OpenSans-Bold.ttf",
-                type: "ttf",
+                url: "https://cdn.jsdelivr.net/fontsource/fonts/open-sans@latest/latin-700-normal.woff",
+                type: "woff",
                 tags: ["text", "cdn"]
             },
             {
@@ -245,7 +245,8 @@
                     y: baseline,
                     scale,
                     spacing: 12,
-                    fallbackFill: "#2f4f7a"
+                    fallbackFill: "#2f4f7a",
+                    fallbackAdvance: unitsPerEm * 0.9
                 });
                 status.textContent = "Rendered with color layers if available, otherwise outline fallback.";
             } else {

@@ -52,6 +52,11 @@ import { TableFactory } from '../table/TableFactory.js';
 import { GlyphData } from './GlyphData.js';
 import { LigatureSubstFormat1 } from '../table/LigatureSubstFormat1.js';
 import { MarkBasePosFormat1 } from '../table/MarkBasePosFormat1.js';
+import { MarkLigPosFormat1 } from '../table/MarkLigPosFormat1.js';
+import { MarkMarkPosFormat1 } from '../table/MarkMarkPosFormat1.js';
+import { CursivePosFormat1 } from '../table/CursivePosFormat1.js';
+import { PairPosFormat1 } from '../table/PairPosFormat1.js';
+import { PairPosFormat2 } from '../table/PairPosFormat2.js';
 var FontParserWOFF = /** @class */ (function () {
     function FontParserWOFF(byteData, options) {
         // Define properties
@@ -326,35 +331,83 @@ var FontParserWOFF = /** @class */ (function () {
         return this.getColorLayersForGlyph(glyphId, paletteIndex);
     };
     FontParserWOFF.prototype.getMarkAnchorsForGlyph = function (glyphId) {
-        var _a, _b, _c, _d, _e, _f, _g;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u;
         if (!this.gpos)
             return [];
         var anchors = [];
         var lookups = (_c = (_b = (_a = this.gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : [];
         for (var _i = 0, lookups_1 = lookups; _i < lookups_1.length; _i++) {
             var lookup = lookups_1[_i];
-            if (!lookup || lookup.getType() !== 4)
+            if (!lookup)
                 continue;
             for (var i = 0; i < lookup.getSubtableCount(); i++) {
                 var st = lookup.getSubtable(i);
-                if (!(st instanceof MarkBasePosFormat1))
-                    continue;
-                var markIndex = (_e = (_d = st.markCoverage) === null || _d === void 0 ? void 0 : _d.findGlyph(glyphId)) !== null && _e !== void 0 ? _e : -1;
-                if (markIndex >= 0 && st.markArray) {
-                    var record = st.markArray.marks[markIndex];
-                    if (record === null || record === void 0 ? void 0 : record.anchor) {
-                        anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                if (st instanceof MarkBasePosFormat1) {
+                    var markIndex = (_e = (_d = st.markCoverage) === null || _d === void 0 ? void 0 : _d.findGlyph(glyphId)) !== null && _e !== void 0 ? _e : -1;
+                    if (markIndex >= 0 && st.markArray) {
+                        var record = st.markArray.marks[markIndex];
+                        if (record === null || record === void 0 ? void 0 : record.anchor) {
+                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                        }
+                    }
+                    var baseIndex = (_g = (_f = st.baseCoverage) === null || _f === void 0 ? void 0 : _f.findGlyph(glyphId)) !== null && _g !== void 0 ? _g : -1;
+                    if (baseIndex >= 0 && st.baseArray) {
+                        var base = st.baseArray.baseRecords[baseIndex];
+                        if (base === null || base === void 0 ? void 0 : base.anchors) {
+                            base.anchors.forEach(function (anchor, classIndex) {
+                                if (anchor) {
+                                    anchors.push({ type: 'base', classIndex: classIndex, x: anchor.x, y: anchor.y });
+                                }
+                            });
+                        }
                     }
                 }
-                var baseIndex = (_g = (_f = st.baseCoverage) === null || _f === void 0 ? void 0 : _f.findGlyph(glyphId)) !== null && _g !== void 0 ? _g : -1;
-                if (baseIndex >= 0 && st.baseArray) {
-                    var base = st.baseArray.baseRecords[baseIndex];
-                    if (base === null || base === void 0 ? void 0 : base.anchors) {
-                        base.anchors.forEach(function (anchor, classIndex) {
+                if (st instanceof MarkLigPosFormat1) {
+                    var markIndex = (_j = (_h = st.markCoverage) === null || _h === void 0 ? void 0 : _h.findGlyph(glyphId)) !== null && _j !== void 0 ? _j : -1;
+                    if (markIndex >= 0 && st.markArray) {
+                        var record = st.markArray.marks[markIndex];
+                        if (record === null || record === void 0 ? void 0 : record.anchor) {
+                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                        }
+                    }
+                    var ligIndex = (_l = (_k = st.ligatureCoverage) === null || _k === void 0 ? void 0 : _k.findGlyph(glyphId)) !== null && _l !== void 0 ? _l : -1;
+                    if (ligIndex >= 0 && st.ligatureArray) {
+                        var lig = st.ligatureArray.ligatures[ligIndex];
+                        (_m = lig === null || lig === void 0 ? void 0 : lig.components) === null || _m === void 0 ? void 0 : _m.forEach(function (component) {
+                            component.forEach(function (anchor, classIndex) {
+                                if (anchor) {
+                                    anchors.push({ type: 'ligature', classIndex: classIndex, x: anchor.x, y: anchor.y });
+                                }
+                            });
+                        });
+                    }
+                }
+                if (st instanceof MarkMarkPosFormat1) {
+                    var mark1Index = (_p = (_o = st.mark1Coverage) === null || _o === void 0 ? void 0 : _o.findGlyph(glyphId)) !== null && _p !== void 0 ? _p : -1;
+                    if (mark1Index >= 0 && st.mark1Array) {
+                        var record = st.mark1Array.marks[mark1Index];
+                        if (record === null || record === void 0 ? void 0 : record.anchor) {
+                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                        }
+                    }
+                    var mark2Index = (_r = (_q = st.mark2Coverage) === null || _q === void 0 ? void 0 : _q.findGlyph(glyphId)) !== null && _r !== void 0 ? _r : -1;
+                    if (mark2Index >= 0 && st.mark2Array) {
+                        var record = st.mark2Array.records[mark2Index];
+                        (_s = record === null || record === void 0 ? void 0 : record.anchors) === null || _s === void 0 ? void 0 : _s.forEach(function (anchor, classIndex) {
                             if (anchor) {
-                                anchors.push({ type: 'base', classIndex: classIndex, x: anchor.x, y: anchor.y });
+                                anchors.push({ type: 'mark2', classIndex: classIndex, x: anchor.x, y: anchor.y });
                             }
                         });
+                    }
+                }
+                if (st instanceof CursivePosFormat1) {
+                    var idx = (_u = (_t = st.coverage) === null || _t === void 0 ? void 0 : _t.findGlyph(glyphId)) !== null && _u !== void 0 ? _u : -1;
+                    if (idx >= 0) {
+                        var record = st.entryExitRecords[idx];
+                        if (record === null || record === void 0 ? void 0 : record.entry)
+                            anchors.push({ type: 'cursive-entry', classIndex: 0, x: record.entry.x, y: record.entry.y });
+                        if (record === null || record === void 0 ? void 0 : record.exit)
+                            anchors.push({ type: 'cursive-exit', classIndex: 0, x: record.exit.x, y: record.exit.y });
                     }
                 }
             }
@@ -443,6 +496,35 @@ var FontParserWOFF = /** @class */ (function () {
         }
         return 0;
     };
+    FontParserWOFF.prototype.getGposKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
+        var _a, _b, _c;
+        if (!this.gpos)
+            return 0;
+        var lookups = (_c = (_b = (_a = this.gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : [];
+        var value = 0;
+        for (var _i = 0, lookups_2 = lookups; _i < lookups_2.length; _i++) {
+            var lookup = lookups_2[_i];
+            if (!lookup || lookup.getType() !== 2)
+                continue;
+            for (var i = 0; i < lookup.getSubtableCount(); i++) {
+                var st = lookup.getSubtable(i);
+                if (st instanceof PairPosFormat1 || st instanceof PairPosFormat2) {
+                    value += st.getKerning(leftGlyph, rightGlyph);
+                }
+            }
+        }
+        return value;
+    };
+    FontParserWOFF.prototype.getKerningValue = function (leftChar, rightChar) {
+        var left = this.getGlyphIndexByChar(leftChar);
+        var right = this.getGlyphIndexByChar(rightChar);
+        if (left == null || right == null)
+            return 0;
+        var kern = this.getKerningValueByGlyphs(left, right);
+        if (kern !== 0)
+            return kern;
+        return this.getGposKerningValueByGlyphs(left, right);
+    };
     FontParserWOFF.prototype.layoutString = function (text, options) {
         var _a;
         if (options === void 0) { options = {}; }
@@ -457,6 +539,9 @@ var FontParserWOFF = /** @class */ (function () {
             var kern = 0;
             if (i < glyphIndices.length - 1) {
                 kern = this.getKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
+                if (kern === 0) {
+                    kern = this.getGposKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
+                }
             }
             positioned.push({
                 glyphIndex: glyphIndex,

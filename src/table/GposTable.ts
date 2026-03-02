@@ -8,6 +8,10 @@ import { LookupSubtable } from "./LookupSubtable.js";
 import { ScriptList } from "./ScriptList.js";
 import { Table } from "./Table.js";
 import { MarkBasePosFormat1 } from "./MarkBasePosFormat1.js";
+import { PairPosSubtable } from "./PairPosSubtable.js";
+import { CursivePosFormat1 } from "./CursivePosFormat1.js";
+import { MarkLigPosFormat1 } from "./MarkLigPosFormat1.js";
+import { MarkMarkPosFormat1 } from "./MarkMarkPosFormat1.js";
 
 export class GposTable implements ITable, ILookupSubtableFactory {
     scriptList: ScriptList;
@@ -28,9 +32,11 @@ export class GposTable implements ITable, ILookupSubtableFactory {
     }
 
     public read(_type: number, _byte_ar: ByteArray, _offset: number): LookupSubtable | null {
-        if (_type === 4) {
-            return new MarkBasePosFormat1(_byte_ar, _offset);
-        }
+        if (_type === 2) return PairPosSubtable.read(_byte_ar, _offset);
+        if (_type === 3) return new CursivePosFormat1(_byte_ar, _offset);
+        if (_type === 4) return new MarkBasePosFormat1(_byte_ar, _offset);
+        if (_type === 5) return new MarkLigPosFormat1(_byte_ar, _offset);
+        if (_type === 6) return new MarkMarkPosFormat1(_byte_ar, _offset);
         return null;
     }
 

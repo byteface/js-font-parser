@@ -1,8 +1,6 @@
 # TS Porting Audit
 
-This repo is primarily TypeScript, but a few legacy files still exist (JS/AS). These are likely the remaining pieces that have not been ported.
+The legacy JS/AS source tree has been removed. The TypeScript implementation is now the single source of truth.
 
-## Unported Legacy Files
-
-## Recommended Port Order
-1. **SVG export + constants**: add tests and demos around the new TS implementations.
+## Notes
+- Feature work should land in `src/` and flow into `dist/` via `npx tsc`.

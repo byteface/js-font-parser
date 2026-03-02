@@ -224,7 +224,7 @@ var CanvasRenderer = /** @class */ (function () {
         }
     };
     CanvasRenderer.drawColorString = function (font, text, canvas, options) {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f;
         if (options === void 0) { options = {}; }
         var scale = (_a = options.scale) !== null && _a !== void 0 ? _a : 0.1;
         var x = (_b = options.x) !== null && _b !== void 0 ? _b : 0;
@@ -236,8 +236,8 @@ var CanvasRenderer = /** @class */ (function () {
         var cursorX = x;
         context.save();
         context.translate(0, y);
-        for (var _i = 0, _f = Array.from(text); _i < _f.length; _i++) {
-            var ch = _f[_i];
+        for (var _i = 0, _g = Array.from(text); _i < _g.length; _i++) {
+            var ch = _g[_i];
             var glyphIndex = typeof font.getGlyphIndexByChar === 'function'
                 ? font.getGlyphIndexByChar(ch)
                 : null;
@@ -254,7 +254,9 @@ var CanvasRenderer = /** @class */ (function () {
                 styles: options.styles
             });
             var glyph = font.getGlyph(glyphIndex);
-            cursorX += ((_e = glyph === null || glyph === void 0 ? void 0 : glyph.advanceWidth) !== null && _e !== void 0 ? _e : 0) * scale + spacing;
+            var advance = (_e = glyph === null || glyph === void 0 ? void 0 : glyph.advanceWidth) !== null && _e !== void 0 ? _e : 0;
+            var fallbackAdvance = (_f = options.fallbackAdvance) !== null && _f !== void 0 ? _f : 0;
+            cursorX += (advance > 0 ? advance : fallbackAdvance) * scale + spacing;
         }
         context.restore();
     };
