@@ -307,6 +307,116 @@ function bboxFromGlyph(font, glyphId) {
   };
 }
 
+function buildSimpleGlyphFromContours(contours) {
+  let pointIndex = 0;
+  const endPts = [];
+  const points = [];
+  contours.forEach(contour => {
+    contour.forEach(pt => points.push({ x: pt.x, y: pt.y, onCurve: !!pt.onCurve }));
+    pointIndex += contour.length;
+    endPts.push(pointIndex - 1);
+  });
+  const xs = points.map(p => p.x);
+  const ys = points.map(p => p.y);
+  const bbox = {
+    xMin: xs.length ? Math.min(...xs) : 0,
+    yMin: ys.length ? Math.min(...ys) : 0,
+    xMax: xs.length ? Math.max(...xs) : 0,
+    yMax: ys.length ? Math.max(...ys) : 0
+  };
+
+  const header = Buffer.alloc(10);
+  header.writeInt16BE(contours.length, 0);
+  header.writeInt16BE(bbox.xMin, 2);
+  header.writeInt16BE(bbox.yMin, 4);
+  header.writeInt16BE(bbox.xMax, 6);
+  header.writeInt16BE(bbox.yMax, 8);
+
+  const endPtsBuf = Buffer.alloc(endPts.length * 2);
+  endPts.forEach((v, i) => endPtsBuf.writeUInt16BE(v, i * 2));
+
+  const instrLen = Buffer.alloc(2);
+  instrLen.writeUInt16BE(0, 0);
+
+  const flags = [];
+  for (const pt of points) {
+    flags.push(pt.onCurve ? 0x01 : 0x00);
+  }
+  const flagsBuf = Buffer.from(flags);
+
+  const xDeltas = [];
+  const yDeltas = [];
+  let prevX = 0;
+  let prevY = 0;
+  for (const pt of points) {
+    const dx = Math.max(-32768, Math.min(32767, Math.round(pt.x - prevX)));
+    const dy = Math.max(-32768, Math.min(32767, Math.round(pt.y - prevY)));
+    xDeltas.push(dx);
+    yDeltas.push(dy);
+    prevX = pt.x;
+    prevY = pt.y;
+  }
+  const xyBuf = Buffer.alloc(xDeltas.length * 4);
+  let p = 0;
+  for (let i = 0; i < xDeltas.length; i++) {
+    xyBuf.writeInt16BE(xDeltas[i], p); p += 2;
+  }
+  for (let i = 0; i < yDeltas.length; i++) {
+    xyBuf.writeInt16BE(yDeltas[i], p); p += 2;
+  }
+
+  let glyph = Buffer.concat([header, endPtsBuf, instrLen, flagsBuf, xyBuf]);
+  const pad = (4 - (glyph.length % 4)) % 4;
+  if (pad) glyph = Buffer.concat([glyph, Buffer.alloc(pad)]);
+  return { glyph, bbox };
+}
+
+function extractTopContoursFromGlyph(font, glyphId) {
+  const glyph = font.getGlyph(glyphId);
+  if (!glyph || !glyph.points) return null;
+  const total = Math.max(0, glyph.getPointCount() - 2);
+  const contours = [];
+  let current = [];
+  for (let i = 0; i < total; i++) {
+    const pt = glyph.points[i];
+    current.push(pt);
+    if (pt.endOfContour) {
+      contours.push(current);
+      current = [];
+    }
+  }
+  if (!contours.length) return null;
+  const xs = glyph.points.slice(0, total).map(p => p.x);
+  const ys = glyph.points.slice(0, total).map(p => p.y);
+  const glyphBox = {
+    xMin: xs.length ? Math.min(...xs) : 0,
+    yMin: ys.length ? Math.min(...ys) : 0,
+    xMax: xs.length ? Math.max(...xs) : 0,
+    yMax: ys.length ? Math.max(...ys) : 0
+  };
+  const height = glyphBox.yMax - glyphBox.yMin || 1;
+  const threshold = glyphBox.yMin + height * 0.6;
+  const contourBoxes = contours.map(c => {
+    const xsC = c.map(p => p.x);
+    const ysC = c.map(p => p.y);
+    return {
+      contour: c,
+      box: {
+        xMin: Math.min(...xsC),
+        yMin: Math.min(...ysC),
+        xMax: Math.max(...xsC),
+        yMax: Math.max(...ysC)
+      }
+    };
+  });
+  let selected = contourBoxes.filter(c => c.box.yMin >= threshold).map(c => c.contour);
+  if (!selected.length) {
+    contourBoxes.sort((a, b) => b.box.yMax - a.box.yMax);
+    selected = [contourBoxes[0].contour];
+  }
+  return selected;
+}
+
 const MARKS = {
   "\u0300": { name: "grave", pos: "above" },
   "\u0301": { name: "acute", pos: "above" },
@@ -604,6 +714,19 @@ function composeFont(buffer, font, targetChars, report) {
   let newGlyf = Buffer.from(glyf);
   let newOffsets = offsets.slice(0, -1);
   let newNumGlyphs = numGlyphs;
+  const generatedBbox = new Map();
+
+  const addGlyphBuffer = (glyphBuf, bbox, advance, lsb) => {
+    const start = newGlyf.length;
+    newGlyf = Buffer.concat([newGlyf, glyphBuf]);
+    newOffsets.push(start);
+    newNumGlyphs++;
+    const clamp16 = (v) => Math.max(-32768, Math.min(32767, Math.round(v)));
+    glyphRecords.push({ advance: clamp16(advance ?? 0), lsb: clamp16(lsb ?? 0) });
+    const gid = newNumGlyphs - 1;
+    if (bbox) generatedBbox.set(gid, bbox);
+    return gid;
+  };
 
   const baseGap = Math.round((head.unitsPerEm ?? 1000) * 0.05);
 
@@ -658,6 +781,21 @@ function composeFont(buffer, font, targetChars, report) {
         markFallbackUsed = "composite-steal";
       }
     }
+    if (markId == null && markChar === "\u030C") {
+      const donorChars = ["Š", "š", "Ž", "ž", "Č", "č", "Ě", "ě", "Ň", "ň", "Ř", "ř", "Ť", "ť", "Ď", "ď"];
+      for (const donor of donorChars) {
+        const donorId = font.getGlyphIndexByChar(donor);
+        if (!donorId) continue;
+        const contours = extractTopContoursFromGlyph(font, donorId);
+        if (!contours) continue;
+        const { glyph, bbox } = buildSimpleGlyphFromContours(contours);
+        const donorGlyph = font.getGlyph(donorId);
+        const derivedId = addGlyphBuffer(glyph, bbox, donorGlyph?.advanceWidth ?? 0, donorGlyph?.leftSideBearing ?? 0);
+        markId = derivedId;
+        markFallbackUsed = `contour-steal:${donor}`;
+        break;
+      }
+    }
     if (markId == null) {
       const fallbacks = MARK_FALLBACKS[markChar] || [];
       for (const fb of fallbacks) {
@@ -671,7 +809,7 @@ function composeFont(buffer, font, targetChars, report) {
     }
     if (baseId == null || markId == null) return;
     const baseBox = bboxFromGlyph(font, baseId);
-    const markBox = bboxFromGlyph(font, markId);
+    const markBox = generatedBbox.get(markId) || bboxFromGlyph(font, markId);
     if (!baseBox || !markBox) return;
     const markInfo = MARKS[markChar];
     if (!markInfo) return;
