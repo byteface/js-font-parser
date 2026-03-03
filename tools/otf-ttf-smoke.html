@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OTF/TTF Smoke Test</title>
+  <style>
+    :root { --bg:#f6f4f1; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e3e1db; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 20px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    input[type="text"] { padding:6px 10px; border:1px solid #ccc; border-radius:6px; min-width:320px; }
+    .grid { display:grid; gap:12px; margin:12px 20px 30px; }
+    @media (min-width: 900px) { .grid { grid-template-columns:1fr 1fr; } }
+    canvas { width:100%; height:160px; border:1px dashed #ddd; background:#fff; }
+    .card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:10px; }
+    .label { font-size:12px; color:var(--muted); margin-bottom:6px; }
+  </style>
+</head>
+<body>
+<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+  <header>
+    <h1>OTF/TTF Smoke Test</h1>
+    <p>Loads all fonts in <code>truetypefonts/</code> and renders a sample.</p>
+  </header>
+
+  <div class="panel">
+    <div class="row">
+      <label>Sample <input id="sample" type="text" value="hello world" /></label>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <script type="module">
+    import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+    import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
+    import { Table } from "../dist/table/Table.js";
+
+    const sampleInput = document.getElementById("sample");
+    const grid = document.getElementById("grid");
+
+    const fonts = [
+      '../truetypefonts/2006 Team.ttf',
+      '../truetypefonts/20FACES.TTF',
+      '../truetypefonts/AUGIE___.TTF',
+      '../truetypefonts/Aims in your Life normal.ttf',
+      '../truetypefonts/CARDS.TTF',
+      '../truetypefonts/DiscoMo-cs.ttf',
+      '../truetypefonts/DiscoMo-es.ttf',
+      '../truetypefonts/DiscoMo-hu.ttf',
+      '../truetypefonts/DiscoMo-pl.ttf',
+      '../truetypefonts/DiscoMo-ro.ttf',
+      '../truetypefonts/DiscoMo-tr.ttf',
+      '../truetypefonts/DiscoMo.ttf',
+      '../truetypefonts/ELLO____.TTF',
+      '../truetypefonts/GothamNarrow-Ultra.otf',
+      '../truetypefonts/JoeJack.ttf',
+      '../truetypefonts/Minecraft.ttf',
+      '../truetypefonts/OTF/Salina-Trial-Black.otf',
+      '../truetypefonts/OTF/Salina-Trial-BlackItalic.otf',
+      '../truetypefonts/OTF/Salina-Trial-Bold.otf',
+      '../truetypefonts/OTF/Salina-Trial-BoldItalic.otf',
+      '../truetypefonts/OTF/Salina-Trial-Book.otf',
+      '../truetypefonts/OTF/Salina-Trial-BookItalic.otf',
+      '../truetypefonts/OTF/Salina-Trial-ExtraLight.otf',
+      '../truetypefonts/OTF/Salina-Trial-ExtraLightItalic.otf',
+      '../truetypefonts/OTF/Salina-Trial-Light.otf',
+      '../truetypefonts/OTF/Salina-Trial-LightItalic.otf',
+      '../truetypefonts/OTF/Salina-Trial-Medium.otf',
+      '../truetypefonts/OTF/Salina-Trial-MediumItalic.otf',
+      '../truetypefonts/OTF/Salina-Trial-Regular.otf',
+      '../truetypefonts/OTF/Salina-Trial-RegularItalic.otf',
+      '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-Italic-VariableFont_wght.ttf',
+      '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-VariableFont_wght.ttf',
+      '../truetypefonts/Playwrite_GB_S/static/PlaywriteGBS-ExtraLight.ttf',
+      '../truetypefonts/Playwrite_GB_S/static/PlaywriteGBS-ExtraLightItalic.ttf',
+      '../truetypefonts/Playwrite_GB_S/static/PlaywriteGBS-Italic.ttf',
+      '../truetypefonts/Playwrite_GB_S/static/PlaywriteGBS-Light.ttf',
+      '../truetypefonts/Playwrite_GB_S/static/PlaywriteGBS-LightItalic.ttf',
+      '../truetypefonts/Playwrite_GB_S/static/PlaywriteGBS-Regular.ttf',
+      '../truetypefonts/Playwrite_GB_S/static/PlaywriteGBS-Thin.ttf',
+      '../truetypefonts/Playwrite_GB_S/static/PlaywriteGBS-ThinItalic.ttf',
+      '../truetypefonts/Quill.ttf',
+      '../truetypefonts/RENAV___.TTF',
+      '../truetypefonts/ZWISDOM.ttf',
+      '../truetypefonts/arimo/Arimo[wght].ttf',
+      '../truetypefonts/color/TwemojiMozilla.ttf',
+      '../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf',
+      '../truetypefonts/kremlin_minister/Kremlin Minister Black.ttf',
+      '../truetypefonts/kremlin_minister/Kremlin Minister Black3D.ttf',
+      '../truetypefonts/kremlin_minister/Kremlin Minister Bold.ttf',
+      '../truetypefonts/kremlin_minister/Kremlin Minister.ttf',
+      '../truetypefonts/noto/NotoNaskhArabic-Regular.ttf',
+      '../truetypefonts/noto/NotoSans-Regular.ttf',
+      '../truetypefonts/noto/NotoSansDevanagari-Regular.ttf',
+      '../truetypefonts/noto/NotoSansHebrew-Regular.ttf',
+      '../truetypefonts/noto/NotoSansThaiLooped-Regular.ttf',
+      '../truetypefonts/slkscr.ttf',
+      '../truetypefonts/source-code-pro/SourceCodePro-Black.otf',
+      '../truetypefonts/source-code-pro/SourceCodePro-BlackIt.otf',
+      '../truetypefonts/source-code-pro/SourceCodePro-Bold.otf',
+      '../truetypefonts/source-code-pro/SourceCodePro-BoldIt.otf',
+      '../truetypefonts/source-code-pro/SourceCodePro-ExtraLight.otf',
+      '../truetypefonts/source-code-pro/SourceCodePro-ExtraLightIt.otf',
+      '../truetypefonts/source-code-pro/SourceCodePro-It.otf',
+      '../truetypefonts/source-code-pro/SourceCodePro-Light.otf',
+      '../truetypefonts/source-code-pro/SourceCodePro-LightIt.otf',
+      '../truetypefonts/source-code-pro/SourceCodePro-Medium.otf',
+      '../truetypefonts/source-code-pro/SourceCodePro-MediumIt.otf',
+      '../truetypefonts/source-code-pro/SourceCodePro-Regular.otf',
+      '../truetypefonts/source-code-pro/SourceCodePro-Semibold.otf',
+      '../truetypefonts/source-code-pro/SourceCodePro-SemiboldIt.otf',
+    ];
+
+    function draw(font, canvas, text) {
+      const hasGlyf = !!font.getTableByType(Table.glyf);
+      const hasCff = !!font.getTableByType(Table.CFF);
+      const hasCff2 = !!font.getTableByType(Table.CFF2);
+      if (!hasGlyf && !hasCff && !hasCff2) return;
+      CanvasRenderer.drawString(font, text, canvas, {
+        x: 20,
+        y: 130,
+        scale: 0.12,
+        styles: { fillStyle: "#2c3e50", strokeStyle: "#111", lineWidth: 1.2 }
+      });
+    }
+
+    async function render() {
+      grid.innerHTML = "";
+      for (const url of fonts) {
+        const card = document.createElement("div");
+        card.className = "card";
+        const label = document.createElement("div");
+        label.className = "label";
+        label.textContent = url.replace("../truetypefonts/", "");
+        const canvas = document.createElement("canvas");
+        canvas.width = 800;
+        canvas.height = 160;
+        const status = document.createElement("div");
+        status.className = "label";
+        status.textContent = "loading...";
+        card.appendChild(label);
+        card.appendChild(canvas);
+        card.appendChild(status);
+        grid.appendChild(card);
+
+        try {
+          const font = await FontParserTTF.load(url);
+          draw(font, canvas, sampleInput.value);
+          status.textContent = "ok";
+        } catch (err) {
+          status.textContent = "failed";
+        }
+      }
+    }
+
+    sampleInput.addEventListener("input", render);
+    render();
+  </script>
+</body>
+</html>
