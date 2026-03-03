@@ -561,7 +561,7 @@ function rebuildFontWithTables(buffer, tableUpdates) {
   return out;
 }
 
-function composeFont(buffer, font, targetChars) {
+function composeFont(buffer, font, targetChars, report) {
   const head = font.getTableByType(Table.head);
   const hhea = font.getTableByType(Table.hhea);
   const maxp = font.getTableByType(Table.maxp);
@@ -616,6 +616,7 @@ function composeFont(buffer, font, targetChars) {
             const baseLsb = font.getGlyph(baseId)?.leftSideBearing ?? 0;
             const clamp16 = (v) => Math.max(-32768, Math.min(32767, Math.round(v)));
             glyphRecords.push({ advance: clamp16(baseAdvance), lsb: clamp16(baseLsb) });
+            report.push({ char: ch, method: "dotless-remove", base: dotlessBase, fallback: null });
             return;
           }
         }
@@ -623,6 +624,7 @@ function composeFont(buffer, font, targetChars) {
       const fallbackId = font.getGlyphIndexByChar("l");
       if (fallbackId != null) {
         newMapping[ch.charCodeAt(0)] = fallbackId;
+        report.push({ char: ch, method: "dotless-fallback", base: "l", fallback: null });
       }
       return;
     }
@@ -685,6 +687,7 @@ function composeFont(buffer, font, targetChars) {
     const baseLsb = font.getGlyph(baseId)?.leftSideBearing ?? 0;
     const clamp16 = (v) => Math.max(-32768, Math.min(32767, Math.round(v)));
     glyphRecords.push({ advance: clamp16(baseAdvance), lsb: clamp16(baseLsb) });
+    report.push({ char: ch, method: "mark-compose", base: baseChar, mark: markChar, fallback: markFallbackUsed });
   });
 
   newOffsets.push(newGlyf.length);
@@ -775,9 +778,15 @@ async function main() {
     let buffer = Buffer.from(fs.readFileSync(resolved));
     updateNameTableBuffer(buffer, lang.toUpperCase());
     if (!info.supported) {
-      const { buffer: composed, composed: count } = composeFont(buffer, font, info.missing);
+      const report = [];
+      const { buffer: composed, composed: count } = composeFont(buffer, font, info.missing, report);
       buffer = composed;
       console.log(`Composed ${count} glyphs for missing characters.`);
+      if (report.length) {
+        const reportPath = `${outPath}.report.json`;
+        fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+        console.log(`Composition report: ${reportPath}`);
+      }
       const stillMissing = supportsLanguage(new FontParserTTF(new ByteArray(new Uint8Array(buffer))), lang);
       if (stillMissing && !stillMissing.supported) {
         console.log(`Still missing (${stillMissing.missing.length}): ${stillMissing.missing.slice(0, 30).join(" ")}`);
