@@ -154,6 +154,10 @@ var FontParserTTF = /** @class */ (function () {
                 result = result.map(function (g) { return st.substitute(g); });
                 return "continue";
             }
+            if (typeof st.applyToGlyphs === "function") {
+                result = st.applyToGlyphs(result);
+                return "continue";
+            }
             if (st instanceof LigatureSubstFormat1) {
                 var lig = st;
                 var next = [];

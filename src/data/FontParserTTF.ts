@@ -185,6 +185,11 @@ export class FontParserTTF {
                 continue;
             }
 
+            if (typeof (st as any).applyToGlyphs === "function") {
+                result = (st as any).applyToGlyphs(result);
+                continue;
+            }
+
             if (st instanceof LigatureSubstFormat1) {
                 const lig = st as LigatureSubstFormat1;
                 const next: number[] = [];

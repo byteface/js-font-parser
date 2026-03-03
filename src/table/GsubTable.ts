@@ -10,6 +10,9 @@ import { LigatureSubst } from "./LigatureSubst.js";
 import { LookupSubtable } from "./LookupSubtable.js";
 import { Script } from "./Script.js";
 import { LangSys } from "./LangSys.js";
+import { ContextSubst } from "./ContextSubst.js";
+import { ChainingSubst } from "./ChainingSubst.js";
+import { LigatureSubstFormat1 } from "./LigatureSubstFormat1.js";
 
 export class GsubTable implements ITable {
     scriptList: ScriptList;
@@ -59,13 +62,44 @@ export class GsubTable implements ITable {
                 s = LigatureSubst.read(byte_ar, offset);
                 break;
             case 5:
-                // s = ContextSubst.read(byte_ar, offset);
+                s = ContextSubst.read(byte_ar, offset, this);
                 break;
             case 6:
-                // s = ChainingSubst.read(byte_ar, offset);
+                s = ChainingSubst.read(byte_ar, offset, this);
                 break;
         }
         return s;
+    }
+
+    applyLookupAt(lookupIndex: number, glyphs: number[], index: number): number[] {
+        const lookup = this.lookupList?.getLookups?.()[lookupIndex];
+        if (!lookup) return glyphs;
+        let out = glyphs.slice();
+
+        for (let s = 0; s < lookup.getSubtableCount(); s++) {
+            const st = lookup.getSubtable(s);
+            if (!st) continue;
+            if (index < 0 || index >= out.length) continue;
+
+            if (typeof (st as any).substitute === "function") {
+                const original = out[index];
+                const next = (st as any).substitute(original);
+                if (next != null && next !== original) {
+                    out[index] = next;
+                    return out;
+                }
+            }
+
+            if (st instanceof LigatureSubstFormat1) {
+                const lig = st as LigatureSubstFormat1;
+                const match = lig.tryLigature(out, index);
+                if (match) {
+                    const replaced = out.slice(0, index).concat([match.glyphId], out.slice(index + match.length));
+                    return replaced;
+                }
+            }
+        }
+        return out;
     }
 
     getScriptList(): ScriptList {

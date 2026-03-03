@@ -4,6 +4,9 @@ import { FeatureList } from "./FeatureList.js";
 import { LookupList } from "./LookupList.js";
 import { SingleSubst } from "./SingleSubst.js";
 import { LigatureSubst } from "./LigatureSubst.js";
+import { LigatureSubstFormat1 } from "./LigatureSubstFormat1.js";
+import { ContextSubst } from "./ContextSubst.js";
+import { ChainingSubst } from "./ChainingSubst.js";
 var GsubTable = /** @class */ (function () {
     function GsubTable(de, byte_ar) {
         byte_ar.offset = de.offset;
@@ -42,13 +45,44 @@ var GsubTable = /** @class */ (function () {
                 s = LigatureSubst.read(byte_ar, offset);
                 break;
             case 5:
-                // s = ContextSubst.read(byte_ar, offset);
+                s = ContextSubst.read(byte_ar, offset, this);
                 break;
             case 6:
-                // s = ChainingSubst.read(byte_ar, offset);
+                s = ChainingSubst.read(byte_ar, offset, this);
                 break;
         }
         return s;
+    };
+    GsubTable.prototype.applyLookupAt = function (lookupIndex, glyphs, index) {
+        var _a;
+        var lookup = (_a = this.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups()[lookupIndex];
+        if (!lookup)
+            return glyphs;
+        var out = glyphs.slice();
+        for (var s = 0; s < lookup.getSubtableCount(); s++) {
+            var st = lookup.getSubtable(s);
+            if (!st)
+                continue;
+            if (index < 0 || index >= out.length)
+                continue;
+            if (typeof st.substitute === "function") {
+                var original = out[index];
+                var next = st.substitute(original);
+                if (next != null && next !== original) {
+                    out[index] = next;
+                    return out;
+                }
+            }
+            if (st instanceof LigatureSubstFormat1) {
+                var lig = st;
+                var match = lig.tryLigature(out, index);
+                if (match) {
+                    var replaced = out.slice(0, index).concat([match.glyphId], out.slice(index + match.length));
+                    return replaced;
+                }
+            }
+        }
+        return out;
     };
     GsubTable.prototype.getScriptList = function () {
         return this.scriptList;
