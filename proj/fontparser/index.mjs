@@ -167,10 +167,11 @@ function setUint16(view, offset, value) {
   view.setUint16(offset, value);
 }
 
-function makeCompositeGlyph(baseGlyph, markGlyph, markDx, markDy) {
+function makeCompositeGlyph(baseGlyph, markGlyph, markDx, markDy, markTransform) {
   const ARG_1_AND_2_ARE_WORDS = 0x0001;
   const ARGS_ARE_XY_VALUES = 0x0002;
   const MORE_COMPONENTS = 0x0020;
+  const WE_HAVE_A_2X2 = 0x0080;
 
   const parts = [];
   const header = Buffer.alloc(10);
@@ -193,12 +194,25 @@ function makeCompositeGlyph(baseGlyph, markGlyph, markDx, markDy) {
   comp1.writeInt16BE(0, 6);
   parts.push(comp1);
 
-  const comp2 = Buffer.alloc(8);
-  comp2.writeUInt16BE(ARG_1_AND_2_ARE_WORDS | ARGS_ARE_XY_VALUES, 0);
-  comp2.writeUInt16BE(markGlyph.glyphId, 2);
-  comp2.writeInt16BE(markDx, 4);
-  comp2.writeInt16BE(markDy, 6);
-  parts.push(comp2);
+  if (markTransform) {
+    const comp2 = Buffer.alloc(16);
+    comp2.writeUInt16BE(ARG_1_AND_2_ARE_WORDS | ARGS_ARE_XY_VALUES | WE_HAVE_A_2X2, 0);
+    comp2.writeUInt16BE(markGlyph.glyphId, 2);
+    comp2.writeInt16BE(markDx, 4);
+    comp2.writeInt16BE(markDy, 6);
+    comp2.writeInt16BE(markTransform.a, 8);
+    comp2.writeInt16BE(markTransform.b, 10);
+    comp2.writeInt16BE(markTransform.c, 12);
+    comp2.writeInt16BE(markTransform.d, 14);
+    parts.push(comp2);
+  } else {
+    const comp2 = Buffer.alloc(8);
+    comp2.writeUInt16BE(ARG_1_AND_2_ARE_WORDS | ARGS_ARE_XY_VALUES, 0);
+    comp2.writeUInt16BE(markGlyph.glyphId, 2);
+    comp2.writeInt16BE(markDx, 4);
+    comp2.writeInt16BE(markDy, 6);
+    parts.push(comp2);
+  }
 
   let glyph = Buffer.concat(parts);
   const pad = (4 - (glyph.length % 4)) % 4;
@@ -495,12 +509,14 @@ function composeFont(buffer, font, targetChars) {
     const [baseChar, markChar] = decomp;
     const baseId = font.getGlyphIndexByChar(baseChar);
     let markId = font.getGlyphIndexByChar(markChar);
+    let markFallbackUsed = null;
     if (markId == null) {
       const fallbacks = MARK_FALLBACKS[markChar] || [];
       for (const fb of fallbacks) {
         const fbId = font.getGlyphIndexByChar(fb);
         if (fbId != null) {
           markId = fbId;
+          markFallbackUsed = fb;
           break;
         }
       }
@@ -526,7 +542,16 @@ function composeFont(buffer, font, targetChars) {
       dy = Math.round(baseMid - markMid);
     }
 
-    const glyphBuf = makeCompositeGlyph(baseBox, markBox, dx, dy);
+    let markTransform = null;
+    if (markInfo.pos === "overlay" && markFallbackUsed) {
+      const angle = -12 * (Math.PI / 180);
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const toFixed = (v) => Math.max(-32768, Math.min(32767, Math.round(v * 16384)));
+      markTransform = { a: toFixed(cos), b: toFixed(sin), c: toFixed(-sin), d: toFixed(cos) };
+    }
+
+    const glyphBuf = makeCompositeGlyph(baseBox, markBox, dx, dy, markTransform);
     const start = newGlyf.length;
     newGlyf = Buffer.concat([newGlyf, glyphBuf]);
     newOffsets.push(start);

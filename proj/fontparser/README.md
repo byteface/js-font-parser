@@ -20,3 +20,8 @@ node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --localise es --
 - Composition currently targets BMP characters only (cmap format 4 rebuild).
 - CFF/CFF2 fonts are not supported for writing yet.
 - Some marks may be missing in the source font; those composites will be skipped.
+
+## Fallback Rules (Current)
+- Acute/grave/etc: fallback to `"."`, `"'"`, ``"` ``, `"^"`, `"~"` when marks are missing.
+- Cedilla/ogonek: fallback to comma/dot below.
+- Stroke/overlay (`ł/Ł`): fallback to `"-"` or `"—"` and **rotate -12°** for a slanted bar.
