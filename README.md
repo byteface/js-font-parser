@@ -76,6 +76,7 @@ npm run build:dist
 node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --coverage
 node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --localise es --out /tmp/DiscoMo-es.ttf
 ```
+`--localise` attempts to compose missing Latin glyphs using base + combining marks.
 
 
 ### Docs

@@ -13,5 +13,9 @@ node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --localise es --
 
 ## Notes
 - `--coverage` prints language coverage based on required character sets.
-- `--localise` currently writes a new font by updating name table strings (proof of write).
-- Composing missing glyphs is a planned next step.
+- `--localise` writes a new font and attempts to compose missing Latin glyphs using base + combining marks.
+
+## Limitations
+- Composition currently targets BMP characters only (cmap format 4 rebuild).
+- CFF/CFF2 fonts are not supported for writing yet.
+- Some marks may be missing in the source font; those composites will be skipped.
