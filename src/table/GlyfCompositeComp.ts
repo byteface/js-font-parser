@@ -32,13 +32,20 @@ export class GlyfCompositeComp {
         this.flags = (bais.readUnsignedByte() << 8) | bais.readUnsignedByte();
         this.glyphIndex = (bais.readUnsignedByte() << 8) | bais.readUnsignedByte();
 
+        const argsAreXY = (this.flags & GlyfCompositeComp.ARGS_ARE_XY_VALUES) !== 0;
+        const argsAreWords = (this.flags & GlyfCompositeComp.ARG_1_AND_2_ARE_WORDS) !== 0;
+        const readSignedByte = () => {
+            const v = bais.readByte();
+            return v & 0x80 ? v - 0x100 : v;
+        };
+
         // Get the arguments as just their raw values
-        if ((this.flags & GlyfCompositeComp.ARG_1_AND_2_ARE_WORDS) !== 0) {
-            this.argument1 = (bais.readUnsignedByte() << 8) | bais.readUnsignedByte();
-            this.argument2 = (bais.readUnsignedByte() << 8) | bais.readUnsignedByte();
+        if (argsAreWords) {
+            this.argument1 = argsAreXY ? bais.readShort() : bais.readUnsignedShort();
+            this.argument2 = argsAreXY ? bais.readShort() : bais.readUnsignedShort();
         } else {
-            this.argument1 = bais.readUnsignedByte();
-            this.argument2 = bais.readUnsignedByte();
+            this.argument1 = argsAreXY ? readSignedByte() : bais.readUnsignedByte();
+            this.argument2 = argsAreXY ? readSignedByte() : bais.readUnsignedByte();
         }
 
         // Assign the arguments according to the flags
