@@ -96,6 +96,21 @@ var Cff2Table = /** @class */ (function () {
                 }
             }
         }
+        else if (format === 4) {
+            var nRanges = byte_ar.readUnsignedInt();
+            var ranges = [];
+            for (var i = 0; i < nRanges; i++) {
+                ranges.push({ first: byte_ar.readUnsignedInt(), fd: byte_ar.readUnsignedShort() });
+            }
+            var sentinel = byte_ar.readUnsignedInt();
+            for (var i = 0; i < ranges.length; i++) {
+                var start = ranges[i].first;
+                var end = (i + 1 < ranges.length ? ranges[i + 1].first : sentinel) - 1;
+                for (var g = start; g <= end && g < numGlyphs; g++) {
+                    fdSelect[g] = ranges[i].fd;
+                }
+            }
+        }
         byte_ar.offset = prev;
         return fdSelect;
     };
