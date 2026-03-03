@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Localized Glyph Review</title>
+  <style>
+    :root { --bg:#f6f4f1; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e3e1db; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 20px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    select { padding:8px 10px; border-radius:8px; border:1px solid var(--border); }
+    .label { font-size:12px; color:var(--muted); margin-right:6px; }
+    canvas { width:100%; height:220px; border:1px dashed #ddd; background:#fff; }
+    .glyphs { margin-top:8px; font-size:14px; }
+    .glyphs span { display:inline-block; padding:2px 6px; border:1px solid #ddd; border-radius:6px; margin:2px; background:#fff; }
+    .note { color:var(--muted); font-size:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Localized Glyph Review</h1>
+    <p>Shows localized fonts and highlights composed characters for visual inspection.</p>
+  </header>
+
+  <div class="panel">
+    <div class="row">
+      <div class="label">Font</div>
+      <select id="fontSelect"></select>
+      <div class="label">Sample</div>
+      <select id="sampleSelect"></select>
+    </div>
+    <div class="glyphs" id="highlight"></div>
+  </div>
+
+  <div class="panel">
+    <canvas id="preview" width="1200" height="220"></canvas>
+  </div>
+
+  <div class="panel note">
+    These samples are meant to surface awkward composites. If a glyph looks off, we can tune the rule.
+  </div>
+
+  <script type="module">
+    import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+    import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
+    import { Table } from "../dist/table/Table.js";
+
+    const fonts = [
+      { name: "DiscoMo (base)", url: "../truetypefonts/DiscoMo.ttf" },
+      { name: "DiscoMo ES", url: "../truetypefonts/DiscoMo-es.ttf" },
+      { name: "DiscoMo PL", url: "../truetypefonts/DiscoMo-pl.ttf" },
+      { name: "DiscoMo CS", url: "../truetypefonts/DiscoMo-cs.ttf" },
+      { name: "DiscoMo HU", url: "../truetypefonts/DiscoMo-hu.ttf" },
+      { name: "DiscoMo TR", url: "../truetypefonts/DiscoMo-tr.ttf" },
+      { name: "DiscoMo RO", url: "../truetypefonts/DiscoMo-ro.ttf" }
+    ];
+
+    const samples = [
+      { label: "Polish", text: "Zażółć gęślą jaźń", highlight: "ą ć ę ł ń ś ź ż Ą Ć Ę Ł Ń Ś Ź Ż" },
+      { label: "Czech", text: "Příliš žluťoučký kůň", highlight: "č ď ě ň ř ť ů ž Č Ď Ě Ň Ř Ť Ů Ž" },
+      { label: "Hungarian", text: "Árvíztűrő tükörfúrógép", highlight: "ő ű Ő Ű" },
+      { label: "Turkish", text: "İstanbul, ığdır, şehri", highlight: "ğ ı ş İ Ğ Ş" },
+      { label: "Romanian", text: "Șerban ține țăruș", highlight: "ă ș ț Ă Ș Ț" },
+      { label: "Spanish", text: "¡Feliz cumpleaños!", highlight: "á é í ó ú ü ñ ¡" }
+    ];
+
+    const fontSelect = document.getElementById("fontSelect");
+    const sampleSelect = document.getElementById("sampleSelect");
+    const preview = document.getElementById("preview");
+    const highlight = document.getElementById("highlight");
+
+    fonts.forEach((f, i) => {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = f.name;
+      fontSelect.appendChild(opt);
+    });
+
+    samples.forEach((s, i) => {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = s.label;
+      sampleSelect.appendChild(opt);
+    });
+
+    async function render() {
+      const fontInfo = fonts[Number(fontSelect.value)] ?? fonts[0];
+      const sample = samples[Number(sampleSelect.value)] ?? samples[0];
+      highlight.innerHTML = sample.highlight
+        .split(" ")
+        .filter(Boolean)
+        .map(ch => `<span>${ch}</span>`)
+        .join(" ");
+
+      const font = await FontParserTTF.load(fontInfo.url);
+      const hasGlyf = !!font.getTableByType(Table.glyf);
+      const hasCff = !!font.getTableByType(Table.CFF);
+      if (!hasGlyf && !hasCff) return;
+
+      const ctx = preview.getContext("2d");
+      ctx.clearRect(0, 0, preview.width, preview.height);
+
+      CanvasRenderer.drawString(font, sample.text, preview, {
+        x: 24,
+        y: 160,
+        scale: 0.11,
+        styles: {
+          fillStyle: "#2c3e50",
+          strokeStyle: "#111",
+          lineWidth: 1.5
+        }
+      });
+    }
+
+    fontSelect.addEventListener("change", render);
+    sampleSelect.addEventListener("change", render);
+    render();
+  </script>
+</body>
+</html>
