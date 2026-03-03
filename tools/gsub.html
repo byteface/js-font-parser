@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kerning Demo</title>
+  <title>GSUB Ligature Demo</title>
   <style>
-    :root { --bg:#f7f3ef; --ink:#1f1a16; --muted:#6a5f57; --panel:#fff; --border:#e5ded6; }
-    body { margin:0; font-family:"Crimson Text", serif; background:var(--bg); color:var(--ink); }
+    :root { --bg:#f5f6fb; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e3e6ee; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
     header { padding:22px 20px 10px; }
     h1 { margin:0 0 6px; font-size:26px; }
     p { margin:0 0 14px; color:var(--muted); }
@@ -17,21 +17,21 @@
   </style>
 </head>
 <body>
+<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+
   <header>
-    <h1>Kerning Demo</h1>
-    <p>Shows text rendered with default spacing vs kern table adjustments (exaggerated).</p>
+    <h1>GSUB Ligature Demo</h1>
+    <p>Shows a string rendered normally vs after GSUB ligature substitution (when available).</p>
   </header>
   <div class="wrap">
     <div class="panel">
       <select id="fontSelect" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); margin-bottom:10px;"></select>
-      <input id="textInput" value="AVATAR WA To VA" />
-      <label style="display:block; font-size:12px; color:var(--muted); margin-bottom:8px;">Kerning strength</label>
-      <input id="kernInput" type="range" min="1" max="6" value="3" />
+      <input id="textInput" value="office official affine" />
       <canvas id="plain" width="900" height="200"></canvas>
     </div>
     <div class="panel">
-      <canvas id="kerned" width="900" height="200"></canvas>
-      <div id="kernInfo" style="margin-top:10px; font-size:12px; color:var(--muted);"></div>
+      <canvas id="gsub" width="900" height="200"></canvas>
+      <div id="info" style="margin-top:10px; font-size:12px; color:var(--muted);"></div>
     </div>
   </div>
 
@@ -41,17 +41,16 @@
 
     const input = document.getElementById('textInput');
     const fontSelect = document.getElementById('fontSelect');
-    const kernInput = document.getElementById('kernInput');
     const plainCanvas = document.getElementById('plain');
-    const kernCanvas = document.getElementById('kerned');
-    const kernInfo = document.getElementById('kernInfo');
+    const gsubCanvas = document.getElementById('gsub');
+    const info = document.getElementById('info');
 
     const fonts = [
-      { name: 'DiscoMo (kern table)', url: '../truetypefonts/DiscoMo.ttf' },
+      { name: 'Noto Sans', url: '../truetypefonts/noto/NotoSans-Regular.ttf' },
       { name: 'DevilInside', url: '../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf' },
-      { name: 'CARDS (kern table)', url: '../truetypefonts/CARDS.TTF' },
-      { name: 'Noto Sans (GPOS)', url: '../truetypefonts/noto/NotoSans-Regular.ttf' },
-      { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' }
+      { name: 'DiscoMo', url: '../truetypefonts/DiscoMo.ttf' },
+      { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' },
+      { name: 'Quill', url: '../truetypefonts/Quill.ttf' }
     ];
     const cache = new Map();
     let font = null;
@@ -74,7 +73,6 @@
     }
 
     input.addEventListener('input', render);
-    kernInput.addEventListener('input', render);
     fontSelect.addEventListener('change', async () => {
       font = await loadFont(fonts[Number(fontSelect.value)]?.url ?? fonts[0].url);
       render();
@@ -84,25 +82,21 @@
       if (!font) return;
       const text = input.value;
       const ctxPlain = plainCanvas.getContext('2d');
-      const ctxKern = kernCanvas.getContext('2d');
+      const ctxGsub = gsubCanvas.getContext('2d');
       ctxPlain.clearRect(0,0,plainCanvas.width,plainCanvas.height);
-      ctxKern.clearRect(0,0,kernCanvas.width,kernCanvas.height);
+      ctxGsub.clearRect(0,0,gsubCanvas.width,gsubCanvas.height);
 
-      const kernScale = Number(kernInput.value);
       CanvasRenderer.drawString(font, text, plainCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
-      CanvasRenderer.drawStringWithKerning(font, text, kernCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, kerningScale: kernScale, styles: { fillStyle: '#111', strokeStyle: '#111' } });
 
-      const pairs = [];
-      for (let i = 0; i < text.length - 1; i++) {
-        const a = text[i];
-        const b = text[i + 1];
-        const v = font.getKerningValue(a, b);
-        if (v) pairs.push(`${a}${b}: ${v}`);
-      }
-      const kernTable = font.getTableByType?.(0x6b65726e);
-      const gposTable = font.getTableByType?.(0x47504f53);
-      const tables = `kern: ${kernTable ? 'yes' : 'no'}, gpos: ${gposTable ? 'yes' : 'no'}`;
-      kernInfo.textContent = pairs.length > 0 ? `Kerning pairs: ${pairs.join(' | ')} | ${tables}` : `No kerning pairs found in this string. | ${tables}`;
+      const layout = font.layoutString(text, { gsubFeatures: ['liga'] });
+      CanvasRenderer.drawLayout(font, layout, gsubCanvas, { x: 20, y: 140, scale: 0.12, styles: { fillStyle: '#111', strokeStyle: '#111' } });
+
+      const plainGlyphs = font.getGlyphIndicesForString(text);
+      const gsubGlyphs = font.getGlyphIndicesForStringWithGsub(text, ['liga']);
+      const diff = plainGlyphs.length - gsubGlyphs.length;
+      info.textContent = diff > 0
+        ? `Ligatures found: ${diff} substitutions`
+        : 'No ligature substitutions detected for this string/font.';
     }
 
     populateFonts();

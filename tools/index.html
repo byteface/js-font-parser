@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Font Tools</title>
+  <style>
+    :root { --bg:#f6f4f1; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e3e1db; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    ul { list-style:none; padding:0; margin:12px 20px 30px; }
+    li { background:var(--panel); border:1px solid var(--border); border-radius:12px; margin:10px 0; padding:10px 12px; }
+    a { color:#2c3e50; text-decoration:none; font-weight:600; }
+    .desc { display:block; color:var(--muted); font-size:12px; margin-top:4px; }
+  </style>
+</head>
+<body>
+<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+
+  <header>
+    <h1>Font Tools</h1>
+    <p>Inspect, debug, and explore font data.</p>
+  </header>
+
+  <ul>
+    <li><a href="all-glyphs.html">All glyphs</a><span class="desc">Render every glyph in the font.</span></li>
+    <li><a href="unicode-coverage.html">Unicode coverage</a><span class="desc">Block coverage heatmap and summary.</span></li>
+    <li><a href="language-support.html">Language support</a><span class="desc">Required character sets per language.</span></li>
+    <li><a href="localized-review.html">Localized glyph review</a><span class="desc">Visual review of generated glyphs.</span></li>
+    <li><a href="multilang.html">Multilingual sample</a><span class="desc">Render multiple scripts in one view.</span></li>
+    <li><a href="glyph-inspector.html">Glyph inspector</a><span class="desc">Contours, points, bearings, bbox.</span></li>
+    <li><a href="tables.html">Font tables</a><span class="desc">Parsed table data and descriptions.</span></li>
+    <li><a href="metadata.html">Metadata</a><span class="desc">Name, OS/2, head, etc.</span></li>
+    <li><a href="metrics.html">Metrics</a><span class="desc">Ascender/descender/advance metrics.</span></li>
+    <li><a href="features.html">Features</a><span class="desc">GSUB/GPOS feature list.</span></li>
+    <li><a href="gsub.html">GSUB ligatures</a><span class="desc">Substitution output explorer.</span></li>
+    <li><a href="kerning.html">Kerning</a><span class="desc">Pair adjustments preview.</span></li>
+    <li><a href="marks.html">Marks</a><span class="desc">Mark tables and anchors.</span></li>
+    <li><a href="variable-font.html">Variable font</a><span class="desc">Axes and interpolation preview.</span></li>
+    <li><a href="woff.html">WOFF loader</a><span class="desc">WOFF parsing smoke test.</span></li>
+    <li><a href="svg-export.html">SVG export</a><span class="desc">Export glyphs to SVG paths.</span></li>
+    <li><a href="font-library.html">Font library</a><span class="desc">Pick fonts and test rendering.</span></li>
+  </ul>
+</body>
+</html>
