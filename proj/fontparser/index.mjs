@@ -343,6 +343,21 @@ const MARK_FALLBACKS = {
   "\u0335": ["-", "—"]
 };
 
+function findMarkFromExistingComposite(font, markChar) {
+  const glyfTable = font.getTableByType(Table.glyf);
+  if (!glyfTable?.getDescription) return null;
+  for (const [composedChar, parts] of Object.entries(DECOMPOSE)) {
+    if (!parts || parts[1] !== markChar) continue;
+    const compGlyphId = font.getGlyphIndexByChar(composedChar);
+    if (!compGlyphId) continue;
+    const desc = glyfTable.getDescription(compGlyphId);
+    if (!desc?.isComposite?.() || !desc.components?.length) continue;
+    const last = desc.components[desc.components.length - 1];
+    if (last?.glyphIndex != null) return last.glyphIndex;
+  }
+  return null;
+}
+
 const DOTLESS_MAP = {
   "ı": "i",
   "İ": "I"
@@ -635,6 +650,14 @@ function composeFont(buffer, font, targetChars, report) {
     const baseId = font.getGlyphIndexByChar(baseChar);
     let markId = font.getGlyphIndexByChar(markChar);
     let markFallbackUsed = null;
+    let markScale = null;
+    if (markId == null) {
+      const stolen = findMarkFromExistingComposite(font, markChar);
+      if (stolen != null) {
+        markId = stolen;
+        markFallbackUsed = "composite-steal";
+      }
+    }
     if (markId == null) {
       const fallbacks = MARK_FALLBACKS[markChar] || [];
       for (const fb of fallbacks) {
@@ -668,6 +691,13 @@ function composeFont(buffer, font, targetChars, report) {
     }
 
     let markTransform = null;
+    if (markChar === "\u030C" && markFallbackUsed === "v") {
+      markScale = 0.75;
+    }
+    if (markScale && markScale !== 1) {
+      const toFixed = (v) => Math.max(-32768, Math.min(32767, Math.round(v * 16384)));
+      markTransform = { a: toFixed(markScale), b: 0, c: 0, d: toFixed(markScale) };
+    }
     if (markInfo.pos === "overlay" && markFallbackUsed) {
       const angle = -12 * (Math.PI / 180);
       const cos = Math.cos(angle);
@@ -687,7 +717,7 @@ function composeFont(buffer, font, targetChars, report) {
     const baseLsb = font.getGlyph(baseId)?.leftSideBearing ?? 0;
     const clamp16 = (v) => Math.max(-32768, Math.min(32767, Math.round(v)));
     glyphRecords.push({ advance: clamp16(baseAdvance), lsb: clamp16(baseLsb) });
-    report.push({ char: ch, method: "mark-compose", base: baseChar, mark: markChar, fallback: markFallbackUsed });
+    report.push({ char: ch, method: "mark-compose", base: baseChar, mark: markChar, fallback: markFallbackUsed, scale: markScale });
   });
 
   newOffsets.push(newGlyf.length);
