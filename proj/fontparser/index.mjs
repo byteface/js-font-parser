@@ -744,7 +744,7 @@ function composeFont(buffer, font, targetChars, report) {
     const clamp16 = (v) => Math.max(-32768, Math.min(32767, Math.round(v)));
     glyphRecords.push({ advance: clamp16(advance ?? 0), lsb: clamp16(lsb ?? 0) });
     const gid = newNumGlyphs - 1;
-    if (bbox) generatedBbox.set(gid, bbox);
+    if (bbox) generatedBbox.set(gid, { ...bbox, glyphId: gid });
     return gid;
   };
 
