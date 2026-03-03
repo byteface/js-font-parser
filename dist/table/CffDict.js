@@ -5,10 +5,13 @@ var OPERATOR_NAMES = {
     18: 'private',
     19: 'subrs',
     20: 'defaultWidthX',
-    21: 'nominalWidthX'
+    21: 'nominalWidthX',
+    24: 'vstore'
 };
 var OPERATOR_NAMES_ESCAPE = {
-    30: 'ros'
+    30: 'ros',
+    36: 'fdArray',
+    37: 'fdSelect'
 };
 var CffDict = /** @class */ (function () {
     function CffDict() {

@@ -7,11 +7,14 @@ const OPERATOR_NAMES: Record<number, string> = {
     18: 'private',
     19: 'subrs',
     20: 'defaultWidthX',
-    21: 'nominalWidthX'
+    21: 'nominalWidthX',
+    24: 'vstore'
 };
 
 const OPERATOR_NAMES_ESCAPE: Record<number, string> = {
-    30: 'ros'
+    30: 'ros',
+    36: 'fdArray',
+    37: 'fdSelect'
 };
 
 export class CffDict {

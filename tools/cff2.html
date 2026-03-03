@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CFF2 Inspector</title>
+  <style>
+    :root { --bg:#f6f4f1; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e3e1db; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 20px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    input[type="file"] { padding:6px; }
+    canvas { width:100%; height:220px; border:1px dashed #ddd; background:#fff; }
+    code { background:#f3f3f3; padding:2px 4px; border-radius:4px; }
+  </style>
+</head>
+<body>
+<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+  <header>
+    <h1>CFF2 Inspector</h1>
+    <p>Load a font file to detect CFF2 and render sample text.</p>
+  </header>
+
+  <div class="panel">
+    <div class="row">
+      <input id="fileInput" type="file" accept=".otf,.ttf" />
+      <label>Sample <input id="sample" value="CFF2 test" style="padding:6px;border-radius:6px;border:1px solid #ccc" /></label>
+    </div>
+    <div id="info" style="margin-top:8px;color:var(--muted);font-size:12px"></div>
+  </div>
+
+  <div class="panel">
+    <canvas id="preview" width="1200" height="220"></canvas>
+  </div>
+
+  <script type="module">
+    import { ByteArray } from "../dist/utils/ByteArray.js";
+    import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+    import { TableDirectory } from "../dist/table/TableDirectory.js";
+    import { Table } from "../dist/table/Table.js";
+    import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
+
+    const input = document.getElementById("fileInput");
+    const info = document.getElementById("info");
+    const preview = document.getElementById("preview");
+    const sample = document.getElementById("sample");
+
+    let font = null;
+
+    function renderSample() {
+      if (!font) return;
+      const ctx = preview.getContext("2d");
+      ctx.clearRect(0, 0, preview.width, preview.height);
+      CanvasRenderer.drawString(font, sample.value || "CFF2 test", preview, {
+        x: 24,
+        y: 160,
+        scale: 0.11,
+        styles: { fillStyle: "#2c3e50", strokeStyle: "#111", lineWidth: 1.5 }
+      });
+    }
+
+    input.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const buf = await file.arrayBuffer();
+      const byteArray = new ByteArray(new Uint8Array(buf));
+      const dir = new TableDirectory(byteArray);
+      const tags = [];
+      for (let i = 0; i < dir.numTables; i++) {
+        const entry = dir.getEntry(i);
+        tags.push(entry.tag);
+      }
+      const hasCFF2 = tags.includes(Table.CFF2);
+      font = new FontParserTTF(new ByteArray(new Uint8Array(buf)));
+      info.innerHTML = `Tables: ${tags.length} | CFF2: <code>${hasCFF2 ? "yes" : "no"}</code>`;
+      renderSample();
+    });
+
+    sample.addEventListener("input", renderSample);
+  </script>
+</body>
+</html>

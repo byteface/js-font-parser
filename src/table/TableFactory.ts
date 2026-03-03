@@ -10,6 +10,7 @@ import { CmapTable } from './CmapTable.js'
 import { GlyfTable } from './GlyfTable.js'
 import { KernTable } from './KernTable.js'
 import { CffTable } from './CffTable.js'
+import { Cff2Table } from './Cff2Table.js'
 import { HeadTable } from './HeadTable.js'
 import { HheaTable } from './HheaTable.js'
 import { HmtxTable } from './HmtxTable.js'
@@ -46,6 +47,8 @@ export class TableFactory {
                 return new GlyfTable(de, byte_ar);
             case Table.CFF:
                 return new CffTable(de, byte_ar);
+            case Table.CFF2:
+                return new Cff2Table(de, byte_ar);
             case Table.head:
                 return new HeadTable(de, byte_ar);
             case Table.hhea:

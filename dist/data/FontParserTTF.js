@@ -17,6 +17,7 @@ var FontParserTTF = /** @class */ (function () {
         this.cmap = null;
         this.glyf = null;
         this.cff = null;
+        this.cff2 = null;
         this.head = null;
         this.hhea = null;
         this.hmtx = null;
@@ -68,6 +69,7 @@ var FontParserTTF = /** @class */ (function () {
         this.cmap = this.getTable(Table.cmap);
         this.glyf = this.getTable(Table.glyf);
         this.cff = this.getTable(Table.CFF);
+        this.cff2 = this.getTable(Table.CFF2);
         this.head = this.getTable(Table.head);
         this.hhea = this.getTable(Table.hhea);
         this.hmtx = this.getTable(Table.hmtx);
@@ -295,10 +297,16 @@ var FontParserTTF = /** @class */ (function () {
         if (description != null) {
             return new GlyphData(description, (_c = (_b = this.hmtx) === null || _b === void 0 ? void 0 : _b.getLeftSideBearing(i)) !== null && _c !== void 0 ? _c : 0, (_e = (_d = this.hmtx) === null || _d === void 0 ? void 0 : _d.getAdvanceWidth(i)) !== null && _e !== void 0 ? _e : 0);
         }
+        if (this.cff2) {
+            var cff2Desc = this.cff2.getGlyphDescription(i);
+            if (cff2Desc) {
+                return new GlyphData(cff2Desc, (_c = (_b = this.hmtx) === null || _b === void 0 ? void 0 : _b.getLeftSideBearing(i)) !== null && _c !== void 0 ? _c : 0, (_f = (_e = this.hmtx) === null || _e === void 0 ? void 0 : _e.getAdvanceWidth(i)) !== null && _f !== void 0 ? _f : 0, { isCubic: true });
+            }
+        }
         if (this.cff) {
             var cffDesc = this.cff.getGlyphDescription(i);
             if (cffDesc) {
-                return new GlyphData(cffDesc, (_g = (_f = this.hmtx) === null || _f === void 0 ? void 0 : _f.getLeftSideBearing(i)) !== null && _g !== void 0 ? _g : 0, (_j = (_h = this.hmtx) === null || _h === void 0 ? void 0 : _h.getAdvanceWidth(i)) !== null && _j !== void 0 ? _j : 0, { isCubic: true });
+                return new GlyphData(cffDesc, (_h = (_g = this.hmtx) === null || _g === void 0 ? void 0 : _g.getLeftSideBearing(i)) !== null && _h !== void 0 ? _h : 0, (_k = (_j = this.hmtx) === null || _j === void 0 ? void 0 : _j.getAdvanceWidth(i)) !== null && _k !== void 0 ? _k : 0, { isCubic: true });
             }
         }
         return null;

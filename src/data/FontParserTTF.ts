@@ -3,6 +3,7 @@ import { Os2Table } from '../table/Os2Table.js';
 import { CmapTable } from '../table/CmapTable.js';
 import { GlyfTable } from '../table/GlyfTable.js';
 import { CffTable } from '../table/CffTable.js';
+import { Cff2Table } from '../table/Cff2Table.js';
 import { HeadTable } from '../table/HeadTable.js';
 import { HheaTable } from '../table/HheaTable.js';
 import { HmtxTable } from '../table/HmtxTable.js';
@@ -33,6 +34,7 @@ export class FontParserTTF {
     private cmap: CmapTable | null = null;
     private glyf: GlyfTable | null = null;
     private cff: CffTable | null = null;
+    private cff2: Cff2Table | null = null;
     private head: HeadTable | null = null;
     private hhea: HheaTable | null = null;
     private hmtx: HmtxTable | null = null;
@@ -89,6 +91,7 @@ export class FontParserTTF {
         this.cmap = this.getTable(Table.cmap) as CmapTable | null;
         this.glyf = this.getTable(Table.glyf) as GlyfTable | null;
         this.cff = this.getTable(Table.CFF) as CffTable | null;
+        this.cff2 = this.getTable(Table.CFF2) as Cff2Table | null;
         this.head = this.getTable(Table.head) as HeadTable | null;
         this.hhea = this.getTable(Table.hhea) as HheaTable | null;
         this.hmtx = this.getTable(Table.hmtx) as HmtxTable | null;
@@ -324,6 +327,12 @@ export class FontParserTTF {
         const description = this.glyf?.getDescription(i);
         if (description != null) {
             return new GlyphData(description, this.hmtx?.getLeftSideBearing(i) ?? 0, this.hmtx?.getAdvanceWidth(i) ?? 0);
+        }
+        if (this.cff2) {
+            const cff2Desc = this.cff2.getGlyphDescription(i);
+            if (cff2Desc) {
+                return new GlyphData(cff2Desc, this.hmtx?.getLeftSideBearing(i) ?? 0, this.hmtx?.getAdvanceWidth(i) ?? 0, { isCubic: true });
+            }
         }
         if (this.cff) {
             const cffDesc = this.cff.getGlyphDescription(i);
