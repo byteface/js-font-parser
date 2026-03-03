@@ -7,6 +7,8 @@ import { LigatureSubst } from "./LigatureSubst.js";
 import { LigatureSubstFormat1 } from "./LigatureSubstFormat1.js";
 import { ContextSubst } from "./ContextSubst.js";
 import { ChainingSubst } from "./ChainingSubst.js";
+import { MultipleSubst } from "./MultipleSubst.js";
+import { AlternateSubst } from "./AlternateSubst.js";
 var GsubTable = /** @class */ (function () {
     function GsubTable(de, byte_ar) {
         byte_ar.offset = de.offset;
@@ -36,10 +38,10 @@ var GsubTable = /** @class */ (function () {
                 s = SingleSubst.read(byte_ar, offset);
                 break;
             case 2:
-                // s = MultipleSubst.read(byte_ar, offset);
+                s = MultipleSubst.read(byte_ar, offset);
                 break;
             case 3:
-                // s = AlternateSubst.read(byte_ar, offset);
+                s = AlternateSubst.read(byte_ar, offset);
                 break;
             case 4:
                 s = LigatureSubst.read(byte_ar, offset);
@@ -65,6 +67,11 @@ var GsubTable = /** @class */ (function () {
                 continue;
             if (index < 0 || index >= out.length)
                 continue;
+            if (typeof st.applyAt === "function") {
+                var nextGlyphs = st.applyAt(out, index);
+                if (nextGlyphs)
+                    return nextGlyphs;
+            }
             if (typeof st.substitute === "function") {
                 var original = out[index];
                 var next = st.substitute(original);

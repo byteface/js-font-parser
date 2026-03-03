@@ -13,6 +13,8 @@ import { LangSys } from "./LangSys.js";
 import { ContextSubst } from "./ContextSubst.js";
 import { ChainingSubst } from "./ChainingSubst.js";
 import { LigatureSubstFormat1 } from "./LigatureSubstFormat1.js";
+import { MultipleSubst } from "./MultipleSubst.js";
+import { AlternateSubst } from "./AlternateSubst.js";
 
 export class GsubTable implements ITable {
     scriptList: ScriptList;
@@ -53,10 +55,10 @@ export class GsubTable implements ITable {
                 s = SingleSubst.read(byte_ar, offset);
                 break;
             case 2:
-                // s = MultipleSubst.read(byte_ar, offset);
+                s = MultipleSubst.read(byte_ar, offset);
                 break;
             case 3:
-                // s = AlternateSubst.read(byte_ar, offset);
+                s = AlternateSubst.read(byte_ar, offset);
                 break;
             case 4:
                 s = LigatureSubst.read(byte_ar, offset);
@@ -81,6 +83,10 @@ export class GsubTable implements ITable {
             if (!st) continue;
             if (index < 0 || index >= out.length) continue;
 
+            if (typeof (st as any).applyAt === "function") {
+                const nextGlyphs = (st as any).applyAt(out, index);
+                if (nextGlyphs) return nextGlyphs;
+            }
             if (typeof (st as any).substitute === "function") {
                 const original = out[index];
                 const next = (st as any).substitute(original);
