@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Unicode Coverage</title>
+  <style>
+    :root { --bg:#f6f4f1; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e3e1db; --ok:#1f7a3f; --bad:#b2432c; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 20px; }
+    select { padding:8px 10px; border-radius:8px; border:1px solid var(--border); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(24px,1fr)); gap:6px; }
+    .cell { width:24px; height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:12px; border:1px solid #ddd; }
+    .ok { background:#e7f6ec; color:var(--ok); }
+    .bad { background:#fdeae6; color:var(--bad); }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { border-bottom:1px solid #eee; padding:8px; text-align:left; }
+    .note { color:var(--muted); font-size:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Unicode Coverage</h1>
+    <p>Browse Unicode blocks and see which characters are present in the font.</p>
+  </header>
+  <div class="panel">
+    <label>Font
+      <select id="fontSelect"></select>
+    </label>
+    <label style="margin-left:12px;">Block
+      <select id="blockSelect"></select>
+    </label>
+  </div>
+  <div class="panel">
+    <div id="blockTitle"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+  <div class="panel">
+    <h3>Block Summary</h3>
+    <table>
+      <thead>
+        <tr><th>Block</th><th>Range</th><th>Coverage</th></tr>
+      </thead>
+      <tbody id="summary"></tbody>
+    </table>
+  </div>
+  <div class="panel note">Tip: This shows glyph presence only. Shaping is not applied.</div>
+
+  <script type="module">
+    import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+
+    const fonts = [
+      { name: "DiscoMo", url: "../truetypefonts/DiscoMo.ttf" },
+      { name: "DiscoMo ES (localised)", url: "../truetypefonts/DiscoMo-es.ttf" },
+      { name: "DiscoMo PL (localised)", url: "../truetypefonts/DiscoMo-pl.ttf" },
+      { name: "DevilInside", url: "../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf" },
+      { name: "Noto Sans", url: "../truetypefonts/noto/NotoSans-Regular.ttf" }
+    ];
+
+    const blocks = [
+      { name: "Basic Latin", start: 0x0020, end: 0x007F },
+      { name: "Latin-1 Supplement", start: 0x00A0, end: 0x00FF },
+      { name: "Latin Extended-A", start: 0x0100, end: 0x017F },
+      { name: "Latin Extended-B", start: 0x0180, end: 0x024F },
+      { name: "IPA Extensions", start: 0x0250, end: 0x02AF },
+      { name: "Greek", start: 0x0370, end: 0x03FF },
+      { name: "Cyrillic", start: 0x0400, end: 0x04FF },
+      { name: "Hebrew", start: 0x0590, end: 0x05FF },
+      { name: "Arabic", start: 0x0600, end: 0x06FF }
+    ];
+
+    const fontSelect = document.getElementById("fontSelect");
+    const blockSelect = document.getElementById("blockSelect");
+    const grid = document.getElementById("grid");
+    const summary = document.getElementById("summary");
+    const blockTitle = document.getElementById("blockTitle");
+
+    fonts.forEach((f, i) => {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = f.name;
+      fontSelect.appendChild(opt);
+    });
+
+    blocks.forEach((b, i) => {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = b.name;
+      blockSelect.appendChild(opt);
+    });
+
+    async function loadFont() {
+      const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+      return FontParserTTF.load(selected.url);
+    }
+
+    function renderBlock(font, block) {
+      grid.innerHTML = "";
+      blockTitle.textContent = `${block.name} (U+${block.start.toString(16).padStart(4,"0")}–U+${block.end.toString(16).padStart(4,"0")})`;
+      for (let cp = block.start; cp <= block.end; cp++) {
+        const ch = String.fromCharCode(cp);
+        const has = font.getGlyphIndexByChar(ch);
+        const div = document.createElement("div");
+        div.className = `cell ${has ? "ok" : "bad"}`;
+        div.title = `U+${cp.toString(16).padStart(4,"0")}`;
+        div.textContent = ch.trim() ? ch : "·";
+        grid.appendChild(div);
+      }
+    }
+
+    function renderSummary(font) {
+      summary.innerHTML = "";
+      blocks.forEach(b => {
+        let total = 0;
+        let missing = 0;
+        for (let cp = b.start; cp <= b.end; cp++) {
+          total++;
+          if (!font.getGlyphIndexByChar(String.fromCharCode(cp))) missing++;
+        }
+        const coverage = Math.round(((total - missing) / total) * 100);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${b.name}</td><td>U+${b.start.toString(16)}–U+${b.end.toString(16)}</td><td>${coverage}%</td>`;
+        summary.appendChild(tr);
+      });
+    }
+
+    async function render() {
+      const font = await loadFont();
+      const block = blocks[Number(blockSelect.value)] ?? blocks[0];
+      renderBlock(font, block);
+      renderSummary(font);
+    }
+
+    fontSelect.addEventListener("change", render);
+    blockSelect.addEventListener("change", render);
+    render();
+  </script>
+</body>
+</html>
