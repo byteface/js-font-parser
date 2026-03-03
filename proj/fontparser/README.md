@@ -24,4 +24,5 @@ node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --localise es --
 ## Fallback Rules (Current)
 - Acute/grave/etc: fallback to `"."`, `"'"`, ``"` ``, `"^"`, `"~"` when marks are missing.
 - Cedilla/ogonek: fallback to comma/dot below.
+- Breve: fallback to `"v"` when missing.
 - Stroke/overlay (`ł/Ł`): fallback to `"-"` or `"—"` and **rotate -12°** for a slanted bar.
