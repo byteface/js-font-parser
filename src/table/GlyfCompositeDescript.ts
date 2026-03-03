@@ -75,8 +75,10 @@ export class GlyfCompositeDescript implements IGlyphDescription {
             const desc = this.parentTable.getDescription(comp.glyphIndex);
             if (desc != null) {
                 desc.resolve();
-                firstIndex += desc.getPointCount();
-                firstContour += desc.getContourCount();
+                comp.pointCount = desc.getPointCount();
+                comp.contourCount = desc.getContourCount();
+                firstIndex += comp.pointCount;
+                firstContour += comp.contourCount;
             }
         }
 
@@ -131,11 +133,11 @@ export class GlyfCompositeDescript implements IGlyphDescription {
     }
 
     private getCompositeComp(i: number): GlyfCompositeComp | null {
-        return this.components.find(comp => comp.firstIndex === i) || null;
+        return this.components.find(comp => i >= comp.firstIndex && i < comp.firstIndex + comp.pointCount) || null;
     }
 
     private getCompositeCompEndPt(i: number): GlyfCompositeComp | null {
-        return this.components.find(comp => comp.firstContour === i) || null;
+        return this.components.find(comp => i >= comp.firstContour && i < comp.firstContour + comp.contourCount) || null;
     }
 
     getInstructions(): number[] | null {

@@ -54,8 +54,10 @@ var GlyfCompositeDescript = /** @class */ (function () {
             var desc = this.parentTable.getDescription(comp.glyphIndex);
             if (desc != null) {
                 desc.resolve();
-                firstIndex += desc.getPointCount();
-                firstContour += desc.getContourCount();
+                comp.pointCount = desc.getPointCount();
+                comp.contourCount = desc.getContourCount();
+                firstIndex += comp.pointCount;
+                firstContour += comp.contourCount;
             }
         }
         this.pointCount = firstIndex;
@@ -104,10 +106,10 @@ var GlyfCompositeDescript = /** @class */ (function () {
         return 0;
     };
     GlyfCompositeDescript.prototype.getCompositeComp = function (i) {
-        return this.components.find(function (comp) { return comp.firstIndex === i; }) || null;
+        return this.components.find(function (comp) { return i >= comp.firstIndex && i < comp.firstIndex + comp.pointCount; }) || null;
     };
     GlyfCompositeDescript.prototype.getCompositeCompEndPt = function (i) {
-        return this.components.find(function (comp) { return comp.firstContour === i; }) || null;
+        return this.components.find(function (comp) { return i >= comp.firstContour && i < comp.firstContour + comp.contourCount; }) || null;
     };
     GlyfCompositeDescript.prototype.getInstructions = function () {
         return this.instructions;

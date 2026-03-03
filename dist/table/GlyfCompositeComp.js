@@ -3,6 +3,8 @@ var GlyfCompositeComp = /** @class */ (function () {
         // Properties
         this.firstIndex = 0;
         this.firstContour = 0;
+        this.pointCount = 0;
+        this.contourCount = 0;
         this.argument1 = 0;
         this.argument2 = 0;
         this.flags = 0;

@@ -15,6 +15,8 @@ export class GlyfCompositeComp {
     // Properties
     firstIndex: number = 0;
     firstContour: number = 0;
+    pointCount: number = 0;
+    contourCount: number = 0;
     argument1: number = 0;
     argument2: number = 0;
     flags: number = 0;
