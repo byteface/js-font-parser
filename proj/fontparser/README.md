@@ -14,6 +14,7 @@ node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --localise es --
 ## Notes
 - `--coverage` prints language coverage based on required character sets.
 - `--localise` writes a new font and attempts to compose missing Latin glyphs using base + combining marks.
+- If combining marks are missing, it will try simple fallback punctuation (e.g. dot/comma) for proof-of-concept.
 
 ## Limitations
 - Composition currently targets BMP characters only (cmap format 4 rebuild).

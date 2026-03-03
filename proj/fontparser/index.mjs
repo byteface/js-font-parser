@@ -234,7 +234,25 @@ const MARKS = {
   "\u030B": { name: "double-acute", pos: "above" },
   "\u030C": { name: "caron", pos: "above" },
   "\u0327": { name: "cedilla", pos: "below" },
-  "\u0328": { name: "ogonek", pos: "below" }
+  "\u0328": { name: "ogonek", pos: "below" },
+  "\u0335": { name: "short-stroke", pos: "overlay" }
+};
+
+const MARK_FALLBACKS = {
+  "\u0301": [".", "´", "'"],
+  "\u0300": [".", "`"],
+  "\u0302": ["^"],
+  "\u0303": ["~"],
+  "\u0304": ["-"],
+  "\u0306": ["˘"],
+  "\u0307": ["."],
+  "\u0308": [":"],
+  "\u030A": ["o", "°"],
+  "\u030B": ["\""],
+  "\u030C": ["v"],
+  "\u0327": [",", "."],
+  "\u0328": [",", "."],
+  "\u0335": ["-", "—"]
 };
 
 const DECOMPOSE = {
@@ -262,6 +280,7 @@ const DECOMPOSE = {
   "î": ["i", "\u0302"], "Î": ["I", "\u0302"],
   "ï": ["i", "\u0308"], "Ï": ["I", "\u0308"],
   "ñ": ["n", "\u0303"], "Ñ": ["N", "\u0303"],
+  "ń": ["n", "\u0301"], "Ń": ["N", "\u0301"],
   "ó": ["o", "\u0301"], "Ó": ["O", "\u0301"],
   "ò": ["o", "\u0300"], "Ò": ["O", "\u0300"],
   "ô": ["o", "\u0302"], "Ô": ["O", "\u0302"],
@@ -279,7 +298,8 @@ const DECOMPOSE = {
   "š": ["s", "\u030C"], "Š": ["S", "\u030C"],
   "ź": ["z", "\u0301"], "Ź": ["Z", "\u0301"],
   "ż": ["z", "\u0307"], "Ż": ["Z", "\u0307"],
-  "ž": ["z", "\u030C"], "Ž": ["Z", "\u030C"]
+  "ž": ["z", "\u030C"], "Ž": ["Z", "\u030C"],
+  "ł": ["l", "\u0335"], "Ł": ["L", "\u0335"]
 };
 
 function buildFormat4(mapping) {
@@ -474,7 +494,17 @@ function composeFont(buffer, font, targetChars) {
     if (!decomp) return;
     const [baseChar, markChar] = decomp;
     const baseId = font.getGlyphIndexByChar(baseChar);
-    const markId = font.getGlyphIndexByChar(markChar);
+    let markId = font.getGlyphIndexByChar(markChar);
+    if (markId == null) {
+      const fallbacks = MARK_FALLBACKS[markChar] || [];
+      for (const fb of fallbacks) {
+        const fbId = font.getGlyphIndexByChar(fb);
+        if (fbId != null) {
+          markId = fbId;
+          break;
+        }
+      }
+    }
     if (baseId == null || markId == null) return;
     const baseBox = bboxFromGlyph(font, baseId);
     const markBox = bboxFromGlyph(font, markId);
@@ -488,8 +518,12 @@ function composeFont(buffer, font, targetChars) {
     let dy = 0;
     if (markInfo.pos === "above") {
       dy = Math.round(baseBox.yMax + baseGap - markBox.yMin);
-    } else {
+    } else if (markInfo.pos === "below") {
       dy = Math.round(baseBox.yMin - baseGap - markBox.yMax);
+    } else {
+      const baseMid = (baseBox.yMin + baseBox.yMax) / 2;
+      const markMid = (markBox.yMin + markBox.yMax) / 2;
+      dy = Math.round(baseMid - markMid);
     }
 
     const glyphBuf = makeCompositeGlyph(baseBox, markBox, dx, dy);
@@ -501,7 +535,8 @@ function composeFont(buffer, font, targetChars) {
 
     const baseAdvance = font.getGlyph(baseId)?.advanceWidth ?? 0;
     const baseLsb = font.getGlyph(baseId)?.leftSideBearing ?? 0;
-    glyphRecords.push({ advance: baseAdvance, lsb: baseLsb });
+    const clamp16 = (v) => Math.max(-32768, Math.min(32767, Math.round(v)));
+    glyphRecords.push({ advance: clamp16(baseAdvance), lsb: clamp16(baseLsb) });
   });
 
   newOffsets.push(newGlyf.length);
