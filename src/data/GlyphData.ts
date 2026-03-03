@@ -5,11 +5,13 @@ export class GlyphData {
     leftSideBearing: number;
     advanceWidth: number;
     points: Point[] | null;
+    isCubic: boolean;
   
-    constructor(gd: IGlyphDescription, lsb: number, advance: number) {
+    constructor(gd: IGlyphDescription, lsb: number, advance: number, options?: { isCubic?: boolean }) {
       this.leftSideBearing = lsb;
       this.advanceWidth = advance;
       this.points = null;
+      this.isCubic = options?.isCubic ?? false;
       this.describe(gd);
     }
   

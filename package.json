@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test",
-    "build": "webpack"
+    "build:dist": "tsc",
+    "build:bundle": "webpack",
+    "build": "npm run build:dist && npm run build:bundle"
   },
   "keywords": ["font"],
   "author": "byteface",

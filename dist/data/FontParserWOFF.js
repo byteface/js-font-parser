@@ -63,6 +63,7 @@ var FontParserWOFF = /** @class */ (function () {
         this.os2 = null;
         this.cmap = null;
         this.glyf = null;
+        this.cff = null;
         this.head = null;
         this.hhea = null;
         this.hmtx = null;
@@ -256,6 +257,7 @@ var FontParserWOFF = /** @class */ (function () {
         this.os2 = this.getTable(Table.OS_2);
         this.cmap = this.getTable(Table.cmap);
         this.glyf = this.getTable(Table.glyf);
+        this.cff = this.getTable(Table.CFF);
         this.head = this.getTable(Table.head);
         this.hhea = this.getTable(Table.hhea);
         this.hmtx = this.getTable(Table.hmtx);
@@ -281,11 +283,18 @@ var FontParserWOFF = /** @class */ (function () {
     };
     // Get a glyph description by index
     FontParserWOFF.prototype.getGlyph = function (i) {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         var description = (_a = this.glyf) === null || _a === void 0 ? void 0 : _a.getDescription(i);
-        return description != null
-            ? new GlyphData(description, (_c = (_b = this.hmtx) === null || _b === void 0 ? void 0 : _b.getLeftSideBearing(i)) !== null && _c !== void 0 ? _c : 0, (_e = (_d = this.hmtx) === null || _d === void 0 ? void 0 : _d.getAdvanceWidth(i)) !== null && _e !== void 0 ? _e : 0)
-            : null;
+        if (description != null) {
+            return new GlyphData(description, (_c = (_b = this.hmtx) === null || _b === void 0 ? void 0 : _b.getLeftSideBearing(i)) !== null && _c !== void 0 ? _c : 0, (_e = (_d = this.hmtx) === null || _d === void 0 ? void 0 : _d.getAdvanceWidth(i)) !== null && _e !== void 0 ? _e : 0);
+        }
+        if (this.cff) {
+            var cffDesc = this.cff.getGlyphDescription(i);
+            if (cffDesc) {
+                return new GlyphData(cffDesc, (_g = (_f = this.hmtx) === null || _f === void 0 ? void 0 : _f.getLeftSideBearing(i)) !== null && _g !== void 0 ? _g : 0, (_j = (_h = this.hmtx) === null || _h === void 0 ? void 0 : _h.getAdvanceWidth(i)) !== null && _j !== void 0 ? _j : 0, { isCubic: true });
+            }
+        }
+        return null;
     };
     // Get the number of glyphs
     FontParserWOFF.prototype.getNumGlyphs = function () {
@@ -443,8 +452,9 @@ var FontParserWOFF = /** @class */ (function () {
             return null;
         return this.getGlyph(idx);
     };
-    FontParserWOFF.prototype.getGlyphIndicesForStringWithGsub = function (text, featureTags) {
+    FontParserWOFF.prototype.getGlyphIndicesForStringWithGsub = function (text, featureTags, scriptTags) {
         if (featureTags === void 0) { featureTags = ["liga"]; }
+        if (scriptTags === void 0) { scriptTags = ["DFLT", "latn"]; }
         var glyphs = [];
         for (var _i = 0, text_1 = text; _i < text_1.length; _i++) {
             var ch = text_1[_i];
@@ -454,7 +464,7 @@ var FontParserWOFF = /** @class */ (function () {
         }
         if (!this.gsub || glyphs.length === 0)
             return glyphs;
-        var subtables = this.gsub.getSubtablesForFeatures(featureTags);
+        var subtables = this.gsub.getSubtablesForFeatures(featureTags, scriptTags);
         var result = glyphs.slice();
         var _loop_1 = function (st) {
             if (!st)
@@ -526,10 +536,11 @@ var FontParserWOFF = /** @class */ (function () {
         return this.getGposKerningValueByGlyphs(left, right);
     };
     FontParserWOFF.prototype.layoutString = function (text, options) {
-        var _a;
+        var _a, _b;
         if (options === void 0) { options = {}; }
         var gsubFeatures = (_a = options.gsubFeatures) !== null && _a !== void 0 ? _a : ["liga"];
-        var glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures);
+        var scriptTags = (_b = options.scriptTags) !== null && _b !== void 0 ? _b : ["DFLT", "latn"];
+        var glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
         var positioned = [];
         for (var i = 0; i < glyphIndices.length; i++) {
             var glyphIndex = glyphIndices[i];
@@ -547,9 +558,56 @@ var FontParserWOFF = /** @class */ (function () {
                 glyphIndex: glyphIndex,
                 xAdvance: glyph.advanceWidth + kern,
                 xOffset: 0,
+                yOffset: 0,
             });
         }
+        if (options.gpos) {
+            this.applyGposPositioning(glyphIndices, positioned);
+        }
         return positioned;
+    };
+    FontParserWOFF.prototype.applyGposPositioning = function (glyphIndices, positioned) {
+        var _this = this;
+        var anchorsCache = new Map();
+        var getAnchors = function (gid) {
+            if (anchorsCache.has(gid))
+                return anchorsCache.get(gid);
+            var anchors = _this.getMarkAnchorsForGlyph(gid);
+            anchorsCache.set(gid, anchors);
+            return anchors;
+        };
+        var getBaseAnchor = function (anchors, classIndex) {
+            return anchors.find(function (a) { return (a.type === 'base' || a.type === 'ligature' || a.type === 'mark2') && a.classIndex === classIndex; });
+        };
+        for (var i = 0; i < glyphIndices.length; i++) {
+            var gid = glyphIndices[i];
+            var anchors = getAnchors(gid);
+            var markAnchor = anchors.find(function (a) { return a.type === 'mark'; });
+            if (!markAnchor)
+                continue;
+            var baseIndex = i - 1;
+            while (baseIndex >= 0) {
+                var baseAnchors = getAnchors(glyphIndices[baseIndex]);
+                var baseAnchor = getBaseAnchor(baseAnchors, markAnchor.classIndex);
+                if (baseAnchor) {
+                    positioned[i].xOffset += baseAnchor.x - markAnchor.x;
+                    positioned[i].yOffset += baseAnchor.y - markAnchor.y;
+                    positioned[i].xAdvance = 0;
+                    break;
+                }
+                baseIndex--;
+            }
+        }
+        for (var i = 1; i < glyphIndices.length; i++) {
+            var prevAnchors = getAnchors(glyphIndices[i - 1]);
+            var currAnchors = getAnchors(glyphIndices[i]);
+            var exitAnchor = prevAnchors.find(function (a) { return a.type === 'cursive-exit'; });
+            var entryAnchor = currAnchors.find(function (a) { return a.type === 'cursive-entry'; });
+            if (exitAnchor && entryAnchor) {
+                positioned[i].xOffset += exitAnchor.x - entryAnchor.x;
+                positioned[i].yOffset += exitAnchor.y - entryAnchor.y;
+            }
+        }
     };
     FontParserWOFF.prototype.getTableByType = function (tableType) {
         return this.getTable(tableType);

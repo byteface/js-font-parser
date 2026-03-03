@@ -1,14 +1,15 @@
 # Wishlist
 
 ## Font Format Support
-- [ ] **CFF/CFF2 outlines (OTF)**: parse `CFF ` / `CFF2` tables and Type 2 charstrings.
+- [x] **CFF outlines (OTF)**: basic `CFF ` parsing and Type 2 charstrings.
+- [ ] **CFF2 outlines (OTF)**: parse `CFF2` tables and Type 2 charstrings.
 - [ ] **WOFF2**: decode Brotli-compressed tables.
 - [ ] **COLRv1**: parse Paint tables (COLR v1).
 - [ ] **SVG glyphs**: parse and render `SVG ` table glyphs.
 
 ## Layout + Shaping
-- [ ] **Shaping (GSUB)**: apply substitutions to strings for complex scripts (Arabic, Devanagari, etc).
-- [ ] **Positioning (GPOS)**: apply marks/cursive/pairs during layout.
+- [x] **Shaping (GSUB)**: apply single + ligature substitutions during layout (contextual not yet supported).
+- [x] **Positioning (GPOS)**: apply marks/cursive/pairs during layout.
 - [x] **GPOS lookups**: parse pair/mark/cursive subtables and expose anchors + kerning.
 
 ## Variable Fonts
@@ -22,9 +23,9 @@
 - [x] Expanded API docs with rendering helpers and common patterns.
 
 ## Top 10 Next
-1. CFF/CFF2 (OTF) outlines
-2. GSUB shaping engine (apply substitutions to strings)
-3. GPOS positioning engine (marks/cursive/ligatures during layout)
+1. CFF2 (OTF) outlines
+2. Contextual GSUB shaping (complex scripts)
+3. Full GPOS positioning (mark/ligature/cursive across scripts)
 4. gvar interpolation for variable fonts
 5. COLRv1 paint table support
 6. WOFF2 support

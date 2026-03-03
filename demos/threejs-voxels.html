@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Three.js Voxel Glyphs</title>
+  <style>
+    :root { --bg:#0f1115; --ink:#eef1f7; --muted:#a3b0c5; --panel:#171a22; --border:#2d3447; }
+    body { margin:0; font-family:"Space Grotesk", system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+    header { padding:20px 22px 10px; }
+    h1 { margin:0 0 6px; font-size:24px; }
+    p { margin:0 0 12px; color:var(--muted); }
+    .panel { display:flex; flex-wrap:wrap; gap:12px; padding:10px 22px 16px; align-items:center; }
+    label { display:flex; flex-direction:column; gap:6px; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); }
+    input, select { background:#0f1320; color:var(--ink); border:1px solid var(--border); border-radius:8px; padding:8px 10px; min-width:180px; }
+    canvas { display:block; width:100vw; height:70vh; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Three.js Voxel Glyphs</h1>
+    <p>Glyph points instanced into a volumetric voxel field.</p>
+  </header>
+  <div class="panel">
+    <label>Font
+      <select id="fontSelect">
+        <option value="../truetypefonts/DiscoMo.ttf">DiscoMo</option>
+        <option value="../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf">DevilInside</option>
+        <option value="../truetypefonts/Quill.ttf">Quill</option>
+      </select>
+    </label>
+    <label>Text
+      <input id="textInput" value="VOXEL" />
+    </label>
+    <label>Size
+      <input id="sizeInput" type="range" min="80" max="240" value="150" />
+    </label>
+  </div>
+  <canvas id="stage"></canvas>
+
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.158.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js";
+    import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+    import { Table } from "../dist/table/Table.js";
+
+    const canvas = document.getElementById("stage");
+    const fontSelect = document.getElementById("fontSelect");
+    const textInput = document.getElementById("textInput");
+    const sizeInput = document.getElementById("sizeInput");
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color("#0f1115");
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 2000);
+    camera.position.set(0, 120, 420);
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    const light = new THREE.DirectionalLight("#ffffff", 1.2);
+    light.position.set(100, 200, 100);
+    scene.add(light);
+
+    let font = null;
+    let mesh = null;
+
+    function buildVoxels(text) {
+      if (!font) return;
+      if (mesh) {
+        scene.remove(mesh);
+        mesh.geometry.dispose();
+      }
+      const head = font.getTableByType(Table.head);
+      const unitsPerEm = head?.unitsPerEm ?? 1000;
+      const sizePx = Number(sizeInput.value);
+      const scale = sizePx / unitsPerEm;
+
+      const points = [];
+      let cursorX = 0;
+      for (const ch of Array.from(text)) {
+        const glyph = font.getGlyphByChar(ch);
+        if (!glyph || !glyph.points) {
+          cursorX += sizePx * 0.35;
+          continue;
+        }
+        const pts = glyph.points.slice(0, Math.max(0, glyph.getPointCount() - 2));
+        for (const p of pts) {
+          points.push({
+            x: (p.x + cursorX) * scale,
+            y: p.y * scale
+          });
+        }
+        cursorX += glyph.advanceWidth * scale + 12;
+      }
+
+      const geom = new THREE.BoxGeometry(2, 2, 2);
+      const mat = new THREE.MeshStandardMaterial({ color: 0x8cc7ff, roughness: 0.2, metalness: 0.2 });
+      mesh = new THREE.InstancedMesh(geom, mat, points.length);
+      const dummy = new THREE.Object3D();
+
+      points.forEach((p, i) => {
+        dummy.position.set(p.x - 160, p.y - 40, Math.sin(p.x * 0.02) * 20);
+        dummy.rotation.set(0, p.y * 0.002, 0);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      });
+      scene.add(mesh);
+    }
+
+    async function boot() {
+      font = await FontParserTTF.load(fontSelect.value);
+      buildVoxels(textInput.value);
+    }
+
+    function resize() {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+
+    function animate(time) {
+      resize();
+      if (mesh) {
+        mesh.rotation.y = time * 0.0002;
+      }
+      controls.update();
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    fontSelect.addEventListener("change", boot);
+    textInput.addEventListener("input", () => buildVoxels(textInput.value));
+    sizeInput.addEventListener("input", () => buildVoxels(textInput.value));
+
+    boot();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

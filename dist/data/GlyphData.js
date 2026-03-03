@@ -1,9 +1,11 @@
 import { Point } from './Point.js';
 var GlyphData = /** @class */ (function () {
-    function GlyphData(gd, lsb, advance) {
+    function GlyphData(gd, lsb, advance, options) {
+        var _a;
         this.leftSideBearing = lsb;
         this.advanceWidth = advance;
         this.points = null;
+        this.isCubic = (_a = options === null || options === void 0 ? void 0 : options.isCubic) !== null && _a !== void 0 ? _a : false;
         this.describe(gd);
     }
     GlyphData.prototype.getPoint = function (i) {

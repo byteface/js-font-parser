@@ -63,6 +63,40 @@ var CanvasRenderer = /** @class */ (function () {
             }
         }
     };
+    CanvasRenderer.addContourToShapeCubic = function (context, glyph, startIndex, count) {
+        var _a;
+        if ((_a = glyph.getPoint(startIndex)) === null || _a === void 0 ? void 0 : _a.endOfContour)
+            return;
+        var offset = 0;
+        while (offset < count) {
+            var p0 = glyph.getPoint(startIndex + (offset % count));
+            var p1 = glyph.getPoint(startIndex + ((offset + 1) % count));
+            if (!p0 || !p1)
+                break;
+            if (offset === 0) {
+                context.moveTo(p0.x, p0.y);
+            }
+            if (p1.onCurve) {
+                context.lineTo(p1.x, p1.y);
+                offset += 1;
+                continue;
+            }
+            var p2 = glyph.getPoint(startIndex + ((offset + 2) % count));
+            var p3 = glyph.getPoint(startIndex + ((offset + 3) % count));
+            if (p2 && !p2.onCurve && p3 && p3.onCurve) {
+                context.bezierCurveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+                offset += 3;
+                continue;
+            }
+            if (p2 && p2.onCurve) {
+                context.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y);
+                offset += 2;
+                continue;
+            }
+            context.lineTo(p1.x, p1.y);
+            offset += 1;
+        }
+    };
     CanvasRenderer.drawGlyphToContext = function (context, glyph, options) {
         var _a, _b, _c, _d;
         if (options === void 0) { options = {}; }
@@ -81,7 +115,12 @@ var CanvasRenderer = /** @class */ (function () {
         for (var i = 0; i < glyph.getPointCount(); i++) {
             counter++;
             if ((_d = glyph.getPoint(i)) === null || _d === void 0 ? void 0 : _d.endOfContour) {
-                this.addContourToShape(context, glyph, firstIndex, counter);
+                if (glyph.isCubic) {
+                    this.addContourToShapeCubic(context, glyph, firstIndex, counter);
+                }
+                else {
+                    this.addContourToShape(context, glyph, firstIndex, counter);
+                }
                 firstIndex = i + 1;
                 counter = 0;
             }
@@ -261,7 +300,7 @@ var CanvasRenderer = /** @class */ (function () {
         context.restore();
     };
     CanvasRenderer.drawLayout = function (font, layout, canvas, options) {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f;
         if (options === void 0) { options = {}; }
         var scale = (_a = options.scale) !== null && _a !== void 0 ? _a : 0.1;
         var x = (_b = options.x) !== null && _b !== void 0 ? _b : 0;
@@ -279,11 +318,11 @@ var CanvasRenderer = /** @class */ (function () {
                 continue;
             this.drawGlyphToContext(context, glyph, {
                 x: cursorX + ((_d = item.xOffset) !== null && _d !== void 0 ? _d : 0) * scale,
-                y: 0,
+                y: ((_e = item.yOffset) !== null && _e !== void 0 ? _e : 0) * scale,
                 scale: scale,
                 styles: options.styles
             });
-            cursorX += ((_e = item.xAdvance) !== null && _e !== void 0 ? _e : 0) * scale;
+            cursorX += ((_f = item.xAdvance) !== null && _f !== void 0 ? _f : 0) * scale;
         }
         context.restore();
     };

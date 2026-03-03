@@ -177,7 +177,7 @@ export class CanvasGlyph {
         CanvasRenderer.drawStringWithKerning(this.fontdata, text, canvas, options);
     }
 
-    drawLayout(layout: Array<{ glyphIndex: number; xAdvance: number; xOffset?: number }>, canvasId: string, options: CanvasDrawOptions = {}): void {
+    drawLayout(layout: Array<{ glyphIndex: number; xAdvance: number; xOffset?: number; yOffset?: number }>, canvasId: string, options: CanvasDrawOptions = {}): void {
         const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
         if (!canvas) return;
         CanvasRenderer.drawLayout(this.fontdata, layout, canvas, options);

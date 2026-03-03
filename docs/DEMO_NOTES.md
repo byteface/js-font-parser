@@ -1,7 +1,7 @@
 # Demo Notes
 
 ## Known Limitations
-- **CFF/CFF2 (OTF) outlines** are not supported yet. Fonts with `CFF ` tables will not render.
+- **CFF2 (OTF) outlines** are not supported yet. CFF v1 rendering is supported but does not cover every Type2 operator.
 - **Complex script shaping (GSUB/GPOS)** is not implemented. Arabic/Devanagari will render unshaped.
 - **GPOS positioning** is not applied during layout (pairs/marks/cursive parsed only).
 - **Composite glyphs** are partially supported; some fonts may still render incorrectly.

@@ -1,7 +1,8 @@
 var ByteArray = /** @class */ (function () {
     function ByteArray(byteArray) {
         this.offset = 0;
-        this.dataView = new DataView(byteArray.buffer);
+        // this.dataView = new DataView(byteArray.buffer);
+        this.dataView = new DataView(byteArray.buffer, byteArray.byteOffset, byteArray.byteLength);
         this.offset = 0;
     }
     ByteArray.prototype.readByte = function () {
@@ -76,6 +77,18 @@ var ByteArray = /** @class */ (function () {
             throw new RangeError("Position out of bounds");
         }
         this.offset = position;
+    };
+    ByteArray.prototype.readBytes = function (length) {
+        if (length <= 0)
+            return new Uint8Array(0);
+        var start = this.offset;
+        var end = start + length;
+        if (end > this.dataView.byteLength) {
+            throw new RangeError("Read exceeds buffer length");
+        }
+        this.offset = end;
+        // return new Uint8Array(this.dataView.buffer.slice(start, end));
+        return new Uint8Array(this.dataView.buffer, this.dataView.byteOffset + start, length);
     };
     return ByteArray;
 }());

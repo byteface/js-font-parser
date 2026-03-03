@@ -2,6 +2,7 @@ import { ByteArray } from '../utils/ByteArray.js';
 import { Os2Table } from '../table/Os2Table.js';
 import { CmapTable } from '../table/CmapTable.js';
 import { GlyfTable } from '../table/GlyfTable.js';
+import { CffTable } from '../table/CffTable.js';
 import { HeadTable } from '../table/HeadTable.js';
 import { HheaTable } from '../table/HheaTable.js';
 import { HmtxTable } from '../table/HmtxTable.js';
@@ -31,6 +32,7 @@ export class FontParserWOFF {
     private os2: Os2Table | null = null;
     private cmap: CmapTable | null = null;
     private glyf: GlyfTable | null = null;
+    private cff: CffTable | null = null;
     private head: HeadTable | null = null;
     private hhea: HheaTable | null = null;
     private hmtx: HmtxTable | null = null;
@@ -204,6 +206,7 @@ export class FontParserWOFF {
         this.os2 = this.getTable(Table.OS_2) as Os2Table | null;
         this.cmap = this.getTable(Table.cmap) as CmapTable | null;
         this.glyf = this.getTable(Table.glyf) as GlyfTable | null;
+        this.cff = this.getTable(Table.CFF) as CffTable | null;
         this.head = this.getTable(Table.head) as HeadTable | null;
         this.hhea = this.getTable(Table.hhea) as HheaTable | null;
         this.hmtx = this.getTable(Table.hmtx) as HmtxTable | null;
@@ -232,9 +235,16 @@ export class FontParserWOFF {
     // Get a glyph description by index
     public getGlyph(i: number): GlyphData | null {
         const description = this.glyf?.getDescription(i);
-        return description != null
-            ? new GlyphData(description, this.hmtx?.getLeftSideBearing(i) ?? 0, this.hmtx?.getAdvanceWidth(i) ?? 0)
-            : null;
+        if (description != null) {
+            return new GlyphData(description, this.hmtx?.getLeftSideBearing(i) ?? 0, this.hmtx?.getAdvanceWidth(i) ?? 0);
+        }
+        if (this.cff) {
+            const cffDesc = this.cff.getGlyphDescription(i);
+            if (cffDesc) {
+                return new GlyphData(cffDesc, this.hmtx?.getLeftSideBearing(i) ?? 0, this.hmtx?.getAdvanceWidth(i) ?? 0, { isCubic: true });
+            }
+        }
+        return null;
     }
 
     // Get the number of glyphs
@@ -386,7 +396,7 @@ export class FontParserWOFF {
         return this.getGlyph(idx);
     }
 
-    public getGlyphIndicesForStringWithGsub(text: string, featureTags: string[] = ["liga"]): number[] {
+    public getGlyphIndicesForStringWithGsub(text: string, featureTags: string[] = ["liga"], scriptTags: string[] = ["DFLT", "latn"]): number[] {
         const glyphs = [];
         for (const ch of text) {
             const idx = this.getGlyphIndexByChar(ch);
@@ -394,7 +404,7 @@ export class FontParserWOFF {
         }
         if (!this.gsub || glyphs.length === 0) return glyphs;
 
-        const subtables = this.gsub.getSubtablesForFeatures(featureTags);
+        const subtables = this.gsub.getSubtablesForFeatures(featureTags, scriptTags);
         let result = glyphs.slice();
         for (const st of subtables) {
             if (!st) continue;
@@ -457,11 +467,15 @@ export class FontParserWOFF {
         return this.getGposKerningValueByGlyphs(left, right);
     }
 
-    public layoutString(text: string, options: { gsubFeatures?: string[] } = {}): Array<{ glyphIndex: number; xAdvance: number; xOffset: number }> {
+    public layoutString(
+        text: string,
+        options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean } = {}
+    ): Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number }> {
         const gsubFeatures = options.gsubFeatures ?? ["liga"];
-        const glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures);
+        const scriptTags = options.scriptTags ?? ["DFLT", "latn"];
+        const glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
 
-        const positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number }> = [];
+        const positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number }> = [];
         for (let i = 0; i < glyphIndices.length; i++) {
             const glyphIndex = glyphIndices[i];
             const glyph = this.getGlyph(glyphIndex);
@@ -479,9 +493,62 @@ export class FontParserWOFF {
                 glyphIndex,
                 xAdvance: glyph.advanceWidth + kern,
                 xOffset: 0,
+                yOffset: 0,
             });
         }
+        if (options.gpos) {
+            this.applyGposPositioning(glyphIndices, positioned);
+        }
         return positioned;
+    }
+
+    private applyGposPositioning(
+        glyphIndices: number[],
+        positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number }>
+    ): void {
+        const anchorsCache = new Map<number, ReturnType<FontParserWOFF['getMarkAnchorsForGlyph']>>();
+
+        const getAnchors = (gid: number) => {
+            if (anchorsCache.has(gid)) return anchorsCache.get(gid)!;
+            const anchors = this.getMarkAnchorsForGlyph(gid);
+            anchorsCache.set(gid, anchors);
+            return anchors;
+        };
+
+        const getBaseAnchor = (anchors: ReturnType<FontParserWOFF['getMarkAnchorsForGlyph']>, classIndex: number) => {
+            return anchors.find(a => (a.type === 'base' || a.type === 'ligature' || a.type === 'mark2') && a.classIndex === classIndex);
+        };
+
+        for (let i = 0; i < glyphIndices.length; i++) {
+            const gid = glyphIndices[i];
+            const anchors = getAnchors(gid);
+            const markAnchor = anchors.find(a => a.type === 'mark');
+            if (!markAnchor) continue;
+
+            let baseIndex = i - 1;
+            while (baseIndex >= 0) {
+                const baseAnchors = getAnchors(glyphIndices[baseIndex]);
+                const baseAnchor = getBaseAnchor(baseAnchors, markAnchor.classIndex);
+                if (baseAnchor) {
+                    positioned[i].xOffset += baseAnchor.x - markAnchor.x;
+                    positioned[i].yOffset += baseAnchor.y - markAnchor.y;
+                    positioned[i].xAdvance = 0;
+                    break;
+                }
+                baseIndex--;
+            }
+        }
+
+        for (let i = 1; i < glyphIndices.length; i++) {
+            const prevAnchors = getAnchors(glyphIndices[i - 1]);
+            const currAnchors = getAnchors(glyphIndices[i]);
+            const exitAnchor = prevAnchors.find(a => a.type === 'cursive-exit');
+            const entryAnchor = currAnchors.find(a => a.type === 'cursive-entry');
+            if (exitAnchor && entryAnchor) {
+                positioned[i].xOffset += exitAnchor.x - entryAnchor.x;
+                positioned[i].yOffset += exitAnchor.y - entryAnchor.y;
+            }
+        }
     }
 
     public getTableByType(tableType: number): ITable | null {

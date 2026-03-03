@@ -4,3 +4,4 @@ export { GlyphData } from './data/GlyphData.js';
 export { SVGFont } from './render/SVGFont.js';
 export { CanvasRenderer } from './render/CanvasRenderer.js';
 export { CanvasGlyph } from './render/CanvasGlyph.js';
+export { getSupportedLanguages, supportsLanguage, listLanguages } from './utils/LanguageSupport.js';

@@ -2,7 +2,7 @@
 
 import { ByteArray } from "../utils/ByteArray.js";
 import { ILookupSubtableFactory } from "./ILookupSubtableFactory.js";
-import { LookupSubtable } from "./LookupSubtable";
+import { LookupSubtable } from "./LookupSubtable.js";
 
 export class Lookup {
     // LookupFlag bit enumeration

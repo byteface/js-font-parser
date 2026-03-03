@@ -59,56 +59,13 @@
 
       CanvasRenderer.drawString(font, text, plainCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
 
-      let cursorX = 20;
-      const baseY = 140;
-      const scale = 0.12;
-      let attachments = 0;
-      const chars = Array.from(text);
-
-      for (let i = 0; i < chars.length; i++) {
-        const ch = chars[i];
-        const glyphId = font.getGlyphIndexByChar(ch);
-        const glyph = glyphId != null ? font.getGlyph(glyphId) : null;
-        if (!glyph) {
-          cursorX += 20;
-          continue;
-        }
-
-        const anchors = font.getMarkAnchorsForGlyph(glyphId);
-        const markAnchor = anchors.find(a => a.type === 'mark');
-        if (markAnchor && i > 0) {
-          const prevChar = chars[i - 1];
-          const baseGlyphId = font.getGlyphIndexByChar(prevChar);
-          const baseAnchors = baseGlyphId != null ? font.getMarkAnchorsForGlyph(baseGlyphId) : [];
-          const baseAnchor = baseAnchors.find(a => a.type === 'base' && a.classIndex === markAnchor.classIndex);
-          if (baseAnchor) {
-            attachments++;
-            const dx = (baseAnchor.x - markAnchor.x) * scale;
-            const dy = (baseAnchor.y - markAnchor.y) * scale;
-            CanvasRenderer.drawGlyphToContext(ctxAnch, glyph, {
-              x: cursorX + dx,
-              y: baseY + dy,
-              scale,
-              styles: { fillStyle: '#2f4f7a', strokeStyle: '#2f4f7a' }
-            });
-            continue;
-          }
-        }
-
-        CanvasRenderer.drawGlyphToContext(ctxAnch, glyph, {
-          x: cursorX,
-          y: baseY,
-          scale,
-          styles: { fillStyle: '#2f4f7a', strokeStyle: '#2f4f7a' }
-        });
-
-        cursorX += glyph.advanceWidth * scale + 2;
-      }
-
-      info.textContent = attachments > 0
-        ? `Anchors applied: ${attachments}`
-        : 'No mark anchors found for this string/font.';
-    }
+    const layout = font.layoutString(text, { gpos: true, gsubFeatures: [] });
+    CanvasRenderer.drawLayout(font, layout, anchoredCanvas, { x: 20, y: 140, scale: 0.12, styles: { fillStyle: '#2f4f7a', strokeStyle: '#2f4f7a' } });
+    const attachments = layout.filter(item => item.xAdvance === 0 && (item.xOffset !== 0 || item.yOffset !== 0)).length;
+    info.textContent = attachments > 0
+      ? `Anchors applied: ${attachments}`
+      : 'No mark anchors found for this string/font.';
+  }
   </script>
 </body>
 </html>

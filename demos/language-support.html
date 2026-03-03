@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Language Support</title>
+  <style>
+    :root { --bg:#f6f4f1; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e3e1db; --ok:#1f7a3f; --bad:#b2432c; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 20px; }
+    select { padding:8px 10px; border-radius:8px; border:1px solid var(--border); }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { border-bottom:1px solid #eee; padding:8px; text-align:left; }
+    .ok { color:var(--ok); font-weight:600; }
+    .bad { color:var(--bad); font-weight:600; }
+    .note { color:var(--muted); font-size:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Language Support</h1>
+    <p>Checks required character sets against the font's cmap.</p>
+  </header>
+  <div class="panel">
+    <label>Font
+      <select id="fontSelect"></select>
+    </label>
+  </div>
+  <div class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>Language</th>
+          <th>Code</th>
+          <th>Supported</th>
+          <th>Coverage</th>
+          <th>Missing</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div class="panel note">
+    Notes: Some scripts require shaping (Arabic, Devanagari). This demo only checks glyph presence.
+  </div>
+
+  <script type="module">
+    import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+    import { getSupportedLanguages } from "../dist/utils/LanguageSupport.js";
+
+    const fontSelect = document.getElementById("fontSelect");
+    const rows = document.getElementById("rows");
+
+    const fonts = [
+      { name: "DiscoMo", url: "../truetypefonts/DiscoMo.ttf" },
+      { name: "DevilInside", url: "../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf" },
+      { name: "Noto Sans", url: "../truetypefonts/noto/NotoSans-Regular.ttf" },
+      { name: "Noto Sans Hebrew", url: "../truetypefonts/noto/NotoSansHebrew-Regular.ttf" },
+      { name: "Noto Sans Thai", url: "../truetypefonts/noto/NotoSansThaiLooped-Regular.ttf" },
+      { name: "Noto Sans Devanagari", url: "../truetypefonts/noto/NotoSansDevanagari-Regular.ttf" }
+    ];
+
+    fonts.forEach((f, i) => {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = f.name;
+      fontSelect.appendChild(opt);
+    });
+
+    async function render() {
+      const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+      const font = await FontParserTTF.load(selected.url);
+      const results = getSupportedLanguages(font);
+      rows.innerHTML = "";
+      results.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${r.name}</td>
+          <td>${r.code}</td>
+          <td class="${r.supported ? "ok" : "bad"}">${r.supported ? "yes" : "no"}</td>
+          <td>${Math.round(r.coverage * 100)}%</td>
+          <td>${r.missing.slice(0, 12).join(" ")}${r.missing.length > 12 ? " …" : ""}</td>
+        `;
+        rows.appendChild(tr);
+      });
+    }
+
+    fontSelect.addEventListener("change", render);
+    render();
+  </script>
+</body>
+</html>

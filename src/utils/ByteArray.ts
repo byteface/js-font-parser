@@ -3,7 +3,12 @@ export class ByteArray {
     public offset: number = 0;
 
     constructor(byteArray: Uint8Array) {
-        this.dataView = new DataView(byteArray.buffer);
+        // this.dataView = new DataView(byteArray.buffer);
+        this.dataView = new DataView(
+            byteArray.buffer,
+            byteArray.byteOffset,
+            byteArray.byteLength
+        );
         this.offset = 0;
     }
 
@@ -73,6 +78,22 @@ export class ByteArray {
             throw new RangeError("Position out of bounds");
         }
         this.offset = position;
+    }
+
+    readBytes(length: number): Uint8Array {
+        if (length <= 0) return new Uint8Array(0);
+        const start = this.offset;
+        const end = start + length;
+        if (end > this.dataView.byteLength) {
+            throw new RangeError("Read exceeds buffer length");
+        }
+        this.offset = end;
+        // return new Uint8Array(this.dataView.buffer.slice(start, end));
+        return new Uint8Array(
+            this.dataView.buffer,
+            this.dataView.byteOffset + start,
+            length
+        );
     }
 
 

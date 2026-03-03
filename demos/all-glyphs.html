@@ -179,9 +179,10 @@
 
             const hasGlyf = !!font.getTableByType(Table.glyf);
             const hasCff = !!font.getTableByType(Table.CFF);
-            if (!hasGlyf && hasCff) {
+            const hasCff2 = !!font.getTableByType(Table.CFF2);
+            if (!hasGlyf && !hasCff) {
                 clearCanvas(canvas.width, canvas.height);
-                status.textContent = "CFF/OTF outlines are not supported yet.";
+                status.textContent = hasCff2 ? "CFF2 outlines are not supported yet." : "No glyph outlines found.";
                 status.classList.add("warn");
                 return;
             }

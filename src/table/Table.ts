@@ -2,6 +2,7 @@ export class Table {
     // Table constants
     static readonly BASE = 0x42415345; // Baseline data [OpenType]
     static readonly CFF = 0x43464620; // PostScript font program (compact font format) [PostScript]
+    static readonly CFF2 = 0x43464632; // Compact Font Format 2.0
     static readonly DSIG = 0x44534947; // Digital signature
     static readonly EBDT = 0x45424454; // Embedded bitmap data
     static readonly EBLC = 0x45424c43; // Embedded bitmap location data
@@ -288,6 +289,7 @@ function Table(){}
     // Table constants
     Table.BASE=0x42415345; // Baseline data [OpenType]
     Table.CFF=0x43464620; // PostScript font program (compact font format) [PostScript]
+    Table.CFF2=0x43464632; // Compact Font Format 2.0
     Table.DSIG=0x44534947; // Digital signature
     Table.EBDT=0x45424454; // Embedded bitmap data
     Table.EBLC=0x45424c43; // Embedded bitmap location data

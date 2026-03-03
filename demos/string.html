@@ -6,11 +6,11 @@
 </head>
 <body>
 <div id="font-list"></div>
-
 <script type="module">
     import { FontParserTTF } from '../dist/data/FontParserTTF.js';
     import { Debug } from '../dist/utils/Debug.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+    import { Table } from '../dist/table/Table.js';
 
     const DEBUG = false;
     Debug.enabled = DEBUG;
@@ -60,10 +60,11 @@
         const url = `../truetypefonts/${encodeURIComponent(file)}`;
         FontParserTTF.load(url)
             .then(font => {
-                const hasGlyf = !!font.getTableByType(0x676c7966);
-                const hasCff = !!font.getTableByType(0x43464620);
-                if (!hasGlyf && hasCff) {
-                    status.textContent = "CFF/OTF outlines not supported yet.";
+                const hasGlyf = !!font.getTableByType(Table.glyf);
+                const hasCff = !!font.getTableByType(Table.CFF);
+                const hasCff2 = !!font.getTableByType(Table.CFF2);
+                if (!hasGlyf && !hasCff) {
+                    status.textContent = hasCff2 ? "CFF2 outlines not supported yet." : "No glyph outlines found.";
                     return;
                 }
                 CanvasRenderer.drawString(font, "hello world", canvas, {

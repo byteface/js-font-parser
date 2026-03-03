@@ -4,6 +4,7 @@ var Table = /** @class */ (function () {
     // Table constants
     Table.BASE = 0x42415345; // Baseline data [OpenType]
     Table.CFF = 0x43464620; // PostScript font program (compact font format) [PostScript]
+    Table.CFF2 = 0x43464632; // Compact Font Format 2.0
     Table.DSIG = 0x44534947; // Digital signature
     Table.EBDT = 0x45424454; // Embedded bitmap data
     Table.EBLC = 0x45424c43; // Embedded bitmap location data
@@ -271,6 +272,7 @@ function Table(){}
     // Table constants
     Table.BASE=0x42415345; // Baseline data [OpenType]
     Table.CFF=0x43464620; // PostScript font program (compact font format) [PostScript]
+    Table.CFF2=0x43464632; // Compact Font Format 2.0
     Table.DSIG=0x44534947; // Digital signature
     Table.EBDT=0x45424454; // Embedded bitmap data
     Table.EBLC=0x45424c43; // Embedded bitmap location data

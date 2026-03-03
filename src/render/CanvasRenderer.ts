@@ -74,6 +74,44 @@ export class CanvasRenderer {
         }
     }
 
+    static addContourToShapeCubic(context: CanvasRenderingContext2D, glyph: GlyphData, startIndex: number, count: number): void {
+        if (glyph.getPoint(startIndex)?.endOfContour) return;
+
+        let offset = 0;
+        while (offset < count) {
+            const p0 = glyph.getPoint(startIndex + (offset % count));
+            const p1 = glyph.getPoint(startIndex + ((offset + 1) % count));
+            if (!p0 || !p1) break;
+
+            if (offset === 0) {
+                context.moveTo(p0.x, p0.y);
+            }
+
+            if (p1.onCurve) {
+                context.lineTo(p1.x, p1.y);
+                offset += 1;
+                continue;
+            }
+
+            const p2 = glyph.getPoint(startIndex + ((offset + 2) % count));
+            const p3 = glyph.getPoint(startIndex + ((offset + 3) % count));
+            if (p2 && !p2.onCurve && p3 && p3.onCurve) {
+                context.bezierCurveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+                offset += 3;
+                continue;
+            }
+
+            if (p2 && p2.onCurve) {
+                context.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y);
+                offset += 2;
+                continue;
+            }
+
+            context.lineTo(p1.x, p1.y);
+            offset += 1;
+        }
+    }
+
     static drawGlyphToContext(
         context: CanvasRenderingContext2D,
         glyph: GlyphData | null,
@@ -97,7 +135,11 @@ export class CanvasRenderer {
         for (let i = 0; i < glyph.getPointCount(); i++) {
             counter++;
             if (glyph.getPoint(i)?.endOfContour) {
-                this.addContourToShape(context, glyph, firstIndex, counter);
+                if (glyph.isCubic) {
+                    this.addContourToShapeCubic(context, glyph, firstIndex, counter);
+                } else {
+                    this.addContourToShape(context, glyph, firstIndex, counter);
+                }
                 firstIndex = i + 1;
                 counter = 0;
             }
@@ -287,7 +329,7 @@ export class CanvasRenderer {
         context.restore();
     }
 
-    static drawLayout(font: any, layout: Array<{ glyphIndex: number; xAdvance: number; xOffset?: number }>, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
+    static drawLayout(font: any, layout: Array<{ glyphIndex: number; xAdvance: number; xOffset?: number; yOffset?: number }>, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
         const scale = options.scale ?? 0.1;
         const x = options.x ?? 0;
         const y = options.y ?? 0;
@@ -303,7 +345,7 @@ export class CanvasRenderer {
             if (!glyph) continue;
             this.drawGlyphToContext(context, glyph, {
                 x: cursorX + (item.xOffset ?? 0) * scale,
-                y: 0,
+                y: (item.yOffset ?? 0) * scale,
                 scale,
                 styles: options.styles
             });
