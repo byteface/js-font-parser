@@ -35,10 +35,25 @@
     </div>
     <div class="glyphs" id="highlight"></div>
     <div class="note" id="missingNote"></div>
+    <div class="note" id="fontUrl"></div>
   </div>
 
   <div class="panel">
     <canvas id="preview" width="1200" height="220"></canvas>
+  </div>
+
+  <div class="panel">
+    <table id="glyphTable" style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr>
+          <th style="text-align:left;border-bottom:1px solid #eee;padding:6px">#</th>
+          <th style="text-align:left;border-bottom:1px solid #eee;padding:6px">Char</th>
+          <th style="text-align:left;border-bottom:1px solid #eee;padding:6px">Code</th>
+          <th style="text-align:left;border-bottom:1px solid #eee;padding:6px">Glyph</th>
+        </tr>
+      </thead>
+      <tbody id="glyphRows"></tbody>
+    </table>
   </div>
 
   <div class="panel note">
@@ -75,6 +90,8 @@
     const preview = document.getElementById("preview");
     const highlight = document.getElementById("highlight");
     const missingNote = document.getElementById("missingNote");
+    const fontUrl = document.getElementById("fontUrl");
+    const glyphRows = document.getElementById("glyphRows");
     const languages = listLanguages();
 
     fonts.forEach((f, i) => {
@@ -98,6 +115,7 @@
       const required = lang ? Array.from(new Set(Array.from(lang.required))) : [];
 
       const font = await FontParserTTF.load(fontInfo.url);
+      fontUrl.textContent = `Using font: ${fontInfo.url}`;
       const support = supportsLanguage(font, sample.code);
       const missingSet = new Set(support?.missing ?? []);
       highlight.innerHTML = required
@@ -124,6 +142,21 @@
           strokeStyle: "#111",
           lineWidth: 1.5
         }
+      });
+
+      const chars = Array.from(sample.text);
+      glyphRows.innerHTML = "";
+      chars.forEach((ch, i) => {
+        const code = ch.codePointAt(0);
+        const gid = font.getGlyphIndexByChar(ch);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td style="border-bottom:1px solid #eee;padding:6px">${i}</td>
+          <td style="border-bottom:1px solid #eee;padding:6px">${ch}</td>
+          <td style="border-bottom:1px solid #eee;padding:6px">U+${code?.toString(16).toUpperCase().padStart(4, "0")}</td>
+          <td style="border-bottom:1px solid #eee;padding:6px;${gid ? "color:#1f7a3f" : "color:#b2432c"}">${gid ?? "missing"}</td>
+        `;
+        glyphRows.appendChild(tr);
       });
     }
 
