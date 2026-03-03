@@ -220,6 +220,78 @@ function makeCompositeGlyph(baseGlyph, markGlyph, markDx, markDy, markTransform)
   return glyph;
 }
 
+function makeCompositeFromComponent(comp, bbox) {
+  const ARG_1_AND_2_ARE_WORDS = 0x0001;
+  const ARGS_ARE_XY_VALUES = 0x0002;
+  const WE_HAVE_A_SCALE = 0x0008;
+  const WE_HAVE_AN_X_AND_Y_SCALE = 0x0040;
+  const WE_HAVE_A_2X2 = 0x0080;
+
+  const header = Buffer.alloc(10);
+  header.writeInt16BE(-1, 0);
+  header.writeInt16BE(bbox.xMin, 2);
+  header.writeInt16BE(bbox.yMin, 4);
+  header.writeInt16BE(bbox.xMax, 6);
+  header.writeInt16BE(bbox.yMax, 8);
+
+  let flags = ARG_1_AND_2_ARE_WORDS | ARGS_ARE_XY_VALUES;
+  let extra = Buffer.alloc(0);
+  if (comp.scale01 !== 0 || comp.scale10 !== 0) {
+    flags |= WE_HAVE_A_2X2;
+    extra = Buffer.alloc(8);
+    extra.writeInt16BE(Math.round(comp.xscale * 16384), 0);
+    extra.writeInt16BE(Math.round(comp.scale01 * 16384), 2);
+    extra.writeInt16BE(Math.round(comp.scale10 * 16384), 4);
+    extra.writeInt16BE(Math.round(comp.yscale * 16384), 6);
+  } else if (comp.xscale !== comp.yscale) {
+    flags |= WE_HAVE_AN_X_AND_Y_SCALE;
+    extra = Buffer.alloc(4);
+    extra.writeInt16BE(Math.round(comp.xscale * 16384), 0);
+    extra.writeInt16BE(Math.round(comp.yscale * 16384), 2);
+  } else if (comp.xscale !== 1) {
+    flags |= WE_HAVE_A_SCALE;
+    extra = Buffer.alloc(2);
+    extra.writeInt16BE(Math.round(comp.xscale * 16384), 0);
+  }
+
+  const compBuf = Buffer.alloc(8);
+  compBuf.writeUInt16BE(flags, 0);
+  compBuf.writeUInt16BE(comp.glyphIndex, 2);
+  compBuf.writeInt16BE(comp.xtranslate, 4);
+  compBuf.writeInt16BE(comp.ytranslate, 6);
+
+  let glyph = Buffer.concat([header, compBuf, extra]);
+  const pad = (4 - (glyph.length % 4)) % 4;
+  if (pad) glyph = Buffer.concat([glyph, Buffer.alloc(pad)]);
+  return glyph;
+}
+
+function componentBbox(font, comp) {
+  const desc = font.getTableByType(Table.glyf)?.getDescription?.(comp.glyphIndex);
+  if (!desc) return null;
+  const xMin = desc.getXMinimum();
+  const xMax = desc.getXMaximum();
+  const yMin = desc.getYMinimum();
+  const yMax = desc.getYMaximum();
+  const corners = [
+    { x: xMin, y: yMin },
+    { x: xMin, y: yMax },
+    { x: xMax, y: yMin },
+    { x: xMax, y: yMax }
+  ].map(p => ({
+    x: comp.scaleX(p.x, p.y) + comp.xtranslate,
+    y: comp.scaleY(p.x, p.y) + comp.ytranslate
+  }));
+  const xs = corners.map(p => p.x);
+  const ys = corners.map(p => p.y);
+  return {
+    xMin: Math.min(...xs),
+    yMin: Math.min(...ys),
+    xMax: Math.max(...xs),
+    yMax: Math.max(...ys)
+  };
+}
+
 function bboxFromGlyph(font, glyphId) {
   const glyph = font.getGlyph(glyphId);
   if (!glyph || !glyph.points) return null;
@@ -269,6 +341,11 @@ const MARK_FALLBACKS = {
   "\u0328": [",", "."],
   "\u0326": [",", "."],
   "\u0335": ["-", "—"]
+};
+
+const DOTLESS_MAP = {
+  "ı": "i",
+  "İ": "I"
 };
 
 const DECOMPOSE = {
@@ -517,6 +594,39 @@ function composeFont(buffer, font, targetChars) {
 
   targetChars.forEach(ch => {
     if (font.getGlyphIndexByChar(ch)) return;
+    const dotlessBase = DOTLESS_MAP[ch];
+    if (dotlessBase) {
+      const baseId = font.getGlyphIndexByChar(dotlessBase);
+      const glyfTable = font.getTableByType(Table.glyf);
+      if (baseId != null && glyfTable?.getDescription) {
+        const desc = glyfTable.getDescription(baseId);
+        if (desc?.isComposite?.() && desc.components?.length) {
+          const comps = desc.components;
+          const withBbox = comps.map(c => ({ comp: c, box: componentBbox(font, c) })).filter(c => c.box);
+          if (withBbox.length) {
+            withBbox.sort((a, b) => (a.box.yMax - b.box.yMax));
+            const selected = withBbox[0];
+            const glyphBuf = makeCompositeFromComponent(selected.comp, selected.box);
+            const start = newGlyf.length;
+            newGlyf = Buffer.concat([newGlyf, glyphBuf]);
+            newOffsets.push(start);
+            newNumGlyphs++;
+            newMapping[ch.charCodeAt(0)] = newNumGlyphs - 1;
+            const baseAdvance = font.getGlyph(baseId)?.advanceWidth ?? 0;
+            const baseLsb = font.getGlyph(baseId)?.leftSideBearing ?? 0;
+            const clamp16 = (v) => Math.max(-32768, Math.min(32767, Math.round(v)));
+            glyphRecords.push({ advance: clamp16(baseAdvance), lsb: clamp16(baseLsb) });
+            return;
+          }
+        }
+      }
+      const fallbackId = font.getGlyphIndexByChar("l");
+      if (fallbackId != null) {
+        newMapping[ch.charCodeAt(0)] = fallbackId;
+      }
+      return;
+    }
+
     const decomp = DECOMPOSE[ch];
     if (!decomp) return;
     const [baseChar, markChar] = decomp;

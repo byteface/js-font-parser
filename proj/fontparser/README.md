@@ -26,3 +26,4 @@ node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --localise es --
 - Cedilla/ogonek: fallback to comma/dot below.
 - Breve: fallback to `"v"` when missing.
 - Stroke/overlay (`ł/Ł`): fallback to `"-"` or `"—"` and **rotate -12°** for a slanted bar.
+- Dotless `ı`: prefer removing the dot if the `i` glyph is composite; otherwise fallback maps to `l`.
