@@ -318,11 +318,23 @@ function buildSimpleGlyphFromContours(contours) {
   });
   const xs = points.map(p => p.x);
   const ys = points.map(p => p.y);
-  const bbox = {
+  const bboxRaw = {
     xMin: xs.length ? Math.min(...xs) : 0,
     yMin: ys.length ? Math.min(...ys) : 0,
     xMax: xs.length ? Math.max(...xs) : 0,
     yMax: ys.length ? Math.max(...ys) : 0
+  };
+  const shiftX = -bboxRaw.xMin;
+  const shiftY = -bboxRaw.yMin;
+  points.forEach(p => {
+    p.x = p.x + shiftX;
+    p.y = p.y + shiftY;
+  });
+  const bbox = {
+    xMin: 0,
+    yMin: 0,
+    xMax: bboxRaw.xMax + shiftX,
+    yMax: bboxRaw.yMax + shiftY
   };
 
   const header = Buffer.alloc(10);
@@ -409,9 +421,17 @@ function extractTopContoursFromGlyph(font, glyphId) {
       }
     };
   });
-  let selected = contourBoxes.filter(c => c.box.yMin >= threshold).map(c => c.contour);
+  let selected = contourBoxes
+    .filter(c => c.box.yMin >= threshold)
+    .filter(c => (c.box.yMax - c.box.yMin) <= height * 0.45)
+    .map(c => c.contour);
   if (!selected.length) {
-    contourBoxes.sort((a, b) => b.box.yMax - a.box.yMax);
+    contourBoxes.sort((a, b) => {
+      const aH = a.box.yMax - a.box.yMin;
+      const bH = b.box.yMax - b.box.yMin;
+      if (b.box.yMax !== a.box.yMax) return b.box.yMax - a.box.yMax;
+      return aH - bH;
+    });
     selected = [contourBoxes[0].contour];
   }
   return selected;
