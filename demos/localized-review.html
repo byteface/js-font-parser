@@ -30,10 +30,11 @@
     <div class="row">
       <div class="label">Font</div>
       <select id="fontSelect"></select>
-      <div class="label">Sample</div>
+      <div class="label">Language</div>
       <select id="sampleSelect"></select>
     </div>
     <div class="glyphs" id="highlight"></div>
+    <div class="note" id="missingNote"></div>
   </div>
 
   <div class="panel">
@@ -48,6 +49,7 @@
     import { FontParserTTF } from "../dist/data/FontParserTTF.js";
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
     import { Table } from "../dist/table/Table.js";
+    import { listLanguages, supportsLanguage } from "../dist/utils/LanguageSupport.js";
 
     const fonts = [
       { name: "DiscoMo (base)", url: "../truetypefonts/DiscoMo.ttf" },
@@ -60,18 +62,20 @@
     ];
 
     const samples = [
-      { label: "Polish", text: "Zażółć gęślą jaźń", highlight: "ą ć ę ł ń ś ź ż Ą Ć Ę Ł Ń Ś Ź Ż" },
-      { label: "Czech", text: "Příliš žluťoučký kůň", highlight: "č ď ě ň ř ť ů ž Č Ď Ě Ň Ř Ť Ů Ž" },
-      { label: "Hungarian", text: "Árvíztűrő tükörfúrógép", highlight: "ő ű Ő Ű" },
-      { label: "Turkish", text: "İstanbul, ığdır, şehri", highlight: "ğ ı ş İ Ğ Ş" },
-      { label: "Romanian", text: "Șerban ține țăruș", highlight: "ă ș ț Ă Ș Ț" },
-      { label: "Spanish", text: "¡Feliz cumpleaños!", highlight: "á é í ó ú ü ñ ¡" }
+      { code: "pl", label: "Polish", text: "Zażółć gęślą jaźń" },
+      { code: "cs", label: "Czech", text: "Příliš žluťoučký kůň" },
+      { code: "hu", label: "Hungarian", text: "Árvíztűrő tükörfúrógép" },
+      { code: "tr", label: "Turkish", text: "İstanbul, ığdır, şehri" },
+      { code: "ro", label: "Romanian", text: "Șerban ține țăruș" },
+      { code: "es", label: "Spanish", text: "¡Feliz cumpleaños!" }
     ];
 
     const fontSelect = document.getElementById("fontSelect");
     const sampleSelect = document.getElementById("sampleSelect");
     const preview = document.getElementById("preview");
     const highlight = document.getElementById("highlight");
+    const missingNote = document.getElementById("missingNote");
+    const languages = listLanguages();
 
     fonts.forEach((f, i) => {
       const opt = document.createElement("option");
@@ -90,13 +94,20 @@
     async function render() {
       const fontInfo = fonts[Number(fontSelect.value)] ?? fonts[0];
       const sample = samples[Number(sampleSelect.value)] ?? samples[0];
-      highlight.innerHTML = sample.highlight
-        .split(" ")
-        .filter(Boolean)
-        .map(ch => `<span>${ch}</span>`)
-        .join(" ");
+      const lang = languages.find(l => l.code === sample.code);
+      const required = lang ? Array.from(new Set(Array.from(lang.required))) : [];
 
       const font = await FontParserTTF.load(fontInfo.url);
+      const support = supportsLanguage(font, sample.code);
+      const missingSet = new Set(support?.missing ?? []);
+      highlight.innerHTML = required
+        .map(ch => `<span style="border-color:${missingSet.has(ch) ? "#e2b8ad" : "#cfe3d6"};background:${missingSet.has(ch) ? "#fdecea" : "#eef7f0"}">${ch}</span>`)
+        .join(" ");
+      if (support?.missing?.length) {
+        missingNote.textContent = `Missing (${support.missing.length}): ${support.missing.join(" ")}`;
+      } else {
+        missingNote.textContent = "All required glyphs present for this language.";
+      }
       const hasGlyf = !!font.getTableByType(Table.glyf);
       const hasCff = !!font.getTableByType(Table.CFF);
       if (!hasGlyf && !hasCff) return;
