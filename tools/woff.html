@@ -9,6 +9,15 @@
 
 <h1>WOFF Demo</h1>
 <div style="margin-bottom:12px;">
+    <label>Font:
+        <select id="fontSelect">
+            <option value="../truetypefonts/ubuntu.woff">Ubuntu (woff)</option>
+            <option value="../truetypefonts/ubuntu-webfont.woff">Ubuntu Webfont (woff)</option>
+            <option value="https://cdn.jsdelivr.net/fontsource/fonts/open-sans@latest/latin-400-normal.woff">Open Sans (CDN)</option>
+        </select>
+    </label>
+</div>
+<div style="margin-bottom:12px;">
     <label>Text:
         <input id="textInput" value="Hello WOFF" />
     </label>
@@ -21,19 +30,25 @@
 
     const canvas = document.getElementById('myDrawing');
     const textInput = document.getElementById('textInput');
+    const fontSelect = document.getElementById('fontSelect');
     const ctx = canvas.getContext('2d');
 
     let font = null;
-    FontParserWOFF.load("https://cdn.jsdelivr.net/fontsource/fonts/open-sans@latest/latin-400-normal.woff")
-        .then(f => {
-            font = f;
-            render();
-        })
-        .catch(error => {
-            console.error('Error loading WOFF:', error);
-        });
+    function loadFont(url) {
+        FontParserWOFF.load(url)
+            .then(f => {
+                font = f;
+                render();
+            })
+            .catch(error => {
+                console.error('Error loading WOFF:', error);
+            });
+    }
+
+    loadFont(fontSelect.value);
 
     textInput.addEventListener('input', render);
+    fontSelect.addEventListener('change', () => loadFont(fontSelect.value));
 
     function render() {
         if (!font) return;
