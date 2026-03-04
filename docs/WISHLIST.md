@@ -2,7 +2,7 @@
 
 ## Font Format Support
 - [x] **CFF outlines (OTF)**: basic `CFF ` parsing and Type 2 charstrings.
-- [ ] **CFF2 outlines (OTF)**: parse `CFF2` tables and Type 2 charstrings.
+- [~] **CFF2 outlines (OTF)**: basic outlines render, variable CFF2 incomplete.
 - [ ] **WOFF2**: decode Brotli-compressed tables.
 - [ ] **COLRv1**: parse Paint tables (COLR v1).
 - [ ] **SVG glyphs**: parse and render `SVG ` table glyphs.
@@ -23,13 +23,13 @@
 - [x] Expanded API docs with rendering helpers and common patterns.
 
 ## Top 10 Next
-1. CFF2 (OTF) outlines
-2. Contextual GSUB shaping (complex scripts)
-3. Full GPOS positioning (mark/ligature/cursive across scripts)
-4. gvar interpolation for variable fonts
-5. COLRv1 paint table support
-6. WOFF2 support
+1. WOFF2 support
+2. CFF2 (OTF) outlines (finish variable CFF2)
+3. Better layout engine (line breaking, alignment)
+4. Contextual GSUB shaping (complex scripts)
+5. Full GPOS positioning (mark/ligature/cursive across scripts)
+6. gvar interpolation for variable fonts
 7. SVG glyph table rendering
-8. Better layout engine (line breaking, alignment)
-9. Golden-image tests for demo rendering
-10. Expanded metadata API (name/OS2/post convenience surface)
+8. COLRv1 paint table support
+9. Expanded metadata API (name/OS2/post convenience surface)
+10. Golden-image tests for demo rendering
