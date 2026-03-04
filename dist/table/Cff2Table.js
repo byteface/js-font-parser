@@ -184,6 +184,7 @@ var Cff2Table = /** @class */ (function () {
         var stemCount = 0;
         var widthUsed = false;
         var vsIndex = 0;
+        var pendingWidth = null;
         var stack = [];
         var gsubrs = this.globalSubrs;
         var lsubrs = localSubrs;
@@ -219,19 +220,31 @@ var Cff2Table = /** @class */ (function () {
                 }
                 var args = stack.splice(0, stack.length);
                 var consumeWidthIfOdd = function () {
-                    if (!widthUsed && args.length % 2 === 1) {
+                    if (!widthUsed && pendingWidth != null) {
+                        pendingWidth = null;
+                        widthUsed = true;
+                    }
+                    else if (!widthUsed && args.length % 2 === 1) {
                         args.shift();
                         widthUsed = true;
                     }
                 };
                 var consumeWidthIfMoreThanOne = function () {
-                    if (!widthUsed && args.length > 1) {
+                    if (!widthUsed && pendingWidth != null) {
+                        pendingWidth = null;
+                        widthUsed = true;
+                    }
+                    else if (!widthUsed && args.length > 1) {
                         args.shift();
                         widthUsed = true;
                     }
                 };
                 var consumeWidthIfMod = function (mod, expect) {
-                    if (!widthUsed && args.length % mod === expect) {
+                    if (!widthUsed && pendingWidth != null) {
+                        pendingWidth = null;
+                        widthUsed = true;
+                    }
+                    else if (!widthUsed && args.length % mod === expect) {
                         args.shift();
                         widthUsed = true;
                     }
@@ -298,6 +311,10 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 10: {
+                        if (!widthUsed && pendingWidth == null && args.length % 2 === 1) {
+                            var w = args.shift();
+                            pendingWidth = w != null ? w : null;
+                        }
                         var subrIndex = (args.pop() || 0) + lBias;
                         if (args.length)
                             stack.push.apply(stack, args);
@@ -411,6 +428,10 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 29: {
+                        if (!widthUsed && pendingWidth == null && args.length % 2 === 1) {
+                            var w = args.shift();
+                            pendingWidth = w != null ? w : null;
+                        }
                         var subrIndex = (args.pop() || 0) + gBias;
                         if (args.length)
                             stack.push.apply(stack, args);

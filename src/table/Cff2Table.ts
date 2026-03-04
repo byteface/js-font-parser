@@ -206,6 +206,7 @@ export class Cff2Table implements ITable {
         let stemCount = 0;
         let widthUsed = false;
         let vsIndex = 0;
+        let pendingWidth: number | null = null;
 
         const stack: number[] = [];
         const gsubrs = this.globalSubrs;
@@ -246,19 +247,28 @@ export class Cff2Table implements ITable {
 
                 const args = stack.splice(0, stack.length);
                 const consumeWidthIfOdd = () => {
-                    if (!widthUsed && args.length % 2 === 1) {
+                    if (!widthUsed && pendingWidth != null) {
+                        pendingWidth = null;
+                        widthUsed = true;
+                    } else if (!widthUsed && args.length % 2 === 1) {
                         args.shift();
                         widthUsed = true;
                     }
                 };
                 const consumeWidthIfMoreThanOne = () => {
-                    if (!widthUsed && args.length > 1) {
+                    if (!widthUsed && pendingWidth != null) {
+                        pendingWidth = null;
+                        widthUsed = true;
+                    } else if (!widthUsed && args.length > 1) {
                         args.shift();
                         widthUsed = true;
                     }
                 };
                 const consumeWidthIfMod = (mod: number, expect: number) => {
-                    if (!widthUsed && args.length % mod === expect) {
+                    if (!widthUsed && pendingWidth != null) {
+                        pendingWidth = null;
+                        widthUsed = true;
+                    } else if (!widthUsed && args.length % mod === expect) {
                         args.shift();
                         widthUsed = true;
                     }
@@ -321,6 +331,9 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 10: {
+                        if (!widthUsed && pendingWidth == null && args.length % 2 === 1) {
+                            pendingWidth = args.shift() ?? null;
+                        }
                         const subrIndex = (args.pop() ?? 0) + lBias;
                         if (args.length) stack.push(...args);
                         const subr = lsubrs[subrIndex];
@@ -432,6 +445,9 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 29: {
+                        if (!widthUsed && pendingWidth == null && args.length % 2 === 1) {
+                            pendingWidth = args.shift() ?? null;
+                        }
                         const subrIndex = (args.pop() ?? 0) + gBias;
                         if (args.length) stack.push(...args);
                         const subr = gsubrs[subrIndex];

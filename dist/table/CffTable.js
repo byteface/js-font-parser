@@ -162,6 +162,7 @@ var CffTable = /** @class */ (function () {
         var contourOpen = false;
         var stemCount = 0;
         var widthUsed = false;
+        var pendingWidth = null;
         var stack = [];
         var gsubrs = this.globalSubrs;
         var lsubrs = localSubrs;
@@ -198,19 +199,31 @@ var CffTable = /** @class */ (function () {
                 }
                 var args = stack.splice(0, stack.length);
                 var consumeWidthIfOdd = function () {
-                    if (!widthUsed && args.length % 2 === 1) {
+                    if (!widthUsed && pendingWidth != null) {
+                        pendingWidth = null;
+                        widthUsed = true;
+                    }
+                    else if (!widthUsed && args.length % 2 === 1) {
                         args.shift();
                         widthUsed = true;
                     }
                 };
                 var consumeWidthIfMoreThanOne = function () {
-                    if (!widthUsed && args.length > 1) {
+                    if (!widthUsed && pendingWidth != null) {
+                        pendingWidth = null;
+                        widthUsed = true;
+                    }
+                    else if (!widthUsed && args.length > 1) {
                         args.shift();
                         widthUsed = true;
                     }
                 };
                 var consumeWidthIfMod = function (mod, expect) {
-                    if (!widthUsed && args.length % mod === expect) {
+                    if (!widthUsed && pendingWidth != null) {
+                        pendingWidth = null;
+                        widthUsed = true;
+                    }
+                    else if (!widthUsed && args.length % mod === expect) {
                         args.shift();
                         widthUsed = true;
                     }
@@ -277,7 +290,11 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 10: { // callsubr
-                        var subrIndex = ((_k = args.pop()) !== null && _k !== void 0 ? _k : 0) + lBias;
+                        if (!widthUsed && pendingWidth == null && args.length % 2 === 1) {
+                            var w = args.shift();
+                            pendingWidth = w != null ? w : null;
+                        }
+                        var subrIndex = (args.pop() || 0) + lBias;
                         if (args.length)
                             stack.push.apply(stack, args);
                         var subr = lsubrs[subrIndex];
@@ -421,7 +438,11 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 29: { // callgsubr
-                        var subrIndex = ((_7 = args.pop()) !== null && _7 !== void 0 ? _7 : 0) + gBias;
+                        if (!widthUsed && pendingWidth == null && args.length % 2 === 1) {
+                            var w = args.shift();
+                            pendingWidth = w != null ? w : null;
+                        }
+                        var subrIndex = (args.pop() || 0) + gBias;
                         if (args.length)
                             stack.push.apply(stack, args);
                         var subr = gsubrs[subrIndex];
