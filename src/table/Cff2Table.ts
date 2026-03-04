@@ -144,6 +144,7 @@ export class Cff2Table implements ITable {
         let x = 0;
         let y = 0;
         let contourOpen = false;
+        let stemCount = 0;
 
         const stack: number[] = [];
         const gsubrs = this.globalSubrs;
@@ -175,7 +176,7 @@ export class Cff2Table implements ITable {
             let i = 0;
             while (i < bytes.length) {
                 const b0 = bytes[i++];
-                if (b0 >= 32 || b0 === 28 || b0 === 29) {
+                if (b0 >= 32 || b0 === 28 || b0 === 255) {
                     const [num, next] = this.readCharStringNumber(bytes, i - 1);
                     stack.push(num);
                     i = next;
@@ -189,6 +190,7 @@ export class Cff2Table implements ITable {
                     case 18:
                     case 23:
                         if (args.length % 2 === 1) args.shift();
+                        stemCount += Math.floor(args.length / 2);
                         break;
                     case 4: {
                         if (args.length % 2 === 1) args.shift();
@@ -246,6 +248,14 @@ export class Cff2Table implements ITable {
                     case 14: {
                         closeContour();
                         return;
+                    }
+                    case 19:
+                    case 20: {
+                        if (args.length % 2 === 1) args.shift();
+                        stemCount += Math.floor(args.length / 2);
+                        const maskBytes = Math.ceil(stemCount / 8);
+                        i += maskBytes;
+                        break;
                     }
                     case 21: {
                         if (args.length % 2 === 1) args.shift();
@@ -409,9 +419,9 @@ export class Cff2Table implements ITable {
             const v = (bytes[start + 1] << 8) | bytes[start + 2];
             return [v & 0x8000 ? v - 0x10000 : v, start + 3];
         }
-        if (b0 === 29) {
+        if (b0 === 255) {
             const v = (bytes[start + 1] << 24) | (bytes[start + 2] << 16) | (bytes[start + 3] << 8) | bytes[start + 4];
-            return [v & 0x80000000 ? v - 0x100000000 : v, start + 5];
+            return [v / 65536, start + 5];
         }
         return [0, start + 1];
     }

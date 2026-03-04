@@ -129,6 +129,7 @@ var Cff2Table = /** @class */ (function () {
         var x = 0;
         var y = 0;
         var contourOpen = false;
+        var stemCount = 0;
         var stack = [];
         var gsubrs = this.globalSubrs;
         var lsubrs = localSubrs;
@@ -156,7 +157,7 @@ var Cff2Table = /** @class */ (function () {
             var i = 0;
             while (i < bytes.length) {
                 var b0 = bytes[i++];
-                if (b0 >= 32 || b0 === 28 || b0 === 29) {
+                if (b0 >= 32 || b0 === 28 || b0 === 255) {
                     var _a = _this.readCharStringNumber(bytes, i - 1), num = _a[0], next = _a[1];
                     stack.push(num);
                     i = next;
@@ -170,6 +171,7 @@ var Cff2Table = /** @class */ (function () {
                     case 23:
                         if (args.length % 2 === 1)
                             args.shift();
+                        stemCount += Math.floor(args.length / 2);
                         break;
                     case 4: {
                         if (args.length % 2 === 1)
@@ -233,6 +235,15 @@ var Cff2Table = /** @class */ (function () {
                     case 14: {
                         closeContour();
                         return;
+                    }
+                    case 19:
+                    case 20: {
+                        if (args.length % 2 === 1)
+                            args.shift();
+                        stemCount += Math.floor(args.length / 2);
+                        var maskBytes = Math.ceil(stemCount / 8);
+                        i += maskBytes;
+                        break;
                     }
                     case 21: {
                         if (args.length % 2 === 1)
@@ -400,9 +411,9 @@ var Cff2Table = /** @class */ (function () {
             var v = (bytes[start + 1] << 8) | bytes[start + 2];
             return [v & 0x8000 ? v - 0x10000 : v, start + 3];
         }
-        if (b0 === 29) {
+        if (b0 === 255) {
             var v = (bytes[start + 1] << 24) | (bytes[start + 2] << 16) | (bytes[start + 3] << 8) | bytes[start + 4];
-            return [v & 0x80000000 ? v - 0x100000000 : v, start + 5];
+            return [v / 65536, start + 5];
         }
         return [0, start + 1];
     };

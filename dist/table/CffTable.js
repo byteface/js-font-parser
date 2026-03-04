@@ -7,6 +7,8 @@ var CffTable = /** @class */ (function () {
         this.charStrings = [];
         this.globalSubrs = [];
         this.localSubrs = [];
+        this.fdSelect = [];
+        this.privateInfos = [];
         this.nominalWidthX = 0;
         this.defaultWidthX = 0;
         this.baseOffset = de.offset;
@@ -31,6 +33,9 @@ var CffTable = /** @class */ (function () {
         var topDict = CffDict.parse(topDictData);
         var charStringsOffset = topDict.getNumber('charStrings', 0);
         var privateInfo = topDict.getArray('private');
+        var fdArrayOffset = topDict.getNumber('fdArray', 0);
+        var fdSelectOffset = topDict.getNumber('fdSelect', 0);
+        var ros = topDict.getArray('ros');
         if (privateInfo && privateInfo.length >= 2) {
             var size = privateInfo[0];
             var offset = privateInfo[1];
@@ -46,9 +51,40 @@ var CffTable = /** @class */ (function () {
                 this.localSubrs = subrsIndex.objects;
             }
         }
+        // CID-keyed CFF: use FDArray/FDSelect
+        if (ros && fdArrayOffset > 0) {
+            var fdArrayIndex = CffIndex.read(byte_ar, this.baseOffset + fdArrayOffset);
+            var _this_1 = this;
+            this.privateInfos = fdArrayIndex.objects.map(function (bytes) {
+                var fdDict = CffDict.parse(bytes);
+                var info = fdDict.getArray('private');
+                if (!info || info.length < 2)
+                    return { subrs: [], nominalWidthX: 0, defaultWidthX: 0 };
+                var size = info[0];
+                var offset = info[1];
+                var privateStart = _this_1.baseOffset + offset;
+                byte_ar.offset = privateStart;
+                var privateBytes = byte_ar.readBytes(size);
+                var privateDict = CffDict.parse(privateBytes);
+                var nominalWidthX = privateDict.getNumber('nominalWidthX', 0);
+                var defaultWidthX = privateDict.getNumber('defaultWidthX', 0);
+                var subrsOffset = privateDict.getNumber('subrs', 0);
+                if (subrsOffset > 0) {
+                    var subrsIndex = CffIndex.read(byte_ar, privateStart + subrsOffset);
+                    return { subrs: subrsIndex.objects, nominalWidthX: nominalWidthX, defaultWidthX: defaultWidthX };
+                }
+                return { subrs: [], nominalWidthX: nominalWidthX, defaultWidthX: defaultWidthX };
+            });
+        }
         if (charStringsOffset > 0) {
             var charStringsIndex = CffIndex.read(byte_ar, this.baseOffset + charStringsOffset);
             this.charStrings = charStringsIndex.objects;
+        }
+        if (ros && fdSelectOffset > 0) {
+            this.fdSelect = this.readFdSelect(byte_ar, this.baseOffset + fdSelectOffset, this.charStrings.length);
+        }
+        else {
+            this.fdSelect = new Array(this.charStrings.length).fill(0);
         }
     }
     CffTable.prototype.getType = function () {
@@ -58,7 +94,9 @@ var CffTable = /** @class */ (function () {
         var charString = this.charStrings[glyphId];
         if (!charString)
             return null;
-        var _a = this.parseCharString(charString), points = _a.points, endPts = _a.endPts;
+        var fdIndex = this.fdSelect[glyphId] || 0;
+        var localSubrs = (this.privateInfos[fdIndex] && this.privateInfos[fdIndex].subrs) || this.localSubrs;
+        var _a = this.parseCharString(charString, localSubrs), points = _a.points, endPts = _a.endPts;
         return new CffGlyphDescription(points, endPts);
     };
     CffTable.prototype.getDefaultWidthX = function () {
@@ -72,16 +110,60 @@ var CffTable = /** @class */ (function () {
             return 1131;
         return 32768;
     };
-    CffTable.prototype.parseCharString = function (charString) {
+    CffTable.prototype.readFdSelect = function (byte_ar, offset, numGlyphs) {
+        var prev = byte_ar.offset;
+        byte_ar.offset = offset;
+        var format = byte_ar.readUnsignedByte();
+        var fdSelect = new Array(numGlyphs).fill(0);
+        if (format === 0) {
+            for (var i = 0; i < numGlyphs; i++) {
+                fdSelect[i] = byte_ar.readUnsignedByte();
+            }
+        }
+        else if (format === 3) {
+            var nRanges = byte_ar.readUnsignedShort();
+            var ranges = [];
+            for (var i = 0; i < nRanges; i++) {
+                ranges.push({ first: byte_ar.readUnsignedShort(), fd: byte_ar.readUnsignedShort() });
+            }
+            var sentinel = byte_ar.readUnsignedShort();
+            for (var i = 0; i < ranges.length; i++) {
+                var start = ranges[i].first;
+                var end = (i + 1 < ranges.length ? ranges[i + 1].first : sentinel) - 1;
+                for (var g = start; g <= end && g < numGlyphs; g++) {
+                    fdSelect[g] = ranges[i].fd;
+                }
+            }
+        }
+        else if (format === 4) {
+            var nRanges = byte_ar.readUnsignedInt();
+            var ranges = [];
+            for (var i = 0; i < nRanges; i++) {
+                ranges.push({ first: byte_ar.readUnsignedInt(), fd: byte_ar.readUnsignedShort() });
+            }
+            var sentinel = byte_ar.readUnsignedInt();
+            for (var i = 0; i < ranges.length; i++) {
+                var start = ranges[i].first;
+                var end = (i + 1 < ranges.length ? ranges[i + 1].first : sentinel) - 1;
+                for (var g = start; g <= end && g < numGlyphs; g++) {
+                    fdSelect[g] = ranges[i].fd;
+                }
+            }
+        }
+        byte_ar.offset = prev;
+        return fdSelect;
+    };
+    CffTable.prototype.parseCharString = function (charString, localSubrs) {
         var _this = this;
         var points = [];
         var endPts = [];
         var x = 0;
         var y = 0;
         var contourOpen = false;
+        var stemCount = 0;
         var stack = [];
         var gsubrs = this.globalSubrs;
-        var lsubrs = this.localSubrs;
+        var lsubrs = localSubrs;
         var gBias = this.getSubrBias(gsubrs);
         var lBias = this.getSubrBias(lsubrs);
         var addPoint = function (dx, dy, onCurve) {
@@ -107,7 +189,7 @@ var CffTable = /** @class */ (function () {
             var i = 0;
             while (i < bytes.length) {
                 var b0 = bytes[i++];
-                if (b0 >= 32 || b0 === 28 || b0 === 29) {
+                if (b0 >= 32 || b0 === 28 || b0 === 255) {
                     var _18 = _this.readCharStringNumber(bytes, i - 1), num = _18[0], next = _18[1];
                     stack.push(num);
                     i = next;
@@ -122,6 +204,7 @@ var CffTable = /** @class */ (function () {
                         // width may be first if odd count
                         if (args.length % 2 === 1)
                             args.shift();
+                        stemCount += Math.floor(args.length / 2);
                         break;
                     case 4: { // vmoveto
                         if (args.length % 2 === 1)
@@ -185,6 +268,15 @@ var CffTable = /** @class */ (function () {
                     case 14: { // endchar
                         closeContour();
                         return;
+                    }
+                    case 19: // hintmask
+                    case 20: { // cntrmask
+                        if (args.length % 2 === 1)
+                            args.shift();
+                        stemCount += Math.floor(args.length / 2);
+                        var maskBytes = Math.ceil(stemCount / 8);
+                        i += maskBytes;
+                        break;
                     }
                     case 21: { // rmoveto
                         if (args.length % 2 === 1)
@@ -353,9 +445,9 @@ var CffTable = /** @class */ (function () {
             var v = (bytes[start + 1] << 8) | bytes[start + 2];
             return [v & 0x8000 ? v - 0x10000 : v, start + 3];
         }
-        if (b0 === 29) {
+        if (b0 === 255) {
             var v = (bytes[start + 1] << 24) | (bytes[start + 2] << 16) | (bytes[start + 3] << 8) | bytes[start + 4];
-            return [v & 0x80000000 ? v - 0x100000000 : v, start + 5];
+            return [v / 65536, start + 5];
         }
         return [0, start + 1];
     };

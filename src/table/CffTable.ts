@@ -14,6 +14,8 @@ export class CffTable implements ITable {
     private charStrings: Uint8Array[] = [];
     private globalSubrs: Uint8Array[] = [];
     private localSubrs: Uint8Array[] = [];
+    private fdSelect: number[] = [];
+    private privateInfos: Array<{ subrs: Uint8Array[]; nominalWidthX: number; defaultWidthX: number }> = [];
     private nominalWidthX: number = 0;
     private defaultWidthX: number = 0;
 
@@ -43,6 +45,9 @@ export class CffTable implements ITable {
         const topDict = CffDict.parse(topDictData);
         const charStringsOffset = topDict.getNumber('charStrings', 0);
         const privateInfo = topDict.getArray('private');
+        const fdArrayOffset = topDict.getNumber('fdArray', 0);
+        const fdSelectOffset = topDict.getNumber('fdSelect', 0);
+        const ros = topDict.getArray('ros');
 
         if (privateInfo && privateInfo.length >= 2) {
             const size = privateInfo[0];
@@ -60,9 +65,38 @@ export class CffTable implements ITable {
             }
         }
 
+        // CID-keyed CFF: use FDArray/FDSelect
+        if (ros && fdArrayOffset > 0) {
+            const fdArrayIndex = CffIndex.read(byte_ar, this.baseOffset + fdArrayOffset);
+            this.privateInfos = fdArrayIndex.objects.map(bytes => {
+                const fdDict = CffDict.parse(bytes);
+                const info = fdDict.getArray('private');
+                if (!info || info.length < 2) return { subrs: [], nominalWidthX: 0, defaultWidthX: 0 };
+                const size = info[0];
+                const offset = info[1];
+                const privateStart = this.baseOffset + offset;
+                byte_ar.offset = privateStart;
+                const privateBytes = byte_ar.readBytes(size);
+                const privateDict = CffDict.parse(privateBytes);
+                const nominalWidthX = privateDict.getNumber('nominalWidthX', 0);
+                const defaultWidthX = privateDict.getNumber('defaultWidthX', 0);
+                const subrsOffset = privateDict.getNumber('subrs', 0);
+                if (subrsOffset > 0) {
+                    const subrsIndex = CffIndex.read(byte_ar, privateStart + subrsOffset);
+                    return { subrs: subrsIndex.objects, nominalWidthX, defaultWidthX };
+                }
+                return { subrs: [], nominalWidthX, defaultWidthX };
+            });
+        }
         if (charStringsOffset > 0) {
             const charStringsIndex = CffIndex.read(byte_ar, this.baseOffset + charStringsOffset);
             this.charStrings = charStringsIndex.objects;
+        }
+
+        if (ros && fdSelectOffset > 0) {
+            this.fdSelect = this.readFdSelect(byte_ar, this.baseOffset + fdSelectOffset, this.charStrings.length);
+        } else {
+            this.fdSelect = new Array(this.charStrings.length).fill(0);
         }
     }
 
@@ -73,7 +107,9 @@ export class CffTable implements ITable {
     getGlyphDescription(glyphId: number): IGlyphDescription | null {
         const charString = this.charStrings[glyphId];
         if (!charString) return null;
-        const { points, endPts } = this.parseCharString(charString);
+        const fdIndex = this.fdSelect[glyphId] ?? 0;
+        const localSubrs = this.privateInfos[fdIndex]?.subrs ?? this.localSubrs;
+        const { points, endPts } = this.parseCharString(charString, localSubrs);
         return new CffGlyphDescription(points, endPts);
     }
 
@@ -88,16 +124,59 @@ export class CffTable implements ITable {
         return 32768;
     }
 
-    private parseCharString(charString: Uint8Array): { points: CffPoint[]; endPts: number[] } {
+    private readFdSelect(byte_ar: ByteArray, offset: number, numGlyphs: number): number[] {
+        const prev = byte_ar.offset;
+        byte_ar.offset = offset;
+        const format = byte_ar.readUnsignedByte();
+        const fdSelect = new Array(numGlyphs).fill(0);
+        if (format === 0) {
+            for (let i = 0; i < numGlyphs; i++) {
+                fdSelect[i] = byte_ar.readUnsignedByte();
+            }
+        } else if (format === 3) {
+            const nRanges = byte_ar.readUnsignedShort();
+            const ranges: { first: number; fd: number }[] = [];
+            for (let i = 0; i < nRanges; i++) {
+                ranges.push({ first: byte_ar.readUnsignedShort(), fd: byte_ar.readUnsignedShort() });
+            }
+            const sentinel = byte_ar.readUnsignedShort();
+            for (let i = 0; i < ranges.length; i++) {
+                const start = ranges[i].first;
+                const end = (i + 1 < ranges.length ? ranges[i + 1].first : sentinel) - 1;
+                for (let g = start; g <= end && g < numGlyphs; g++) {
+                    fdSelect[g] = ranges[i].fd;
+                }
+            }
+        } else if (format === 4) {
+            const nRanges = byte_ar.readUnsignedInt();
+            const ranges: { first: number; fd: number }[] = [];
+            for (let i = 0; i < nRanges; i++) {
+                ranges.push({ first: byte_ar.readUnsignedInt(), fd: byte_ar.readUnsignedShort() });
+            }
+            const sentinel = byte_ar.readUnsignedInt();
+            for (let i = 0; i < ranges.length; i++) {
+                const start = ranges[i].first;
+                const end = (i + 1 < ranges.length ? ranges[i + 1].first : sentinel) - 1;
+                for (let g = start; g <= end && g < numGlyphs; g++) {
+                    fdSelect[g] = ranges[i].fd;
+                }
+            }
+        }
+        byte_ar.offset = prev;
+        return fdSelect;
+    }
+
+    private parseCharString(charString: Uint8Array, localSubrs: Uint8Array[]): { points: CffPoint[]; endPts: number[] } {
         const points: CffPoint[] = [];
         const endPts: number[] = [];
         let x = 0;
         let y = 0;
         let contourOpen = false;
+        let stemCount = 0;
 
         const stack: number[] = [];
         const gsubrs = this.globalSubrs;
-        const lsubrs = this.localSubrs;
+        const lsubrs = localSubrs;
         const gBias = this.getSubrBias(gsubrs);
         const lBias = this.getSubrBias(lsubrs);
 
@@ -125,7 +204,7 @@ export class CffTable implements ITable {
             let i = 0;
             while (i < bytes.length) {
                 const b0 = bytes[i++];
-                if (b0 >= 32 || b0 === 28 || b0 === 29) {
+                if (b0 >= 32 || b0 === 28 || b0 === 255) {
                     const [num, next] = this.readCharStringNumber(bytes, i - 1);
                     stack.push(num);
                     i = next;
@@ -140,6 +219,7 @@ export class CffTable implements ITable {
                     case 23: // vstemhm
                         // width may be first if odd count
                         if (args.length % 2 === 1) args.shift();
+                        stemCount += Math.floor(args.length / 2);
                         break;
                     case 4: { // vmoveto
                         if (args.length % 2 === 1) args.shift();
@@ -197,6 +277,15 @@ export class CffTable implements ITable {
                     case 14: { // endchar
                         closeContour();
                         return;
+                    }
+                    case 19: // hintmask
+                    case 20: { // cntrmask
+                        // width may be first if odd count
+                        if (args.length % 2 === 1) args.shift();
+                        stemCount += Math.floor(args.length / 2);
+                        const maskBytes = Math.ceil(stemCount / 8);
+                        i += maskBytes;
+                        break;
                     }
                     case 21: { // rmoveto
                         if (args.length % 2 === 1) args.shift();
@@ -360,9 +449,9 @@ export class CffTable implements ITable {
             const v = (bytes[start + 1] << 8) | bytes[start + 2];
             return [v & 0x8000 ? v - 0x10000 : v, start + 3];
         }
-        if (b0 === 29) {
+        if (b0 === 255) {
             const v = (bytes[start + 1] << 24) | (bytes[start + 2] << 16) | (bytes[start + 3] << 8) | bytes[start + 4];
-            return [v & 0x80000000 ? v - 0x100000000 : v, start + 5];
+            return [v / 65536, start + 5];
         }
         return [0, start + 1];
     }

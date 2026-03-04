@@ -361,7 +361,7 @@ var FontParserTTF = /** @class */ (function () {
         if (this.cff) {
             var cffDesc = this.cff.getGlyphDescription(i);
             if (cffDesc) {
-                return new GlyphData(cffDesc, (_h = (_g = this.hmtx) === null || _g === void 0 ? void 0 : _g.getLeftSideBearing(i)) !== null && _h !== void 0 ? _h : 0, (_k = (_j = this.hmtx) === null || _j === void 0 ? void 0 : _j.getAdvanceWidth(i)) !== null && _k !== void 0 ? _k : 0, { isCubic: true });
+                return new GlyphData(cffDesc, (_h = (_g = this.hmtx) === null || _g === void 0 ? void 0 : _g.getLeftSideBearing(i)) !== null && _h !== void 0 ? _h : 0, (_j = (_g = this.hmtx) === null || _g === void 0 ? void 0 : _g.getAdvanceWidth(i)) !== null && _j !== void 0 ? _j : 0, { isCubic: true });
             }
         }
         return null;
