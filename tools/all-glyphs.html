@@ -179,6 +179,26 @@
             ctx.fillRect(0, 0, width, height);
         }
 
+        function getGlyphBounds(glyph) {
+            if (!glyph) return null;
+            const count = Math.max(0, glyph.getPointCount() - 2);
+            if (count === 0) return null;
+            let minx = Infinity;
+            let miny = Infinity;
+            let maxx = -Infinity;
+            let maxy = -Infinity;
+            for (let i = 0; i < count; i++) {
+                const p = glyph.getPoint(i);
+                if (!p) continue;
+                if (p.x < minx) minx = p.x;
+                if (p.y < miny) miny = p.y;
+                if (p.x > maxx) maxx = p.x;
+                if (p.y > maxy) maxy = p.y;
+            }
+            if (!isFinite(minx) || !isFinite(miny)) return null;
+            return { minx, miny, maxx, maxy };
+        }
+
         function renderGrid(font) {
             if (!ctx) return;
             const cell = Number(cellInput.value);
@@ -222,9 +242,12 @@
 
                 const glyph = font.getGlyph(i);
                 if (glyph) {
+                    const bounds = i === 0 ? getGlyphBounds(glyph) : null;
+                    const centerX = bounds ? (bounds.minx + bounds.maxx) * 0.5 : 0;
+                    const centerY = bounds ? (bounds.miny + bounds.maxy) * 0.5 : 0;
                     CanvasRenderer.drawGlyphToContext(ctx, glyph, {
-                        x: x + cell * 0.5,
-                        y: y + cell * 0.7,
+                        x: x + cell * 0.5 - (centerX * scale),
+                        y: y + cell * 0.7 + (centerY * scale),
                         scale,
                         styles: { fillStyle: "#2f2a22", strokeStyle: "#2f2a22", lineWidth: 1 }
                     });
