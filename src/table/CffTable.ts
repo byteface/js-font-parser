@@ -345,8 +345,7 @@ export class CffTable implements ITable {
                     case 20: { // cntrmask
                         consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
-                        let maskBytes = Math.ceil(stemCount / 8);
-                        if (maskBytes === 0) maskBytes = 1;
+                        const maskBytes = Math.ceil(stemCount / 8);
                         i += Math.min(maskBytes, bytes.length - i);
                         break;
                     }
@@ -453,31 +452,34 @@ export class CffTable implements ITable {
                         ensureMove();
                         let idx = 0;
                         let horizontal = b0 === 31;
+                        let dx1 = 0;
+                        let dy1 = 0;
+                        if (args.length % 4 === 1) {
+                            if (horizontal) {
+                                dy1 = args[idx++] ?? 0;
+                            } else {
+                                dx1 = args[idx++] ?? 0;
+                            }
+                        }
                         while (idx + 3 < args.length) {
                             if (horizontal) {
-                                const dx1 = args[idx++] ?? 0;
+                                const dx1a = args[idx++] ?? 0;
                                 const dx2 = args[idx++] ?? 0;
                                 const dy2 = args[idx++] ?? 0;
-                                let dy3 = args[idx++] ?? 0;
-                                let dx3 = 0;
-                                if (idx === args.length - 1) {
-                                    dx3 = args[idx++] ?? 0;
-                                }
-                                addPoint(dx1, 0, false);
+                                const dy3 = args[idx++] ?? 0;
+                                addPoint(dx1a, dy1, false);
                                 addPoint(dx2, dy2, false);
-                                addPoint(dx3, dy3, true);
+                                addPoint(0, dy3, true);
+                                dy1 = 0;
                             } else {
-                                const dy1 = args[idx++] ?? 0;
+                                const dy1a = args[idx++] ?? 0;
                                 const dx2 = args[idx++] ?? 0;
                                 const dy2 = args[idx++] ?? 0;
-                                let dx3 = args[idx++] ?? 0;
-                                let dy3 = 0;
-                                if (idx === args.length - 1) {
-                                    dy3 = args[idx++] ?? 0;
-                                }
-                                addPoint(0, dy1, false);
+                                const dx3 = args[idx++] ?? 0;
+                                addPoint(dx1, dy1a, false);
                                 addPoint(dx2, dy2, false);
-                                addPoint(dx3, dy3, true);
+                                addPoint(dx3, 0, true);
+                                dx1 = 0;
                             }
                             horizontal = !horizontal;
                         }

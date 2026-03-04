@@ -331,8 +331,6 @@ var Cff2Table = /** @class */ (function () {
                         consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         var maskBytes = Math.ceil(stemCount / 8);
-                        if (maskBytes === 0)
-                            maskBytes = 1;
                         i += Math.min(maskBytes, bytes.length - i);
                         break;
                     }
@@ -441,32 +439,36 @@ var Cff2Table = /** @class */ (function () {
                         ensureMove();
                         var idx = 0;
                         var horizontal = b0 === 31;
+                        var dx1 = 0;
+                        var dy1 = 0;
+                        if (args.length % 4 === 1) {
+                            if (horizontal) {
+                                dy1 = args[idx++] || 0;
+                            }
+                            else {
+                                dx1 = args[idx++] || 0;
+                            }
+                        }
                         while (idx + 3 < args.length) {
                             if (horizontal) {
-                                var dx1 = args[idx++] || 0;
+                                var dx1a = args[idx++] || 0;
                                 var dx2 = args[idx++] || 0;
                                 var dy2 = args[idx++] || 0;
                                 var dy3 = args[idx++] || 0;
-                                var dx3 = 0;
-                                if (idx === args.length - 1) {
-                                    dx3 = args[idx++] || 0;
-                                }
-                                addPoint(dx1, 0, false);
+                                addPoint(dx1a, dy1, false);
                                 addPoint(dx2, dy2, false);
-                                addPoint(dx3, dy3, true);
+                                addPoint(0, dy3, true);
+                                dy1 = 0;
                             }
                             else {
-                                var dy1 = args[idx++] || 0;
+                                var dy1a = args[idx++] || 0;
                                 var dx2 = args[idx++] || 0;
                                 var dy2 = args[idx++] || 0;
                                 var dx3 = args[idx++] || 0;
-                                var dy3 = 0;
-                                if (idx === args.length - 1) {
-                                    dy3 = args[idx++] || 0;
-                                }
-                                addPoint(0, dy1, false);
+                                addPoint(dx1, dy1a, false);
                                 addPoint(dx2, dy2, false);
-                                addPoint(dx3, dy3, true);
+                                addPoint(dx3, 0, true);
+                                dx1 = 0;
                             }
                             horizontal = !horizontal;
                         }

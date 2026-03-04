@@ -341,8 +341,6 @@ var CffTable = /** @class */ (function () {
                         consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         var maskBytes = Math.ceil(stemCount / 8);
-                        if (maskBytes === 0)
-                            maskBytes = 1;
                         i += Math.min(maskBytes, bytes.length - i);
                         break;
                     }
@@ -451,32 +449,36 @@ var CffTable = /** @class */ (function () {
                         ensureMove();
                         var idx = 0;
                         var horizontal = b0 === 31;
-                        while (idx + 3 < args.length) {
+                        var dx1 = 0;
+                        var dy1 = 0;
+                        if (args.length % 4 === 1) {
                             if (horizontal) {
-                                var dx1 = (_8 = args[idx++]) !== null && _8 !== void 0 ? _8 : 0;
-                                var dx2 = (_9 = args[idx++]) !== null && _9 !== void 0 ? _9 : 0;
-                                var dy2 = (_10 = args[idx++]) !== null && _10 !== void 0 ? _10 : 0;
-                                var dy3 = (_11 = args[idx++]) !== null && _11 !== void 0 ? _11 : 0;
-                                var dx3 = 0;
-                                if (idx === args.length - 1) {
-                                    dx3 = (_12 = args[idx++]) !== null && _12 !== void 0 ? _12 : 0;
-                                }
-                                addPoint(dx1, 0, false);
-                                addPoint(dx2, dy2, false);
-                                addPoint(dx3, dy3, true);
+                                dy1 = (_8 = args[idx++]) !== null && _8 !== void 0 ? _8 : 0;
                             }
                             else {
-                                var dy1 = (_13 = args[idx++]) !== null && _13 !== void 0 ? _13 : 0;
-                                var dx2 = (_14 = args[idx++]) !== null && _14 !== void 0 ? _14 : 0;
-                                var dy2 = (_15 = args[idx++]) !== null && _15 !== void 0 ? _15 : 0;
-                                var dx3 = (_16 = args[idx++]) !== null && _16 !== void 0 ? _16 : 0;
-                                var dy3 = 0;
-                                if (idx === args.length - 1) {
-                                    dy3 = (_17 = args[idx++]) !== null && _17 !== void 0 ? _17 : 0;
-                                }
-                                addPoint(0, dy1, false);
+                                dx1 = (_9 = args[idx++]) !== null && _9 !== void 0 ? _9 : 0;
+                            }
+                        }
+                        while (idx + 3 < args.length) {
+                            if (horizontal) {
+                                var dx1a = (_10 = args[idx++]) !== null && _10 !== void 0 ? _10 : 0;
+                                var dx2 = (_11 = args[idx++]) !== null && _11 !== void 0 ? _11 : 0;
+                                var dy2 = (_12 = args[idx++]) !== null && _12 !== void 0 ? _12 : 0;
+                                var dy3 = (_13 = args[idx++]) !== null && _13 !== void 0 ? _13 : 0;
+                                addPoint(dx1a, dy1, false);
                                 addPoint(dx2, dy2, false);
-                                addPoint(dx3, dy3, true);
+                                addPoint(0, dy3, true);
+                                dy1 = 0;
+                            }
+                            else {
+                                var dy1a = (_14 = args[idx++]) !== null && _14 !== void 0 ? _14 : 0;
+                                var dx2 = (_15 = args[idx++]) !== null && _15 !== void 0 ? _15 : 0;
+                                var dy2 = (_16 = args[idx++]) !== null && _16 !== void 0 ? _16 : 0;
+                                var dx3 = (_17 = args[idx++]) !== null && _17 !== void 0 ? _17 : 0;
+                                addPoint(dx1, dy1a, false);
+                                addPoint(dx2, dy2, false);
+                                addPoint(dx3, 0, true);
+                                dx1 = 0;
                             }
                             horizontal = !horizontal;
                         }
