@@ -17,6 +17,7 @@ export class Cff2Table implements ITable {
     private globalSubrs: Uint8Array[] = [];
     private fdSelect: number[] = [];
     private privateInfos: PrivateInfo[] = [];
+    private vstoreRegionCounts: number[] = [];
 
     constructor(de: DirectoryEntry, byte_ar: ByteArray) {
         this.baseOffset = de.offset;
@@ -47,6 +48,7 @@ export class Cff2Table implements ITable {
 
         const fdArrayOffset = topDict.getNumber('fdArray', 0);
         const fdSelectOffset = topDict.getNumber('fdSelect', 0);
+        const vstoreOffset = topDict.getNumber('vstore', 0);
 
         if (fdArrayOffset > 0) {
             const fdArrayIndex = CffIndex.read(byte_ar, this.baseOffset + fdArrayOffset);
@@ -73,6 +75,10 @@ export class Cff2Table implements ITable {
             this.fdSelect = this.readFdSelect(byte_ar, this.baseOffset + fdSelectOffset, this.charStrings.length);
         } else {
             this.fdSelect = new Array(this.charStrings.length).fill(0);
+        }
+
+        if (vstoreOffset > 0) {
+            this.readVariationStore(byte_ar, this.baseOffset + vstoreOffset);
         }
     }
 
@@ -136,6 +142,46 @@ export class Cff2Table implements ITable {
         if (n < 1240) return 107;
         if (n < 33900) return 1131;
         return 32768;
+    }
+
+    private readVariationStore(byte_ar: ByteArray, offset: number): void {
+        const prev = byte_ar.offset;
+        byte_ar.offset = offset;
+        const format = byte_ar.readUnsignedShort();
+        if (format !== 1) {
+            byte_ar.offset = prev;
+            return;
+        }
+        const regionListOffset = byte_ar.readUnsignedInt();
+        const ivdCount = byte_ar.readUnsignedShort();
+        const ivdOffsets: number[] = [];
+        for (let i = 0; i < ivdCount; i++) {
+            ivdOffsets.push(byte_ar.readUnsignedInt());
+        }
+
+        const regionListPos = offset + regionListOffset;
+        byte_ar.offset = regionListPos;
+        const axisCount = byte_ar.readUnsignedShort();
+        const regionCount = byte_ar.readUnsignedShort();
+        for (let r = 0; r < regionCount; r++) {
+            for (let a = 0; a < axisCount; a++) {
+                byte_ar.readShort(); // startCoord
+                byte_ar.readShort(); // peakCoord
+                byte_ar.readShort(); // endCoord
+            }
+        }
+
+        this.vstoreRegionCounts = new Array(ivdCount).fill(0);
+        for (let i = 0; i < ivdCount; i++) {
+            const ivdPos = offset + ivdOffsets[i];
+            byte_ar.offset = ivdPos;
+            byte_ar.readUnsignedShort(); // itemCount
+            byte_ar.readUnsignedShort(); // shortDeltaCount
+            const regionIndexCount = byte_ar.readUnsignedShort();
+            this.vstoreRegionCounts[i] = regionIndexCount;
+        }
+
+        byte_ar.offset = prev;
     }
 
     private parseCharString(charString: Uint8Array, localSubrs: Uint8Array[]): { points: CffPoint[]; endPts: number[] } {
@@ -406,20 +452,14 @@ export class Cff2Table implements ITable {
                         }
                         if (op === 17) { // blend
                             const n = args.pop() ?? 0;
-                            const total = args.length;
-                            if (n > 0 && total >= n) {
-                                if (total % n === 0) {
-                                    const numRegions = total / n - 1;
-                                    const start = total - n * (numRegions + 1);
-                                    const base = args.slice(start, start + n);
-                                    args.length = start;
-                                    args.push(...base);
-                                } else {
-                                    const start = total - n;
-                                    const base = args.slice(start);
-                                    args.length = start;
-                                    args.push(...base);
-                                }
+                            const regionCount = this.vstoreRegionCounts[vsIndex] ?? 0;
+                            const expected = n * (regionCount + 1);
+                            if (n > 0 && args.length >= expected) {
+                                const base = args.slice(0, n);
+                                stack.push(...base);
+                            } else if (n > 0 && args.length >= n) {
+                                const base = args.slice(0, n);
+                                stack.push(...base);
                             }
                             break;
                         }

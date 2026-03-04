@@ -9,6 +9,7 @@ var Cff2Table = /** @class */ (function () {
         this.globalSubrs = [];
         this.fdSelect = [];
         this.privateInfos = [];
+        this.vstoreRegionCounts = [];
         this.baseOffset = de.offset;
         byte_ar.offset = de.offset;
         var major = byte_ar.readUnsignedByte();
@@ -31,6 +32,7 @@ var Cff2Table = /** @class */ (function () {
         }
         var fdArrayOffset = topDict.getNumber('fdArray', 0);
         var fdSelectOffset = topDict.getNumber('fdSelect', 0);
+        var vstoreOffset = topDict.getNumber('vstore', 0);
         if (fdArrayOffset > 0) {
             var fdArrayIndex = CffIndex.read(byte_ar, this.baseOffset + fdArrayOffset);
             var fdDicts = fdArrayIndex.objects.map(function (bytes) { return CffDict.parse(bytes); });
@@ -57,6 +59,9 @@ var Cff2Table = /** @class */ (function () {
         }
         else {
             this.fdSelect = new Array(this.charStrings.length).fill(0);
+        }
+        if (vstoreOffset > 0) {
+            this.readVariationStore(byte_ar, this.baseOffset + vstoreOffset);
         }
     }
     Cff2Table.prototype.getType = function () {
@@ -121,6 +126,42 @@ var Cff2Table = /** @class */ (function () {
         if (n < 33900)
             return 1131;
         return 32768;
+    };
+    Cff2Table.prototype.readVariationStore = function (byte_ar, offset) {
+        var prev = byte_ar.offset;
+        byte_ar.offset = offset;
+        var format = byte_ar.readUnsignedShort();
+        if (format !== 1) {
+            byte_ar.offset = prev;
+            return;
+        }
+        var regionListOffset = byte_ar.readUnsignedInt();
+        var ivdCount = byte_ar.readUnsignedShort();
+        var ivdOffsets = [];
+        for (var i = 0; i < ivdCount; i++) {
+            ivdOffsets.push(byte_ar.readUnsignedInt());
+        }
+        var regionListPos = offset + regionListOffset;
+        byte_ar.offset = regionListPos;
+        var axisCount = byte_ar.readUnsignedShort();
+        var regionCount = byte_ar.readUnsignedShort();
+        for (var r = 0; r < regionCount; r++) {
+            for (var a = 0; a < axisCount; a++) {
+                byte_ar.readShort();
+                byte_ar.readShort();
+                byte_ar.readShort();
+            }
+        }
+        this.vstoreRegionCounts = new Array(ivdCount).fill(0);
+        for (var i = 0; i < ivdCount; i++) {
+            var ivdPos = offset + ivdOffsets[i];
+            byte_ar.offset = ivdPos;
+            byte_ar.readUnsignedShort();
+            byte_ar.readUnsignedShort();
+            var regionIndexCount = byte_ar.readUnsignedShort();
+            this.vstoreRegionCounts[i] = regionIndexCount;
+        }
+        byte_ar.offset = prev;
     };
     Cff2Table.prototype.parseCharString = function (charString, localSubrs) {
         var _this = this;
@@ -393,21 +434,15 @@ var Cff2Table = /** @class */ (function () {
                         }
                         if (op === 17) { // blend
                             var n = args.pop() || 0;
-                            var total = args.length;
-                            if (n > 0 && total >= n) {
-                                if (total % n === 0) {
-                                    var numRegions = total / n - 1;
-                                    var start = total - n * (numRegions + 1);
-                                    var base = args.slice(start, start + n);
-                                    args.length = start;
-                                    args.push.apply(args, base);
-                                }
-                                else {
-                                    var start = total - n;
-                                    var base = args.slice(start);
-                                    args.length = start;
-                                    args.push.apply(args, base);
-                                }
+                            var regionCount = this.vstoreRegionCounts[vsIndex] || 0;
+                            var expected = n * (regionCount + 1);
+                            if (n > 0 && args.length >= expected) {
+                                var base = args.slice(0, n);
+                                stack.push.apply(stack, base);
+                            }
+                            else if (n > 0 && args.length >= n) {
+                                var base = args.slice(0, n);
+                                stack.push.apply(stack, base);
                             }
                             break;
                         }
