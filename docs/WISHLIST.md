@@ -23,13 +23,13 @@
 - [x] Expanded API docs with rendering helpers and common patterns.
 
 ## Top 10 Next
-1. WOFF2 support
-2. CFF2 (OTF) outlines (finish variable CFF2)
-3. Better layout engine (line breaking, alignment)
-4. Contextual GSUB shaping (complex scripts)
-5. Full GPOS positioning (mark/ligature/cursive across scripts)
-6. gvar interpolation for variable fonts
-7. SVG glyph table rendering
-8. COLRv1 paint table support
-9. Expanded metadata API (name/OS2/post convenience surface)
-10. Golden-image tests for demo rendering
+1. CFF2 (OTF) outlines (finish variable CFF2)
+2. Better layout engine (line breaking, alignment)
+3. Contextual GSUB shaping (complex scripts)
+4. Full GPOS positioning (mark/ligature/cursive across scripts)
+5. gvar interpolation for variable fonts
+6. SVG glyph table rendering
+7. COLRv1 paint table support
+8. Expanded metadata API (name/OS2/post convenience surface)
+9. Golden-image tests for demo rendering
+10. WOFF2 support (deferred: no sample fonts yet)
