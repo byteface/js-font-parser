@@ -10,6 +10,7 @@ import { IGlyphDescription } from './IGlyphDescription.js';
 type CffPoint = { x: number; y: number; onCurve: boolean; endOfContour: boolean };
 
 type PrivateInfo = { subrs: Uint8Array[] };
+type VariationRegion = { start: number; peak: number; end: number };
 
 export class Cff2Table implements ITable {
     private baseOffset: number;
@@ -18,6 +19,9 @@ export class Cff2Table implements ITable {
     private fdSelect: number[] = [];
     private privateInfos: PrivateInfo[] = [];
     private vstoreRegionCounts: number[] = [];
+    private vstoreRegions: VariationRegion[][] = [];
+    private vstoreAxisCount: number = 0;
+    private variationCoords: number[] = [];
 
     constructor(de: DirectoryEntry, byte_ar: ByteArray) {
         this.baseOffset = de.offset;
@@ -95,6 +99,10 @@ export class Cff2Table implements ITable {
         return new CffGlyphDescription(points, endPts);
     }
 
+    setVariationCoords(coords: number[]): void {
+        this.variationCoords = coords.slice();
+    }
+
     private readFdSelect(byte_ar: ByteArray, offset: number, numGlyphs: number): number[] {
         const prev = byte_ar.offset;
         byte_ar.offset = offset;
@@ -163,12 +171,17 @@ export class Cff2Table implements ITable {
         byte_ar.offset = regionListPos;
         const axisCount = byte_ar.readUnsignedShort();
         const regionCount = byte_ar.readUnsignedShort();
+        this.vstoreAxisCount = axisCount;
+        this.vstoreRegions = [];
         for (let r = 0; r < regionCount; r++) {
+            const region: VariationRegion[] = [];
             for (let a = 0; a < axisCount; a++) {
-                byte_ar.readShort(); // startCoord
-                byte_ar.readShort(); // peakCoord
-                byte_ar.readShort(); // endCoord
+                const start = byte_ar.readShort() / 16384;
+                const peak = byte_ar.readShort() / 16384;
+                const end = byte_ar.readShort() / 16384;
+                region.push({ start, peak, end });
             }
+            this.vstoreRegions.push(region);
         }
 
         this.vstoreRegionCounts = new Array(ivdCount).fill(0);
@@ -456,7 +469,32 @@ export class Cff2Table implements ITable {
                             const expected = n * (regionCount + 1);
                             if (n > 0 && args.length >= expected) {
                                 const base = args.slice(0, n);
-                                stack.push(...base);
+                                const deltas = args.slice(n);
+                                const coords = this.variationCoords;
+                                const regionScalars: number[] = [];
+                                for (let r = 0; r < regionCount; r++) {
+                                    const region = this.vstoreRegions[r];
+                                    if (!region) { regionScalars.push(0); continue; }
+                                    let scalar = 1;
+                                    for (let a = 0; a < region.length; a++) {
+                                        const coord = coords[a] ?? 0;
+                                        const { start, peak, end } = region[a];
+                                        if (coord === 0 || start === 0 && peak === 0 && end === 0) continue;
+                                        if (coord < start || coord > end) { scalar = 0; break; }
+                                        if (coord < peak) scalar *= (coord - start) / (peak - start);
+                                        else if (coord > peak) scalar *= (end - coord) / (end - peak);
+                                    }
+                                    regionScalars.push(scalar);
+                                }
+                                const out: number[] = base.slice();
+                                for (let r = 0; r < regionCount; r++) {
+                                    const s = regionScalars[r] ?? 0;
+                                    if (!s) continue;
+                                    for (let i = 0; i < n; i++) {
+                                        out[i] += deltas[r * n + i] * s;
+                                    }
+                                }
+                                stack.push(...out);
                             } else if (n > 0 && args.length >= n) {
                                 const base = args.slice(0, n);
                                 stack.push(...base);

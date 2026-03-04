@@ -287,6 +287,35 @@ export class CffTable implements ITable {
                     case 11: // return
                         return;
                     case 14: { // endchar
+                        if (args.length === 5) {
+                            const [, adx, ady, bchar, achar] = args;
+                            const baseBytes = this.charStrings[bchar];
+                            const accentBytes = this.charStrings[achar];
+                            if (baseBytes) {
+                                const baseGlyph = this.parseCharString(baseBytes, localSubrs);
+                                const baseOffset = points.length;
+                                points.push(...baseGlyph.points);
+                                for (const endPt of baseGlyph.endPts) {
+                                    endPts.push(baseOffset + endPt);
+                                }
+                            }
+                            if (accentBytes) {
+                                const accentGlyph = this.parseCharString(accentBytes, localSubrs);
+                                const accentOffset = points.length;
+                                const translated = accentGlyph.points.map(p => ({
+                                    x: p.x + adx,
+                                    y: p.y + ady,
+                                    onCurve: p.onCurve,
+                                    endOfContour: p.endOfContour
+                                }));
+                                points.push(...translated);
+                                for (const endPt of accentGlyph.endPts) {
+                                    endPts.push(accentOffset + endPt);
+                                }
+                            }
+                            contourOpen = false;
+                            return;
+                        }
                         closeContour();
                         return;
                     }

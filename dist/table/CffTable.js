@@ -276,6 +276,37 @@ var CffTable = /** @class */ (function () {
                     case 11: // return
                         return;
                     case 14: { // endchar
+                        if (args.length === 5) {
+                            var _a = args, _b = _a[1], adx = _b === void 0 ? 0 : _b, _c = _a[2], ady = _c === void 0 ? 0 : _c, bchar = _a[3], achar = _a[4];
+                            var baseBytes = this.charStrings[bchar];
+                            var accentBytes = this.charStrings[achar];
+                            if (baseBytes) {
+                                var baseGlyph = this.parseCharString(baseBytes, localSubrs);
+                                var baseOffset = points.length;
+                                points.push.apply(points, baseGlyph.points);
+                                for (var _i = 0, _d = baseGlyph.endPts; _i < _d.length; _i++) {
+                                    var endPt = _d[_i];
+                                    endPts.push(baseOffset + endPt);
+                                }
+                            }
+                            if (accentBytes) {
+                                var accentGlyph = this.parseCharString(accentBytes, localSubrs);
+                                var accentOffset = points.length;
+                                var translated = accentGlyph.points.map(function (p) { return ({
+                                    x: p.x + adx,
+                                    y: p.y + ady,
+                                    onCurve: p.onCurve,
+                                    endOfContour: p.endOfContour
+                                }); });
+                                points.push.apply(points, translated);
+                                for (var _e = 0, _f = accentGlyph.endPts; _e < _f.length; _e++) {
+                                    var endPt = _f[_e];
+                                    endPts.push(accentOffset + endPt);
+                                }
+                            }
+                            contourOpen = false;
+                            return;
+                        }
                         closeContour();
                         return;
                     }

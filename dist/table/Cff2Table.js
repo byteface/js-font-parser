@@ -10,6 +10,9 @@ var Cff2Table = /** @class */ (function () {
         this.fdSelect = [];
         this.privateInfos = [];
         this.vstoreRegionCounts = [];
+        this.vstoreRegions = [];
+        this.vstoreAxisCount = 0;
+        this.variationCoords = [];
         this.baseOffset = de.offset;
         byte_ar.offset = de.offset;
         var major = byte_ar.readUnsignedByte();
@@ -75,6 +78,9 @@ var Cff2Table = /** @class */ (function () {
         var localSubrs = (this.privateInfos[fdIndex] && this.privateInfos[fdIndex].subrs) || [];
         var _a = this.parseCharString(charString, localSubrs), points = _a.points, endPts = _a.endPts;
         return new CffGlyphDescription(points, endPts);
+    };
+    Cff2Table.prototype.setVariationCoords = function (coords) {
+        this.variationCoords = coords.slice();
     };
     Cff2Table.prototype.readFdSelect = function (byte_ar, offset, numGlyphs) {
         var prev = byte_ar.offset;
@@ -145,12 +151,17 @@ var Cff2Table = /** @class */ (function () {
         byte_ar.offset = regionListPos;
         var axisCount = byte_ar.readUnsignedShort();
         var regionCount = byte_ar.readUnsignedShort();
+        this.vstoreAxisCount = axisCount;
+        this.vstoreRegions = [];
         for (var r = 0; r < regionCount; r++) {
+            var region = [];
             for (var a = 0; a < axisCount; a++) {
-                byte_ar.readShort();
-                byte_ar.readShort();
-                byte_ar.readShort();
+                var start = byte_ar.readShort() / 16384;
+                var peak = byte_ar.readShort() / 16384;
+                var end = byte_ar.readShort() / 16384;
+                region.push({ start: start, peak: peak, end: end });
             }
+            this.vstoreRegions.push(region);
         }
         this.vstoreRegionCounts = new Array(ivdCount).fill(0);
         for (var i = 0; i < ivdCount; i++) {
@@ -438,7 +449,42 @@ var Cff2Table = /** @class */ (function () {
                             var expected = n * (regionCount + 1);
                             if (n > 0 && args.length >= expected) {
                                 var base = args.slice(0, n);
-                                stack.push.apply(stack, base);
+                                var deltas = args.slice(n);
+                                var coords = this.variationCoords;
+                                var regionScalars = [];
+                                for (var r = 0; r < regionCount; r++) {
+                                    var region = this.vstoreRegions[r];
+                                    if (!region) {
+                                        regionScalars.push(0);
+                                        continue;
+                                    }
+                                    var scalar = 1;
+                                    for (var a = 0; a < region.length; a++) {
+                                        var coord = coords[a] || 0;
+                                        var _a = region[a], start = _a.start, peak = _a.peak, end = _a.end;
+                                        if (coord === 0 || start === 0 && peak === 0 && end === 0)
+                                            continue;
+                                        if (coord < start || coord > end) {
+                                            scalar = 0;
+                                            break;
+                                        }
+                                        if (coord < peak)
+                                            scalar *= (coord - start) / (peak - start);
+                                        else if (coord > peak)
+                                            scalar *= (end - coord) / (end - peak);
+                                    }
+                                    regionScalars.push(scalar);
+                                }
+                                var out = base.slice();
+                                for (var r = 0; r < regionCount; r++) {
+                                    var s = regionScalars[r] || 0;
+                                    if (!s)
+                                        continue;
+                                    for (var i_1 = 0; i_1 < n; i_1++) {
+                                        out[i_1] += deltas[r * n + i_1] * s;
+                                    }
+                                }
+                                stack.push.apply(stack, out);
                             }
                             else if (n > 0 && args.length >= n) {
                                 var base = args.slice(0, n);
