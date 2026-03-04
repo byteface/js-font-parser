@@ -290,13 +290,12 @@
 
                 const glyph = font.getGlyph(i);
                 if (glyph) {
-                    const bounds = i === 0 ? getGlyphBounds(glyph) : null;
+                    const bounds = getGlyphBounds(glyph);
                     const centerX = bounds ? (bounds.minx + bounds.maxx) * 0.5 : 0;
                     const centerY = bounds ? bounds.maxy : 0;
-                    const yNudge = i === 0 ? cell * 0.08 : 0;
                     CanvasRenderer.drawGlyphToContext(ctx, glyph, {
                         x: x + cell * 0.5 - (centerX * scale),
-                        y: y + cell * 0.7 + (centerY * scale) + yNudge,
+                        y: y + cell * 0.7 + (centerY * scale),
                         scale,
                         styles: { fillStyle: "#2f2a22", strokeStyle: "#2f2a22", lineWidth: 1 },
                         fillRule: fillRule || undefined
