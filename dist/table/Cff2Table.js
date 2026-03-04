@@ -378,15 +378,56 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 12: {
                         var op = bytes[i++];
-                        if (op === 34 || op === 35 || op === 36 || op === 37) {
-                            if (args.length >= 12) {
-                                addPoint(args[0], args[1], false);
-                                addPoint(args[2], args[3], false);
-                                addPoint(args[4], args[5], true);
-                                addPoint(args[6], args[7], false);
-                                addPoint(args[8], args[9], false);
-                                addPoint(args[10], args[11], true);
+                        if (op === 34 && args.length >= 7) { // hflex
+                            var dx1 = args[0], dx2 = args[1], dy2 = args[2], dx3 = args[3], dx4 = args[4], dx5 = args[5], dx6 = args[6];
+                            addPoint(dx1, 0, false);
+                            addPoint(dx2, dy2, false);
+                            addPoint(dx3, 0, true);
+                            addPoint(dx4, 0, false);
+                            addPoint(dx5, 0, false);
+                            addPoint(dx6, 0, true);
+                        }
+                        else if (op === 35 && args.length >= 12) { // flex
+                            var flexArgs = args.length >= 13 ? args.slice(0, 12) : args;
+                            addPoint(flexArgs[0], flexArgs[1], false);
+                            addPoint(flexArgs[2], flexArgs[3], false);
+                            addPoint(flexArgs[4], flexArgs[5], true);
+                            addPoint(flexArgs[6], flexArgs[7], false);
+                            addPoint(flexArgs[8], flexArgs[9], false);
+                            addPoint(flexArgs[10], flexArgs[11], true);
+                        }
+                        else if (op === 36 && args.length >= 9) { // hflex1
+                            var dx1 = args[0], dy1 = args[1], dx2 = args[2], dy2 = args[3], dx3 = args[4], dx4 = args[5], dx5 = args[6], dy5 = args[7], dx6 = args[8];
+                            var dy3 = 0;
+                            var dy4 = 0;
+                            var dy6 = -(dy1 + dy2 + dy3 + dy4 + dy5);
+                            addPoint(dx1, dy1, false);
+                            addPoint(dx2, dy2, false);
+                            addPoint(dx3, dy3, true);
+                            addPoint(dx4, dy4, false);
+                            addPoint(dx5, dy5, false);
+                            addPoint(dx6, dy6, true);
+                        }
+                        else if (op === 37 && args.length >= 11) { // flex1
+                            var dx1 = args[0], dy1 = args[1], dx2 = args[2], dy2 = args[3], dx3 = args[4], dy3 = args[5], dx4 = args[6], dy4 = args[7], dx5 = args[8], dy5 = args[9], d6 = args[10];
+                            var sumdx = dx1 + dx2 + dx3 + dx4 + dx5;
+                            var sumdy = dy1 + dy2 + dy3 + dy4 + dy5;
+                            var dx6 = 0;
+                            var dy6 = 0;
+                            if (Math.abs(sumdx) > Math.abs(sumdy)) {
+                                dx6 = d6;
+                                dy6 = -sumdy;
                             }
+                            else {
+                                dx6 = -sumdx;
+                                dy6 = d6;
+                            }
+                            addPoint(dx1, dy1, false);
+                            addPoint(dx2, dy2, false);
+                            addPoint(dx3, dy3, true);
+                            addPoint(dx4, dy4, false);
+                            addPoint(dx5, dy5, false);
+                            addPoint(dx6, dy6, true);
                         }
                         break;
                     }
