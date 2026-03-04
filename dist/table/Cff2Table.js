@@ -130,6 +130,8 @@ var Cff2Table = /** @class */ (function () {
         var y = 0;
         var contourOpen = false;
         var stemCount = 0;
+        var widthUsed = false;
+        var vsIndex = 0;
         var stack = [];
         var gsubrs = this.globalSubrs;
         var lsubrs = localSubrs;
@@ -164,18 +166,28 @@ var Cff2Table = /** @class */ (function () {
                     continue;
                 }
                 var args = stack.splice(0, stack.length);
+                var consumeWidthIfOdd = function () {
+                    if (!widthUsed && args.length % 2 === 1) {
+                        args.shift();
+                        widthUsed = true;
+                    }
+                };
+                var consumeWidthIfMoreThanOne = function () {
+                    if (!widthUsed && args.length > 1) {
+                        args.shift();
+                        widthUsed = true;
+                    }
+                };
                 switch (b0) {
                     case 1:
                     case 3:
                     case 18:
                     case 23:
-                        if (args.length % 2 === 1)
-                            args.shift();
+                        consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         break;
                     case 4: {
-                        if (args.length % 2 === 1)
-                            args.shift();
+                        consumeWidthIfMoreThanOne();
                         closeContour();
                         var dy = args.pop() || 0;
                         y += dy;
@@ -238,16 +250,14 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 19:
                     case 20: {
-                        if (args.length % 2 === 1)
-                            args.shift();
+                        consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         var maskBytes = Math.ceil(stemCount / 8);
                         i += maskBytes;
                         break;
                     }
                     case 21: {
-                        if (args.length % 2 === 1)
-                            args.shift();
+                        consumeWidthIfOdd();
                         closeContour();
                         var dy = args.pop() || 0;
                         var dx = args.pop() || 0;
@@ -258,8 +268,7 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 22: {
-                        if (args.length % 2 === 1)
-                            args.shift();
+                        consumeWidthIfMoreThanOne();
                         closeContour();
                         var dx = args.pop() || 0;
                         x += dx;
@@ -378,6 +387,30 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 12: {
                         var op = bytes[i++];
+                        if (op === 16) { // vsindex
+                            vsIndex = args.pop() || 0;
+                            break;
+                        }
+                        if (op === 17) { // blend
+                            var n = args.pop() || 0;
+                            var total = args.length;
+                            if (n > 0 && total >= n) {
+                                if (total % n === 0) {
+                                    var numRegions = total / n - 1;
+                                    var start = total - n * (numRegions + 1);
+                                    var base = args.slice(start, start + n);
+                                    args.length = start;
+                                    args.push.apply(args, base);
+                                }
+                                else {
+                                    var start = total - n;
+                                    var base = args.slice(start);
+                                    args.length = start;
+                                    args.push.apply(args, base);
+                                }
+                            }
+                            break;
+                        }
                         if (op === 34 && args.length >= 7) { // hflex
                             var dx1 = args[0], dx2 = args[1], dy2 = args[2], dx3 = args[3], dx4 = args[4], dx5 = args[5], dx6 = args[6];
                             addPoint(dx1, 0, false);

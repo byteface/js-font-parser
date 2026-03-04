@@ -161,6 +161,7 @@ var CffTable = /** @class */ (function () {
         var y = 0;
         var contourOpen = false;
         var stemCount = 0;
+        var widthUsed = false;
         var stack = [];
         var gsubrs = this.globalSubrs;
         var lsubrs = localSubrs;
@@ -196,19 +197,28 @@ var CffTable = /** @class */ (function () {
                     continue;
                 }
                 var args = stack.splice(0, stack.length);
+                var consumeWidthIfOdd = function () {
+                    if (!widthUsed && args.length % 2 === 1) {
+                        args.shift();
+                        widthUsed = true;
+                    }
+                };
+                var consumeWidthIfMoreThanOne = function () {
+                    if (!widthUsed && args.length > 1) {
+                        args.shift();
+                        widthUsed = true;
+                    }
+                };
                 switch (b0) {
                     case 1: // hstem
                     case 3: // vstem
                     case 18: // hstemhm
                     case 23: // vstemhm
-                        // width may be first if odd count
-                        if (args.length % 2 === 1)
-                            args.shift();
+                        consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         break;
                     case 4: { // vmoveto
-                        if (args.length % 2 === 1)
-                            args.shift();
+                        consumeWidthIfMoreThanOne();
                         closeContour();
                         var dy = (_a = args.pop()) !== null && _a !== void 0 ? _a : 0;
                         y += dy;
@@ -271,16 +281,14 @@ var CffTable = /** @class */ (function () {
                     }
                     case 19: // hintmask
                     case 20: { // cntrmask
-                        if (args.length % 2 === 1)
-                            args.shift();
+                        consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         var maskBytes = Math.ceil(stemCount / 8);
                         i += maskBytes;
                         break;
                     }
                     case 21: { // rmoveto
-                        if (args.length % 2 === 1)
-                            args.shift();
+                        consumeWidthIfOdd();
                         closeContour();
                         var dy = (_l = args.pop()) !== null && _l !== void 0 ? _l : 0;
                         var dx = (_m = args.pop()) !== null && _m !== void 0 ? _m : 0;
@@ -291,8 +299,7 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 22: { // hmoveto
-                        if (args.length % 2 === 1)
-                            args.shift();
+                        consumeWidthIfMoreThanOne();
                         closeContour();
                         var dx = (_o = args.pop()) !== null && _o !== void 0 ? _o : 0;
                         x += dx;

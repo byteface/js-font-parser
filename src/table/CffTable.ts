@@ -173,6 +173,7 @@ export class CffTable implements ITable {
         let y = 0;
         let contourOpen = false;
         let stemCount = 0;
+        let widthUsed = false;
 
         const stack: number[] = [];
         const gsubrs = this.globalSubrs;
@@ -212,17 +213,28 @@ export class CffTable implements ITable {
                 }
 
                 const args = stack.splice(0, stack.length);
+                const consumeWidthIfOdd = () => {
+                    if (!widthUsed && args.length % 2 === 1) {
+                        args.shift();
+                        widthUsed = true;
+                    }
+                };
+                const consumeWidthIfMoreThanOne = () => {
+                    if (!widthUsed && args.length > 1) {
+                        args.shift();
+                        widthUsed = true;
+                    }
+                };
                 switch (b0) {
                     case 1: // hstem
                     case 3: // vstem
                     case 18: // hstemhm
                     case 23: // vstemhm
-                        // width may be first if odd count
-                        if (args.length % 2 === 1) args.shift();
+                        consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         break;
                     case 4: { // vmoveto
-                        if (args.length % 2 === 1) args.shift();
+                        consumeWidthIfMoreThanOne();
                         closeContour();
                         const dy = args.pop() ?? 0;
                         y += dy;
@@ -280,15 +292,14 @@ export class CffTable implements ITable {
                     }
                     case 19: // hintmask
                     case 20: { // cntrmask
-                        // width may be first if odd count
-                        if (args.length % 2 === 1) args.shift();
+                        consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         const maskBytes = Math.ceil(stemCount / 8);
                         i += maskBytes;
                         break;
                     }
                     case 21: { // rmoveto
-                        if (args.length % 2 === 1) args.shift();
+                        consumeWidthIfOdd();
                         closeContour();
                         const dy = args.pop() ?? 0;
                         const dx = args.pop() ?? 0;
@@ -299,7 +310,7 @@ export class CffTable implements ITable {
                         break;
                     }
                     case 22: { // hmoveto
-                        if (args.length % 2 === 1) args.shift();
+                        consumeWidthIfMoreThanOne();
                         closeContour();
                         const dx = args.pop() ?? 0;
                         x += dx;

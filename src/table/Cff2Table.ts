@@ -145,6 +145,8 @@ export class Cff2Table implements ITable {
         let y = 0;
         let contourOpen = false;
         let stemCount = 0;
+        let widthUsed = false;
+        let vsIndex = 0;
 
         const stack: number[] = [];
         const gsubrs = this.globalSubrs;
@@ -184,16 +186,28 @@ export class Cff2Table implements ITable {
                 }
 
                 const args = stack.splice(0, stack.length);
+                const consumeWidthIfOdd = () => {
+                    if (!widthUsed && args.length % 2 === 1) {
+                        args.shift();
+                        widthUsed = true;
+                    }
+                };
+                const consumeWidthIfMoreThanOne = () => {
+                    if (!widthUsed && args.length > 1) {
+                        args.shift();
+                        widthUsed = true;
+                    }
+                };
                 switch (b0) {
                     case 1:
                     case 3:
                     case 18:
                     case 23:
-                        if (args.length % 2 === 1) args.shift();
+                        consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         break;
                     case 4: {
-                        if (args.length % 2 === 1) args.shift();
+                        consumeWidthIfMoreThanOne();
                         closeContour();
                         const dy = args.pop() ?? 0;
                         y += dy;
@@ -251,14 +265,14 @@ export class Cff2Table implements ITable {
                     }
                     case 19:
                     case 20: {
-                        if (args.length % 2 === 1) args.shift();
+                        consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         const maskBytes = Math.ceil(stemCount / 8);
                         i += maskBytes;
                         break;
                     }
                     case 21: {
-                        if (args.length % 2 === 1) args.shift();
+                        consumeWidthIfOdd();
                         closeContour();
                         const dy = args.pop() ?? 0;
                         const dx = args.pop() ?? 0;
@@ -269,7 +283,7 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 22: {
-                        if (args.length % 2 === 1) args.shift();
+                        consumeWidthIfMoreThanOne();
                         closeContour();
                         const dx = args.pop() ?? 0;
                         x += dx;
@@ -386,6 +400,29 @@ export class Cff2Table implements ITable {
                     }
                     case 12: {
                         const op = bytes[i++];
+                        if (op === 16) { // vsindex
+                            vsIndex = args.pop() ?? 0;
+                            break;
+                        }
+                        if (op === 17) { // blend
+                            const n = args.pop() ?? 0;
+                            const total = args.length;
+                            if (n > 0 && total >= n) {
+                                if (total % n === 0) {
+                                    const numRegions = total / n - 1;
+                                    const start = total - n * (numRegions + 1);
+                                    const base = args.slice(start, start + n);
+                                    args.length = start;
+                                    args.push(...base);
+                                } else {
+                                    const start = total - n;
+                                    const base = args.slice(start);
+                                    args.length = start;
+                                    args.push(...base);
+                                }
+                            }
+                            break;
+                        }
                         if (op === 34 && args.length >= 7) { // hflex
                             const [dx1, dx2, dy2, dx3, dx4, dx5, dx6] = args;
                             addPoint(dx1, 0, false);
