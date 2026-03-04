@@ -1,6 +1,7 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { FontParserTTF } from "./FontParserTTF.js";
 import { FontParserWOFF } from "./FontParserWOFF.js";
+import { FontParserWOFF2 } from "./FontParserWOFF2.js";
 
 export class FontParser {
     static async load(url: string): Promise<FontParserTTF | FontParserWOFF> {
@@ -18,7 +19,7 @@ export class FontParser {
             return new FontParserWOFF(new ByteArray(bytes));
         }
         if (tag === "wOF2") {
-            throw new Error("WOFF2 not supported yet");
+            return FontParserWOFF2.fromArrayBuffer(arrayBuffer);
         }
         return new FontParserTTF(new ByteArray(bytes));
     }

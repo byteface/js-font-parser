@@ -89,6 +89,7 @@ var CanvasRenderer = /** @class */ (function () {
                 continue;
             }
             if (p2 && p2.onCurve) {
+                // Treat as cubic with duplicated control point to avoid quadratic artifacts in CFF
                 context.bezierCurveTo(p1.x, p1.y, p1.x, p1.y, p2.x, p2.y);
                 offset += 2;
                 continue;

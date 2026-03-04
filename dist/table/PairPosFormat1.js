@@ -57,7 +57,7 @@ var PairPosFormat1 = /** @class */ (function (_super) {
         return _this;
     }
     PairPosFormat1.prototype.getKerning = function (leftGlyph, rightGlyph) {
-        var _a;
+        var _a, _b;
         if (!this.coverage)
             return 0;
         var index = this.coverage.findGlyph(leftGlyph);
@@ -65,16 +65,17 @@ var PairPosFormat1 = /** @class */ (function (_super) {
             return 0;
         var map = this.pairSets[index];
         var pair = map.get(rightGlyph);
-        return (_a = pair === null || pair === void 0 ? void 0 : pair.v1.xAdvance) !== null && _a !== void 0 ? _a : 0;
+        return (_b = (_a = pair === null || pair === void 0 ? void 0 : pair.v1) === null || _a === void 0 ? void 0 : _a.xAdvance) !== null && _b !== void 0 ? _b : 0;
     };
     PairPosFormat1.prototype.getPairValue = function (leftGlyph, rightGlyph) {
+        var _a;
         if (!this.coverage)
             return null;
         var index = this.coverage.findGlyph(leftGlyph);
         if (index < 0 || index >= this.pairSets.length)
             return null;
         var map = this.pairSets[index];
-        return map.get(rightGlyph) || null;
+        return (_a = map.get(rightGlyph)) !== null && _a !== void 0 ? _a : null;
     };
     return PairPosFormat1;
 }(LookupSubtable));

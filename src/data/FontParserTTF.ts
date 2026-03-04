@@ -27,6 +27,7 @@ import { MarkMarkPosFormat1 } from '../table/MarkMarkPosFormat1.js';
 import { CursivePosFormat1 } from '../table/CursivePosFormat1.js';
 import { PairPosFormat1 } from '../table/PairPosFormat1.js';
 import { PairPosFormat2 } from '../table/PairPosFormat2.js';
+import { FvarTable } from '../table/FvarTable.js';
 
 export class FontParserTTF {
     // Define properties
@@ -47,6 +48,7 @@ export class FontParserTTF {
     private colr: ColrTable | null = null;
     private cpal: CpalTable | null = null;
     private gpos: GposTable | null = null;
+    private fvar: FvarTable | null = null;
 
     // Table directory and tables
     private tableDir: TableDirectory | null = null;
@@ -104,6 +106,7 @@ export class FontParserTTF {
         this.colr = this.getTable(Table.COLR) as ColrTable | null;
         this.cpal = this.getTable(Table.CPAL) as CpalTable | null;
         this.gpos = this.getTable(Table.GPOS) as GposTable | null;
+        this.fvar = this.getTable(Table.fvar) as FvarTable | null;
 
         // Initialize the tables
         if (this.hmtx && this.maxp) {
@@ -218,6 +221,31 @@ export class FontParserTTF {
         return 0;
     }
 
+    public getVariationAxes(): FvarTable['axes'] {
+        return this.fvar?.axes ?? [];
+    }
+
+    public setVariationCoords(coords: number[]): void {
+        if (!this.cff2) return;
+        this.cff2.setVariationCoords(coords);
+    }
+
+    public setVariationByAxes(values: Record<string, number>): void {
+        if (!this.cff2 || !this.fvar) return;
+        const coords: number[] = [];
+        for (const axis of this.fvar.axes) {
+            const tag = axis.name;
+            const value = values[tag] ?? axis.defaultValue;
+            const norm = value === axis.defaultValue
+                ? 0
+                : value > axis.defaultValue
+                    ? (value - axis.defaultValue) / (axis.maxValue - axis.defaultValue)
+                    : (value - axis.defaultValue) / (axis.defaultValue - axis.minValue);
+            coords.push(Math.max(-1, Math.min(1, norm)));
+        }
+        this.cff2.setVariationCoords(coords);
+    }
+
     public getGposKerningValueByGlyphs(leftGlyph: number, rightGlyph: number): number {
         if (!this.gpos) return 0;
         const lookups = this.gpos.lookupList?.getLookups?.() ?? [];
@@ -251,7 +279,7 @@ export class FontParserTTF {
         const scriptTags = options.scriptTags ?? ["DFLT", "latn"];
         const glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
 
-        const positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number }> = [];
+        const positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }> = [];
         for (let i = 0; i < glyphIndices.length; i++) {
             const glyphIndex = glyphIndices[i];
             const glyph = this.getGlyph(glyphIndex);

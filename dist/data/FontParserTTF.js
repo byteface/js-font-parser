@@ -30,6 +30,7 @@ var FontParserTTF = /** @class */ (function () {
         this.colr = null;
         this.cpal = null;
         this.gpos = null;
+        this.fvar = null;
         // Table directory and tables
         this.tableDir = null;
         this.tables = [];
@@ -82,6 +83,7 @@ var FontParserTTF = /** @class */ (function () {
         this.colr = this.getTable(Table.COLR);
         this.cpal = this.getTable(Table.CPAL);
         this.gpos = this.getTable(Table.GPOS);
+        this.fvar = this.getTable(Table.fvar);
         // Initialize the tables
         if (this.hmtx && this.maxp) {
             this.hmtx.run((_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.numberOfHMetrics) !== null && _b !== void 0 ? _b : 0, this.maxp.numGlyphs - ((_d = (_c = this.hhea) === null || _c === void 0 ? void 0 : _c.numberOfHMetrics) !== null && _d !== void 0 ? _d : 0));
@@ -191,6 +193,33 @@ var FontParserTTF = /** @class */ (function () {
         }
         return 0;
     };
+    FontParserTTF.prototype.getVariationAxes = function () {
+        var _a, _b;
+        return (_b = (_a = this.fvar) === null || _a === void 0 ? void 0 : _a.axes) !== null && _b !== void 0 ? _b : [];
+    };
+    FontParserTTF.prototype.setVariationCoords = function (coords) {
+        if (!this.cff2)
+            return;
+        this.cff2.setVariationCoords(coords);
+    };
+    FontParserTTF.prototype.setVariationByAxes = function (values) {
+        var _a;
+        if (!this.cff2 || !this.fvar)
+            return;
+        var coords = [];
+        for (var _i = 0, _b = this.fvar.axes; _i < _b.length; _i++) {
+            var axis = _b[_i];
+            var tag = axis.name;
+            var value = (_a = values[tag]) !== null && _a !== void 0 ? _a : axis.defaultValue;
+            var norm = value === axis.defaultValue
+                ? 0
+                : value > axis.defaultValue
+                    ? (value - axis.defaultValue) / (axis.maxValue - axis.defaultValue)
+                    : (value - axis.defaultValue) / (axis.defaultValue - axis.minValue);
+            coords.push(Math.max(-1, Math.min(1, norm)));
+        }
+        this.cff2.setVariationCoords(coords);
+    };
     FontParserTTF.prototype.getGposKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
         var _a, _b, _c;
         if (!this.gpos)
@@ -253,12 +282,13 @@ var FontParserTTF = /** @class */ (function () {
         return positioned;
     };
     FontParserTTF.prototype.applyGposPositioning = function (glyphIndices, positioned) {
-        var _this = this, _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+        var _this = this;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
         if (!this.gpos)
             return;
-        var lookups = ((_a = this.gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups()) || [];
-        for (var _i = 0, lookups_1 = lookups; _i < lookups_1.length; _i++) {
-            var lookup = lookups_1[_i];
+        var lookups = (_c = (_b = (_a = this.gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : [];
+        for (var _i = 0, lookups_2 = lookups; _i < lookups_2.length; _i++) {
+            var lookup = lookups_2[_i];
             if (!lookup)
                 continue;
             var type = lookup.getType();
@@ -270,10 +300,10 @@ var FontParserTTF = /** @class */ (function () {
                             var adj = st.getAdjustment(glyphIndices[i]);
                             if (!adj)
                                 continue;
-                            positioned[i].xOffset += (_b = adj.xPlacement) !== null && _b !== void 0 ? _b : 0;
-                            positioned[i].yOffset += (_c = adj.yPlacement) !== null && _c !== void 0 ? _c : 0;
-                            positioned[i].xAdvance += (_d = adj.xAdvance) !== null && _d !== void 0 ? _d : 0;
-                            positioned[i].yAdvance += (_e = adj.yAdvance) !== null && _e !== void 0 ? _e : 0;
+                            positioned[i].xOffset += (_d = adj.xPlacement) !== null && _d !== void 0 ? _d : 0;
+                            positioned[i].yOffset += (_e = adj.yPlacement) !== null && _e !== void 0 ? _e : 0;
+                            positioned[i].xAdvance += (_f = adj.xAdvance) !== null && _f !== void 0 ? _f : 0;
+                            positioned[i].yAdvance += (_g = adj.yAdvance) !== null && _g !== void 0 ? _g : 0;
                         }
                     }
                 }
@@ -292,14 +322,14 @@ var FontParserTTF = /** @class */ (function () {
                             continue;
                         var v1 = pair.v1 || {};
                         var v2 = pair.v2 || {};
-                        positioned[i].xOffset += (_f = v1.xPlacement) !== null && _f !== void 0 ? _f : 0;
-                        positioned[i].yOffset += (_g = v1.yPlacement) !== null && _g !== void 0 ? _g : 0;
-                        positioned[i].xAdvance += (_h = v1.xAdvance) !== null && _h !== void 0 ? _h : 0;
-                        positioned[i].yAdvance += (_j = v1.yAdvance) !== null && _j !== void 0 ? _j : 0;
-                        positioned[i + 1].xOffset += (_k = v2.xPlacement) !== null && _k !== void 0 ? _k : 0;
-                        positioned[i + 1].yOffset += (_l = v2.yPlacement) !== null && _l !== void 0 ? _l : 0;
-                        positioned[i + 1].xAdvance += (_m = v2.xAdvance) !== null && _m !== void 0 ? _m : 0;
-                        positioned[i + 1].yAdvance += (_o = v2.yAdvance) !== null && _o !== void 0 ? _o : 0;
+                        positioned[i].xOffset += (_h = v1.xPlacement) !== null && _h !== void 0 ? _h : 0;
+                        positioned[i].yOffset += (_j = v1.yPlacement) !== null && _j !== void 0 ? _j : 0;
+                        positioned[i].xAdvance += (_k = v1.xAdvance) !== null && _k !== void 0 ? _k : 0;
+                        positioned[i].yAdvance += (_l = v1.yAdvance) !== null && _l !== void 0 ? _l : 0;
+                        positioned[i + 1].xOffset += (_m = v2.xPlacement) !== null && _m !== void 0 ? _m : 0;
+                        positioned[i + 1].yOffset += (_o = v2.yPlacement) !== null && _o !== void 0 ? _o : 0;
+                        positioned[i + 1].xAdvance += (_p = v2.xAdvance) !== null && _p !== void 0 ? _p : 0;
+                        positioned[i + 1].yAdvance += (_q = v2.yAdvance) !== null && _q !== void 0 ? _q : 0;
                     }
                 }
             }
@@ -347,7 +377,7 @@ var FontParserTTF = /** @class */ (function () {
     };
     // Get a glyph description by index
     FontParserTTF.prototype.getGlyph = function (i) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
         var description = (_a = this.glyf) === null || _a === void 0 ? void 0 : _a.getDescription(i);
         if (description != null) {
             return new GlyphData(description, (_c = (_b = this.hmtx) === null || _b === void 0 ? void 0 : _b.getLeftSideBearing(i)) !== null && _c !== void 0 ? _c : 0, (_e = (_d = this.hmtx) === null || _d === void 0 ? void 0 : _d.getAdvanceWidth(i)) !== null && _e !== void 0 ? _e : 0);
@@ -355,13 +385,13 @@ var FontParserTTF = /** @class */ (function () {
         if (this.cff2) {
             var cff2Desc = this.cff2.getGlyphDescription(i);
             if (cff2Desc) {
-                return new GlyphData(cff2Desc, (_c = (_b = this.hmtx) === null || _b === void 0 ? void 0 : _b.getLeftSideBearing(i)) !== null && _c !== void 0 ? _c : 0, (_f = (_e = this.hmtx) === null || _e === void 0 ? void 0 : _e.getAdvanceWidth(i)) !== null && _f !== void 0 ? _f : 0, { isCubic: true });
+                return new GlyphData(cff2Desc, (_g = (_f = this.hmtx) === null || _f === void 0 ? void 0 : _f.getLeftSideBearing(i)) !== null && _g !== void 0 ? _g : 0, (_j = (_h = this.hmtx) === null || _h === void 0 ? void 0 : _h.getAdvanceWidth(i)) !== null && _j !== void 0 ? _j : 0, { isCubic: true });
             }
         }
         if (this.cff) {
             var cffDesc = this.cff.getGlyphDescription(i);
             if (cffDesc) {
-                return new GlyphData(cffDesc, (_h = (_g = this.hmtx) === null || _g === void 0 ? void 0 : _g.getLeftSideBearing(i)) !== null && _h !== void 0 ? _h : 0, (_j = (_g = this.hmtx) === null || _g === void 0 ? void 0 : _g.getAdvanceWidth(i)) !== null && _j !== void 0 ? _j : 0, { isCubic: true });
+                return new GlyphData(cffDesc, (_l = (_k = this.hmtx) === null || _k === void 0 ? void 0 : _k.getLeftSideBearing(i)) !== null && _l !== void 0 ? _l : 0, (_o = (_m = this.hmtx) === null || _m === void 0 ? void 0 : _m.getAdvanceWidth(i)) !== null && _o !== void 0 ? _o : 0, { isCubic: true });
             }
         }
         return null;
@@ -415,8 +445,8 @@ var FontParserTTF = /** @class */ (function () {
             return [];
         var anchors = [];
         var lookups = (_c = (_b = (_a = this.gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : [];
-        for (var _i = 0, lookups_2 = lookups; _i < lookups_2.length; _i++) {
-            var lookup = lookups_2[_i];
+        for (var _i = 0, lookups_3 = lookups; _i < lookups_3.length; _i++) {
+            var lookup = lookups_3[_i];
             if (!lookup)
                 continue;
             for (var i = 0; i < lookup.getSubtableCount(); i++) {

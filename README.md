@@ -23,6 +23,13 @@ python3 -m http.server 8080
 Open:
 `http://localhost:8080/demos/index.html`
 
+### WOFF2 Support
+WOFF2 decoding requires an external decoder. Provide one via:
+- `setWoff2Decoder()` from `src/utils/Woff2Decoder.ts`, or
+- a global `WOFF2.decode()` function in the browser.
+
+The `tools/woff2.html` demo expects a decoder to be present.
+
 ### Language Support Demo
 `demos/language-support.html` checks glyph coverage for a list of languages.
 

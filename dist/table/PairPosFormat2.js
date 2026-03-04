@@ -20,7 +20,6 @@ import { ValueRecord } from './ValueRecord.js';
 var PairPosFormat2 = /** @class */ (function (_super) {
     __extends(PairPosFormat2, _super);
     function PairPosFormat2(byte_ar, offset) {
-        var _a;
         var _this = _super.call(this) || this;
         _this.classRecords = [];
         var prev = byte_ar.offset;
@@ -64,7 +63,7 @@ var PairPosFormat2 = /** @class */ (function (_super) {
         return _this;
     }
     PairPosFormat2.prototype.getKerning = function (leftGlyph, rightGlyph) {
-        var _a, _b, _c, _d, _e, _f, _g;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         if (!this.coverage || !this.classDef1 || !this.classDef2)
             return 0;
         var index = this.coverage.findGlyph(leftGlyph);
@@ -74,10 +73,10 @@ var PairPosFormat2 = /** @class */ (function (_super) {
         var c2 = (_f = (_e = (_d = this.classDef2).getGlyphClass) === null || _e === void 0 ? void 0 : _e.call(_d, rightGlyph)) !== null && _f !== void 0 ? _f : 0;
         if (c1 < 0 || c2 < 0 || c1 >= this.classRecords.length || c2 >= this.classRecords[c1].length)
             return 0;
-        return (_g = (_a = this.classRecords[c1][c2]) === null || _a === void 0 ? void 0 : _a.v1.xAdvance) !== null && _g !== void 0 ? _g : 0;
+        return (_j = (_h = (_g = this.classRecords[c1][c2]) === null || _g === void 0 ? void 0 : _g.v1) === null || _h === void 0 ? void 0 : _h.xAdvance) !== null && _j !== void 0 ? _j : 0;
     };
     PairPosFormat2.prototype.getPairValue = function (leftGlyph, rightGlyph) {
-        var _a, _b, _c, _d, _e, _f;
+        var _a, _b, _c, _d, _e, _f, _g;
         if (!this.coverage || !this.classDef1 || !this.classDef2)
             return null;
         var index = this.coverage.findGlyph(leftGlyph);
@@ -87,7 +86,7 @@ var PairPosFormat2 = /** @class */ (function (_super) {
         var c2 = (_f = (_e = (_d = this.classDef2).getGlyphClass) === null || _e === void 0 ? void 0 : _e.call(_d, rightGlyph)) !== null && _f !== void 0 ? _f : 0;
         if (c1 < 0 || c2 < 0 || c1 >= this.classRecords.length || c2 >= this.classRecords[c1].length)
             return null;
-        return this.classRecords[c1][c2] || null;
+        return (_g = this.classRecords[c1][c2]) !== null && _g !== void 0 ? _g : null;
     };
     return PairPosFormat2;
 }(LookupSubtable));

@@ -1,9 +1,19 @@
+var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
+    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+        if (ar || !(i in from)) {
+            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+            ar[i] = from[i];
+        }
+    }
+    return to.concat(ar || Array.prototype.slice.call(from));
+};
 import { Table } from './Table.js';
 import { CffIndex } from './CffIndex.js';
 import { CffDict } from './CffDict.js';
 import { CffGlyphDescription } from './CffGlyphDescription.js';
 var CffTable = /** @class */ (function () {
     function CffTable(de, byte_ar) {
+        var _this = this;
         this.charStrings = [];
         this.globalSubrs = [];
         this.localSubrs = [];
@@ -54,7 +64,6 @@ var CffTable = /** @class */ (function () {
         // CID-keyed CFF: use FDArray/FDSelect
         if (ros && fdArrayOffset > 0) {
             var fdArrayIndex = CffIndex.read(byte_ar, this.baseOffset + fdArrayOffset);
-            var _this_1 = this;
             this.privateInfos = fdArrayIndex.objects.map(function (bytes) {
                 var fdDict = CffDict.parse(bytes);
                 var info = fdDict.getArray('private');
@@ -62,7 +71,7 @@ var CffTable = /** @class */ (function () {
                     return { subrs: [], nominalWidthX: 0, defaultWidthX: 0 };
                 var size = info[0];
                 var offset = info[1];
-                var privateStart = _this_1.baseOffset + offset;
+                var privateStart = _this.baseOffset + offset;
                 byte_ar.offset = privateStart;
                 var privateBytes = byte_ar.readBytes(size);
                 var privateDict = CffDict.parse(privateBytes);
@@ -91,26 +100,28 @@ var CffTable = /** @class */ (function () {
         return Table.CFF;
     };
     CffTable.prototype.getGlyphDescription = function (glyphId) {
+        var _a, _b, _c;
         var charString = this.charStrings[glyphId];
         if (!charString)
             return null;
-        var fdIndex = this.fdSelect[glyphId] || 0;
-        var localSubrs = (this.privateInfos[fdIndex] && this.privateInfos[fdIndex].subrs) || this.localSubrs;
-        var _a = this.parseCharString(charString, localSubrs), points = _a.points, endPts = _a.endPts;
+        var fdIndex = (_a = this.fdSelect[glyphId]) !== null && _a !== void 0 ? _a : 0;
+        var localSubrs = (_c = (_b = this.privateInfos[fdIndex]) === null || _b === void 0 ? void 0 : _b.subrs) !== null && _c !== void 0 ? _c : this.localSubrs;
+        var _d = this.parseCharString(charString, localSubrs), points = _d.points, endPts = _d.endPts;
         return new CffGlyphDescription(points, endPts);
     };
     CffTable.prototype.getDefaultWidthX = function () {
         return this.defaultWidthX;
     };
     CffTable.prototype.debugCharString = function (glyphId) {
-        var _a, _b;
+        var _this = this;
+        var _a, _b, _c;
         var charString = this.charStrings[glyphId];
         if (!charString)
             return null;
         var fdIndex = (_a = this.fdSelect[glyphId]) !== null && _a !== void 0 ? _a : 0;
-        var localSubrs = (_b = this.privateInfos[fdIndex]) === null || _b === void 0 ? void 0 : _b.subrs;
+        var localSubrs = (_c = (_b = this.privateInfos[fdIndex]) === null || _b === void 0 ? void 0 : _b.subrs) !== null && _c !== void 0 ? _c : this.localSubrs;
         var gBias = this.getSubrBias(this.globalSubrs);
-        var lBias = this.getSubrBias(localSubrs || this.localSubrs);
+        var lBias = this.getSubrBias(localSubrs);
         var ops = [];
         var stack = [];
         var stemCount = 0;
@@ -135,11 +146,12 @@ var CffTable = /** @class */ (function () {
             }
         };
         var parse = function (bytes, depth) {
+            var _a, _b;
             var i = 0;
             while (i < bytes.length) {
                 var b0 = bytes[i++];
                 if (b0 >= 32 || b0 === 28 || b0 === 255) {
-                    var _a = _this.readCharStringNumber(bytes, i - 1), num = _a[0], next = _a[1];
+                    var _c = _this.readCharStringNumber(bytes, i - 1), num = _c[0], next = _c[1];
                     stack.push(num);
                     i = next;
                     continue;
@@ -150,18 +162,18 @@ var CffTable = /** @class */ (function () {
                 }
                 if (b0 === 10) {
                     var args_1 = stack.splice(0, stack.length);
-                    var subrIndex = (args_1.pop() || 0) + lBias;
+                    var subrIndex = ((_a = args_1.pop()) !== null && _a !== void 0 ? _a : 0) + lBias;
                     if (args_1.length)
                         stack.push.apply(stack, args_1);
                     ops.push({ op: 'callsubr', args: [], note: "subr ".concat(subrIndex, " depth ").concat(depth) });
-                    var subr = (localSubrs || _this.localSubrs)[subrIndex];
+                    var subr = localSubrs[subrIndex];
                     if (subr)
                         parse(subr, depth + 1);
                     continue;
                 }
                 if (b0 === 29) {
                     var args_2 = stack.splice(0, stack.length);
-                    var subrIndex = (args_2.pop() || 0) + gBias;
+                    var subrIndex = ((_b = args_2.pop()) !== null && _b !== void 0 ? _b : 0) + gBias;
                     if (args_2.length)
                         stack.push.apply(stack, args_2);
                     ops.push({ op: 'callgsubr', args: [], note: "gsubr ".concat(subrIndex, " depth ").concat(depth) });
@@ -173,7 +185,7 @@ var CffTable = /** @class */ (function () {
                 var args = stack.splice(0, stack.length);
                 if (b0 === 12) {
                     var op = bytes[i++];
-                    ops.push({ op: "esc_".concat(op), args: args.slice(), note: depth ? "depth ".concat(depth) : undefined });
+                    ops.push({ op: "esc_".concat(op), args: __spreadArray([], args, true), note: depth ? "depth ".concat(depth) : undefined });
                     if (op > 37) {
                         ops.push({ op: 'INVALID_ESCAPE', args: [op], note: "depth ".concat(depth) });
                     }
@@ -205,10 +217,9 @@ var CffTable = /** @class */ (function () {
                     default:
                         break;
                 }
-                ops.push({ op: String(b0), args: args.slice(), note: depth ? "depth ".concat(depth) : undefined });
+                ops.push({ op: String(b0), args: __spreadArray([], args, true), note: depth ? "depth ".concat(depth) : undefined });
             }
         };
-        var _this = this;
         parse(charString, 0);
         return ops;
     };
@@ -299,16 +310,16 @@ var CffTable = /** @class */ (function () {
         var parse = function (bytes) {
             var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17;
             var i = 0;
-            while (i < bytes.length) {
+            var _loop_1 = function () {
                 var b0 = bytes[i++];
                 if (b0 >= 32 || b0 === 28 || b0 === 255) {
                     var _18 = _this.readCharStringNumber(bytes, i - 1), num = _18[0], next = _18[1];
                     stack.push(num);
                     i = next;
-                    continue;
+                    return "continue";
                 }
                 if (b0 === 11) {
-                    return;
+                    return { value: void 0 };
                 }
                 var args = stack.splice(0, stack.length);
                 var tryConsumeWidthOdd = function (lockAfter) {
@@ -387,7 +398,7 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 10: { // callsubr
-                        var subrIndex = (args.pop() || 0) + lBias;
+                        var subrIndex = ((_k = args.pop()) !== null && _k !== void 0 ? _k : 0) + lBias;
                         if (args.length)
                             stack.push.apply(stack, args);
                         var subr = lsubrs[subrIndex];
@@ -397,38 +408,38 @@ var CffTable = /** @class */ (function () {
                     }
                     case 14: { // endchar
                         if (args.length === 5) {
-                            var _a = args, _b = _a[1], adx = _b === void 0 ? 0 : _b, _c = _a[2], ady = _c === void 0 ? 0 : _c, bchar = _a[3], achar = _a[4];
-                            var baseBytes = this.charStrings[bchar];
-                            var accentBytes = this.charStrings[achar];
+                            var adx_1 = args[1], ady_1 = args[2], bchar = args[3], achar = args[4];
+                            var baseBytes = _this.charStrings[bchar];
+                            var accentBytes = _this.charStrings[achar];
                             if (baseBytes) {
-                                var baseGlyph = this.parseCharString(baseBytes, localSubrs);
+                                var baseGlyph = _this.parseCharString(baseBytes, localSubrs);
                                 var baseOffset = points.length;
                                 points.push.apply(points, baseGlyph.points);
-                                for (var _i = 0, _d = baseGlyph.endPts; _i < _d.length; _i++) {
-                                    var endPt = _d[_i];
+                                for (var _i = 0, _19 = baseGlyph.endPts; _i < _19.length; _i++) {
+                                    var endPt = _19[_i];
                                     endPts.push(baseOffset + endPt);
                                 }
                             }
                             if (accentBytes) {
-                                var accentGlyph = this.parseCharString(accentBytes, localSubrs);
+                                var accentGlyph = _this.parseCharString(accentBytes, localSubrs);
                                 var accentOffset = points.length;
                                 var translated = accentGlyph.points.map(function (p) { return ({
-                                    x: p.x + adx,
-                                    y: p.y + ady,
+                                    x: p.x + adx_1,
+                                    y: p.y + ady_1,
                                     onCurve: p.onCurve,
                                     endOfContour: p.endOfContour
                                 }); });
                                 points.push.apply(points, translated);
-                                for (var _e = 0, _f = accentGlyph.endPts; _e < _f.length; _e++) {
-                                    var endPt = _f[_e];
+                                for (var _20 = 0, _21 = accentGlyph.endPts; _20 < _21.length; _20++) {
+                                    var endPt = _21[_20];
                                     endPts.push(accentOffset + endPt);
                                 }
                             }
                             contourOpen = false;
-                            return;
+                            return { value: void 0 };
                         }
                         closeContour();
-                        return;
+                        return { value: void 0 };
                     }
                     case 19: // hintmask
                     case 20: { // cntrmask
@@ -525,7 +536,7 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 29: { // callgsubr
-                        var subrIndex = (args.pop() || 0) + gBias;
+                        var subrIndex = ((_7 = args.pop()) !== null && _7 !== void 0 ? _7 : 0) + gBias;
                         if (args.length)
                             stack.push.apply(stack, args);
                         var subr = gsubrs[subrIndex];
@@ -627,6 +638,11 @@ var CffTable = /** @class */ (function () {
                     default:
                         break;
                 }
+            };
+            while (i < bytes.length) {
+                var state_1 = _loop_1();
+                if (typeof state_1 === "object")
+                    return state_1.value;
             }
         };
         parse(charString);

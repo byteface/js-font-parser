@@ -1,14 +1,31 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 import { Coverage } from "./Coverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
-var ChainingSubstFormat1 = /** @class */ (function () {
+var ChainingSubstFormat1 = /** @class */ (function (_super) {
+    __extends(ChainingSubstFormat1, _super);
     function ChainingSubstFormat1(byte_ar, offset, gsub) {
-        this.ruleSets = [];
-        this.gsub = gsub;
+        var _this = _super.call(this) || this;
+        _this.ruleSets = [];
+        _this.gsub = gsub;
         byte_ar.offset = offset;
         var format = byte_ar.readUnsignedShort();
         if (format !== 1) {
-            this.coverage = null;
-            return;
+            _this.coverage = null;
+            return _this;
         }
         var coverageOffset = byte_ar.readUnsignedShort();
         var ruleSetCount = byte_ar.readUnsignedShort();
@@ -16,11 +33,11 @@ var ChainingSubstFormat1 = /** @class */ (function () {
         for (var i = 0; i < ruleSetCount; i++)
             ruleSetOffsets.push(byte_ar.readUnsignedShort());
         byte_ar.offset = offset + coverageOffset;
-        this.coverage = Coverage.read(byte_ar);
+        _this.coverage = Coverage.read(byte_ar);
         for (var i = 0; i < ruleSetOffsets.length; i++) {
             var rsOffset = ruleSetOffsets[i];
             if (rsOffset === 0) {
-                this.ruleSets[i] = [];
+                _this.ruleSets[i] = [];
                 continue;
             }
             byte_ar.offset = offset + rsOffset;
@@ -53,8 +70,9 @@ var ChainingSubstFormat1 = /** @class */ (function () {
                 }
                 rules.push({ backtrack: backtrack, input: input, lookahead: lookahead, records: records });
             }
-            this.ruleSets[i] = rules;
+            _this.ruleSets[i] = rules;
         }
+        return _this;
     }
     ChainingSubstFormat1.prototype.applyToGlyphs = function (glyphs) {
         if (!this.coverage)
@@ -74,6 +92,7 @@ var ChainingSubstFormat1 = /** @class */ (function () {
                 if (i + rule.input.length >= out.length)
                     continue;
                 var match = true;
+                // backtrack: compare from nearest to farthest
                 for (var b = 0; b < rule.backtrack.length; b++) {
                     var idx = i - 1 - b;
                     if (idx < 0 || out[idx] !== rule.backtrack[rule.backtrack.length - 1 - b]) {
@@ -83,6 +102,7 @@ var ChainingSubstFormat1 = /** @class */ (function () {
                 }
                 if (!match)
                     continue;
+                // input
                 for (var j = 0; j < rule.input.length; j++) {
                     if (out[i + 1 + j] !== rule.input[j]) {
                         match = false;
@@ -91,6 +111,7 @@ var ChainingSubstFormat1 = /** @class */ (function () {
                 }
                 if (!match)
                     continue;
+                // lookahead
                 for (var l = 0; l < rule.lookahead.length; l++) {
                     var idx = i + 1 + rule.input.length + l;
                     if (idx >= out.length || out[idx] !== rule.lookahead[l]) {

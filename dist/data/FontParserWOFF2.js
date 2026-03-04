@@ -34,16 +34,15 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-import { ByteArray } from "../utils/ByteArray.js";
-import { FontParserTTF } from "./FontParserTTF.js";
-import { FontParserWOFF } from "./FontParserWOFF.js";
-import { FontParserWOFF2 } from "./FontParserWOFF2.js";
-var FontParser = /** @class */ (function () {
-    function FontParser() {
+import { ByteArray } from '../utils/ByteArray.js';
+import { decodeWoff2 } from '../utils/Woff2Decoder.js';
+import { FontParserTTF } from './FontParserTTF.js';
+var FontParserWOFF2 = /** @class */ (function () {
+    function FontParserWOFF2() {
     }
-    FontParser.load = function (url) {
+    FontParserWOFF2.load = function (url) {
         return __awaiter(this, void 0, void 0, function () {
-            var response, arrayBuffer;
+            var response, buffer;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, fetch(url)];
@@ -53,25 +52,17 @@ var FontParser = /** @class */ (function () {
                             throw new Error("HTTP error! Status: ".concat(response.status));
                         return [4 /*yield*/, response.arrayBuffer()];
                     case 2:
-                        arrayBuffer = _a.sent();
-                        return [2 /*return*/, FontParser.fromArrayBuffer(arrayBuffer)];
+                        buffer = _a.sent();
+                        return [2 /*return*/, this.fromArrayBuffer(buffer)];
                 }
             });
         });
     };
-    FontParser.fromArrayBuffer = function (arrayBuffer) {
+    FontParserWOFF2.fromArrayBuffer = function (arrayBuffer) {
         var bytes = new Uint8Array(arrayBuffer);
-        if (bytes.length < 4)
-            throw new Error("Invalid font buffer");
-        var tag = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]);
-        if (tag === "wOFF") {
-            return new FontParserWOFF(new ByteArray(bytes));
-        }
-        if (tag === "wOF2") {
-            return FontParserWOFF2.fromArrayBuffer(arrayBuffer);
-        }
-        return new FontParserTTF(new ByteArray(bytes));
+        var decoded = decodeWoff2(bytes);
+        return new FontParserTTF(new ByteArray(decoded));
     };
-    return FontParser;
+    return FontParserWOFF2;
 }());
-export { FontParser };
+export { FontParserWOFF2 };

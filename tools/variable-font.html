@@ -83,7 +83,7 @@
     <div class="layout">
         <div class="card">
             <div id="axes"></div>
-            <div class="hint">Axes are read from `fvar`. Contour interpolation (gvar) is not implemented yet.</div>
+            <div class="hint">Axes are read from `fvar`. CFF2 variation coords are supported; gvar interpolation is not implemented yet.</div>
         </div>
         <div class="card">
             <canvas id="canvas" width="900" height="320"></canvas>
@@ -169,6 +169,7 @@
                 slider.value = String(axis.defaultValue);
                 slider.addEventListener('input', () => {
                     axis.value = Number(slider.value);
+                    applyAxisValues();
                 });
                 wrapper.appendChild(label);
                 wrapper.appendChild(slider);
@@ -176,11 +177,22 @@
             });
         }
 
+        function applyAxisValues() {
+            if (!font || typeof font.setVariationByAxes !== 'function') return;
+            const values = {};
+            axes.forEach(axis => {
+                values[axis.name] = axis.value;
+            });
+            font.setVariationByAxes(values);
+            renderText();
+        }
+
         async function loadAndRender() {
             const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
             font = await loadFont(selected.url);
             const fvar = font.getTableByType(Table.fvar);
             renderAxes(fvar);
+            applyAxisValues();
             renderText();
         }
 

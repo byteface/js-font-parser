@@ -1,0 +1,191 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <title>Layout Engine</title>
+    <meta charset="utf-8">
+    <style>
+        :root { color-scheme: light; }
+        body {
+            margin: 24px;
+            font-family: "Source Serif Pro", "Georgia", serif;
+            background: radial-gradient(circle at 20% 10%, #ffffff, #f1f4f8);
+            color: #14171a;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 28px; }
+        .panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #ffffff;
+            border: 1px solid #dbe2e7;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(20, 30, 60, 0.08);
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #4e5a6b;
+        }
+        select, input[type="range"], textarea {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #dbe2e7;
+            font-size: 14px;
+            background: #fbfcff;
+        }
+        textarea {
+            width: min(640px, 90vw);
+            height: 120px;
+            resize: vertical;
+        }
+        canvas {
+            width: 100%;
+            height: auto;
+            border: 1px dashed #dbe2e7;
+            border-radius: 12px;
+            background: #fbfcff;
+        }
+        .hint {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #5a6474;
+        }
+    </style>
+</head>
+<body>
+<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+
+    <h1>Layout Engine</h1>
+    <div class="panel">
+        <label>
+            Font
+            <select id="fontSelect"></select>
+        </label>
+        <label>
+            Width
+            <input id="widthInput" type="range" min="280" max="900" value="640" />
+        </label>
+        <label>
+            Align
+            <select id="alignSelect">
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+                <option value="justify">Justify</option>
+            </select>
+        </label>
+        <label>
+            Line Height
+            <input id="lineInput" type="range" min="700" max="1400" value="1100" />
+        </label>
+    </div>
+    <textarea id="textInput">The library can now break lines and align text. Use this to inspect glyph advances, kerning, and spacing across fonts.</textarea>
+    <div class="hint">Layout uses font metrics + kerning. Adjust width and alignment to see line breaking.</div>
+    <canvas id="canvas" width="980" height="520"></canvas>
+
+    <script type="module">
+        import { FontParser } from '../dist/data/FontParser.js';
+        import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+        import { LayoutEngine } from '../dist/layout/LayoutEngine.js';
+        import { Table } from '../dist/table/Table.js';
+
+        const fontSelect = document.getElementById('fontSelect');
+        const widthInput = document.getElementById('widthInput');
+        const alignSelect = document.getElementById('alignSelect');
+        const lineInput = document.getElementById('lineInput');
+        const textInput = document.getElementById('textInput');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const fonts = [
+            { name: 'Noto Sans Regular', url: '../truetypefonts/noto/NotoSans-Regular.ttf' },
+            { name: 'Gotham Narrow Ultra (OTF)', url: '../truetypefonts/GothamNarrow-Ultra.otf' },
+            { name: 'Source Code Pro Regular (OTF)', url: '../truetypefonts/source-code-pro/SourceCodePro-Regular.otf' },
+            { name: 'DevilInside', url: '../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf' }
+        ];
+
+        const cache = new Map();
+        let font = null;
+
+        function populateFonts() {
+            fontSelect.innerHTML = '';
+            fonts.forEach((f, i) => {
+                const opt = document.createElement('option');
+                opt.value = String(i);
+                opt.textContent = f.name;
+                fontSelect.appendChild(opt);
+            });
+        }
+
+        async function loadFont(url) {
+            if (cache.has(url)) return cache.get(url);
+            const f = await FontParser.load(url);
+            cache.set(url, f);
+            return f;
+        }
+
+        function clear() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fbfcff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function render() {
+            if (!font) return;
+            clear();
+            const head = font.getTableByType(Table.head);
+            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const scale = 48 / unitsPerEm;
+            const lineHeight = Number(lineInput.value);
+            const width = Number(widthInput.value);
+            const align = alignSelect.value;
+
+            const layout = LayoutEngine.layoutText(font, textInput.value, {
+                maxWidth: width / scale,
+                align,
+                lineHeight,
+                useKerning: true
+            });
+
+            ctx.strokeStyle = '#dbe2e7';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(40, 40, width, layout.height * scale + 40);
+
+            for (const line of layout.lines) {
+                for (const glyphInfo of line.glyphs) {
+                    const glyph = font.getGlyph(glyphInfo.glyphIndex);
+                    if (!glyph) continue;
+                    CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+                        x: 40 + glyphInfo.x * scale,
+                        y: 80 + glyphInfo.y * scale,
+                        scale,
+                        styles: { fillStyle: '#28344a', strokeStyle: '#28344a', lineWidth: 1 }
+                    });
+                }
+            }
+        }
+
+        async function loadAndRender() {
+            const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+            font = await loadFont(selected.url);
+            render();
+        }
+
+        fontSelect.addEventListener('change', loadAndRender);
+        widthInput.addEventListener('input', render);
+        alignSelect.addEventListener('change', render);
+        lineInput.addEventListener('input', render);
+        textInput.addEventListener('input', render);
+
+        populateFonts();
+        loadAndRender();
+    </script>
+</body>
+</html>

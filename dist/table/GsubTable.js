@@ -4,9 +4,9 @@ import { FeatureList } from "./FeatureList.js";
 import { LookupList } from "./LookupList.js";
 import { SingleSubst } from "./SingleSubst.js";
 import { LigatureSubst } from "./LigatureSubst.js";
-import { LigatureSubstFormat1 } from "./LigatureSubstFormat1.js";
 import { ContextSubst } from "./ContextSubst.js";
 import { ChainingSubst } from "./ChainingSubst.js";
+import { LigatureSubstFormat1 } from "./LigatureSubstFormat1.js";
 import { MultipleSubst } from "./MultipleSubst.js";
 import { AlternateSubst } from "./AlternateSubst.js";
 var GsubTable = /** @class */ (function () {
@@ -56,8 +56,8 @@ var GsubTable = /** @class */ (function () {
         return s;
     };
     GsubTable.prototype.applyLookupAt = function (lookupIndex, glyphs, index) {
-        var _a;
-        var lookup = (_a = this.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups()[lookupIndex];
+        var _a, _b;
+        var lookup = (_b = (_a = this.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)[lookupIndex];
         if (!lookup)
             return glyphs;
         var out = glyphs.slice();

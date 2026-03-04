@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>WOFF2 Loader</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; }
+        .panel { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+        canvas { border: 1px dashed #ccc; width: 100%; height: auto; }
+        .hint { font-size: 12px; color: #666; margin-top: 6px; }
+    </style>
+</head>
+<body>
+<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+
+<h1>WOFF2 Loader</h1>
+<div class="panel">
+    <label>Text:
+        <input id="textInput" value="Hello WOFF2" />
+    </label>
+    <label>Font file:
+        <input id="fileInput" type="file" accept=".woff2" />
+    </label>
+</div>
+<div class="hint">Requires a WOFF2 decoder. Provide one via <code>setWoff2Decoder</code> or global <code>WOFF2.decode</code>.</div>
+<canvas id="myDrawing" width="900" height="360"></canvas>
+
+<script type="module">
+    import { FontParserWOFF2 } from '../dist/data/FontParserWOFF2.js';
+    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+
+    const canvas = document.getElementById('myDrawing');
+    const textInput = document.getElementById('textInput');
+    const fileInput = document.getElementById('fileInput');
+    const ctx = canvas.getContext('2d');
+
+    let font = null;
+
+    textInput.addEventListener('input', render);
+    fileInput.addEventListener('change', async () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+        const buffer = await file.arrayBuffer();
+        try {
+            font = FontParserWOFF2.fromArrayBuffer(buffer);
+            render();
+        } catch (err) {
+            console.error('Error loading WOFF2:', err);
+        }
+    });
+
+    function render() {
+        if (!font) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        CanvasRenderer.drawString(font, textInput.value, canvas, {
+            x: 40,
+            y: 220,
+            scale: 0.18,
+            spacing: 2,
+            styles: {
+                fillStyle: '#000000',
+                strokeStyle: '#000000',
+                lineWidth: '1',
+                globalAlpha: '1'
+            }
+        });
+    }
+</script>
+</body>
+</html>

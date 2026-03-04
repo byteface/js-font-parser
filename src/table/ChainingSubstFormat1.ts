@@ -69,12 +69,12 @@ export class ChainingSubstFormat1 extends LookupSubtable {
         let out = glyphs.slice();
         let i = 0;
         while (i < out.length) {
-            const covIndex = this.coverage.findGlyph(out[i]);
+            const covIndex: number = this.coverage.findGlyph(out[i]);
             if (covIndex < 0) {
                 i++;
                 continue;
             }
-            const rules = this.ruleSets[covIndex] || [];
+            const rules: Array<{ backtrack: number[]; input: number[]; lookahead: number[]; records: Array<{ sequenceIndex: number; lookupListIndex: number }> }> = this.ruleSets[covIndex] || [];
             let applied = false;
             for (const rule of rules) {
                 if (i + rule.input.length >= out.length) continue;

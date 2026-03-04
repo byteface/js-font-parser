@@ -475,7 +475,7 @@ export class FontParserWOFF {
         const scriptTags = options.scriptTags ?? ["DFLT", "latn"];
         const glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
 
-        const positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number }> = [];
+        const positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }> = [];
         for (let i = 0; i < glyphIndices.length; i++) {
             const glyphIndex = glyphIndices[i];
             const glyph = this.getGlyph(glyphIndex);

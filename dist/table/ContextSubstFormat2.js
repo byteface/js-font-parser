@@ -1,16 +1,33 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 import { Coverage } from "./Coverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
 import { ClassDefReader } from "./ClassDefReader.js";
-var ContextSubstFormat2 = /** @class */ (function () {
+var ContextSubstFormat2 = /** @class */ (function (_super) {
+    __extends(ContextSubstFormat2, _super);
     function ContextSubstFormat2(byte_ar, offset, gsub) {
-        this.classSets = [];
-        this.gsub = gsub;
+        var _this = _super.call(this) || this;
+        _this.classSets = [];
+        _this.gsub = gsub;
         byte_ar.offset = offset;
         var format = byte_ar.readUnsignedShort();
         if (format !== 2) {
-            this.coverage = null;
-            this.classDef = null;
-            return;
+            _this.coverage = null;
+            _this.classDef = null;
+            return _this;
         }
         var coverageOffset = byte_ar.readUnsignedShort();
         var classDefOffset = byte_ar.readUnsignedShort();
@@ -19,13 +36,13 @@ var ContextSubstFormat2 = /** @class */ (function () {
         for (var i = 0; i < classSetCount; i++)
             classSetOffsets.push(byte_ar.readUnsignedShort());
         byte_ar.offset = offset + coverageOffset;
-        this.coverage = Coverage.read(byte_ar);
+        _this.coverage = Coverage.read(byte_ar);
         byte_ar.offset = offset + classDefOffset;
-        this.classDef = ClassDefReader.read(byte_ar);
+        _this.classDef = ClassDefReader.read(byte_ar);
         for (var i = 0; i < classSetOffsets.length; i++) {
             var csOffset = classSetOffsets[i];
             if (csOffset === 0) {
-                this.classSets[i] = [];
+                _this.classSets[i] = [];
                 continue;
             }
             byte_ar.offset = offset + csOffset;
@@ -50,8 +67,9 @@ var ContextSubstFormat2 = /** @class */ (function () {
                 }
                 rules.push({ inputClasses: inputClasses, records: records });
             }
-            this.classSets[i] = rules;
+            _this.classSets[i] = rules;
         }
+        return _this;
     }
     ContextSubstFormat2.prototype.applyToGlyphs = function (glyphs) {
         if (!this.coverage || !this.classDef)

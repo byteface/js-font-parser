@@ -45,10 +45,11 @@ var HmtxTable = /** @class */ (function () {
         }
     };
     HmtxTable.prototype.getLeftSideBearing = function (i) {
+        var _a;
         if (this.leftSideBearing === null) {
             return 0;
         }
-        return this.leftSideBearing[i] != null ? this.leftSideBearing[i] : 0;
+        return (_a = this.leftSideBearing[i]) !== null && _a !== void 0 ? _a : 0;
     };
     HmtxTable.prototype.getType = function () {
         return Table.hmtx;
