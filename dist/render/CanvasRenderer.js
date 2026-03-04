@@ -121,11 +121,11 @@ var CanvasRenderer = /** @class */ (function () {
                 else {
                     this.addContourToShape(context, glyph, firstIndex, counter);
                 }
+                context.closePath();
                 firstIndex = i + 1;
                 counter = 0;
             }
         }
-        context.closePath();
         context.stroke();
         context.fill();
         context.restore();

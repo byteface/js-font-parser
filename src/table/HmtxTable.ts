@@ -5,7 +5,7 @@ import { Table } from "./Table.js";
 
 export class HmtxTable implements ITable {
     private buf: ByteArray | null;
-    private hMetrics: number[] | null;
+    private advanceWidths: number[] | null;
     private leftSideBearing: number[] | null;
 
     constructor(de: DirectoryEntry, byte_ar: ByteArray) {
@@ -14,7 +14,7 @@ export class HmtxTable implements ITable {
 
         byte_ar.offset = de.offset;
 
-        this.hMetrics = null;
+        this.advanceWidths = null;
         this.leftSideBearing = null;
 
         const start = byte_ar.offset;
@@ -34,24 +34,18 @@ export class HmtxTable implements ITable {
             return;
         }
 
-        this.hMetrics = [];
+        this.advanceWidths = [];
+        this.leftSideBearing = [];
         for (let i = 0; i < numberOfHMetrics; i++) {
-            // Pack 4 bytes from buf into an int and store in hMetrics[]
-            this.hMetrics.push(
-                (this.buf.readUnsignedByte() << 24) |
-                (this.buf.readUnsignedByte() << 16) |
-                (this.buf.readUnsignedByte() << 8) |
-                (this.buf.readUnsignedByte())
-            );
+            const advance = this.buf.readUnsignedShort();
+            const lsb = this.buf.readShort();
+            this.advanceWidths.push(advance);
+            this.leftSideBearing.push(lsb);
         }
 
         if (lsbCount > 0) {
-            this.leftSideBearing = [];
             for (let j = 0; j < lsbCount; j++) {
-                this.leftSideBearing.push(
-                    (this.buf.readUnsignedByte() << 8) |
-                    (this.buf.readUnsignedByte())
-                );
+                this.leftSideBearing.push(this.buf.readShort());
             }
         }
 
@@ -59,27 +53,23 @@ export class HmtxTable implements ITable {
     }
 
     getAdvanceWidth(i: number): number {
-        if (this.hMetrics === null) {
+        if (this.advanceWidths === null) {
             return 0;
         }
 
-        if (i < this.hMetrics.length) {
-            return this.hMetrics[i] >> 16;
+        if (i < this.advanceWidths.length) {
+            return this.advanceWidths[i];
         } else {
-            return this.hMetrics[this.hMetrics.length - 1] >> 16;
+            return this.advanceWidths[this.advanceWidths.length - 1];
         }
     }
 
     getLeftSideBearing(i: number): number {
-        if (this.hMetrics === null) {
+        if (this.leftSideBearing === null) {
             return 0;
         }
 
-        if (i < this.hMetrics.length) {
-            return this.hMetrics[i]; // No need for bitwise AND in TypeScript
-        } else {
-            return this.leftSideBearing ? this.leftSideBearing[i - this.hMetrics.length] : 0;
-        }
+        return this.leftSideBearing[i] ?? 0;
     }
 
     getType(): number {

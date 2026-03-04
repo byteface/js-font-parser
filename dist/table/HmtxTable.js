@@ -4,7 +4,7 @@ var HmtxTable = /** @class */ (function () {
     function HmtxTable(de, byte_ar) {
         // console.log('HmtxTable --');
         byte_ar.offset = de.offset;
-        this.hMetrics = null;
+        this.advanceWidths = null;
         this.leftSideBearing = null;
         var start = byte_ar.offset;
         var length = de.length;
@@ -18,44 +18,37 @@ var HmtxTable = /** @class */ (function () {
         if (this.buf === null) {
             return;
         }
-        this.hMetrics = [];
+        this.advanceWidths = [];
+        this.leftSideBearing = [];
         for (var i = 0; i < numberOfHMetrics; i++) {
-            // Pack 4 bytes from buf into an int and store in hMetrics[]
-            this.hMetrics.push((this.buf.readUnsignedByte() << 24) |
-                (this.buf.readUnsignedByte() << 16) |
-                (this.buf.readUnsignedByte() << 8) |
-                (this.buf.readUnsignedByte()));
+            var advance = this.buf.readUnsignedShort();
+            var lsb = this.buf.readShort();
+            this.advanceWidths.push(advance);
+            this.leftSideBearing.push(lsb);
         }
         if (lsbCount > 0) {
-            this.leftSideBearing = [];
             for (var j = 0; j < lsbCount; j++) {
-                this.leftSideBearing.push((this.buf.readUnsignedByte() << 8) |
-                    (this.buf.readUnsignedByte()));
+                this.leftSideBearing.push(this.buf.readShort());
             }
         }
         this.buf = null;
     };
     HmtxTable.prototype.getAdvanceWidth = function (i) {
-        if (this.hMetrics === null) {
+        if (this.advanceWidths === null) {
             return 0;
         }
-        if (i < this.hMetrics.length) {
-            return this.hMetrics[i] >> 16;
+        if (i < this.advanceWidths.length) {
+            return this.advanceWidths[i];
         }
         else {
-            return this.hMetrics[this.hMetrics.length - 1] >> 16;
+            return this.advanceWidths[this.advanceWidths.length - 1];
         }
     };
     HmtxTable.prototype.getLeftSideBearing = function (i) {
-        if (this.hMetrics === null) {
+        if (this.leftSideBearing === null) {
             return 0;
         }
-        if (i < this.hMetrics.length) {
-            return this.hMetrics[i]; // No need for bitwise AND in TypeScript
-        }
-        else {
-            return this.leftSideBearing ? this.leftSideBearing[i - this.hMetrics.length] : 0;
-        }
+        return this.leftSideBearing[i] != null ? this.leftSideBearing[i] : 0;
     };
     HmtxTable.prototype.getType = function () {
         return Table.hmtx;

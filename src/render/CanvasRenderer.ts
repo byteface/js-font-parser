@@ -140,11 +140,11 @@ export class CanvasRenderer {
                 } else {
                     this.addContourToShape(context, glyph, firstIndex, counter);
                 }
+                context.closePath();
                 firstIndex = i + 1;
                 counter = 0;
             }
         }
-        context.closePath();
         context.stroke();
         context.fill();
         context.restore();
