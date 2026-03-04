@@ -42,16 +42,14 @@ var PairPosFormat1 = /** @class */ (function (_super) {
         byte_ar.offset = offset + coverageOffset;
         _this.coverage = Coverage.read(byte_ar);
         _this.pairSets = pairSetOffsets.map(function (pairOffset) {
-            var _a;
             var map = new Map();
             byte_ar.offset = offset + pairOffset;
             var pairValueCount = byte_ar.readUnsignedShort();
             for (var i = 0; i < pairValueCount; i++) {
                 var secondGlyph = byte_ar.readUnsignedShort();
                 var v1 = ValueRecord.read(byte_ar, _this.valueFormat1);
-                ValueRecord.read(byte_ar, _this.valueFormat2);
-                var adjust = (_a = v1.xAdvance) !== null && _a !== void 0 ? _a : 0;
-                map.set(secondGlyph, adjust);
+                var v2 = ValueRecord.read(byte_ar, _this.valueFormat2);
+                map.set(secondGlyph, { v1: v1, v2: v2 });
             }
             return map;
         });
@@ -66,7 +64,17 @@ var PairPosFormat1 = /** @class */ (function (_super) {
         if (index < 0 || index >= this.pairSets.length)
             return 0;
         var map = this.pairSets[index];
-        return (_a = map.get(rightGlyph)) !== null && _a !== void 0 ? _a : 0;
+        var pair = map.get(rightGlyph);
+        return (_a = pair === null || pair === void 0 ? void 0 : pair.v1.xAdvance) !== null && _a !== void 0 ? _a : 0;
+    };
+    PairPosFormat1.prototype.getPairValue = function (leftGlyph, rightGlyph) {
+        if (!this.coverage)
+            return null;
+        var index = this.coverage.findGlyph(leftGlyph);
+        if (index < 0 || index >= this.pairSets.length)
+            return null;
+        var map = this.pairSets[index];
+        return map.get(rightGlyph) || null;
     };
     return PairPosFormat1;
 }(LookupSubtable));

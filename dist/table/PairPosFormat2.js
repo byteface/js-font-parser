@@ -55,8 +55,8 @@ var PairPosFormat2 = /** @class */ (function (_super) {
             var row = [];
             for (var j = 0; j < _this.class2Count; j++) {
                 var v1 = ValueRecord.read(byte_ar, _this.valueFormat1);
-                ValueRecord.read(byte_ar, _this.valueFormat2);
-                row.push((_a = v1.xAdvance) !== null && _a !== void 0 ? _a : 0);
+                var v2 = ValueRecord.read(byte_ar, _this.valueFormat2);
+                row.push({ v1: v1, v2: v2 });
             }
             _this.classRecords.push(row);
         }
@@ -74,7 +74,20 @@ var PairPosFormat2 = /** @class */ (function (_super) {
         var c2 = (_f = (_e = (_d = this.classDef2).getGlyphClass) === null || _e === void 0 ? void 0 : _e.call(_d, rightGlyph)) !== null && _f !== void 0 ? _f : 0;
         if (c1 < 0 || c2 < 0 || c1 >= this.classRecords.length || c2 >= this.classRecords[c1].length)
             return 0;
-        return (_g = this.classRecords[c1][c2]) !== null && _g !== void 0 ? _g : 0;
+        return (_g = (_a = this.classRecords[c1][c2]) === null || _a === void 0 ? void 0 : _a.v1.xAdvance) !== null && _g !== void 0 ? _g : 0;
+    };
+    PairPosFormat2.prototype.getPairValue = function (leftGlyph, rightGlyph) {
+        var _a, _b, _c, _d, _e, _f;
+        if (!this.coverage || !this.classDef1 || !this.classDef2)
+            return null;
+        var index = this.coverage.findGlyph(leftGlyph);
+        if (index < 0)
+            return null;
+        var c1 = (_c = (_b = (_a = this.classDef1).getGlyphClass) === null || _b === void 0 ? void 0 : _b.call(_a, leftGlyph)) !== null && _c !== void 0 ? _c : 0;
+        var c2 = (_f = (_e = (_d = this.classDef2).getGlyphClass) === null || _e === void 0 ? void 0 : _e.call(_d, rightGlyph)) !== null && _f !== void 0 ? _f : 0;
+        if (c1 < 0 || c2 < 0 || c1 >= this.classRecords.length || c2 >= this.classRecords[c1].length)
+            return null;
+        return this.classRecords[c1][c2] || null;
     };
     return PairPosFormat2;
 }(LookupSubtable));

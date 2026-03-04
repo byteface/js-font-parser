@@ -244,6 +244,7 @@ var FontParserTTF = /** @class */ (function () {
                 xAdvance: glyph.advanceWidth + kern,
                 xOffset: 0,
                 yOffset: 0,
+                yAdvance: 0,
             });
         }
         if (options.gpos) {
@@ -252,7 +253,57 @@ var FontParserTTF = /** @class */ (function () {
         return positioned;
     };
     FontParserTTF.prototype.applyGposPositioning = function (glyphIndices, positioned) {
-        var _this = this;
+        var _this = this, _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+        if (!this.gpos)
+            return;
+        var lookups = ((_a = this.gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups()) || [];
+        for (var _i = 0, lookups_1 = lookups; _i < lookups_1.length; _i++) {
+            var lookup = lookups_1[_i];
+            if (!lookup)
+                continue;
+            var type = lookup.getType();
+            if (type === 1) {
+                for (var i = 0; i < glyphIndices.length; i++) {
+                    for (var j = 0; j < lookup.getSubtableCount(); j++) {
+                        var st = lookup.getSubtable(j);
+                        if (st && typeof st.getAdjustment === "function") {
+                            var adj = st.getAdjustment(glyphIndices[i]);
+                            if (!adj)
+                                continue;
+                            positioned[i].xOffset += (_b = adj.xPlacement) !== null && _b !== void 0 ? _b : 0;
+                            positioned[i].yOffset += (_c = adj.yPlacement) !== null && _c !== void 0 ? _c : 0;
+                            positioned[i].xAdvance += (_d = adj.xAdvance) !== null && _d !== void 0 ? _d : 0;
+                            positioned[i].yAdvance += (_e = adj.yAdvance) !== null && _e !== void 0 ? _e : 0;
+                        }
+                    }
+                }
+            }
+            if (type === 2) {
+                for (var i = 0; i < glyphIndices.length - 1; i++) {
+                    for (var j = 0; j < lookup.getSubtableCount(); j++) {
+                        var st = lookup.getSubtable(j);
+                        if (!st)
+                            continue;
+                        var getPair = st.getPairValue;
+                        if (!getPair)
+                            continue;
+                        var pair = getPair(glyphIndices[i], glyphIndices[i + 1]);
+                        if (!pair)
+                            continue;
+                        var v1 = pair.v1 || {};
+                        var v2 = pair.v2 || {};
+                        positioned[i].xOffset += (_f = v1.xPlacement) !== null && _f !== void 0 ? _f : 0;
+                        positioned[i].yOffset += (_g = v1.yPlacement) !== null && _g !== void 0 ? _g : 0;
+                        positioned[i].xAdvance += (_h = v1.xAdvance) !== null && _h !== void 0 ? _h : 0;
+                        positioned[i].yAdvance += (_j = v1.yAdvance) !== null && _j !== void 0 ? _j : 0;
+                        positioned[i + 1].xOffset += (_k = v2.xPlacement) !== null && _k !== void 0 ? _k : 0;
+                        positioned[i + 1].yOffset += (_l = v2.yPlacement) !== null && _l !== void 0 ? _l : 0;
+                        positioned[i + 1].xAdvance += (_m = v2.xAdvance) !== null && _m !== void 0 ? _m : 0;
+                        positioned[i + 1].yAdvance += (_o = v2.yAdvance) !== null && _o !== void 0 ? _o : 0;
+                    }
+                }
+            }
+        }
         var anchorsCache = new Map();
         var getAnchors = function (gid) {
             if (anchorsCache.has(gid))

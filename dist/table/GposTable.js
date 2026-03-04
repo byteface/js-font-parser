@@ -7,6 +7,7 @@ import { PairPosSubtable } from "./PairPosSubtable.js";
 import { CursivePosFormat1 } from "./CursivePosFormat1.js";
 import { MarkLigPosFormat1 } from "./MarkLigPosFormat1.js";
 import { MarkMarkPosFormat1 } from "./MarkMarkPosFormat1.js";
+import { SinglePosSubtable } from "./SinglePosSubtable.js";
 var GposTable = /** @class */ (function () {
     function GposTable(de, byte_ar) {
         byte_ar.offset = de.offset;
@@ -19,6 +20,8 @@ var GposTable = /** @class */ (function () {
         this.lookupList = new LookupList(byte_ar, de.offset + lookupListOffset, this);
     }
     GposTable.prototype.read = function (_type, _byte_ar, _offset) {
+        if (_type === 1)
+            return SinglePosSubtable.read(_byte_ar, _offset);
         if (_type === 2)
             return PairPosSubtable.read(_byte_ar, _offset);
         if (_type === 3)

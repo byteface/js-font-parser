@@ -246,7 +246,7 @@ export class FontParserTTF {
     public layoutString(
         text: string,
         options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean } = {}
-    ): Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number }> {
+    ): Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }> {
         const gsubFeatures = options.gsubFeatures ?? ["liga"];
         const scriptTags = options.scriptTags ?? ["DFLT", "latn"];
         const glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
@@ -270,6 +270,7 @@ export class FontParserTTF {
                 xAdvance: glyph.advanceWidth + kern,
                 xOffset: 0,
                 yOffset: 0,
+                yAdvance: 0,
             });
         }
         if (options.gpos) {
@@ -280,8 +281,53 @@ export class FontParserTTF {
 
     private applyGposPositioning(
         glyphIndices: number[],
-        positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number }>
+        positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }>
     ): void {
+        if (!this.gpos) return;
+        const lookups = this.gpos.lookupList?.getLookups?.() ?? [];
+
+        for (const lookup of lookups) {
+            if (!lookup) continue;
+            const type = lookup.getType();
+            if (type === 1) {
+                for (let i = 0; i < glyphIndices.length; i++) {
+                    for (let j = 0; j < lookup.getSubtableCount(); j++) {
+                        const st = lookup.getSubtable(j);
+                        if (st && typeof (st as any).getAdjustment === "function") {
+                            const adj = (st as any).getAdjustment(glyphIndices[i]);
+                            if (!adj) continue;
+                            positioned[i].xOffset += adj.xPlacement ?? 0;
+                            positioned[i].yOffset += adj.yPlacement ?? 0;
+                            positioned[i].xAdvance += adj.xAdvance ?? 0;
+                            positioned[i].yAdvance += adj.yAdvance ?? 0;
+                        }
+                    }
+                }
+            }
+            if (type === 2) {
+                for (let i = 0; i < glyphIndices.length - 1; i++) {
+                    for (let j = 0; j < lookup.getSubtableCount(); j++) {
+                        const st = lookup.getSubtable(j);
+                        if (!st) continue;
+                        const getPair = (st as any).getPairValue as ((l: number, r: number) => { v1: any; v2: any } | null) | undefined;
+                        if (!getPair) continue;
+                        const pair = getPair(glyphIndices[i], glyphIndices[i + 1]);
+                        if (!pair) continue;
+                        const v1 = pair.v1 || {};
+                        const v2 = pair.v2 || {};
+                        positioned[i].xOffset += v1.xPlacement ?? 0;
+                        positioned[i].yOffset += v1.yPlacement ?? 0;
+                        positioned[i].xAdvance += v1.xAdvance ?? 0;
+                        positioned[i].yAdvance += v1.yAdvance ?? 0;
+                        positioned[i + 1].xOffset += v2.xPlacement ?? 0;
+                        positioned[i + 1].yOffset += v2.yPlacement ?? 0;
+                        positioned[i + 1].xAdvance += v2.xAdvance ?? 0;
+                        positioned[i + 1].yAdvance += v2.yAdvance ?? 0;
+                    }
+                }
+            }
+        }
+
         const anchorsCache = new Map<number, ReturnType<FontParserTTF['getMarkAnchorsForGlyph']>>();
 
         const getAnchors = (gid: number) => {

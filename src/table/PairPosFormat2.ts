@@ -4,7 +4,7 @@ import { ICoverage } from './ICoverage.js';
 import { ClassDef } from './ClassDef.js';
 import { ClassDefReader } from './ClassDefReader.js';
 import { LookupSubtable } from './LookupSubtable.js';
-import { ValueRecord } from './ValueRecord.js';
+import { ValueRecord, ValueRecordData } from './ValueRecord.js';
 
 export class PairPosFormat2 extends LookupSubtable {
     coverage: ICoverage | null;
@@ -14,7 +14,7 @@ export class PairPosFormat2 extends LookupSubtable {
     classDef2: ClassDef | null;
     class1Count: number;
     class2Count: number;
-    classRecords: number[][] = [];
+    classRecords: Array<Array<{ v1: ValueRecordData; v2: ValueRecordData }>> = [];
 
     constructor(byte_ar: ByteArray, offset: number) {
         super();
@@ -52,11 +52,11 @@ export class PairPosFormat2 extends LookupSubtable {
 
         this.classRecords = [];
         for (let i = 0; i < this.class1Count; i++) {
-            const row: number[] = [];
+            const row: Array<{ v1: ValueRecordData; v2: ValueRecordData }> = [];
             for (let j = 0; j < this.class2Count; j++) {
                 const v1 = ValueRecord.read(byte_ar, this.valueFormat1);
-                ValueRecord.read(byte_ar, this.valueFormat2);
-                row.push(v1.xAdvance ?? 0);
+                const v2 = ValueRecord.read(byte_ar, this.valueFormat2);
+                row.push({ v1, v2 });
             }
             this.classRecords.push(row);
         }
@@ -71,6 +71,16 @@ export class PairPosFormat2 extends LookupSubtable {
         const c1 = (this.classDef1 as any).getGlyphClass?.(leftGlyph) ?? 0;
         const c2 = (this.classDef2 as any).getGlyphClass?.(rightGlyph) ?? 0;
         if (c1 < 0 || c2 < 0 || c1 >= this.classRecords.length || c2 >= this.classRecords[c1].length) return 0;
-        return this.classRecords[c1][c2] ?? 0;
+        return this.classRecords[c1][c2]?.v1?.xAdvance ?? 0;
+    }
+
+    getPairValue(leftGlyph: number, rightGlyph: number): { v1: ValueRecordData; v2: ValueRecordData } | null {
+        if (!this.coverage || !this.classDef1 || !this.classDef2) return null;
+        const index = this.coverage.findGlyph(leftGlyph);
+        if (index < 0) return null;
+        const c1 = (this.classDef1 as any).getGlyphClass?.(leftGlyph) ?? 0;
+        const c2 = (this.classDef2 as any).getGlyphClass?.(rightGlyph) ?? 0;
+        if (c1 < 0 || c2 < 0 || c1 >= this.classRecords.length || c2 >= this.classRecords[c1].length) return null;
+        return this.classRecords[c1][c2] ?? null;
     }
 }
