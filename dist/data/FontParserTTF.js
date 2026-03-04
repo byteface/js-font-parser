@@ -10,6 +10,7 @@ import { MarkMarkPosFormat1 } from '../table/MarkMarkPosFormat1.js';
 import { CursivePosFormat1 } from '../table/CursivePosFormat1.js';
 import { PairPosFormat1 } from '../table/PairPosFormat1.js';
 import { PairPosFormat2 } from '../table/PairPosFormat2.js';
+import { detectScriptTags } from '../utils/ScriptDetector.js';
 var FontParserTTF = /** @class */ (function () {
     function FontParserTTF(byteData) {
         // Define properties
@@ -84,6 +85,14 @@ var FontParserTTF = /** @class */ (function () {
         this.cpal = this.getTable(Table.CPAL);
         this.gpos = this.getTable(Table.GPOS);
         this.fvar = this.getTable(Table.fvar);
+        if (this.cff2 && this.fvar && this.fvar.axes.length > 0) {
+            var defaults = {};
+            for (var _i = 0, _e = this.fvar.axes; _i < _e.length; _i++) {
+                var axis = _e[_i];
+                defaults[axis.name] = axis.defaultValue;
+            }
+            this.setVariationByAxes(defaults);
+        }
         // Initialize the tables
         if (this.hmtx && this.maxp) {
             this.hmtx.run((_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.numberOfHMetrics) !== null && _b !== void 0 ? _b : 0, this.maxp.numGlyphs - ((_d = (_c = this.hhea) === null || _c === void 0 ? void 0 : _c.numberOfHMetrics) !== null && _d !== void 0 ? _d : 0));
@@ -280,6 +289,16 @@ var FontParserTTF = /** @class */ (function () {
             this.applyGposPositioning(glyphIndices, positioned);
         }
         return positioned;
+    };
+    FontParserTTF.prototype.layoutStringAuto = function (text, options) {
+        var _a;
+        if (options === void 0) { options = {}; }
+        var detection = detectScriptTags(text);
+        return this.layoutString(text, {
+            gsubFeatures: detection.features,
+            scriptTags: detection.scripts,
+            gpos: (_a = options.gpos) !== null && _a !== void 0 ? _a : true
+        });
     };
     FontParserTTF.prototype.applyGposPositioning = function (glyphIndices, positioned) {
         var _this = this;

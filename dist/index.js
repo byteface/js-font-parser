@@ -9,3 +9,4 @@ export { CanvasGlyph } from './render/CanvasGlyph.js';
 export { LayoutEngine } from './layout/LayoutEngine.js';
 export { getSupportedLanguages, supportsLanguage, listLanguages } from './utils/LanguageSupport.js';
 export { setWoff2Decoder } from './utils/Woff2Decoder.js';
+export { detectScriptTags } from './utils/ScriptDetector.js';

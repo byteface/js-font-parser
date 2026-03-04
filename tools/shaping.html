@@ -40,6 +40,7 @@
       <label>Features
         <input id="features" type="text" value="ccmp,locl,init,medi,fina,isol,rlig,liga,calt" style="min-width:320px" />
       </label>
+      <label><input id="autoDetect" type="checkbox" checked /> Auto detect script</label>
       <label><input id="enableGpos" type="checkbox" checked /> GPOS</label>
     </div>
     <div class="row" style="margin-top:8px">
@@ -63,11 +64,13 @@
   <script type="module">
     import { FontParser } from "../dist/data/FontParser.js";
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
+    import { detectScriptTags } from "../dist/utils/ScriptDetector.js";
 
     const fontSelect = document.getElementById("fontSelect");
     const scriptTagsInput = document.getElementById("scriptTags");
     const featuresInput = document.getElementById("features");
     const sampleInput = document.getElementById("sample");
+    const autoDetect = document.getElementById("autoDetect");
     const enableGpos = document.getElementById("enableGpos");
     const rawCanvas = document.getElementById("raw");
     const shapedCanvas = document.getElementById("shaped");
@@ -106,8 +109,15 @@
       });
       drawPositioned(rawCanvas, rawPositioned, 0.12, 150);
 
-      const scriptTags = scriptTagsInput.value.split(',').map(s => s.trim()).filter(Boolean);
-      const features = featuresInput.value.split(',').map(s => s.trim()).filter(Boolean);
+      let scriptTags = scriptTagsInput.value.split(',').map(s => s.trim()).filter(Boolean);
+      let features = featuresInput.value.split(',').map(s => s.trim()).filter(Boolean);
+      if (autoDetect.checked) {
+        const detected = detectScriptTags(text);
+        scriptTags = detected.scripts;
+        features = detected.features;
+        scriptTagsInput.value = scriptTags.join(',');
+        featuresInput.value = features.join(',');
+      }
       const shaped = font.layoutString(text, { gsubFeatures: features, scriptTags, gpos: enableGpos.checked });
       drawPositioned(shapedCanvas, shaped, 0.12, 150);
     }
@@ -117,6 +127,7 @@
     featuresInput.addEventListener("input", render);
     sampleInput.addEventListener("input", render);
     enableGpos.addEventListener("change", render);
+    autoDetect.addEventListener("change", render);
 
     loadFont();
   </script>

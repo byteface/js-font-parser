@@ -28,6 +28,7 @@ import { CursivePosFormat1 } from '../table/CursivePosFormat1.js';
 import { PairPosFormat1 } from '../table/PairPosFormat1.js';
 import { PairPosFormat2 } from '../table/PairPosFormat2.js';
 import { FvarTable } from '../table/FvarTable.js';
+import { detectScriptTags } from '../utils/ScriptDetector.js';
 
 export class FontParserTTF {
     // Define properties
@@ -107,6 +108,11 @@ export class FontParserTTF {
         this.cpal = this.getTable(Table.CPAL) as CpalTable | null;
         this.gpos = this.getTable(Table.GPOS) as GposTable | null;
         this.fvar = this.getTable(Table.fvar) as FvarTable | null;
+        if (this.cff2 && this.fvar && this.fvar.axes.length > 0) {
+            const defaults: Record<string, number> = {};
+            for (const axis of this.fvar.axes) defaults[axis.name] = axis.defaultValue;
+            this.setVariationByAxes(defaults);
+        }
 
         // Initialize the tables
         if (this.hmtx && this.maxp) {
@@ -305,6 +311,18 @@ export class FontParserTTF {
             this.applyGposPositioning(glyphIndices, positioned);
         }
         return positioned;
+    }
+
+    public layoutStringAuto(
+        text: string,
+        options: { gpos?: boolean } = {}
+    ): Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }> {
+        const detection = detectScriptTags(text);
+        return this.layoutString(text, {
+            gsubFeatures: detection.features,
+            scriptTags: detection.scripts,
+            gpos: options.gpos ?? true
+        });
     }
 
     private applyGposPositioning(
