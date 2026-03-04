@@ -127,7 +127,12 @@ var CanvasRenderer = /** @class */ (function () {
             }
         }
         context.stroke();
-        context.fill();
+        if (glyph.isCubic) {
+            context.fill("evenodd");
+        }
+        else {
+            context.fill();
+        }
         context.restore();
     };
     CanvasRenderer.drawString = function (font, text, canvas, options) {

@@ -146,7 +146,11 @@ export class CanvasRenderer {
             }
         }
         context.stroke();
-        context.fill();
+        if (glyph.isCubic) {
+            context.fill("evenodd");
+        } else {
+            context.fill();
+        }
         context.restore();
     }
 
