@@ -302,9 +302,6 @@ export class CffTable implements ITable {
                         break;
                     }
                     case 10: { // callsubr
-                        if (!widthUsed && pendingWidth == null && args.length % 2 === 1) {
-                            pendingWidth = args.shift() ?? null;
-                        }
                         const subrIndex = (args.pop() ?? 0) + lBias;
                         if (args.length) stack.push(...args);
                         const subr = lsubrs[subrIndex];
@@ -348,8 +345,9 @@ export class CffTable implements ITable {
                     case 20: { // cntrmask
                         consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
-                        const maskBytes = Math.ceil(stemCount / 8);
-                        i += maskBytes;
+                        let maskBytes = Math.ceil(stemCount / 8);
+                        if (maskBytes === 0) maskBytes = 1;
+                        i += Math.min(maskBytes, bytes.length - i);
                         break;
                     }
                     case 21: { // rmoveto
@@ -443,9 +441,6 @@ export class CffTable implements ITable {
                         break;
                     }
                     case 29: { // callgsubr
-                        if (!widthUsed && pendingWidth == null && args.length % 2 === 1) {
-                            pendingWidth = args.shift() ?? null;
-                        }
                         const subrIndex = (args.pop() ?? 0) + gBias;
                         if (args.length) stack.push(...args);
                         const subr = gsubrs[subrIndex];

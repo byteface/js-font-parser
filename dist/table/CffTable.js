@@ -293,10 +293,6 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 10: { // callsubr
-                        if (!widthUsed && pendingWidth == null && args.length % 2 === 1) {
-                            var w = args.shift();
-                            pendingWidth = w != null ? w : null;
-                        }
                         var subrIndex = (args.pop() || 0) + lBias;
                         if (args.length)
                             stack.push.apply(stack, args);
@@ -345,7 +341,9 @@ var CffTable = /** @class */ (function () {
                         consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         var maskBytes = Math.ceil(stemCount / 8);
-                        i += maskBytes;
+                        if (maskBytes === 0)
+                            maskBytes = 1;
+                        i += Math.min(maskBytes, bytes.length - i);
                         break;
                     }
                     case 21: { // rmoveto
@@ -439,10 +437,6 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 29: { // callgsubr
-                        if (!widthUsed && pendingWidth == null && args.length % 2 === 1) {
-                            var w = args.shift();
-                            pendingWidth = w != null ? w : null;
-                        }
                         var subrIndex = (args.pop() || 0) + gBias;
                         if (args.length)
                             stack.push.apply(stack, args);
