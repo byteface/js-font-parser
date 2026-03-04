@@ -120,14 +120,24 @@
       let scriptTags = scriptTagsInput.value.split(',').map(s => s.trim()).filter(Boolean);
       let features = featuresInput.value.split(',').map(s => s.trim()).filter(Boolean);
       const gposFeatures = gposFeaturesInput.value.split(',').map(s => s.trim()).filter(Boolean);
-      if (autoDetect.checked) {
+      let shaped = [];
+      if (autoDetect.checked && typeof font.layoutStringAuto === 'function') {
         const detected = detectScriptTags(text);
         scriptTags = detected.scripts;
         features = detected.features;
         scriptTagsInput.value = scriptTags.join(',');
         featuresInput.value = features.join(',');
+        shaped = font.layoutStringAuto(text, { gpos: enableGpos.checked, gposFeatures });
+      } else {
+        if (autoDetect.checked) {
+          const detected = detectScriptTags(text);
+          scriptTags = detected.scripts;
+          features = detected.features;
+          scriptTagsInput.value = scriptTags.join(',');
+          featuresInput.value = features.join(',');
+        }
+        shaped = font.layoutString(text, { gsubFeatures: features, scriptTags, gpos: enableGpos.checked, gposFeatures });
       }
-      const shaped = font.layoutString(text, { gsubFeatures: features, scriptTags, gpos: enableGpos.checked, gposFeatures });
       if (!shaped || shaped.length === 0) {
         status.textContent = "Shaped output is empty; falling back to raw glyphs.";
         drawPositioned(shapedCanvas, rawPositioned, 0.12, 150);

@@ -101,6 +101,7 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const status = document.getElementById('status');
+        let baselinePoints = null;
 
         const fonts = [
             { name: 'Playwrite GB S Variable', url: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-VariableFont_wght.ttf' },
@@ -148,6 +149,22 @@
                 spacing: 4,
                 styles: { fillStyle: '#2f4f7a', strokeStyle: '#2f4f7a', lineWidth: 1 }
             });
+
+            const glyph = font.getGlyphByChar ? font.getGlyphByChar('H') : null;
+            if (glyph && glyph.getPointCount && baselinePoints) {
+                const count = Math.min(glyph.getPointCount(), baselinePoints.length);
+                let maxDelta = 0;
+                for (let i = 0; i < count; i++) {
+                    const p = glyph.getPoint(i);
+                    const b = baselinePoints[i];
+                    if (!p || !b) continue;
+                    const dx = p.x - b.x;
+                    const dy = p.y - b.y;
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    if (d > maxDelta) maxDelta = d;
+                }
+                status.textContent += ` | max Δ: ${maxDelta.toFixed(2)}`;
+            }
         }
 
         function renderAxes(fvar) {
@@ -197,6 +214,11 @@
             applyAxisValues();
             const gvar = font.getTableByType(Table.gvar);
             status.textContent = `fvar: ${fvar ? 'yes' : 'no'} | gvar: ${gvar ? 'yes' : 'no'}`;
+            const baseGlyph = font.getGlyphByChar ? font.getGlyphByChar('H') : null;
+            baselinePoints = baseGlyph ? Array.from({ length: baseGlyph.getPointCount() }, (_, i) => {
+                const p = baseGlyph.getPoint(i);
+                return p ? { x: p.x, y: p.y } : null;
+            }) : null;
             renderText();
         }
 
