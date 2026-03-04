@@ -30,6 +30,10 @@
   <div class="panel">
     <div class="row">
       <label>Sample <input id="sample" type="text" value="hello world" /></label>
+      <label><input id="filterTtf" type="checkbox" checked /> TTF</label>
+      <label><input id="filterOtf" type="checkbox" checked /> OTF</label>
+      <label><input id="showOnlyFailed" type="checkbox" /> Failed only</label>
+      <label><input id="sortFailed" type="checkbox" checked /> Sort failed first</label>
     </div>
   </div>
 
@@ -41,6 +45,10 @@
     import { Table } from "../dist/table/Table.js";
 
     const sampleInput = document.getElementById("sample");
+    const filterTtf = document.getElementById("filterTtf");
+    const filterOtf = document.getElementById("filterOtf");
+    const showOnlyFailed = document.getElementById("showOnlyFailed");
+    const sortFailed = document.getElementById("sortFailed");
     const grid = document.getElementById("grid");
 
     const fonts = [
@@ -131,6 +139,12 @@
 
     async function render() {
       grid.innerHTML = "";
+      const showTtf = filterTtf.checked;
+      const showOtf = filterOtf.checked;
+      const failOnly = showOnlyFailed.checked;
+      const shouldSortFailed = sortFailed.checked;
+
+      const entries = [];
       for (const url of fonts) {
         const card = document.createElement("div");
         card.className = "card";
@@ -146,19 +160,52 @@
         card.appendChild(label);
         card.appendChild(canvas);
         card.appendChild(status);
-        grid.appendChild(card);
+        entries.push({ url, card, status, canvas, label });
+      }
 
+      for (const entry of entries) {
+        const isOtf = entry.url.toLowerCase().endsWith(".otf");
+        if ((isOtf && !showOtf) || (!isOtf && !showTtf)) continue;
+        grid.appendChild(entry.card);
+      }
+
+      for (const entry of entries) {
+        const isOtf = entry.url.toLowerCase().endsWith(".otf");
+        if ((isOtf && !showOtf) || (!isOtf && !showTtf)) continue;
         try {
-          const font = await FontParserTTF.load(url);
-          draw(font, canvas, sampleInput.value);
-          status.textContent = "ok";
+          const font = await FontParserTTF.load(entry.url);
+          const hasGlyf = !!font.getTableByType(Table.glyf);
+          const hasCff = !!font.getTableByType(Table.CFF);
+          const hasCff2 = !!font.getTableByType(Table.CFF2);
+          draw(font, entry.canvas, sampleInput.value);
+          entry.status.textContent = `ok | ${hasGlyf ? "glyf" : ""}${hasCff ? " CFF" : ""}${hasCff2 ? " CFF2" : ""}`.trim();
+          entry.card.dataset.failed = "0";
         } catch (err) {
-          status.textContent = "failed";
+          entry.status.textContent = "failed";
+          entry.card.dataset.failed = "1";
         }
+      }
+
+      if (failOnly) {
+        [...grid.children].forEach(node => {
+          if (node.dataset.failed !== "1") node.style.display = "none";
+        });
+      } else {
+        [...grid.children].forEach(node => node.style.display = "");
+      }
+
+      if (shouldSortFailed) {
+        const nodes = [...grid.children];
+        nodes.sort((a, b) => (b.dataset.failed === "1") - (a.dataset.failed === "1"));
+        nodes.forEach(n => grid.appendChild(n));
       }
     }
 
     sampleInput.addEventListener("input", render);
+    filterTtf.addEventListener("change", render);
+    filterOtf.addEventListener("change", render);
+    showOnlyFailed.addEventListener("change", render);
+    sortFailed.addEventListener("change", render);
     render();
   </script>
 </body>
