@@ -197,6 +197,9 @@ var CffTable = /** @class */ (function () {
                     i = next;
                     continue;
                 }
+                if (b0 === 11) {
+                    return;
+                }
                 var args = stack.splice(0, stack.length);
                 var consumeWidthIfOdd = function () {
                     if (!widthUsed && pendingWidth != null) {
@@ -302,8 +305,6 @@ var CffTable = /** @class */ (function () {
                             parse(subr);
                         break;
                     }
-                    case 11: // return
-                        return;
                     case 14: { // endchar
                         if (args.length === 5) {
                             var _a = args, _b = _a[1], adx = _b === void 0 ? 0 : _b, _c = _a[2], ady = _c === void 0 ? 0 : _c, bchar = _a[3], achar = _a[4];

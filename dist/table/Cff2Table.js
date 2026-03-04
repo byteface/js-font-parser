@@ -218,6 +218,9 @@ var Cff2Table = /** @class */ (function () {
                     i = next;
                     continue;
                 }
+                if (b0 === 11) {
+                    return;
+                }
                 var args = stack.splice(0, stack.length);
                 var consumeWidthIfOdd = function () {
                     if (!widthUsed && pendingWidth != null) {
@@ -323,8 +326,6 @@ var Cff2Table = /** @class */ (function () {
                             parse(subr);
                         break;
                     }
-                    case 11:
-                        return;
                     case 14: {
                         closeContour();
                         return;

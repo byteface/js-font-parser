@@ -213,6 +213,9 @@ export class CffTable implements ITable {
                     continue;
                 }
 
+                if (b0 === 11) {
+                    return;
+                }
                 const args = stack.splice(0, stack.length);
                 const consumeWidthIfOdd = () => {
                     if (!widthUsed && pendingWidth != null) {
@@ -308,8 +311,6 @@ export class CffTable implements ITable {
                         if (subr) parse(subr);
                         break;
                     }
-                    case 11: // return
-                        return;
                     case 14: { // endchar
                         if (args.length === 5) {
                             const [, adx, ady, bchar, achar] = args;
