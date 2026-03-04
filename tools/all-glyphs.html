@@ -264,8 +264,12 @@
             }
 
             const head = font.getTableByType(Table.head);
+            const hhea = font.getTableByType(Table.hhea);
             const unitsPerEm = head?.unitsPerEm ?? 1000;
-            const scale = (cell * scaleFactor) / unitsPerEm;
+            const ascender = hhea?.ascender ?? unitsPerEm * 0.8;
+            const descender = hhea?.descender ?? -unitsPerEm * 0.2;
+            const emHeight = ascender - descender || unitsPerEm;
+            const scale = (cell * scaleFactor) / emHeight;
 
             const glyphCount = font.getNumGlyphs();
             const cols = Math.max(1, Math.floor(canvas.width / cell));
@@ -292,10 +296,10 @@
                 if (glyph) {
                     const bounds = getGlyphBounds(glyph);
                     const centerX = bounds ? (bounds.minx + bounds.maxx) * 0.5 : 0;
-                    const centerY = bounds ? bounds.maxy : 0;
+                    const baselineY = y + cell * 0.5 - ((ascender + descender) * 0.5 * scale);
                     CanvasRenderer.drawGlyphToContext(ctx, glyph, {
                         x: x + cell * 0.5 - (centerX * scale),
-                        y: y + cell * 0.7 + (centerY * scale),
+                        y: baselineY,
                         scale,
                         styles: { fillStyle: "#2f2a22", strokeStyle: "#2f2a22", lineWidth: 1 },
                         fillRule: fillRule || undefined
