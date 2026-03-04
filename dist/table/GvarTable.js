@@ -99,6 +99,7 @@ var GvarTable = /** @class */ (function () {
         }
         var dx = new Array(pointCount).fill(0);
         var dy = new Array(pointCount).fill(0);
+        var touched = new Array(pointCount).fill(false);
         for (var _i = 0, tuples_1 = tuples; _i < tuples_1.length; _i++) {
             var tuple = tuples_1[_i];
             var scalar = this.computeScalar(coords, tuple.peak, tuple.start, tuple.end);
@@ -115,6 +116,11 @@ var GvarTable = /** @class */ (function () {
                 points = sharedPoints;
             }
             var indices = points !== null && points !== void 0 ? points : this.rangePoints(pointCount);
+            for (var _b = 0, indices_1 = indices; _b < indices_1.length; _b++) {
+                var idx = indices_1[_b];
+                if (idx >= 0 && idx < pointCount)
+                    touched[idx] = true;
+            }
             var deltasX = this.readPackedDeltas(pCursor, indices.length);
             pCursor += deltasX.size;
             var deltasY = this.readPackedDeltas(pCursor, indices.length);
@@ -126,7 +132,7 @@ var GvarTable = /** @class */ (function () {
                 }
             }
         }
-        return { dx: dx, dy: dy };
+        return { dx: dx, dy: dy, touched: touched };
     };
     GvarTable.prototype.rangePoints = function (count) {
         return Array.from({ length: count }, function (_, i) { return i; });
@@ -138,6 +144,10 @@ var GvarTable = /** @class */ (function () {
             var coord = (_a = coords[i]) !== null && _a !== void 0 ? _a : 0;
             var peakVal = (_b = peak[i]) !== null && _b !== void 0 ? _b : 0;
             if (coord === 0) {
+                scalar = 0;
+                break;
+            }
+            if (peakVal === 0) {
                 scalar = 0;
                 break;
             }

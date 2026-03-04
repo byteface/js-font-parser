@@ -310,6 +310,7 @@ var FontParserWOFF = /** @class */ (function () {
                     var base_1 = description;
                     var dx_1 = deltas.dx;
                     var dy_1 = deltas.dy;
+                    this.applyIupDeltas(base_1, dx_1, dy_1, deltas.touched);
                     desc = {
                         getPointCount: function () { return base_1.getPointCount(); },
                         getContourCount: function () { return base_1.getContourCount(); },
@@ -483,6 +484,74 @@ var FontParserWOFF = /** @class */ (function () {
             });
         });
     };
+    FontParserWOFF.prototype.applyIupDeltas = function (base, dx, dy, touched) {
+        var pointCount = base.getPointCount();
+        if (pointCount === 0)
+            return;
+        var endPts = [];
+        for (var c = 0; c < base.getContourCount(); c++) {
+            endPts.push(base.getEndPtOfContours(c));
+        }
+        var start = 0;
+        var _loop_1 = function (end) {
+            var indices = [];
+            var touchedIndices = [];
+            for (var i = start; i <= end; i++) {
+                indices.push(i);
+                if (touched[i])
+                    touchedIndices.push(i);
+            }
+            if (touchedIndices.length === 0) {
+                start = end + 1;
+                return "continue";
+            }
+            if (touchedIndices.length === 1) {
+                var idx = touchedIndices[0];
+                for (var _a = 0, indices_1 = indices; _a < indices_1.length; _a++) {
+                    var i = indices_1[_a];
+                    dx[i] = dx[idx];
+                    dy[i] = dy[idx];
+                }
+                start = end + 1;
+                return "continue";
+            }
+            var contour = indices;
+            var total = contour.length;
+            var order = touchedIndices.map(function (i) { return contour.indexOf(i); }).sort(function (a, b) { return a - b; });
+            var coordsX = contour.map(function (i) { return base.getXCoordinate(i); });
+            var coordsY = contour.map(function (i) { return base.getYCoordinate(i); });
+            for (var t = 0; t < order.length; t++) {
+                var a = order[t];
+                var b = order[(t + 1) % order.length];
+                var idx = (a + 1) % total;
+                while (idx !== b) {
+                    var globalIndex = contour[idx];
+                    var ax = coordsX[a];
+                    var bx = coordsX[b];
+                    var ay = coordsY[a];
+                    var by = coordsY[b];
+                    var px = coordsX[idx];
+                    var py = coordsY[idx];
+                    dx[globalIndex] = this_1.interpolate(ax, bx, dx[contour[a]], dx[contour[b]], px);
+                    dy[globalIndex] = this_1.interpolate(ay, by, dy[contour[a]], dy[contour[b]], py);
+                    idx = (idx + 1) % total;
+                }
+            }
+            start = end + 1;
+        };
+        var this_1 = this;
+        for (var _i = 0, endPts_1 = endPts; _i < endPts_1.length; _i++) {
+            var end = endPts_1[_i];
+            _loop_1(end);
+        }
+    };
+    FontParserWOFF.prototype.interpolate = function (aCoord, bCoord, aDelta, bDelta, pCoord) {
+        if (aCoord === bCoord)
+            return aDelta;
+        var t = (pCoord - aCoord) / (bCoord - aCoord);
+        var clamped = Math.max(0, Math.min(1, t));
+        return aDelta + (bDelta - aDelta) * clamped;
+    };
     FontParserWOFF.prototype.getGlyphIndexByChar = function (char) {
         if (!char || char.length === 0) {
             console.error("getGlyphIndexByChar expects a character");
@@ -526,7 +595,7 @@ var FontParserWOFF = /** @class */ (function () {
             return glyphs;
         var subtables = this.gsub.getSubtablesForFeatures(featureTags, scriptTags);
         var result = glyphs.slice();
-        var _loop_1 = function (st) {
+        var _loop_2 = function (st) {
             if (!st)
                 return "continue";
             if (typeof st.substitute === "function") {
@@ -553,7 +622,7 @@ var FontParserWOFF = /** @class */ (function () {
         };
         for (var _a = 0, subtables_1 = subtables; _a < subtables_1.length; _a++) {
             var st = subtables_1[_a];
-            _loop_1(st);
+            _loop_2(st);
         }
         return result;
     };
@@ -778,14 +847,14 @@ var FontParserWOFF = /** @class */ (function () {
         if (formats.length === 0)
             return null;
         var order = [4, 12, 10, 8, 6, 2, 0];
-        var _loop_2 = function (fmt) {
+        var _loop_3 = function (fmt) {
             var found = formats.find(function (f) { return (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt; });
             if (found)
                 return { value: found };
         };
         for (var _i = 0, order_1 = order; _i < order_1.length; _i++) {
             var fmt = order_1[_i];
-            var state_1 = _loop_2(fmt);
+            var state_1 = _loop_3(fmt);
             if (typeof state_1 === "object")
                 return state_1.value;
         }

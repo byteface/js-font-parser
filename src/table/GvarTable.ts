@@ -65,7 +65,7 @@ export class GvarTable implements ITable {
         return Table.gvar;
     }
 
-    getDeltasForGlyph(glyphId: number, coords: number[], pointCount: number): { dx: number[]; dy: number[] } | null {
+    getDeltasForGlyph(glyphId: number, coords: number[], pointCount: number): { dx: number[]; dy: number[]; touched: boolean[] } | null {
         if (glyphId < 0 || glyphId >= this.glyphCount) return null;
         const start = this.dataOffset + this.offsets[glyphId];
         const end = this.dataOffset + this.offsets[glyphId + 1];
@@ -122,6 +122,7 @@ export class GvarTable implements ITable {
 
         const dx = new Array(pointCount).fill(0);
         const dy = new Array(pointCount).fill(0);
+        const touched = new Array(pointCount).fill(false);
 
         for (const tuple of tuples) {
             const scalar = this.computeScalar(coords, tuple.peak, tuple.start, tuple.end);
@@ -138,6 +139,9 @@ export class GvarTable implements ITable {
             }
 
             const indices = points ?? this.rangePoints(pointCount);
+            for (const idx of indices) {
+                if (idx >= 0 && idx < pointCount) touched[idx] = true;
+            }
             const deltasX = this.readPackedDeltas(pCursor, indices.length);
             pCursor += deltasX.size;
             const deltasY = this.readPackedDeltas(pCursor, indices.length);
@@ -151,7 +155,7 @@ export class GvarTable implements ITable {
             }
         }
 
-        return { dx, dy };
+        return { dx, dy, touched };
     }
 
     private rangePoints(count: number): number[] {
@@ -164,6 +168,10 @@ export class GvarTable implements ITable {
             const coord = coords[i] ?? 0;
             const peakVal = peak[i] ?? 0;
             if (coord === 0) {
+                scalar = 0;
+                break;
+            }
+            if (peakVal === 0) {
                 scalar = 0;
                 break;
             }

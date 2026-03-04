@@ -15,6 +15,7 @@ import { Table } from '../table/Table.js';
 import { TableDirectory } from '../table/TableDirectory.js';
 import { TableFactory } from '../table/TableFactory.js';
 import { GlyphData } from './GlyphData.js';
+import { IGlyphDescription } from '../table/IGlyphDescription.js';
 import { ITable } from '../table/ITable.js';
 import { GsubTable } from '../table/GsubTable.js';
 import { LigatureSubstFormat1 } from '../table/LigatureSubstFormat1.js';
@@ -437,6 +438,7 @@ export class FontParserTTF {
                     const base = description;
                     const dx = deltas.dx;
                     const dy = deltas.dy;
+                    this.applyIupDeltas(base, dx, dy, deltas.touched);
                     desc = {
                         getPointCount: () => base.getPointCount(),
                         getContourCount: () => base.getContourCount(),
@@ -603,6 +605,70 @@ export class FontParserTTF {
     public async getSvgDocumentForGlyphAsync(glyphId: number): Promise<{ svgText: string | null; isCompressed: boolean }> {
         if (!this.svg) return { svgText: null, isCompressed: false };
         return this.svg.getSvgDocumentForGlyphAsync(glyphId);
+    }
+
+    private applyIupDeltas(base: IGlyphDescription, dx: number[], dy: number[], touched: boolean[]): void {
+        const pointCount = base.getPointCount();
+        if (pointCount === 0) return;
+        const endPts: number[] = [];
+        for (let c = 0; c < base.getContourCount(); c++) {
+            endPts.push(base.getEndPtOfContours(c));
+        }
+
+        let start = 0;
+        for (const end of endPts) {
+            const indices: number[] = [];
+            const touchedIndices: number[] = [];
+            for (let i = start; i <= end; i++) {
+                indices.push(i);
+                if (touched[i]) touchedIndices.push(i);
+            }
+            if (touchedIndices.length === 0) {
+                start = end + 1;
+                continue;
+            }
+            if (touchedIndices.length === 1) {
+                const idx = touchedIndices[0];
+                for (const i of indices) {
+                    dx[i] = dx[idx];
+                    dy[i] = dy[idx];
+                }
+                start = end + 1;
+                continue;
+            }
+
+            const contour = indices;
+            const total = contour.length;
+            const order = touchedIndices.map(i => contour.indexOf(i)).sort((a, b) => a - b);
+            const coordsX = contour.map(i => base.getXCoordinate(i));
+            const coordsY = contour.map(i => base.getYCoordinate(i));
+
+            for (let t = 0; t < order.length; t++) {
+                const a = order[t];
+                const b = order[(t + 1) % order.length];
+                let idx = (a + 1) % total;
+                while (idx !== b) {
+                    const globalIndex = contour[idx];
+                    const ax = coordsX[a];
+                    const bx = coordsX[b];
+                    const ay = coordsY[a];
+                    const by = coordsY[b];
+                    const px = coordsX[idx];
+                    const py = coordsY[idx];
+                    dx[globalIndex] = this.interpolate(ax, bx, dx[contour[a]], dx[contour[b]], px);
+                    dy[globalIndex] = this.interpolate(ay, by, dy[contour[a]], dy[contour[b]], py);
+                    idx = (idx + 1) % total;
+                }
+            }
+            start = end + 1;
+        }
+    }
+
+    private interpolate(aCoord: number, bCoord: number, aDelta: number, bDelta: number, pCoord: number): number {
+        if (aCoord === bCoord) return aDelta;
+        const t = (pCoord - aCoord) / (bCoord - aCoord);
+        const clamped = Math.max(0, Math.min(1, t));
+        return aDelta + (bDelta - aDelta) * clamped;
     }
 
     public getNameRecord(nameId: number): string {

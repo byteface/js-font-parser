@@ -27,6 +27,7 @@
   <div class="panel">
     <div class="row">
       <input id="fileInput" type="file" accept=".otf,.ttf" />
+      <button id="loadSample">Load Twemoji SVG Sample</button>
       <label>Char <input id="charInput" value="A" /></label>
       <label>Glyph ID <input id="glyphInput" type="text" value="" /></label>
     </div>
@@ -45,6 +46,7 @@
     const charInput = document.getElementById("charInput");
     const glyphInput = document.getElementById("glyphInput");
     const preview = document.getElementById("svgPreview");
+    const loadSample = document.getElementById("loadSample");
 
     let font = null;
 
@@ -74,6 +76,19 @@
       if (!file) return;
       const buf = await file.arrayBuffer();
       font = FontParser.fromArrayBuffer(buf);
+      renderGlyph();
+    });
+
+    loadSample.addEventListener("click", async () => {
+      const response = await fetch("../truetypefonts/svg/TwitterColorEmoji-SVGinOT-15.1.0/TwitterColorEmoji-SVGinOT.ttf");
+      if (!response.ok) {
+        preview.textContent = "Failed to load sample font.";
+        return;
+      }
+      const buf = await response.arrayBuffer();
+      font = FontParser.fromArrayBuffer(buf);
+      charInput.value = "😀";
+      glyphInput.value = "";
       renderGlyph();
     });
 

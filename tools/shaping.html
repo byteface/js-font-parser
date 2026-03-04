@@ -42,6 +42,9 @@
       </label>
       <label><input id="autoDetect" type="checkbox" checked /> Auto detect script</label>
       <label><input id="enableGpos" type="checkbox" checked /> GPOS</label>
+      <label>GPOS features
+        <input id="gposFeatures" type="text" value="kern,mark,mkmk,curs" style="min-width:220px" />
+      </label>
     </div>
     <div class="row" style="margin-top:8px">
       <label>Sample
@@ -60,6 +63,7 @@
       <canvas id="shaped" width="1200" height="200"></canvas>
     </div>
   </div>
+  <div id="status" style="margin:10px 20px;color:#a33a2a;font-size:12px"></div>
 
   <script type="module">
     import { FontParser } from "../dist/data/FontParser.js";
@@ -72,8 +76,10 @@
     const sampleInput = document.getElementById("sample");
     const autoDetect = document.getElementById("autoDetect");
     const enableGpos = document.getElementById("enableGpos");
+    const gposFeaturesInput = document.getElementById("gposFeatures");
     const rawCanvas = document.getElementById("raw");
     const shapedCanvas = document.getElementById("shaped");
+    const status = document.getElementById("status");
 
     let font = null;
 
@@ -86,7 +92,7 @@
         if (!glyph) continue;
         CanvasRenderer.drawGlyphToContext(ctx, glyph, {
           x: x + item.xOffset * scale,
-          y,
+          y: y + item.yOffset * scale,
           scale,
           styles: { fillStyle: "#2c3e50", strokeStyle: "#111", lineWidth: 1.2 }
         });
@@ -111,6 +117,7 @@
 
       let scriptTags = scriptTagsInput.value.split(',').map(s => s.trim()).filter(Boolean);
       let features = featuresInput.value.split(',').map(s => s.trim()).filter(Boolean);
+      const gposFeatures = gposFeaturesInput.value.split(',').map(s => s.trim()).filter(Boolean);
       if (autoDetect.checked) {
         const detected = detectScriptTags(text);
         scriptTags = detected.scripts;
@@ -118,13 +125,20 @@
         scriptTagsInput.value = scriptTags.join(',');
         featuresInput.value = features.join(',');
       }
-      const shaped = font.layoutString(text, { gsubFeatures: features, scriptTags, gpos: enableGpos.checked });
-      drawPositioned(shapedCanvas, shaped, 0.12, 150);
+      const shaped = font.layoutString(text, { gsubFeatures: features, scriptTags, gpos: enableGpos.checked, gposFeatures });
+      if (!shaped || shaped.length === 0) {
+        status.textContent = "Shaped output is empty; falling back to raw glyphs.";
+        drawPositioned(shapedCanvas, rawPositioned, 0.12, 150);
+      } else {
+        status.textContent = "";
+        drawPositioned(shapedCanvas, shaped, 0.12, 150);
+      }
     }
 
     fontSelect.addEventListener("change", loadFont);
     scriptTagsInput.addEventListener("input", render);
     featuresInput.addEventListener("input", render);
+    gposFeaturesInput.addEventListener("input", render);
     sampleInput.addEventListener("input", render);
     enableGpos.addEventListener("change", render);
     autoDetect.addEventListener("change", render);
