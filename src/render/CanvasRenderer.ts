@@ -21,6 +21,7 @@ export type CanvasDrawOptions = {
     fallbackFill?: string;
     kerningScale?: number;
     fallbackAdvance?: number;
+    fillRule?: CanvasFillRule;
 };
 
 export class CanvasRenderer {
@@ -146,8 +147,8 @@ export class CanvasRenderer {
             }
         }
         context.stroke();
-        if (glyph.isCubic) {
-            context.fill("evenodd");
+        if (options.fillRule) {
+            context.fill(options.fillRule);
         } else {
             context.fill();
         }
