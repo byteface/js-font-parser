@@ -27,8 +27,12 @@ import { MarkMarkPosFormat1 } from '../table/MarkMarkPosFormat1.js';
 import { CursivePosFormat1 } from '../table/CursivePosFormat1.js';
 import { PairPosFormat1 } from '../table/PairPosFormat1.js';
 import { PairPosFormat2 } from '../table/PairPosFormat2.js';
+import { SinglePosSubtable } from '../table/SinglePosSubtable.js';
+import { PairPosSubtable } from '../table/PairPosSubtable.js';
 import { FvarTable } from '../table/FvarTable.js';
 import { detectScriptTags } from '../utils/ScriptDetector.js';
+import { SvgTable } from '../table/SvgTable.js';
+import { GvarTable } from '../table/GvarTable.js';
 
 export class FontParserTTF {
     // Define properties
@@ -50,6 +54,9 @@ export class FontParserTTF {
     private cpal: CpalTable | null = null;
     private gpos: GposTable | null = null;
     private fvar: FvarTable | null = null;
+    private svg: SvgTable | null = null;
+    private gvar: GvarTable | null = null;
+    private variationCoords: number[] = [];
 
     // Table directory and tables
     private tableDir: TableDirectory | null = null;
@@ -108,7 +115,9 @@ export class FontParserTTF {
         this.cpal = this.getTable(Table.CPAL) as CpalTable | null;
         this.gpos = this.getTable(Table.GPOS) as GposTable | null;
         this.fvar = this.getTable(Table.fvar) as FvarTable | null;
-        if (this.cff2 && this.fvar && this.fvar.axes.length > 0) {
+        this.svg = this.getTable(Table.SVG) as SvgTable | null;
+        this.gvar = this.getTable(Table.gvar) as GvarTable | null;
+        if (this.fvar && this.fvar.axes.length > 0) {
             const defaults: Record<string, number> = {};
             for (const axis of this.fvar.axes) defaults[axis.name] = axis.defaultValue;
             this.setVariationByAxes(defaults);
@@ -232,12 +241,12 @@ export class FontParserTTF {
     }
 
     public setVariationCoords(coords: number[]): void {
-        if (!this.cff2) return;
-        this.cff2.setVariationCoords(coords);
+        this.variationCoords = coords.slice();
+        if (this.cff2) this.cff2.setVariationCoords(coords);
     }
 
     public setVariationByAxes(values: Record<string, number>): void {
-        if (!this.cff2 || !this.fvar) return;
+        if (!this.fvar) return;
         const coords: number[] = [];
         for (const axis of this.fvar.axes) {
             const tag = axis.name;
@@ -249,7 +258,7 @@ export class FontParserTTF {
                     : (value - axis.defaultValue) / (axis.defaultValue - axis.minValue);
             coords.push(Math.max(-1, Math.min(1, norm)));
         }
-        this.cff2.setVariationCoords(coords);
+        this.setVariationCoords(coords);
     }
 
     public getGposKerningValueByGlyphs(leftGlyph: number, rightGlyph: number): number {
@@ -279,10 +288,11 @@ export class FontParserTTF {
 
     public layoutString(
         text: string,
-        options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean } = {}
+        options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean; gposFeatures?: string[] } = {}
     ): Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }> {
         const gsubFeatures = options.gsubFeatures ?? ["liga"];
         const scriptTags = options.scriptTags ?? ["DFLT", "latn"];
+        const gposFeatures = options.gposFeatures ?? ["kern", "mark", "mkmk", "curs"];
         const glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
 
         const positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }> = [];
@@ -308,77 +318,74 @@ export class FontParserTTF {
             });
         }
         if (options.gpos) {
-            this.applyGposPositioning(glyphIndices, positioned);
+            this.applyGposPositioning(glyphIndices, positioned, gposFeatures, scriptTags);
         }
         return positioned;
     }
 
     public layoutStringAuto(
         text: string,
-        options: { gpos?: boolean } = {}
+        options: { gpos?: boolean; gposFeatures?: string[] } = {}
     ): Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }> {
         const detection = detectScriptTags(text);
         return this.layoutString(text, {
             gsubFeatures: detection.features,
             scriptTags: detection.scripts,
-            gpos: options.gpos ?? true
+            gpos: options.gpos ?? true,
+            gposFeatures: options.gposFeatures
         });
     }
 
     private applyGposPositioning(
         glyphIndices: number[],
-        positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }>
+        positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }>,
+        gposFeatures: string[],
+        scriptTags: string[]
     ): void {
         if (!this.gpos) return;
-        const lookups = this.gpos.lookupList?.getLookups?.() ?? [];
+        const subtables = this.gpos.getSubtablesForFeatures(gposFeatures, scriptTags);
 
-        for (const lookup of lookups) {
-            if (!lookup) continue;
-            const type = lookup.getType();
-            if (type === 1) {
+        for (const st of subtables) {
+            if (st instanceof SinglePosSubtable) {
                 for (let i = 0; i < glyphIndices.length; i++) {
-                    for (let j = 0; j < lookup.getSubtableCount(); j++) {
-                        const st = lookup.getSubtable(j);
-                        if (st && typeof (st as any).getAdjustment === "function") {
-                            const adj = (st as any).getAdjustment(glyphIndices[i]);
-                            if (!adj) continue;
-                            positioned[i].xOffset += adj.xPlacement ?? 0;
-                            positioned[i].yOffset += adj.yPlacement ?? 0;
-                            positioned[i].xAdvance += adj.xAdvance ?? 0;
-                            positioned[i].yAdvance += adj.yAdvance ?? 0;
-                        }
-                    }
+                    const adj = (st as any).getAdjustment?.(glyphIndices[i]);
+                    if (!adj) continue;
+                    positioned[i].xOffset += adj.xPlacement ?? 0;
+                    positioned[i].yOffset += adj.yPlacement ?? 0;
+                    positioned[i].xAdvance += adj.xAdvance ?? 0;
+                    positioned[i].yAdvance += adj.yAdvance ?? 0;
                 }
             }
-            if (type === 2) {
+            if (st instanceof PairPosSubtable) {
                 for (let i = 0; i < glyphIndices.length - 1; i++) {
-                    for (let j = 0; j < lookup.getSubtableCount(); j++) {
-                        const st = lookup.getSubtable(j);
-                        if (!st) continue;
-                        const getPair = (st as any).getPairValue as ((l: number, r: number) => { v1: any; v2: any } | null) | undefined;
-                        if (!getPair) continue;
-                        const pair = getPair(glyphIndices[i], glyphIndices[i + 1]);
-                        if (!pair) continue;
-                        const v1 = pair.v1 || {};
-                        const v2 = pair.v2 || {};
-                        positioned[i].xOffset += v1.xPlacement ?? 0;
-                        positioned[i].yOffset += v1.yPlacement ?? 0;
-                        positioned[i].xAdvance += v1.xAdvance ?? 0;
-                        positioned[i].yAdvance += v1.yAdvance ?? 0;
-                        positioned[i + 1].xOffset += v2.xPlacement ?? 0;
-                        positioned[i + 1].yOffset += v2.yPlacement ?? 0;
-                        positioned[i + 1].xAdvance += v2.xAdvance ?? 0;
-                        positioned[i + 1].yAdvance += v2.yAdvance ?? 0;
-                    }
+                    const pair = (st as any).getPairValue?.(glyphIndices[i], glyphIndices[i + 1]);
+                    if (!pair) continue;
+                    const v1 = pair.v1 || {};
+                    const v2 = pair.v2 || {};
+                    positioned[i].xOffset += v1.xPlacement ?? 0;
+                    positioned[i].yOffset += v1.yPlacement ?? 0;
+                    positioned[i].xAdvance += v1.xAdvance ?? 0;
+                    positioned[i].yAdvance += v1.yAdvance ?? 0;
+                    positioned[i + 1].xOffset += v2.xPlacement ?? 0;
+                    positioned[i + 1].yOffset += v2.yPlacement ?? 0;
+                    positioned[i + 1].xAdvance += v2.xAdvance ?? 0;
+                    positioned[i + 1].yAdvance += v2.yAdvance ?? 0;
                 }
             }
         }
+
+        const markSubtables = subtables.filter(st =>
+            st instanceof MarkBasePosFormat1 ||
+            st instanceof MarkLigPosFormat1 ||
+            st instanceof MarkMarkPosFormat1 ||
+            st instanceof CursivePosFormat1
+        );
 
         const anchorsCache = new Map<number, ReturnType<FontParserTTF['getMarkAnchorsForGlyph']>>();
 
         const getAnchors = (gid: number) => {
             if (anchorsCache.has(gid)) return anchorsCache.get(gid)!;
-            const anchors = this.getMarkAnchorsForGlyph(gid);
+            const anchors = this.getMarkAnchorsForGlyph(gid, markSubtables);
             anchorsCache.set(gid, anchors);
             return anchors;
         };
@@ -423,7 +430,30 @@ export class FontParserTTF {
     public getGlyph(i: number): GlyphData | null {
         const description = this.glyf?.getDescription(i);
         if (description != null) {
-            return new GlyphData(description, this.hmtx?.getLeftSideBearing(i) ?? 0, this.hmtx?.getAdvanceWidth(i) ?? 0);
+            let desc = description;
+            if (this.gvar && this.variationCoords.length > 0) {
+                const deltas = this.gvar.getDeltasForGlyph(i, this.variationCoords, description.getPointCount());
+                if (deltas) {
+                    const base = description;
+                    const dx = deltas.dx;
+                    const dy = deltas.dy;
+                    desc = {
+                        getPointCount: () => base.getPointCount(),
+                        getContourCount: () => base.getContourCount(),
+                        getEndPtOfContours: (c: number) => base.getEndPtOfContours(c),
+                        getFlags: (p: number) => base.getFlags(p),
+                        getXCoordinate: (p: number) => base.getXCoordinate(p) + (dx[p] ?? 0),
+                        getYCoordinate: (p: number) => base.getYCoordinate(p) + (dy[p] ?? 0),
+                        getXMaximum: () => base.getXMaximum(),
+                        getXMinimum: () => base.getXMinimum(),
+                        getYMaximum: () => base.getYMaximum(),
+                        getYMinimum: () => base.getYMinimum(),
+                        isComposite: () => base.isComposite(),
+                        resolve: () => base.resolve()
+                    };
+                }
+            }
+            return new GlyphData(desc, this.hmtx?.getLeftSideBearing(i) ?? 0, this.hmtx?.getAdvanceWidth(i) ?? 0);
         }
         if (this.cff2) {
             const cff2Desc = this.cff2.getGlyphDescription(i);
@@ -480,14 +510,26 @@ export class FontParserTTF {
         return this.getColorLayersForGlyph(glyphId, paletteIndex);
     }
 
-    public getMarkAnchorsForGlyph(glyphId: number): Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number }> {
+    public getMarkAnchorsForGlyph(
+        glyphId: number,
+        subtables?: Array<any>
+    ): Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number }> {
         if (!this.gpos) return [];
         const anchors: Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number }> = [];
-        const lookups = this.gpos.lookupList?.getLookups?.() ?? [];
-        for (const lookup of lookups) {
-            if (!lookup) continue;
-            for (let i = 0; i < lookup.getSubtableCount(); i++) {
-                const st = lookup.getSubtable(i);
+        const activeSubtables = subtables ?? (() => {
+            const lookups = this.gpos?.lookupList?.getLookups?.() ?? [];
+            const all: any[] = [];
+            for (const lookup of lookups) {
+                if (!lookup) continue;
+                for (let i = 0; i < lookup.getSubtableCount(); i++) {
+                    const st = lookup.getSubtable(i);
+                    if (st) all.push(st);
+                }
+            }
+            return all;
+        })();
+
+        for (const st of activeSubtables) {
                 if (st instanceof MarkBasePosFormat1) {
                     const markIndex = st.markCoverage?.findGlyph(glyphId) ?? -1;
                     if (markIndex >= 0 && st.markArray) {
@@ -554,9 +596,13 @@ export class FontParserTTF {
                         if (record?.exit) anchors.push({ type: 'cursive-exit', classIndex: 0, x: record.exit.x, y: record.exit.y });
                     }
                 }
-            }
         }
         return anchors;
+    }
+
+    public async getSvgDocumentForGlyphAsync(glyphId: number): Promise<{ svgText: string | null; isCompressed: boolean }> {
+        if (!this.svg) return { svgText: null, isCompressed: false };
+        return this.svg.getSvgDocumentForGlyphAsync(glyphId);
     }
 
     public getNameRecord(nameId: number): string {

@@ -61,6 +61,25 @@ export class SvgTable implements ITable {
         return { svgText: decoder.decode(bytes), isCompressed: false };
     }
 
+    async getSvgDocumentForGlyphAsync(glyphId: number): Promise<{ svgText: string | null; isCompressed: boolean }> {
+        const base = this.getSvgDocumentForGlyph(glyphId);
+        if (!base.isCompressed) return base;
+        if (typeof DecompressionStream === 'undefined') {
+            return { svgText: null, isCompressed: true };
+        }
+        const entry = this.entries.find(e => glyphId >= e.startGlyphId && glyphId <= e.endGlyphId);
+        if (!entry) return { svgText: null, isCompressed: false };
+        const docStart = this.startOffset + this.svgDocIndexOffset + entry.svgDocOffset;
+        const bytes = new Uint8Array(this.view.buffer, docStart, entry.svgDocLength);
+        const stream = new DecompressionStream('gzip');
+        const response = new Response(bytes).body;
+        if (!response) return { svgText: null, isCompressed: true };
+        const decompressed = response.pipeThrough(stream);
+        const buffer = await new Response(decompressed).arrayBuffer();
+        const decoder = new TextDecoder('utf-8');
+        return { svgText: decoder.decode(new Uint8Array(buffer)), isCompressed: false };
+    }
+
     getType(): string | number {
         return Table.SVG;
     }

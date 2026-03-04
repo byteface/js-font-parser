@@ -22,6 +22,7 @@ import { CpalTable } from './CpalTable.js'
 import { ColrTable } from './ColrTable.js'
 import { SvgTable } from './SvgTable.js'
 import { FvarTable } from './FvarTable.js'
+import { GvarTable } from './GvarTable.js'
 
 
 export class TableFactory {
@@ -73,6 +74,8 @@ export class TableFactory {
                 return new SvgTable(de, byte_ar);
             case Table.fvar:
                 return new FvarTable(de, byte_ar);
+            case Table.gvar:
+                return new GvarTable(de, byte_ar);
             default:
                 return t;
         }

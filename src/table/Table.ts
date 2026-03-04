@@ -10,6 +10,7 @@ export class Table {
     static readonly COLR = 0x434f4c52; // Color glyph layers
     static readonly CPAL = 0x4350414c; // Color palette
     static readonly SVG = 0x53564720;  // SVG glyph data
+    static readonly gvar = 0x67766172; // Glyph variations
     static readonly GDEF = 0x47444546; // Glyph definition data [OpenType]
     static readonly GPOS = 0x47504f53; // Glyph positioning data [OpenType]
     static readonly GSUB = 0x47535542; // Glyph substitution data [OpenType]

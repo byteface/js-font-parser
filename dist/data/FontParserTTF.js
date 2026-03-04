@@ -1,3 +1,39 @@
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (g && (g = 0, op[0] && (_ = 0)), _) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+};
 import { ByteArray } from '../utils/ByteArray.js';
 import { Table } from '../table/Table.js';
 import { TableDirectory } from '../table/TableDirectory.js';
@@ -10,6 +46,8 @@ import { MarkMarkPosFormat1 } from '../table/MarkMarkPosFormat1.js';
 import { CursivePosFormat1 } from '../table/CursivePosFormat1.js';
 import { PairPosFormat1 } from '../table/PairPosFormat1.js';
 import { PairPosFormat2 } from '../table/PairPosFormat2.js';
+import { SinglePosSubtable } from '../table/SinglePosSubtable.js';
+import { PairPosSubtable } from '../table/PairPosSubtable.js';
 import { detectScriptTags } from '../utils/ScriptDetector.js';
 var FontParserTTF = /** @class */ (function () {
     function FontParserTTF(byteData) {
@@ -32,6 +70,9 @@ var FontParserTTF = /** @class */ (function () {
         this.cpal = null;
         this.gpos = null;
         this.fvar = null;
+        this.svg = null;
+        this.gvar = null;
+        this.variationCoords = [];
         // Table directory and tables
         this.tableDir = null;
         this.tables = [];
@@ -85,7 +126,9 @@ var FontParserTTF = /** @class */ (function () {
         this.cpal = this.getTable(Table.CPAL);
         this.gpos = this.getTable(Table.GPOS);
         this.fvar = this.getTable(Table.fvar);
-        if (this.cff2 && this.fvar && this.fvar.axes.length > 0) {
+        this.svg = this.getTable(Table.SVG);
+        this.gvar = this.getTable(Table.gvar);
+        if (this.fvar && this.fvar.axes.length > 0) {
             var defaults = {};
             for (var _i = 0, _e = this.fvar.axes; _i < _e.length; _i++) {
                 var axis = _e[_i];
@@ -207,13 +250,13 @@ var FontParserTTF = /** @class */ (function () {
         return (_b = (_a = this.fvar) === null || _a === void 0 ? void 0 : _a.axes) !== null && _b !== void 0 ? _b : [];
     };
     FontParserTTF.prototype.setVariationCoords = function (coords) {
-        if (!this.cff2)
-            return;
-        this.cff2.setVariationCoords(coords);
+        this.variationCoords = coords.slice();
+        if (this.cff2)
+            this.cff2.setVariationCoords(coords);
     };
     FontParserTTF.prototype.setVariationByAxes = function (values) {
         var _a;
-        if (!this.cff2 || !this.fvar)
+        if (!this.fvar)
             return;
         var coords = [];
         for (var _i = 0, _b = this.fvar.axes; _i < _b.length; _i++) {
@@ -227,7 +270,7 @@ var FontParserTTF = /** @class */ (function () {
                     : (value - axis.defaultValue) / (axis.defaultValue - axis.minValue);
             coords.push(Math.max(-1, Math.min(1, norm)));
         }
-        this.cff2.setVariationCoords(coords);
+        this.setVariationCoords(coords);
     };
     FontParserTTF.prototype.getGposKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
         var _a, _b, _c;
@@ -259,10 +302,11 @@ var FontParserTTF = /** @class */ (function () {
         return this.getGposKerningValueByGlyphs(left, right);
     };
     FontParserTTF.prototype.layoutString = function (text, options) {
-        var _a, _b;
+        var _a, _b, _c;
         if (options === void 0) { options = {}; }
         var gsubFeatures = (_a = options.gsubFeatures) !== null && _a !== void 0 ? _a : ["liga"];
         var scriptTags = (_b = options.scriptTags) !== null && _b !== void 0 ? _b : ["DFLT", "latn"];
+        var gposFeatures = (_c = options.gposFeatures) !== null && _c !== void 0 ? _c : ["kern", "mark", "mkmk", "curs"];
         var glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
         var positioned = [];
         for (var i = 0; i < glyphIndices.length; i++) {
@@ -286,7 +330,7 @@ var FontParserTTF = /** @class */ (function () {
             });
         }
         if (options.gpos) {
-            this.applyGposPositioning(glyphIndices, positioned);
+            this.applyGposPositioning(glyphIndices, positioned, gposFeatures, scriptTags);
         }
         return positioned;
     };
@@ -297,67 +341,58 @@ var FontParserTTF = /** @class */ (function () {
         return this.layoutString(text, {
             gsubFeatures: detection.features,
             scriptTags: detection.scripts,
-            gpos: (_a = options.gpos) !== null && _a !== void 0 ? _a : true
+            gpos: (_a = options.gpos) !== null && _a !== void 0 ? _a : true,
+            gposFeatures: options.gposFeatures
         });
     };
-    FontParserTTF.prototype.applyGposPositioning = function (glyphIndices, positioned) {
+    FontParserTTF.prototype.applyGposPositioning = function (glyphIndices, positioned, gposFeatures, scriptTags) {
         var _this = this;
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
         if (!this.gpos)
             return;
-        var lookups = (_c = (_b = (_a = this.gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : [];
-        for (var _i = 0, lookups_2 = lookups; _i < lookups_2.length; _i++) {
-            var lookup = lookups_2[_i];
-            if (!lookup)
-                continue;
-            var type = lookup.getType();
-            if (type === 1) {
+        var subtables = this.gpos.getSubtablesForFeatures(gposFeatures, scriptTags);
+        for (var _i = 0, subtables_2 = subtables; _i < subtables_2.length; _i++) {
+            var st = subtables_2[_i];
+            if (st instanceof SinglePosSubtable) {
                 for (var i = 0; i < glyphIndices.length; i++) {
-                    for (var j = 0; j < lookup.getSubtableCount(); j++) {
-                        var st = lookup.getSubtable(j);
-                        if (st && typeof st.getAdjustment === "function") {
-                            var adj = st.getAdjustment(glyphIndices[i]);
-                            if (!adj)
-                                continue;
-                            positioned[i].xOffset += (_d = adj.xPlacement) !== null && _d !== void 0 ? _d : 0;
-                            positioned[i].yOffset += (_e = adj.yPlacement) !== null && _e !== void 0 ? _e : 0;
-                            positioned[i].xAdvance += (_f = adj.xAdvance) !== null && _f !== void 0 ? _f : 0;
-                            positioned[i].yAdvance += (_g = adj.yAdvance) !== null && _g !== void 0 ? _g : 0;
-                        }
-                    }
+                    var adj = (_b = (_a = st).getAdjustment) === null || _b === void 0 ? void 0 : _b.call(_a, glyphIndices[i]);
+                    if (!adj)
+                        continue;
+                    positioned[i].xOffset += (_c = adj.xPlacement) !== null && _c !== void 0 ? _c : 0;
+                    positioned[i].yOffset += (_d = adj.yPlacement) !== null && _d !== void 0 ? _d : 0;
+                    positioned[i].xAdvance += (_e = adj.xAdvance) !== null && _e !== void 0 ? _e : 0;
+                    positioned[i].yAdvance += (_f = adj.yAdvance) !== null && _f !== void 0 ? _f : 0;
                 }
             }
-            if (type === 2) {
+            if (st instanceof PairPosSubtable) {
                 for (var i = 0; i < glyphIndices.length - 1; i++) {
-                    for (var j = 0; j < lookup.getSubtableCount(); j++) {
-                        var st = lookup.getSubtable(j);
-                        if (!st)
-                            continue;
-                        var getPair = st.getPairValue;
-                        if (!getPair)
-                            continue;
-                        var pair = getPair(glyphIndices[i], glyphIndices[i + 1]);
-                        if (!pair)
-                            continue;
-                        var v1 = pair.v1 || {};
-                        var v2 = pair.v2 || {};
-                        positioned[i].xOffset += (_h = v1.xPlacement) !== null && _h !== void 0 ? _h : 0;
-                        positioned[i].yOffset += (_j = v1.yPlacement) !== null && _j !== void 0 ? _j : 0;
-                        positioned[i].xAdvance += (_k = v1.xAdvance) !== null && _k !== void 0 ? _k : 0;
-                        positioned[i].yAdvance += (_l = v1.yAdvance) !== null && _l !== void 0 ? _l : 0;
-                        positioned[i + 1].xOffset += (_m = v2.xPlacement) !== null && _m !== void 0 ? _m : 0;
-                        positioned[i + 1].yOffset += (_o = v2.yPlacement) !== null && _o !== void 0 ? _o : 0;
-                        positioned[i + 1].xAdvance += (_p = v2.xAdvance) !== null && _p !== void 0 ? _p : 0;
-                        positioned[i + 1].yAdvance += (_q = v2.yAdvance) !== null && _q !== void 0 ? _q : 0;
-                    }
+                    var pair = (_h = (_g = st).getPairValue) === null || _h === void 0 ? void 0 : _h.call(_g, glyphIndices[i], glyphIndices[i + 1]);
+                    if (!pair)
+                        continue;
+                    var v1 = pair.v1 || {};
+                    var v2 = pair.v2 || {};
+                    positioned[i].xOffset += (_j = v1.xPlacement) !== null && _j !== void 0 ? _j : 0;
+                    positioned[i].yOffset += (_k = v1.yPlacement) !== null && _k !== void 0 ? _k : 0;
+                    positioned[i].xAdvance += (_l = v1.xAdvance) !== null && _l !== void 0 ? _l : 0;
+                    positioned[i].yAdvance += (_m = v1.yAdvance) !== null && _m !== void 0 ? _m : 0;
+                    positioned[i + 1].xOffset += (_o = v2.xPlacement) !== null && _o !== void 0 ? _o : 0;
+                    positioned[i + 1].yOffset += (_p = v2.yPlacement) !== null && _p !== void 0 ? _p : 0;
+                    positioned[i + 1].xAdvance += (_q = v2.xAdvance) !== null && _q !== void 0 ? _q : 0;
+                    positioned[i + 1].yAdvance += (_r = v2.yAdvance) !== null && _r !== void 0 ? _r : 0;
                 }
             }
         }
+        var markSubtables = subtables.filter(function (st) {
+            return st instanceof MarkBasePosFormat1 ||
+                st instanceof MarkLigPosFormat1 ||
+                st instanceof MarkMarkPosFormat1 ||
+                st instanceof CursivePosFormat1;
+        });
         var anchorsCache = new Map();
         var getAnchors = function (gid) {
             if (anchorsCache.has(gid))
                 return anchorsCache.get(gid);
-            var anchors = _this.getMarkAnchorsForGlyph(gid);
+            var anchors = _this.getMarkAnchorsForGlyph(gid, markSubtables);
             anchorsCache.set(gid, anchors);
             return anchors;
         };
@@ -399,7 +434,30 @@ var FontParserTTF = /** @class */ (function () {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
         var description = (_a = this.glyf) === null || _a === void 0 ? void 0 : _a.getDescription(i);
         if (description != null) {
-            return new GlyphData(description, (_c = (_b = this.hmtx) === null || _b === void 0 ? void 0 : _b.getLeftSideBearing(i)) !== null && _c !== void 0 ? _c : 0, (_e = (_d = this.hmtx) === null || _d === void 0 ? void 0 : _d.getAdvanceWidth(i)) !== null && _e !== void 0 ? _e : 0);
+            var desc = description;
+            if (this.gvar && this.variationCoords.length > 0) {
+                var deltas = this.gvar.getDeltasForGlyph(i, this.variationCoords, description.getPointCount());
+                if (deltas) {
+                    var base_1 = description;
+                    var dx_1 = deltas.dx;
+                    var dy_1 = deltas.dy;
+                    desc = {
+                        getPointCount: function () { return base_1.getPointCount(); },
+                        getContourCount: function () { return base_1.getContourCount(); },
+                        getEndPtOfContours: function (c) { return base_1.getEndPtOfContours(c); },
+                        getFlags: function (p) { return base_1.getFlags(p); },
+                        getXCoordinate: function (p) { var _a; return base_1.getXCoordinate(p) + ((_a = dx_1[p]) !== null && _a !== void 0 ? _a : 0); },
+                        getYCoordinate: function (p) { var _a; return base_1.getYCoordinate(p) + ((_a = dy_1[p]) !== null && _a !== void 0 ? _a : 0); },
+                        getXMaximum: function () { return base_1.getXMaximum(); },
+                        getXMinimum: function () { return base_1.getXMinimum(); },
+                        getYMaximum: function () { return base_1.getYMaximum(); },
+                        getYMinimum: function () { return base_1.getYMinimum(); },
+                        isComposite: function () { return base_1.isComposite(); },
+                        resolve: function () { return base_1.resolve(); }
+                    };
+                }
+            }
+            return new GlyphData(desc, (_c = (_b = this.hmtx) === null || _b === void 0 ? void 0 : _b.getLeftSideBearing(i)) !== null && _c !== void 0 ? _c : 0, (_e = (_d = this.hmtx) === null || _d === void 0 ? void 0 : _d.getAdvanceWidth(i)) !== null && _e !== void 0 ? _e : 0);
         }
         if (this.cff2) {
             var cff2Desc = this.cff2.getGlyphDescription(i);
@@ -458,89 +516,109 @@ var FontParserTTF = /** @class */ (function () {
             return [];
         return this.getColorLayersForGlyph(glyphId, paletteIndex);
     };
-    FontParserTTF.prototype.getMarkAnchorsForGlyph = function (glyphId) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u;
+    FontParserTTF.prototype.getMarkAnchorsForGlyph = function (glyphId, subtables) {
+        var _this = this;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
         if (!this.gpos)
             return [];
         var anchors = [];
-        var lookups = (_c = (_b = (_a = this.gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : [];
-        for (var _i = 0, lookups_3 = lookups; _i < lookups_3.length; _i++) {
-            var lookup = lookups_3[_i];
-            if (!lookup)
-                continue;
-            for (var i = 0; i < lookup.getSubtableCount(); i++) {
-                var st = lookup.getSubtable(i);
-                if (st instanceof MarkBasePosFormat1) {
-                    var markIndex = (_e = (_d = st.markCoverage) === null || _d === void 0 ? void 0 : _d.findGlyph(glyphId)) !== null && _e !== void 0 ? _e : -1;
-                    if (markIndex >= 0 && st.markArray) {
-                        var record = st.markArray.marks[markIndex];
-                        if (record === null || record === void 0 ? void 0 : record.anchor) {
-                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
-                        }
-                    }
-                    var baseIndex = (_g = (_f = st.baseCoverage) === null || _f === void 0 ? void 0 : _f.findGlyph(glyphId)) !== null && _g !== void 0 ? _g : -1;
-                    if (baseIndex >= 0 && st.baseArray) {
-                        var base = st.baseArray.baseRecords[baseIndex];
-                        if (base === null || base === void 0 ? void 0 : base.anchors) {
-                            base.anchors.forEach(function (anchor, classIndex) {
-                                if (anchor) {
-                                    anchors.push({ type: 'base', classIndex: classIndex, x: anchor.x, y: anchor.y });
-                                }
-                            });
-                        }
+        var activeSubtables = subtables !== null && subtables !== void 0 ? subtables : (function () {
+            var _a, _b, _c, _d;
+            var lookups = (_d = (_c = (_b = (_a = _this.gpos) === null || _a === void 0 ? void 0 : _a.lookupList) === null || _b === void 0 ? void 0 : _b.getLookups) === null || _c === void 0 ? void 0 : _c.call(_b)) !== null && _d !== void 0 ? _d : [];
+            var all = [];
+            for (var _i = 0, lookups_2 = lookups; _i < lookups_2.length; _i++) {
+                var lookup = lookups_2[_i];
+                if (!lookup)
+                    continue;
+                for (var i = 0; i < lookup.getSubtableCount(); i++) {
+                    var st = lookup.getSubtable(i);
+                    if (st)
+                        all.push(st);
+                }
+            }
+            return all;
+        })();
+        for (var _i = 0, activeSubtables_1 = activeSubtables; _i < activeSubtables_1.length; _i++) {
+            var st = activeSubtables_1[_i];
+            if (st instanceof MarkBasePosFormat1) {
+                var markIndex = (_b = (_a = st.markCoverage) === null || _a === void 0 ? void 0 : _a.findGlyph(glyphId)) !== null && _b !== void 0 ? _b : -1;
+                if (markIndex >= 0 && st.markArray) {
+                    var record = st.markArray.marks[markIndex];
+                    if (record === null || record === void 0 ? void 0 : record.anchor) {
+                        anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
                     }
                 }
-                if (st instanceof MarkLigPosFormat1) {
-                    var markIndex = (_j = (_h = st.markCoverage) === null || _h === void 0 ? void 0 : _h.findGlyph(glyphId)) !== null && _j !== void 0 ? _j : -1;
-                    if (markIndex >= 0 && st.markArray) {
-                        var record = st.markArray.marks[markIndex];
-                        if (record === null || record === void 0 ? void 0 : record.anchor) {
-                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
-                        }
-                    }
-                    var ligIndex = (_l = (_k = st.ligatureCoverage) === null || _k === void 0 ? void 0 : _k.findGlyph(glyphId)) !== null && _l !== void 0 ? _l : -1;
-                    if (ligIndex >= 0 && st.ligatureArray) {
-                        var lig = st.ligatureArray.ligatures[ligIndex];
-                        (_m = lig === null || lig === void 0 ? void 0 : lig.components) === null || _m === void 0 ? void 0 : _m.forEach(function (component) {
-                            component.forEach(function (anchor, classIndex) {
-                                if (anchor) {
-                                    anchors.push({ type: 'ligature', classIndex: classIndex, x: anchor.x, y: anchor.y });
-                                }
-                            });
-                        });
-                    }
-                }
-                if (st instanceof MarkMarkPosFormat1) {
-                    var mark1Index = (_p = (_o = st.mark1Coverage) === null || _o === void 0 ? void 0 : _o.findGlyph(glyphId)) !== null && _p !== void 0 ? _p : -1;
-                    if (mark1Index >= 0 && st.mark1Array) {
-                        var record = st.mark1Array.marks[mark1Index];
-                        if (record === null || record === void 0 ? void 0 : record.anchor) {
-                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
-                        }
-                    }
-                    var mark2Index = (_r = (_q = st.mark2Coverage) === null || _q === void 0 ? void 0 : _q.findGlyph(glyphId)) !== null && _r !== void 0 ? _r : -1;
-                    if (mark2Index >= 0 && st.mark2Array) {
-                        var record = st.mark2Array.records[mark2Index];
-                        (_s = record === null || record === void 0 ? void 0 : record.anchors) === null || _s === void 0 ? void 0 : _s.forEach(function (anchor, classIndex) {
+                var baseIndex = (_d = (_c = st.baseCoverage) === null || _c === void 0 ? void 0 : _c.findGlyph(glyphId)) !== null && _d !== void 0 ? _d : -1;
+                if (baseIndex >= 0 && st.baseArray) {
+                    var base = st.baseArray.baseRecords[baseIndex];
+                    if (base === null || base === void 0 ? void 0 : base.anchors) {
+                        base.anchors.forEach(function (anchor, classIndex) {
                             if (anchor) {
-                                anchors.push({ type: 'mark2', classIndex: classIndex, x: anchor.x, y: anchor.y });
+                                anchors.push({ type: 'base', classIndex: classIndex, x: anchor.x, y: anchor.y });
                             }
                         });
                     }
                 }
-                if (st instanceof CursivePosFormat1) {
-                    var idx = (_u = (_t = st.coverage) === null || _t === void 0 ? void 0 : _t.findGlyph(glyphId)) !== null && _u !== void 0 ? _u : -1;
-                    if (idx >= 0) {
-                        var record = st.entryExitRecords[idx];
-                        if (record === null || record === void 0 ? void 0 : record.entry)
-                            anchors.push({ type: 'cursive-entry', classIndex: 0, x: record.entry.x, y: record.entry.y });
-                        if (record === null || record === void 0 ? void 0 : record.exit)
-                            anchors.push({ type: 'cursive-exit', classIndex: 0, x: record.exit.x, y: record.exit.y });
+            }
+            if (st instanceof MarkLigPosFormat1) {
+                var markIndex = (_f = (_e = st.markCoverage) === null || _e === void 0 ? void 0 : _e.findGlyph(glyphId)) !== null && _f !== void 0 ? _f : -1;
+                if (markIndex >= 0 && st.markArray) {
+                    var record = st.markArray.marks[markIndex];
+                    if (record === null || record === void 0 ? void 0 : record.anchor) {
+                        anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
                     }
+                }
+                var ligIndex = (_h = (_g = st.ligatureCoverage) === null || _g === void 0 ? void 0 : _g.findGlyph(glyphId)) !== null && _h !== void 0 ? _h : -1;
+                if (ligIndex >= 0 && st.ligatureArray) {
+                    var lig = st.ligatureArray.ligatures[ligIndex];
+                    (_j = lig === null || lig === void 0 ? void 0 : lig.components) === null || _j === void 0 ? void 0 : _j.forEach(function (component) {
+                        component.forEach(function (anchor, classIndex) {
+                            if (anchor) {
+                                anchors.push({ type: 'ligature', classIndex: classIndex, x: anchor.x, y: anchor.y });
+                            }
+                        });
+                    });
+                }
+            }
+            if (st instanceof MarkMarkPosFormat1) {
+                var mark1Index = (_l = (_k = st.mark1Coverage) === null || _k === void 0 ? void 0 : _k.findGlyph(glyphId)) !== null && _l !== void 0 ? _l : -1;
+                if (mark1Index >= 0 && st.mark1Array) {
+                    var record = st.mark1Array.marks[mark1Index];
+                    if (record === null || record === void 0 ? void 0 : record.anchor) {
+                        anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                    }
+                }
+                var mark2Index = (_o = (_m = st.mark2Coverage) === null || _m === void 0 ? void 0 : _m.findGlyph(glyphId)) !== null && _o !== void 0 ? _o : -1;
+                if (mark2Index >= 0 && st.mark2Array) {
+                    var record = st.mark2Array.records[mark2Index];
+                    (_p = record === null || record === void 0 ? void 0 : record.anchors) === null || _p === void 0 ? void 0 : _p.forEach(function (anchor, classIndex) {
+                        if (anchor) {
+                            anchors.push({ type: 'mark2', classIndex: classIndex, x: anchor.x, y: anchor.y });
+                        }
+                    });
+                }
+            }
+            if (st instanceof CursivePosFormat1) {
+                var idx = (_r = (_q = st.coverage) === null || _q === void 0 ? void 0 : _q.findGlyph(glyphId)) !== null && _r !== void 0 ? _r : -1;
+                if (idx >= 0) {
+                    var record = st.entryExitRecords[idx];
+                    if (record === null || record === void 0 ? void 0 : record.entry)
+                        anchors.push({ type: 'cursive-entry', classIndex: 0, x: record.entry.x, y: record.entry.y });
+                    if (record === null || record === void 0 ? void 0 : record.exit)
+                        anchors.push({ type: 'cursive-exit', classIndex: 0, x: record.exit.x, y: record.exit.y });
                 }
             }
         }
         return anchors;
+    };
+    FontParserTTF.prototype.getSvgDocumentForGlyphAsync = function (glyphId) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                if (!this.svg)
+                    return [2 /*return*/, { svgText: null, isCompressed: false }];
+                return [2 /*return*/, this.svg.getSvgDocumentForGlyphAsync(glyphId)];
+            });
+        });
     };
     FontParserTTF.prototype.getNameRecord = function (nameId) {
         var _a, _b;

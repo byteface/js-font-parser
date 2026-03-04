@@ -13,7 +13,7 @@
 - [x] **GPOS lookups**: parse pair/mark/cursive subtables and expose anchors + kerning.
 
 ## Variable Fonts
-- [ ] **gvar**: interpolate outlines by axis values.
+- [~] **gvar**: interpolate outlines by axis values (experimental; no IUP deltas yet).
 
 ## Demos
 - [x] Multilingual text demo with per-script fonts.

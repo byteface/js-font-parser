@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SVG Glyphs</title>
+  <style>
+    :root { --bg:#f6f4f1; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e3e1db; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 20px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    input[type="file"], input[type="text"] { padding:6px; border-radius:6px; border:1px solid #ccc; }
+    #svgPreview { border:1px dashed #ddd; background:#fff; padding:16px; min-height:180px; }
+    .hint { font-size:12px; color:var(--muted); margin-top:8px; }
+  </style>
+</head>
+<body>
+<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+  <header>
+    <h1>SVG Glyphs</h1>
+    <p>Render glyphs stored in the <code>SVG </code> table.</p>
+  </header>
+
+  <div class="panel">
+    <div class="row">
+      <input id="fileInput" type="file" accept=".otf,.ttf" />
+      <label>Char <input id="charInput" value="A" /></label>
+      <label>Glyph ID <input id="glyphInput" type="text" value="" /></label>
+    </div>
+    <div class="hint">If the SVG table uses gzip compression, your browser must support <code>DecompressionStream</code>.</div>
+  </div>
+
+  <div class="panel">
+    <div id="svgPreview"></div>
+  </div>
+
+  <script type="module">
+    import { FontParser } from "../dist/data/FontParser.js";
+    import { Table } from "../dist/table/Table.js";
+
+    const input = document.getElementById("fileInput");
+    const charInput = document.getElementById("charInput");
+    const glyphInput = document.getElementById("glyphInput");
+    const preview = document.getElementById("svgPreview");
+
+    let font = null;
+
+    async function renderGlyph() {
+      if (!font) return;
+      const char = charInput.value || "A";
+      let glyphId = glyphInput.value ? Number(glyphInput.value) : font.getGlyphIndexByChar?.(char);
+      if (glyphId == null || Number.isNaN(glyphId)) {
+        preview.textContent = "No glyph index found.";
+        return;
+      }
+      const svgTable = font.getTableByType(Table.SVG);
+      if (!svgTable || typeof svgTable.getSvgDocumentForGlyphAsync !== "function") {
+        preview.textContent = "SVG table not found in this font.";
+        return;
+      }
+      const result = await svgTable.getSvgDocumentForGlyphAsync(glyphId);
+      if (!result.svgText) {
+        preview.textContent = result.isCompressed ? "SVG data is compressed; decompression failed." : "No SVG glyph found.";
+        return;
+      }
+      preview.innerHTML = result.svgText;
+    }
+
+    input.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const buf = await file.arrayBuffer();
+      font = FontParser.fromArrayBuffer(buf);
+      renderGlyph();
+    });
+
+    charInput.addEventListener("input", () => {
+      glyphInput.value = "";
+      renderGlyph();
+    });
+    glyphInput.addEventListener("input", renderGlyph);
+  </script>
+</body>
+</html>
