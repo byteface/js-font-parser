@@ -230,6 +230,12 @@ var Cff2Table = /** @class */ (function () {
                         widthUsed = true;
                     }
                 };
+                var consumeWidthIfMod = function (mod, expect) {
+                    if (!widthUsed && args.length % mod === expect) {
+                        args.shift();
+                        widthUsed = true;
+                    }
+                };
                 switch (b0) {
                     case 1:
                     case 3:
@@ -248,6 +254,7 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 5: {
+                        consumeWidthIfOdd();
                         ensureMove();
                         for (var j = 0; j < args.length; j += 2) {
                             addPoint(args[j] || 0, args[j + 1] || 0, true);
@@ -255,6 +262,7 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 6: {
+                        consumeWidthIfOdd();
                         ensureMove();
                         var horizontal = true;
                         for (var j = 0; j < args.length; j++) {
@@ -267,6 +275,7 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 7: {
+                        consumeWidthIfOdd();
                         ensureMove();
                         var vertical = true;
                         for (var j = 0; j < args.length; j++) {
@@ -279,6 +288,7 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 8: {
+                        consumeWidthIfMod(6, 1);
                         ensureMove();
                         for (var j = 0; j < args.length; j += 6) {
                             addPoint(args[j] || 0, args[j + 1] || 0, false);
@@ -289,6 +299,8 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 10: {
                         var subrIndex = (args.pop() || 0) + lBias;
+                        if (args.length)
+                            stack.push.apply(stack, args);
                         var subr = lsubrs[subrIndex];
                         if (subr)
                             parse(subr);
@@ -329,6 +341,7 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 24: {
+                        consumeWidthIfMod(6, 3);
                         ensureMove();
                         var lineArgs = args.slice(-2);
                         var curveArgs = args.slice(0, -2);
@@ -343,6 +356,7 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 25: {
+                        consumeWidthIfOdd();
                         ensureMove();
                         var curveArgs = args.slice(-6);
                         var lineArgs = args.slice(0, -6);
@@ -357,6 +371,7 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 26: {
+                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         var idx = 0;
                         var dx1 = 0;
@@ -376,6 +391,7 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 27: {
+                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         var idx = 0;
                         var dy1 = 0;
@@ -396,6 +412,8 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 29: {
                         var subrIndex = (args.pop() || 0) + gBias;
+                        if (args.length)
+                            stack.push.apply(stack, args);
                         var subr = gsubrs[subrIndex];
                         if (subr)
                             parse(subr);
@@ -403,6 +421,7 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 30:
                     case 31: {
+                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         var idx = 0;
                         var horizontal = b0 === 31;

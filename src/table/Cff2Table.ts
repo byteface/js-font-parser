@@ -257,6 +257,12 @@ export class Cff2Table implements ITable {
                         widthUsed = true;
                     }
                 };
+                const consumeWidthIfMod = (mod: number, expect: number) => {
+                    if (!widthUsed && args.length % mod === expect) {
+                        args.shift();
+                        widthUsed = true;
+                    }
+                };
                 switch (b0) {
                     case 1:
                     case 3:
@@ -275,6 +281,7 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 5: {
+                        consumeWidthIfOdd();
                         ensureMove();
                         for (let j = 0; j < args.length; j += 2) {
                             addPoint(args[j] ?? 0, args[j + 1] ?? 0, true);
@@ -282,6 +289,7 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 6: {
+                        consumeWidthIfOdd();
                         ensureMove();
                         let horizontal = true;
                         for (let j = 0; j < args.length; j++) {
@@ -292,6 +300,7 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 7: {
+                        consumeWidthIfOdd();
                         ensureMove();
                         let vertical = true;
                         for (let j = 0; j < args.length; j++) {
@@ -302,6 +311,7 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 8: {
+                        consumeWidthIfMod(6, 1);
                         ensureMove();
                         for (let j = 0; j < args.length; j += 6) {
                             addPoint(args[j] ?? 0, args[j + 1] ?? 0, false);
@@ -312,6 +322,7 @@ export class Cff2Table implements ITable {
                     }
                     case 10: {
                         const subrIndex = (args.pop() ?? 0) + lBias;
+                        if (args.length) stack.push(...args);
                         const subr = lsubrs[subrIndex];
                         if (subr) parse(subr);
                         break;
@@ -351,6 +362,7 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 24: {
+                        consumeWidthIfMod(6, 3);
                         ensureMove();
                         const lineArgs = args.slice(-2);
                         const curveArgs = args.slice(0, -2);
@@ -365,6 +377,7 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 25: {
+                        consumeWidthIfOdd();
                         ensureMove();
                         const curveArgs = args.slice(-6);
                         const lineArgs = args.slice(0, -6);
@@ -379,6 +392,7 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 26: {
+                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         let idx = 0;
                         let dx1 = 0;
@@ -398,6 +412,7 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 27: {
+                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         let idx = 0;
                         let dy1 = 0;
@@ -418,12 +433,14 @@ export class Cff2Table implements ITable {
                     }
                     case 29: {
                         const subrIndex = (args.pop() ?? 0) + gBias;
+                        if (args.length) stack.push(...args);
                         const subr = gsubrs[subrIndex];
                         if (subr) parse(subr);
                         break;
                     }
                     case 30:
                     case 31: {
+                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         let idx = 0;
                         let horizontal = b0 === 31;

@@ -209,6 +209,12 @@ var CffTable = /** @class */ (function () {
                         widthUsed = true;
                     }
                 };
+                var consumeWidthIfMod = function (mod, expect) {
+                    if (!widthUsed && args.length % mod === expect) {
+                        args.shift();
+                        widthUsed = true;
+                    }
+                };
                 switch (b0) {
                     case 1: // hstem
                     case 3: // vstem
@@ -227,6 +233,7 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 5: { // rlineto
+                        consumeWidthIfOdd();
                         ensureMove();
                         for (var j = 0; j < args.length; j += 2) {
                             addPoint((_b = args[j]) !== null && _b !== void 0 ? _b : 0, (_c = args[j + 1]) !== null && _c !== void 0 ? _c : 0, true);
@@ -234,6 +241,7 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 6: { // hlineto
+                        consumeWidthIfOdd();
                         ensureMove();
                         var horizontal = true;
                         for (var j = 0; j < args.length; j++) {
@@ -246,6 +254,7 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 7: { // vlineto
+                        consumeWidthIfOdd();
                         ensureMove();
                         var vertical = true;
                         for (var j = 0; j < args.length; j++) {
@@ -258,6 +267,7 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 8: { // rrcurveto
+                        consumeWidthIfMod(6, 1);
                         ensureMove();
                         for (var j = 0; j < args.length; j += 6) {
                             addPoint((_d = args[j]) !== null && _d !== void 0 ? _d : 0, (_e = args[j + 1]) !== null && _e !== void 0 ? _e : 0, false);
@@ -268,6 +278,8 @@ var CffTable = /** @class */ (function () {
                     }
                     case 10: { // callsubr
                         var subrIndex = ((_k = args.pop()) !== null && _k !== void 0 ? _k : 0) + lBias;
+                        if (args.length)
+                            stack.push.apply(stack, args);
                         var subr = lsubrs[subrIndex];
                         if (subr)
                             parse(subr);
@@ -339,6 +351,7 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 24: { // rcurveline
+                        consumeWidthIfMod(6, 3);
                         ensureMove();
                         var lineArgs = args.slice(-2);
                         var curveArgs = args.slice(0, -2);
@@ -353,6 +366,7 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 25: { // rlinecurve
+                        consumeWidthIfOdd();
                         ensureMove();
                         var curveArgs = args.slice(-6);
                         var lineArgs = args.slice(0, -6);
@@ -367,6 +381,7 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 26: { // vvcurveto
+                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         var idx = 0;
                         var dx1 = 0;
@@ -386,6 +401,7 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 27: { // hhcurveto
+                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         var idx = 0;
                         var dy1 = 0;
@@ -406,6 +422,8 @@ var CffTable = /** @class */ (function () {
                     }
                     case 29: { // callgsubr
                         var subrIndex = ((_7 = args.pop()) !== null && _7 !== void 0 ? _7 : 0) + gBias;
+                        if (args.length)
+                            stack.push.apply(stack, args);
                         var subr = gsubrs[subrIndex];
                         if (subr)
                             parse(subr);
@@ -413,6 +431,7 @@ var CffTable = /** @class */ (function () {
                     }
                     case 30: // vhcurveto
                     case 31: { // hvcurveto
+                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         var idx = 0;
                         var horizontal = b0 === 31;
