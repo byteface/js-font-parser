@@ -81,6 +81,14 @@
             <select id="fontSelect"></select>
         </label>
         <label>
+            Fill Rule
+            <select id="fillRuleSelect">
+                <option value="auto">Auto</option>
+                <option value="nonzero">Nonzero</option>
+                <option value="evenodd">Even-odd</option>
+            </select>
+        </label>
+        <label>
             Cell Size
             <input id="cellInput" type="range" min="40" max="160" value="100" />
         </label>
@@ -92,7 +100,16 @@
             Show Index
             <input id="indexInput" type="checkbox" checked />
         </label>
+        <label>
+            Show Points
+            <input id="pointsInput" type="checkbox" />
+        </label>
+        <label>
+            Debug Glyph
+            <input id="debugGlyphInput" type="number" min="0" placeholder="Index" />
+        </label>
         <button id="renderBtn">Render</button>
+        <button id="debugBtn">Log CFF Ops</button>
     </div>
     <div id="stage">
         <canvas id="canvas" width="1200" height="800"></canvas>
@@ -106,10 +123,14 @@
         import { Table } from "../dist/table/Table.js";
 
         const fontSelect = document.getElementById("fontSelect");
+        const fillRuleSelect = document.getElementById("fillRuleSelect");
         const cellInput = document.getElementById("cellInput");
         const scaleInput = document.getElementById("scaleInput");
         const indexInput = document.getElementById("indexInput");
+        const pointsInput = document.getElementById("pointsInput");
+        const debugGlyphInput = document.getElementById("debugGlyphInput");
         const renderBtn = document.getElementById("renderBtn");
+        const debugBtn = document.getElementById("debugBtn");
         const canvas = document.getElementById("canvas");
         const status = document.getElementById("status");
         const ctx = canvas.getContext("2d");
@@ -200,11 +221,37 @@
             return { minx, miny, maxx, maxy };
         }
 
+        function getFillRule() {
+            const value = fillRuleSelect.value;
+            if (value === "nonzero" || value === "evenodd") return value;
+            return null;
+        }
+
+        function drawGlyphPoints(ctx, glyph, x, y, scale) {
+            if (!ctx || !glyph) return;
+            const radius = 6 / scale;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, -scale);
+            for (let i = 0; i < glyph.getPointCount(); i++) {
+                const p = glyph.getPoint(i);
+                if (!p) continue;
+                ctx.beginPath();
+                ctx.fillStyle = p.onCurve ? "#d35400" : "#2980b9";
+                ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
         function renderGrid(font) {
             if (!ctx) return;
             const cell = Number(cellInput.value);
             const scaleFactor = Number(scaleInput.value) / 100;
             const showIndex = indexInput.checked;
+            const showPoints = pointsInput.checked;
+            const debugGlyphIndex = Number(debugGlyphInput.value);
+            const fillRule = getFillRule();
 
             const hasGlyf = !!font.getTableByType(Table.glyf);
             const hasCff = !!font.getTableByType(Table.CFF);
@@ -250,8 +297,18 @@
                         x: x + cell * 0.5 - (centerX * scale),
                         y: y + cell * 0.7 + (centerY * scale),
                         scale,
-                        styles: { fillStyle: "#2f2a22", strokeStyle: "#2f2a22", lineWidth: 1 }
+                        styles: { fillStyle: "#2f2a22", strokeStyle: "#2f2a22", lineWidth: 1 },
+                        fillRule: fillRule || undefined
                     });
+                    if (showPoints && Number.isFinite(debugGlyphIndex) && debugGlyphIndex === i) {
+                        drawGlyphPoints(
+                            ctx,
+                            glyph,
+                            x + cell * 0.5 - (centerX * scale),
+                            y + cell * 0.7 + (centerY * scale),
+                            scale
+                        );
+                    }
                 }
 
                 if (showIndex) {
@@ -268,6 +325,7 @@
             status.classList.remove("warn");
             try {
                 const font = await loadFont(selected.url);
+                window.__allGlyphsFont = font;
                 renderGrid(font);
             } catch (err) {
                 status.textContent = `Failed to load font: ${err}`;
@@ -276,10 +334,32 @@
         }
 
         renderBtn.addEventListener("click", render);
+        debugBtn.addEventListener("click", async () => {
+            const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+            const index = Number(debugGlyphInput.value);
+            if (!Number.isFinite(index)) {
+                console.warn("Debug glyph index is not set.");
+                return;
+            }
+            try {
+                const font = await loadFont(selected.url);
+                const cff = font.getTableByType(Table.CFF);
+                if (!cff || typeof cff.debugCharString !== "function") {
+                    console.warn("CFF debug is unavailable for this font.");
+                    return;
+                }
+                const ops = cff.debugCharString(index);
+                console.log(`CFF ops for glyph ${index}:`, ops);
+            } catch (err) {
+                console.warn("Failed to log CFF ops:", err);
+            }
+        });
         fontSelect.addEventListener("change", render);
+        fillRuleSelect.addEventListener("change", render);
         cellInput.addEventListener("input", render);
         scaleInput.addEventListener("input", render);
         indexInput.addEventListener("change", render);
+        pointsInput.addEventListener("change", render);
 
         populateFonts();
         render();

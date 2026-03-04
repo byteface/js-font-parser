@@ -182,9 +182,7 @@ var Cff2Table = /** @class */ (function () {
         var y = 0;
         var contourOpen = false;
         var stemCount = 0;
-        var widthUsed = false;
         var vsIndex = 0;
-        var pendingWidth = null;
         var stack = [];
         var gsubrs = this.globalSubrs;
         var lsubrs = localSubrs;
@@ -222,46 +220,14 @@ var Cff2Table = /** @class */ (function () {
                     return;
                 }
                 var args = stack.splice(0, stack.length);
-                var consumeWidthIfOdd = function () {
-                    if (!widthUsed && pendingWidth != null) {
-                        pendingWidth = null;
-                        widthUsed = true;
-                    }
-                    else if (!widthUsed && args.length % 2 === 1) {
-                        args.shift();
-                        widthUsed = true;
-                    }
-                };
-                var consumeWidthIfMoreThanOne = function () {
-                    if (!widthUsed && pendingWidth != null) {
-                        pendingWidth = null;
-                        widthUsed = true;
-                    }
-                    else if (!widthUsed && args.length > 1) {
-                        args.shift();
-                        widthUsed = true;
-                    }
-                };
-                var consumeWidthIfMod = function (mod, expect) {
-                    if (!widthUsed && pendingWidth != null) {
-                        pendingWidth = null;
-                        widthUsed = true;
-                    }
-                    else if (!widthUsed && args.length % mod === expect) {
-                        args.shift();
-                        widthUsed = true;
-                    }
-                };
                 switch (b0) {
                     case 1:
                     case 3:
                     case 18:
                     case 23:
-                        consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         break;
                     case 4: {
-                        consumeWidthIfMoreThanOne();
                         closeContour();
                         var dy = args.pop() || 0;
                         y += dy;
@@ -270,7 +236,6 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 5: {
-                        consumeWidthIfOdd();
                         ensureMove();
                         for (var j = 0; j < args.length; j += 2) {
                             addPoint(args[j] || 0, args[j + 1] || 0, true);
@@ -278,7 +243,6 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 6: {
-                        consumeWidthIfOdd();
                         ensureMove();
                         var horizontal = true;
                         for (var j = 0; j < args.length; j++) {
@@ -291,7 +255,6 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 7: {
-                        consumeWidthIfOdd();
                         ensureMove();
                         var vertical = true;
                         for (var j = 0; j < args.length; j++) {
@@ -304,7 +267,6 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 8: {
-                        consumeWidthIfMod(6, 1);
                         ensureMove();
                         for (var j = 0; j < args.length; j += 6) {
                             addPoint(args[j] || 0, args[j + 1] || 0, false);
@@ -328,14 +290,12 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 19:
                     case 20: {
-                        consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         var maskBytes = Math.ceil(stemCount / 8);
                         i += Math.min(maskBytes, bytes.length - i);
                         break;
                     }
                     case 21: {
-                        consumeWidthIfOdd();
                         closeContour();
                         var dy = args.pop() || 0;
                         var dx = args.pop() || 0;
@@ -346,7 +306,6 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 22: {
-                        consumeWidthIfMoreThanOne();
                         closeContour();
                         var dx = args.pop() || 0;
                         x += dx;
@@ -355,7 +314,6 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 24: {
-                        consumeWidthIfMod(6, 3);
                         ensureMove();
                         var lineArgs = args.slice(-2);
                         var curveArgs = args.slice(0, -2);
@@ -370,7 +328,6 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 25: {
-                        consumeWidthIfOdd();
                         ensureMove();
                         var curveArgs = args.slice(-6);
                         var lineArgs = args.slice(0, -6);
@@ -385,7 +342,6 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 26: {
-                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         var idx = 0;
                         var dx1 = 0;
@@ -405,7 +361,6 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 27: {
-                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         var idx = 0;
                         var dy1 = 0;
@@ -435,40 +390,35 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 30:
                     case 31: {
-                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         var idx = 0;
                         var horizontal = b0 === 31;
-                        var dx1 = 0;
-                        var dy1 = 0;
-                        if (args.length % 4 === 1) {
-                            if (horizontal) {
-                                dy1 = args[idx++] || 0;
-                            }
-                            else {
-                                dx1 = args[idx++] || 0;
-                            }
-                        }
                         while (idx + 3 < args.length) {
                             if (horizontal) {
-                                var dx1a = args[idx++] || 0;
+                                var dx1 = args[idx++] || 0;
                                 var dx2 = args[idx++] || 0;
                                 var dy2 = args[idx++] || 0;
                                 var dy3 = args[idx++] || 0;
-                                addPoint(dx1a, dy1, false);
+                                var dx3 = 0;
+                                if (idx === args.length - 1) {
+                                    dx3 = args[idx++] || 0;
+                                }
+                                addPoint(dx1, 0, false);
                                 addPoint(dx2, dy2, false);
-                                addPoint(0, dy3, true);
-                                dy1 = 0;
+                                addPoint(dx3, dy3, true);
                             }
                             else {
-                                var dy1a = args[idx++] || 0;
+                                var dy1 = args[idx++] || 0;
                                 var dx2 = args[idx++] || 0;
                                 var dy2 = args[idx++] || 0;
                                 var dx3 = args[idx++] || 0;
-                                addPoint(dx1, dy1a, false);
+                                var dy3 = 0;
+                                if (idx === args.length - 1) {
+                                    dy3 = args[idx++] || 0;
+                                }
+                                addPoint(0, dy1, false);
                                 addPoint(dx2, dy2, false);
-                                addPoint(dx3, 0, true);
-                                dx1 = 0;
+                                addPoint(dx3, dy3, true);
                             }
                             horizontal = !horizontal;
                         }

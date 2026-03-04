@@ -102,6 +102,116 @@ var CffTable = /** @class */ (function () {
     CffTable.prototype.getDefaultWidthX = function () {
         return this.defaultWidthX;
     };
+    CffTable.prototype.debugCharString = function (glyphId) {
+        var _a, _b;
+        var charString = this.charStrings[glyphId];
+        if (!charString)
+            return null;
+        var fdIndex = (_a = this.fdSelect[glyphId]) !== null && _a !== void 0 ? _a : 0;
+        var localSubrs = (_b = this.privateInfos[fdIndex]) === null || _b === void 0 ? void 0 : _b.subrs;
+        var gBias = this.getSubrBias(this.globalSubrs);
+        var lBias = this.getSubrBias(localSubrs || this.localSubrs);
+        var ops = [];
+        var stack = [];
+        var stemCount = 0;
+        var widthUsed = false;
+        var widthLocked = false;
+        var tryConsumeWidthOdd = function (args, lockAfter) {
+            if (!widthLocked && !widthUsed && args.length % 2 === 1) {
+                args.shift();
+                widthUsed = true;
+            }
+            if (lockAfter || widthUsed) {
+                widthLocked = true;
+            }
+        };
+        var tryConsumeWidthMoreThanOne = function (args, lockAfter) {
+            if (!widthLocked && !widthUsed && args.length > 1) {
+                args.shift();
+                widthUsed = true;
+            }
+            if (lockAfter || widthUsed) {
+                widthLocked = true;
+            }
+        };
+        var parse = function (bytes, depth) {
+            var i = 0;
+            while (i < bytes.length) {
+                var b0 = bytes[i++];
+                if (b0 >= 32 || b0 === 28 || b0 === 255) {
+                    var _a = _this.readCharStringNumber(bytes, i - 1), num = _a[0], next = _a[1];
+                    stack.push(num);
+                    i = next;
+                    continue;
+                }
+                if (b0 === 11) {
+                    ops.push({ op: 'return', args: [] });
+                    return;
+                }
+                if (b0 === 10) {
+                    var args_1 = stack.splice(0, stack.length);
+                    var subrIndex = (args_1.pop() || 0) + lBias;
+                    if (args_1.length)
+                        stack.push.apply(stack, args_1);
+                    ops.push({ op: 'callsubr', args: [], note: "subr ".concat(subrIndex, " depth ").concat(depth) });
+                    var subr = (localSubrs || _this.localSubrs)[subrIndex];
+                    if (subr)
+                        parse(subr, depth + 1);
+                    continue;
+                }
+                if (b0 === 29) {
+                    var args_2 = stack.splice(0, stack.length);
+                    var subrIndex = (args_2.pop() || 0) + gBias;
+                    if (args_2.length)
+                        stack.push.apply(stack, args_2);
+                    ops.push({ op: 'callgsubr', args: [], note: "gsubr ".concat(subrIndex, " depth ").concat(depth) });
+                    var subr = _this.globalSubrs[subrIndex];
+                    if (subr)
+                        parse(subr, depth + 1);
+                    continue;
+                }
+                var args = stack.splice(0, stack.length);
+                if (b0 === 12) {
+                    var op = bytes[i++];
+                    ops.push({ op: "esc_".concat(op), args: args.slice(), note: depth ? "depth ".concat(depth) : undefined });
+                    if (op > 37) {
+                        ops.push({ op: 'INVALID_ESCAPE', args: [op], note: "depth ".concat(depth) });
+                    }
+                    continue;
+                }
+                switch (b0) {
+                    case 1:
+                    case 3:
+                    case 18:
+                    case 23:
+                        tryConsumeWidthOdd(args, false);
+                        stemCount += Math.floor(args.length / 2);
+                        break;
+                    case 4:
+                    case 21:
+                        tryConsumeWidthOdd(args, true);
+                        break;
+                    case 22:
+                        tryConsumeWidthMoreThanOne(args, true);
+                        break;
+                    case 19:
+                    case 20: {
+                        tryConsumeWidthOdd(args, false);
+                        stemCount += Math.floor(args.length / 2);
+                        var maskBytes = Math.ceil(stemCount / 8);
+                        i += Math.min(maskBytes, bytes.length - i);
+                        break;
+                    }
+                    default:
+                        break;
+                }
+                ops.push({ op: String(b0), args: args.slice(), note: depth ? "depth ".concat(depth) : undefined });
+            }
+        };
+        var _this = this;
+        parse(charString, 0);
+        return ops;
+    };
     CffTable.prototype.getSubrBias = function (subrs) {
         var n = subrs.length;
         if (n < 1240)
@@ -162,7 +272,7 @@ var CffTable = /** @class */ (function () {
         var contourOpen = false;
         var stemCount = 0;
         var widthUsed = false;
-        var pendingWidth = null;
+        var widthLocked = false;
         var stack = [];
         var gsubrs = this.globalSubrs;
         var lsubrs = localSubrs;
@@ -201,34 +311,22 @@ var CffTable = /** @class */ (function () {
                     return;
                 }
                 var args = stack.splice(0, stack.length);
-                var consumeWidthIfOdd = function () {
-                    if (!widthUsed && pendingWidth != null) {
-                        pendingWidth = null;
-                        widthUsed = true;
-                    }
-                    else if (!widthUsed && args.length % 2 === 1) {
+                var tryConsumeWidthOdd = function (lockAfter) {
+                    if (!widthLocked && !widthUsed && args.length % 2 === 1) {
                         args.shift();
                         widthUsed = true;
+                    }
+                    if (lockAfter || widthUsed) {
+                        widthLocked = true;
                     }
                 };
-                var consumeWidthIfMoreThanOne = function () {
-                    if (!widthUsed && pendingWidth != null) {
-                        pendingWidth = null;
-                        widthUsed = true;
-                    }
-                    else if (!widthUsed && args.length > 1) {
+                var tryConsumeWidthMoreThanOne = function (lockAfter) {
+                    if (!widthLocked && !widthUsed && args.length > 1) {
                         args.shift();
                         widthUsed = true;
                     }
-                };
-                var consumeWidthIfMod = function (mod, expect) {
-                    if (!widthUsed && pendingWidth != null) {
-                        pendingWidth = null;
-                        widthUsed = true;
-                    }
-                    else if (!widthUsed && args.length % mod === expect) {
-                        args.shift();
-                        widthUsed = true;
+                    if (lockAfter || widthUsed) {
+                        widthLocked = true;
                     }
                 };
                 switch (b0) {
@@ -236,11 +334,11 @@ var CffTable = /** @class */ (function () {
                     case 3: // vstem
                     case 18: // hstemhm
                     case 23: // vstemhm
-                        consumeWidthIfOdd();
+                        tryConsumeWidthOdd(false);
                         stemCount += Math.floor(args.length / 2);
                         break;
                     case 4: { // vmoveto
-                        consumeWidthIfMoreThanOne();
+                        tryConsumeWidthMoreThanOne(true);
                         closeContour();
                         var dy = (_a = args.pop()) !== null && _a !== void 0 ? _a : 0;
                         y += dy;
@@ -249,7 +347,6 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 5: { // rlineto
-                        consumeWidthIfOdd();
                         ensureMove();
                         for (var j = 0; j < args.length; j += 2) {
                             addPoint((_b = args[j]) !== null && _b !== void 0 ? _b : 0, (_c = args[j + 1]) !== null && _c !== void 0 ? _c : 0, true);
@@ -257,7 +354,6 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 6: { // hlineto
-                        consumeWidthIfOdd();
                         ensureMove();
                         var horizontal = true;
                         for (var j = 0; j < args.length; j++) {
@@ -270,7 +366,6 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 7: { // vlineto
-                        consumeWidthIfOdd();
                         ensureMove();
                         var vertical = true;
                         for (var j = 0; j < args.length; j++) {
@@ -283,7 +378,6 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 8: { // rrcurveto
-                        consumeWidthIfMod(6, 1);
                         ensureMove();
                         for (var j = 0; j < args.length; j += 6) {
                             addPoint((_d = args[j]) !== null && _d !== void 0 ? _d : 0, (_e = args[j + 1]) !== null && _e !== void 0 ? _e : 0, false);
@@ -338,14 +432,14 @@ var CffTable = /** @class */ (function () {
                     }
                     case 19: // hintmask
                     case 20: { // cntrmask
-                        consumeWidthIfOdd();
+                        tryConsumeWidthOdd(false);
                         stemCount += Math.floor(args.length / 2);
                         var maskBytes = Math.ceil(stemCount / 8);
                         i += Math.min(maskBytes, bytes.length - i);
                         break;
                     }
                     case 21: { // rmoveto
-                        consumeWidthIfOdd();
+                        tryConsumeWidthOdd(true);
                         closeContour();
                         var dy = (_l = args.pop()) !== null && _l !== void 0 ? _l : 0;
                         var dx = (_m = args.pop()) !== null && _m !== void 0 ? _m : 0;
@@ -356,7 +450,7 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 22: { // hmoveto
-                        consumeWidthIfMoreThanOne();
+                        tryConsumeWidthMoreThanOne(true);
                         closeContour();
                         var dx = (_o = args.pop()) !== null && _o !== void 0 ? _o : 0;
                         x += dx;
@@ -365,7 +459,6 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 24: { // rcurveline
-                        consumeWidthIfMod(6, 3);
                         ensureMove();
                         var lineArgs = args.slice(-2);
                         var curveArgs = args.slice(0, -2);
@@ -380,7 +473,6 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 25: { // rlinecurve
-                        consumeWidthIfOdd();
                         ensureMove();
                         var curveArgs = args.slice(-6);
                         var lineArgs = args.slice(0, -6);
@@ -395,7 +487,6 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 26: { // vvcurveto
-                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         var idx = 0;
                         var dx1 = 0;
@@ -415,7 +506,6 @@ var CffTable = /** @class */ (function () {
                         break;
                     }
                     case 27: { // hhcurveto
-                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         var idx = 0;
                         var dy1 = 0;
@@ -445,40 +535,35 @@ var CffTable = /** @class */ (function () {
                     }
                     case 30: // vhcurveto
                     case 31: { // hvcurveto
-                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         var idx = 0;
                         var horizontal = b0 === 31;
-                        var dx1 = 0;
-                        var dy1 = 0;
-                        if (args.length % 4 === 1) {
-                            if (horizontal) {
-                                dy1 = (_8 = args[idx++]) !== null && _8 !== void 0 ? _8 : 0;
-                            }
-                            else {
-                                dx1 = (_9 = args[idx++]) !== null && _9 !== void 0 ? _9 : 0;
-                            }
-                        }
                         while (idx + 3 < args.length) {
                             if (horizontal) {
-                                var dx1a = (_10 = args[idx++]) !== null && _10 !== void 0 ? _10 : 0;
-                                var dx2 = (_11 = args[idx++]) !== null && _11 !== void 0 ? _11 : 0;
-                                var dy2 = (_12 = args[idx++]) !== null && _12 !== void 0 ? _12 : 0;
-                                var dy3 = (_13 = args[idx++]) !== null && _13 !== void 0 ? _13 : 0;
-                                addPoint(dx1a, dy1, false);
+                                var dx1 = (_8 = args[idx++]) !== null && _8 !== void 0 ? _8 : 0;
+                                var dx2 = (_9 = args[idx++]) !== null && _9 !== void 0 ? _9 : 0;
+                                var dy2 = (_10 = args[idx++]) !== null && _10 !== void 0 ? _10 : 0;
+                                var dy3 = (_11 = args[idx++]) !== null && _11 !== void 0 ? _11 : 0;
+                                var dx3 = 0;
+                                if (idx === args.length - 1) {
+                                    dx3 = (_12 = args[idx++]) !== null && _12 !== void 0 ? _12 : 0;
+                                }
+                                addPoint(dx1, 0, false);
                                 addPoint(dx2, dy2, false);
-                                addPoint(0, dy3, true);
-                                dy1 = 0;
+                                addPoint(dx3, dy3, true);
                             }
                             else {
-                                var dy1a = (_14 = args[idx++]) !== null && _14 !== void 0 ? _14 : 0;
-                                var dx2 = (_15 = args[idx++]) !== null && _15 !== void 0 ? _15 : 0;
-                                var dy2 = (_16 = args[idx++]) !== null && _16 !== void 0 ? _16 : 0;
-                                var dx3 = (_17 = args[idx++]) !== null && _17 !== void 0 ? _17 : 0;
-                                addPoint(dx1, dy1a, false);
+                                var dy1 = (_13 = args[idx++]) !== null && _13 !== void 0 ? _13 : 0;
+                                var dx2 = (_14 = args[idx++]) !== null && _14 !== void 0 ? _14 : 0;
+                                var dy2 = (_15 = args[idx++]) !== null && _15 !== void 0 ? _15 : 0;
+                                var dx3 = (_16 = args[idx++]) !== null && _16 !== void 0 ? _16 : 0;
+                                var dy3 = 0;
+                                if (idx === args.length - 1) {
+                                    dy3 = (_17 = args[idx++]) !== null && _17 !== void 0 ? _17 : 0;
+                                }
+                                addPoint(0, dy1, false);
                                 addPoint(dx2, dy2, false);
-                                addPoint(dx3, 0, true);
-                                dx1 = 0;
+                                addPoint(dx3, dy3, true);
                             }
                             horizontal = !horizontal;
                         }

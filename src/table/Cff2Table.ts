@@ -204,9 +204,7 @@ export class Cff2Table implements ITable {
         let y = 0;
         let contourOpen = false;
         let stemCount = 0;
-        let widthUsed = false;
         let vsIndex = 0;
-        let pendingWidth: number | null = null;
 
         const stack: number[] = [];
         const gsubrs = this.globalSubrs;
@@ -249,43 +247,14 @@ export class Cff2Table implements ITable {
                     return;
                 }
                 const args = stack.splice(0, stack.length);
-                const consumeWidthIfOdd = () => {
-                    if (!widthUsed && pendingWidth != null) {
-                        pendingWidth = null;
-                        widthUsed = true;
-                    } else if (!widthUsed && args.length % 2 === 1) {
-                        args.shift();
-                        widthUsed = true;
-                    }
-                };
-                const consumeWidthIfMoreThanOne = () => {
-                    if (!widthUsed && pendingWidth != null) {
-                        pendingWidth = null;
-                        widthUsed = true;
-                    } else if (!widthUsed && args.length > 1) {
-                        args.shift();
-                        widthUsed = true;
-                    }
-                };
-                const consumeWidthIfMod = (mod: number, expect: number) => {
-                    if (!widthUsed && pendingWidth != null) {
-                        pendingWidth = null;
-                        widthUsed = true;
-                    } else if (!widthUsed && args.length % mod === expect) {
-                        args.shift();
-                        widthUsed = true;
-                    }
-                };
                 switch (b0) {
                     case 1:
                     case 3:
                     case 18:
                     case 23:
-                        consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         break;
                     case 4: {
-                        consumeWidthIfMoreThanOne();
                         closeContour();
                         const dy = args.pop() ?? 0;
                         y += dy;
@@ -294,7 +263,6 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 5: {
-                        consumeWidthIfOdd();
                         ensureMove();
                         for (let j = 0; j < args.length; j += 2) {
                             addPoint(args[j] ?? 0, args[j + 1] ?? 0, true);
@@ -302,7 +270,6 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 6: {
-                        consumeWidthIfOdd();
                         ensureMove();
                         let horizontal = true;
                         for (let j = 0; j < args.length; j++) {
@@ -313,7 +280,6 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 7: {
-                        consumeWidthIfOdd();
                         ensureMove();
                         let vertical = true;
                         for (let j = 0; j < args.length; j++) {
@@ -324,7 +290,6 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 8: {
-                        consumeWidthIfMod(6, 1);
                         ensureMove();
                         for (let j = 0; j < args.length; j += 6) {
                             addPoint(args[j] ?? 0, args[j + 1] ?? 0, false);
@@ -346,14 +311,12 @@ export class Cff2Table implements ITable {
                     }
                     case 19:
                     case 20: {
-                        consumeWidthIfOdd();
                         stemCount += Math.floor(args.length / 2);
                         const maskBytes = Math.ceil(stemCount / 8);
                         i += Math.min(maskBytes, bytes.length - i);
                         break;
                     }
                     case 21: {
-                        consumeWidthIfOdd();
                         closeContour();
                         const dy = args.pop() ?? 0;
                         const dx = args.pop() ?? 0;
@@ -364,7 +327,6 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 22: {
-                        consumeWidthIfMoreThanOne();
                         closeContour();
                         const dx = args.pop() ?? 0;
                         x += dx;
@@ -373,7 +335,6 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 24: {
-                        consumeWidthIfMod(6, 3);
                         ensureMove();
                         const lineArgs = args.slice(-2);
                         const curveArgs = args.slice(0, -2);
@@ -388,7 +349,6 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 25: {
-                        consumeWidthIfOdd();
                         ensureMove();
                         const curveArgs = args.slice(-6);
                         const lineArgs = args.slice(0, -6);
@@ -403,7 +363,6 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 26: {
-                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         let idx = 0;
                         let dx1 = 0;
@@ -423,7 +382,6 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 27: {
-                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         let idx = 0;
                         let dy1 = 0;
@@ -451,38 +409,34 @@ export class Cff2Table implements ITable {
                     }
                     case 30:
                     case 31: {
-                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         let idx = 0;
                         let horizontal = b0 === 31;
-                        let dx1 = 0;
-                        let dy1 = 0;
-                        if (args.length % 4 === 1) {
-                            if (horizontal) {
-                                dy1 = args[idx++] ?? 0;
-                            } else {
-                                dx1 = args[idx++] ?? 0;
-                            }
-                        }
                         while (idx + 3 < args.length) {
                             if (horizontal) {
-                                const dx1a = args[idx++] ?? 0;
+                                const dx1 = args[idx++] ?? 0;
                                 const dx2 = args[idx++] ?? 0;
                                 const dy2 = args[idx++] ?? 0;
                                 const dy3 = args[idx++] ?? 0;
-                                addPoint(dx1a, dy1, false);
+                                let dx3 = 0;
+                                if (idx === args.length - 1) {
+                                    dx3 = args[idx++] ?? 0;
+                                }
+                                addPoint(dx1, 0, false);
                                 addPoint(dx2, dy2, false);
-                                addPoint(0, dy3, true);
-                                dy1 = 0;
+                                addPoint(dx3, dy3, true);
                             } else {
-                                const dy1a = args[idx++] ?? 0;
+                                const dy1 = args[idx++] ?? 0;
                                 const dx2 = args[idx++] ?? 0;
                                 const dy2 = args[idx++] ?? 0;
                                 const dx3 = args[idx++] ?? 0;
-                                addPoint(dx1, dy1a, false);
+                                let dy3 = 0;
+                                if (idx === args.length - 1) {
+                                    dy3 = args[idx++] ?? 0;
+                                }
+                                addPoint(0, dy1, false);
                                 addPoint(dx2, dy2, false);
-                                addPoint(dx3, 0, true);
-                                dx1 = 0;
+                                addPoint(dx3, dy3, true);
                             }
                             horizontal = !horizontal;
                         }

@@ -117,6 +117,113 @@ export class CffTable implements ITable {
         return this.defaultWidthX;
     }
 
+    debugCharString(glyphId: number): Array<{ op: string; args: number[]; note?: string }> | null {
+        const charString = this.charStrings[glyphId];
+        if (!charString) return null;
+        const fdIndex = this.fdSelect[glyphId] ?? 0;
+        const localSubrs = this.privateInfos[fdIndex]?.subrs ?? this.localSubrs;
+        const gBias = this.getSubrBias(this.globalSubrs);
+        const lBias = this.getSubrBias(localSubrs);
+        const ops: Array<{ op: string; args: number[]; note?: string }> = [];
+        const stack: number[] = [];
+        let stemCount = 0;
+        let widthUsed = false;
+        let widthLocked = false;
+
+        const tryConsumeWidthOdd = (args: number[], lockAfter: boolean) => {
+            if (!widthLocked && !widthUsed && args.length % 2 === 1) {
+                args.shift();
+                widthUsed = true;
+            }
+            if (lockAfter || widthUsed) {
+                widthLocked = true;
+            }
+        };
+        const tryConsumeWidthMoreThanOne = (args: number[], lockAfter: boolean) => {
+            if (!widthLocked && !widthUsed && args.length > 1) {
+                args.shift();
+                widthUsed = true;
+            }
+            if (lockAfter || widthUsed) {
+                widthLocked = true;
+            }
+        };
+
+        const parse = (bytes: Uint8Array, depth: number) => {
+            let i = 0;
+            while (i < bytes.length) {
+                const b0 = bytes[i++];
+                if (b0 >= 32 || b0 === 28 || b0 === 255) {
+                    const [num, next] = this.readCharStringNumber(bytes, i - 1);
+                    stack.push(num);
+                    i = next;
+                    continue;
+                }
+                if (b0 === 11) {
+                    ops.push({ op: 'return', args: [] });
+                    return;
+                }
+                if (b0 === 10) {
+                    const args = stack.splice(0, stack.length);
+                    const subrIndex = (args.pop() ?? 0) + lBias;
+                    if (args.length) stack.push(...args);
+                    ops.push({ op: 'callsubr', args: [], note: `subr ${subrIndex} depth ${depth}` });
+                    const subr = localSubrs[subrIndex];
+                    if (subr) parse(subr, depth + 1);
+                    continue;
+                }
+                if (b0 === 29) {
+                    const args = stack.splice(0, stack.length);
+                    const subrIndex = (args.pop() ?? 0) + gBias;
+                    if (args.length) stack.push(...args);
+                    ops.push({ op: 'callgsubr', args: [], note: `gsubr ${subrIndex} depth ${depth}` });
+                    const subr = this.globalSubrs[subrIndex];
+                    if (subr) parse(subr, depth + 1);
+                    continue;
+                }
+                const args = stack.splice(0, stack.length);
+                if (b0 === 12) {
+                    const op = bytes[i++];
+                    ops.push({ op: `esc_${op}`, args: [...args], note: depth ? `depth ${depth}` : undefined });
+                    if (op > 37) {
+                        ops.push({ op: 'INVALID_ESCAPE', args: [op], note: `depth ${depth}` });
+                    }
+                    continue;
+                }
+                switch (b0) {
+                    case 1:
+                    case 3:
+                    case 18:
+                    case 23:
+                        tryConsumeWidthOdd(args, false);
+                        stemCount += Math.floor(args.length / 2);
+                        break;
+                    case 4:
+                    case 21:
+                        tryConsumeWidthOdd(args, true);
+                        break;
+                    case 22:
+                        tryConsumeWidthMoreThanOne(args, true);
+                        break;
+                    case 19:
+                    case 20: {
+                        tryConsumeWidthOdd(args, false);
+                        stemCount += Math.floor(args.length / 2);
+                        const maskBytes = Math.ceil(stemCount / 8);
+                        i += Math.min(maskBytes, bytes.length - i);
+                        break;
+                    }
+                    default:
+                        break;
+                }
+                ops.push({ op: String(b0), args: [...args], note: depth ? `depth ${depth}` : undefined });
+            }
+        };
+
+        parse(charString, 0);
+        return ops;
+    }
+
     private getSubrBias(subrs: Uint8Array[]): number {
         const n = subrs.length;
         if (n < 1240) return 107;
@@ -174,7 +281,7 @@ export class CffTable implements ITable {
         let contourOpen = false;
         let stemCount = 0;
         let widthUsed = false;
-        let pendingWidth: number | null = null;
+        let widthLocked = false;
 
         const stack: number[] = [];
         const gsubrs = this.globalSubrs;
@@ -217,31 +324,22 @@ export class CffTable implements ITable {
                     return;
                 }
                 const args = stack.splice(0, stack.length);
-                const consumeWidthIfOdd = () => {
-                    if (!widthUsed && pendingWidth != null) {
-                        pendingWidth = null;
-                        widthUsed = true;
-                    } else if (!widthUsed && args.length % 2 === 1) {
+                const tryConsumeWidthOdd = (lockAfter: boolean) => {
+                    if (!widthLocked && !widthUsed && args.length % 2 === 1) {
                         args.shift();
                         widthUsed = true;
                     }
+                    if (lockAfter || widthUsed) {
+                        widthLocked = true;
+                    }
                 };
-                const consumeWidthIfMoreThanOne = () => {
-                    if (!widthUsed && pendingWidth != null) {
-                        pendingWidth = null;
-                        widthUsed = true;
-                    } else if (!widthUsed && args.length > 1) {
+                const tryConsumeWidthMoreThanOne = (lockAfter: boolean) => {
+                    if (!widthLocked && !widthUsed && args.length > 1) {
                         args.shift();
                         widthUsed = true;
                     }
-                };
-                const consumeWidthIfMod = (mod: number, expect: number) => {
-                    if (!widthUsed && pendingWidth != null) {
-                        pendingWidth = null;
-                        widthUsed = true;
-                    } else if (!widthUsed && args.length % mod === expect) {
-                        args.shift();
-                        widthUsed = true;
+                    if (lockAfter || widthUsed) {
+                        widthLocked = true;
                     }
                 };
                 switch (b0) {
@@ -249,11 +347,11 @@ export class CffTable implements ITable {
                     case 3: // vstem
                     case 18: // hstemhm
                     case 23: // vstemhm
-                        consumeWidthIfOdd();
+                        tryConsumeWidthOdd(false);
                         stemCount += Math.floor(args.length / 2);
                         break;
                     case 4: { // vmoveto
-                        consumeWidthIfMoreThanOne();
+                        tryConsumeWidthMoreThanOne(true);
                         closeContour();
                         const dy = args.pop() ?? 0;
                         y += dy;
@@ -262,7 +360,6 @@ export class CffTable implements ITable {
                         break;
                     }
                     case 5: { // rlineto
-                        consumeWidthIfOdd();
                         ensureMove();
                         for (let j = 0; j < args.length; j += 2) {
                             addPoint(args[j] ?? 0, args[j + 1] ?? 0, true);
@@ -270,7 +367,6 @@ export class CffTable implements ITable {
                         break;
                     }
                     case 6: { // hlineto
-                        consumeWidthIfOdd();
                         ensureMove();
                         let horizontal = true;
                         for (let j = 0; j < args.length; j++) {
@@ -281,7 +377,6 @@ export class CffTable implements ITable {
                         break;
                     }
                     case 7: { // vlineto
-                        consumeWidthIfOdd();
                         ensureMove();
                         let vertical = true;
                         for (let j = 0; j < args.length; j++) {
@@ -292,7 +387,6 @@ export class CffTable implements ITable {
                         break;
                     }
                     case 8: { // rrcurveto
-                        consumeWidthIfMod(6, 1);
                         ensureMove();
                         for (let j = 0; j < args.length; j += 6) {
                             addPoint(args[j] ?? 0, args[j + 1] ?? 0, false);
@@ -343,14 +437,14 @@ export class CffTable implements ITable {
                     }
                     case 19: // hintmask
                     case 20: { // cntrmask
-                        consumeWidthIfOdd();
+                        tryConsumeWidthOdd(false);
                         stemCount += Math.floor(args.length / 2);
                         const maskBytes = Math.ceil(stemCount / 8);
                         i += Math.min(maskBytes, bytes.length - i);
                         break;
                     }
                     case 21: { // rmoveto
-                        consumeWidthIfOdd();
+                        tryConsumeWidthOdd(true);
                         closeContour();
                         const dy = args.pop() ?? 0;
                         const dx = args.pop() ?? 0;
@@ -361,7 +455,7 @@ export class CffTable implements ITable {
                         break;
                     }
                     case 22: { // hmoveto
-                        consumeWidthIfMoreThanOne();
+                        tryConsumeWidthMoreThanOne(true);
                         closeContour();
                         const dx = args.pop() ?? 0;
                         x += dx;
@@ -370,7 +464,6 @@ export class CffTable implements ITable {
                         break;
                     }
                     case 24: { // rcurveline
-                        consumeWidthIfMod(6, 3);
                         ensureMove();
                         const lineArgs = args.slice(-2);
                         const curveArgs = args.slice(0, -2);
@@ -385,7 +478,6 @@ export class CffTable implements ITable {
                         break;
                     }
                     case 25: { // rlinecurve
-                        consumeWidthIfOdd();
                         ensureMove();
                         const curveArgs = args.slice(-6);
                         const lineArgs = args.slice(0, -6);
@@ -400,7 +492,6 @@ export class CffTable implements ITable {
                         break;
                     }
                     case 26: { // vvcurveto
-                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         let idx = 0;
                         let dx1 = 0;
@@ -420,7 +511,6 @@ export class CffTable implements ITable {
                         break;
                     }
                     case 27: { // hhcurveto
-                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         let idx = 0;
                         let dy1 = 0;
@@ -448,38 +538,34 @@ export class CffTable implements ITable {
                     }
                     case 30: // vhcurveto
                     case 31: { // hvcurveto
-                        consumeWidthIfMod(4, 2);
                         ensureMove();
                         let idx = 0;
                         let horizontal = b0 === 31;
-                        let dx1 = 0;
-                        let dy1 = 0;
-                        if (args.length % 4 === 1) {
-                            if (horizontal) {
-                                dy1 = args[idx++] ?? 0;
-                            } else {
-                                dx1 = args[idx++] ?? 0;
-                            }
-                        }
                         while (idx + 3 < args.length) {
                             if (horizontal) {
-                                const dx1a = args[idx++] ?? 0;
+                                const dx1 = args[idx++] ?? 0;
                                 const dx2 = args[idx++] ?? 0;
                                 const dy2 = args[idx++] ?? 0;
                                 const dy3 = args[idx++] ?? 0;
-                                addPoint(dx1a, dy1, false);
+                                let dx3 = 0;
+                                if (idx === args.length - 1) {
+                                    dx3 = args[idx++] ?? 0;
+                                }
+                                addPoint(dx1, 0, false);
                                 addPoint(dx2, dy2, false);
-                                addPoint(0, dy3, true);
-                                dy1 = 0;
+                                addPoint(dx3, dy3, true);
                             } else {
-                                const dy1a = args[idx++] ?? 0;
+                                const dy1 = args[idx++] ?? 0;
                                 const dx2 = args[idx++] ?? 0;
                                 const dy2 = args[idx++] ?? 0;
                                 const dx3 = args[idx++] ?? 0;
-                                addPoint(dx1, dy1a, false);
+                                let dy3 = 0;
+                                if (idx === args.length - 1) {
+                                    dy3 = args[idx++] ?? 0;
+                                }
+                                addPoint(0, dy1, false);
                                 addPoint(dx2, dy2, false);
-                                addPoint(dx3, 0, true);
-                                dx1 = 0;
+                                addPoint(dx3, dy3, true);
                             }
                             horizontal = !horizontal;
                         }
