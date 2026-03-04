@@ -296,7 +296,9 @@
                 if (glyph) {
                     const bounds = getGlyphBounds(glyph);
                     const centerX = bounds ? (bounds.minx + bounds.maxx) * 0.5 : 0;
-                    const baselineY = y + cell * 0.5 - ((ascender + descender) * 0.5 * scale);
+                    const emPixels = emHeight * scale;
+                    const topY = y + (cell - emPixels) * 0.5;
+                    const baselineY = topY + (ascender * scale);
                     CanvasRenderer.drawGlyphToContext(ctx, glyph, {
                         x: x + cell * 0.5 - (centerX * scale),
                         y: baselineY,
