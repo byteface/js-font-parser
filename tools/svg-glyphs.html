@@ -32,6 +32,7 @@
       <label>Glyph ID <input id="glyphInput" type="text" value="" /></label>
     </div>
     <div class="hint">If the SVG table uses gzip compression, your browser must support <code>DecompressionStream</code>.</div>
+    <div id="info" class="hint"></div>
   </div>
 
   <div class="panel">
@@ -47,6 +48,7 @@
     const glyphInput = document.getElementById("glyphInput");
     const preview = document.getElementById("svgPreview");
     const loadSample = document.getElementById("loadSample");
+    const info = document.getElementById("info");
 
     let font = null;
 
@@ -89,6 +91,10 @@
       font = FontParser.fromArrayBuffer(buf);
       charInput.value = "😀";
       glyphInput.value = "";
+      const svgTable = font.getTableByType(Table.SVG);
+      if (info && svgTable?.entries?.length) {
+        info.textContent = `SVG entries: ${svgTable.entries.length} (first ${svgTable.entries[0].startGlyphId}-${svgTable.entries[0].endGlyphId})`;
+      }
       renderGlyph();
     });
 

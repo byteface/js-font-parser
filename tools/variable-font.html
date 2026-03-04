@@ -83,7 +83,7 @@
     <div class="layout">
         <div class="card">
             <div id="axes"></div>
-            <div class="hint">Axes are read from `fvar`. CFF2 coords are supported; gvar interpolation is experimental and does not yet apply IUP deltas.</div>
+            <div class="hint" id="status">Axes are read from `fvar`. gvar interpolation is experimental but includes IUP.</div>
         </div>
         <div class="card">
             <canvas id="canvas" width="900" height="320"></canvas>
@@ -100,10 +100,12 @@
         const axesContainer = document.getElementById('axes');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        const status = document.getElementById('status');
 
         const fonts = [
             { name: 'Playwrite GB S Variable', url: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-VariableFont_wght.ttf' },
-            { name: 'Playwrite GB S Italic Variable', url: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-Italic-VariableFont_wght.ttf' }
+            { name: 'Playwrite GB S Italic Variable', url: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-Italic-VariableFont_wght.ttf' },
+            { name: 'Arimo Variable', url: '../truetypefonts/arimo/Arimo[wght].ttf' }
         ];
 
         const cache = new Map();
@@ -193,6 +195,8 @@
             const fvar = font.getTableByType(Table.fvar);
             renderAxes(fvar);
             applyAxisValues();
+            const gvar = font.getTableByType(Table.gvar);
+            status.textContent = `fvar: ${fvar ? 'yes' : 'no'} | gvar: ${gvar ? 'yes' : 'no'}`;
             renderText();
         }
 

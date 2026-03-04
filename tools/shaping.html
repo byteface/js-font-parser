@@ -64,6 +64,7 @@
     </div>
   </div>
   <div id="status" style="margin:10px 20px;color:#a33a2a;font-size:12px"></div>
+  <div id="summary" style="margin:0 20px 14px;color:#5e6574;font-size:12px"></div>
 
   <script type="module">
     import { FontParser } from "../dist/data/FontParser.js";
@@ -80,6 +81,7 @@
     const rawCanvas = document.getElementById("raw");
     const shapedCanvas = document.getElementById("shaped");
     const status = document.getElementById("status");
+    const summary = document.getElementById("summary");
 
     let font = null;
 
@@ -132,6 +134,9 @@
       } else {
         status.textContent = "";
         drawPositioned(shapedCanvas, shaped, 0.12, 150);
+      }
+      if (summary) {
+        summary.textContent = `Raw glyphs: ${raw.length} | Shaped glyphs: ${shaped.length}`;
       }
     }
 
