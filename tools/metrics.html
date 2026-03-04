@@ -112,7 +112,7 @@
   </div>
 
   <script type="module">
-    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { FontParser } from '../dist/data/FontParser.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const fontSelect = document.getElementById('fontSelect');
@@ -128,7 +128,7 @@
     let font = null;
 
     async function loadFont() {
-      font = await FontParserTTF.load(fontSelect.value);
+      font = await FontParser.load(fontSelect.value);
       render();
     }
 

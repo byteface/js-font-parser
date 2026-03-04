@@ -1,4 +1,4 @@
-import { FontParserTTF } from '../data/FontParserTTF.js';
+import { FontParser } from '../data/FontParser.js';
 import { CanvasRenderer } from '../render/CanvasRenderer.js';
 var CanvasGlyph = /** @class */ (function () {
     function CanvasGlyph(path) {
@@ -10,7 +10,7 @@ var CanvasGlyph = /** @class */ (function () {
         this.SCALE = 0.5;
         this.jitter = 0;
         this.fontdata = null; // Adjust type if you have a defined type for fontdata
-        this.fontLoadedPromise = FontParserTTF.load(path)
+        this.fontLoadedPromise = FontParser.load(path)
             .then(function (ttf_font) {
             _this.fontdata = ttf_font;
         })

@@ -22,7 +22,7 @@
 <div id="output"></div>
 
 <script type="module">
-    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { FontParser } from '../dist/data/FontParser.js';
 
     const fonts = [
         { label: 'DiscoMo.ttf', url: '../truetypefonts/DiscoMo.ttf' },
@@ -69,7 +69,7 @@
 
     function loadFont(url) {
         output.innerHTML = 'Loading...';
-        FontParserTTF.load(url).then(font => {
+        FontParser.load(url).then(font => {
             const records = font.getAllNameRecords();
             renderRecords(records);
         }).catch(err => {

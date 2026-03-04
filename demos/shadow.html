@@ -21,7 +21,7 @@
 </div>
 <canvas id="myDrawing" width="900" height="420"></canvas>
 <script type="module">
-    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { FontParser } from '../dist/data/FontParser.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const canvas = document.getElementById('myDrawing');
@@ -34,7 +34,7 @@
     const alphaInput = document.getElementById('alphaInput');
 
     let font = null;
-    FontParserTTF.load("../truetypefonts/DiscoMo.ttf")
+    FontParser.load("../truetypefonts/DiscoMo.ttf")
         .then(f => {
             font = f;
             render();

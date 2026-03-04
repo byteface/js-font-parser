@@ -9,7 +9,7 @@
 
 <div id="font-list"></div>
 <script type="module">
-    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { FontParser } from '../dist/data/FontParser.js';
     import { Debug } from '../dist/utils/Debug.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
     import { Table } from '../dist/table/Table.js';
@@ -60,7 +60,7 @@
         container.appendChild(block);
 
         const url = `../truetypefonts/${encodeURIComponent(file)}`;
-        FontParserTTF.load(url)
+        FontParser.load(url)
             .then(font => {
                 const hasGlyf = !!font.getTableByType(Table.glyf);
                 const hasCff = !!font.getTableByType(Table.CFF);

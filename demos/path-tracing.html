@@ -127,7 +127,7 @@
     <div class="hint">Tip: use script fonts to see the stroke flow. This demo uses SVG paths derived from glyph outlines.</div>
 
     <script type="module">
-        import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+        import { FontParser } from "../dist/data/FontParser.js";
         import { SVGFont } from "../dist/render/SVGFont.js";
         import { Table } from "../dist/table/Table.js";
 
@@ -152,7 +152,7 @@
 
         async function loadFont(url) {
             if (fontCache.has(url)) return fontCache.get(url);
-            const font = await FontParserTTF.load(url);
+            const font = await FontParser.load(url);
             fontCache.set(url, font);
             return font;
         }

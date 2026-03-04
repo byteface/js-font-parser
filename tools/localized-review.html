@@ -63,7 +63,7 @@
   </div>
 
   <script type="module">
-    import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+    import { FontParser } from "../dist/data/FontParser.js";
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
     import { Table } from "../dist/table/Table.js";
     import { listLanguages, supportsLanguage } from "../dist/utils/LanguageSupport.js";
@@ -116,7 +116,7 @@
       const lang = languages.find(l => l.code === sample.code);
       const required = lang ? Array.from(new Set(Array.from(lang.required))) : [];
 
-      const font = await FontParserTTF.load(fontInfo.url);
+      const font = await FontParser.load(fontInfo.url);
       fontUrl.textContent = `Using font: ${fontInfo.url}`;
       const support = supportsLanguage(font, sample.code);
       const missingSet = new Set(support?.missing ?? []);

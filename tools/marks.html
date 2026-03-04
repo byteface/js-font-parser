@@ -35,7 +35,7 @@
   </div>
 
   <script type="module">
-    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { FontParser } from '../dist/data/FontParser.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const input = document.getElementById('textInput');
@@ -44,7 +44,7 @@
     const info = document.getElementById('info');
 
     let font = null;
-    FontParserTTF.load('../truetypefonts/noto/NotoSans-Regular.ttf').then(f => {
+    FontParser.load('../truetypefonts/noto/NotoSans-Regular.ttf').then(f => {
       font = f;
       render();
     });

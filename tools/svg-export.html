@@ -96,7 +96,7 @@
   </div>
 
   <script type="module">
-    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { FontParser } from '../dist/data/FontParser.js';
     import { SVGFont } from '../dist/render/SVGFont.js';
 
     const preview = document.getElementById('preview');
@@ -106,7 +106,7 @@
 
     let cachedFont = null;
 
-    FontParserTTF.load('../truetypefonts/DiscoMo.ttf').then(font => {
+    FontParser.load('../truetypefonts/DiscoMo.ttf').then(font => {
       cachedFont = font;
       render();
     });

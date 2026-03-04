@@ -46,7 +46,7 @@
   <script type="module">
     import * as THREE from "three";
     import { OrbitControls } from "https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js";
-    import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+    import { FontParser } from "../dist/data/FontParser.js";
     import { Table } from "../dist/table/Table.js";
 
     const canvas = document.getElementById("stage");
@@ -116,7 +116,7 @@
     }
 
     async function boot() {
-      font = await FontParserTTF.load(fontSelect.value);
+      font = await FontParser.load(fontSelect.value);
       buildTubes(textInput.value);
     }
 

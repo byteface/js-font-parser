@@ -38,7 +38,7 @@
 
   <script type="module">
     import { ByteArray } from "../dist/utils/ByteArray.js";
-    import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+    import { FontParser } from "../dist/data/FontParser.js";
     import { TableDirectory } from "../dist/table/TableDirectory.js";
     import { Table } from "../dist/table/Table.js";
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
@@ -74,7 +74,7 @@
         tags.push(entry.tag);
       }
       const hasCFF2 = tags.includes(Table.CFF2);
-      font = new FontParserTTF(new ByteArray(new Uint8Array(buf)));
+      font = FontParser.fromArrayBuffer(buf);
       info.innerHTML = `Tables: ${tags.length} | CFF2: <code>${hasCFF2 ? "yes" : "no"}</code>`;
       renderSample();
     });

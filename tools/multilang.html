@@ -34,7 +34,7 @@
 <div id="font-list"></div>
 
 <script type="module">
-    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { FontParser } from '../dist/data/FontParser.js';
     import { Debug } from '../dist/utils/Debug.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
@@ -98,7 +98,7 @@
         container.appendChild(block);
 
         const url = `../truetypefonts/noto/${encodeURIComponent(sample.file)}`;
-        FontParserTTF.load(url)
+        FontParser.load(url)
             .then(font => {
                 CanvasRenderer.drawString(font, sample.text, canvas, {
                     x: 20,

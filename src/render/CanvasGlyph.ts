@@ -1,4 +1,4 @@
-import { FontParserTTF } from '../data/FontParserTTF.js';
+import { FontParser } from '../data/FontParser.js';
 import { CanvasRenderer, CanvasDrawOptions, CanvasStyleOptions } from '../render/CanvasRenderer.js';
 
 export class CanvasGlyph {
@@ -16,7 +16,7 @@ export class CanvasGlyph {
     private fontLoadedPromise: Promise<void>;
 
     constructor(path: string) {
-        this.fontLoadedPromise = FontParserTTF.load(path)
+        this.fontLoadedPromise = FontParser.load(path)
             .then(ttf_font => {
                 this.fontdata = ttf_font;
             })

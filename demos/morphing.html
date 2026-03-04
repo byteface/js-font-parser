@@ -116,7 +116,7 @@
     <div class="hint">This demo morphs point clouds between glyphs. For best results, use equal-length words.</div>
 
     <script type="module">
-        import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+        import { FontParser } from "../dist/data/FontParser.js";
         import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
 
         const fontSelect = document.getElementById("fontSelect");
@@ -207,7 +207,7 @@
 
         async function loadFont(url) {
             if (fontCache.has(url)) return fontCache.get(url);
-            const f = await FontParserTTF.load(url);
+            const f = await FontParser.load(url);
             fontCache.set(url, f);
             return f;
         }

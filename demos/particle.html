@@ -19,7 +19,7 @@
 </div>
 
 <script type="module">
-    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { FontParser } from '../dist/data/FontParser.js';
     import { Debug } from '../dist/utils/Debug.js';
 
     const DEBUG = false;
@@ -33,7 +33,7 @@
     const particles = [];
     let scatter = false;
 
-    FontParserTTF.load("../truetypefonts/DiscoMo.ttf")
+    FontParser.load("../truetypefonts/DiscoMo.ttf")
         .then(font => {
             buildParticles(font, text);
             setTimeout(() => { scatter = true; }, 5000);

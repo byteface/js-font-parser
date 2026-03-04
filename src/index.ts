@@ -1,3 +1,4 @@
+export { FontParser } from './data/FontParser.js';
 export { FontParserTTF } from './data/FontParserTTF.js';
 export { FontParserWOFF } from './data/FontParserWOFF.js';
 export { GlyphData } from './data/GlyphData.js';

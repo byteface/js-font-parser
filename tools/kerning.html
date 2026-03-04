@@ -38,7 +38,7 @@
   </div>
 
   <script type="module">
-    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { FontParser } from '../dist/data/FontParser.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const input = document.getElementById('textInput');
@@ -70,7 +70,7 @@
 
     async function loadFont(url) {
       if (cache.has(url)) return cache.get(url);
-      const f = await FontParserTTF.load(url);
+      const f = await FontParser.load(url);
       cache.set(url, f);
       return f;
     }

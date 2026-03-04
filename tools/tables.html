@@ -88,7 +88,7 @@
   <div id="grid" class="grid"></div>
 
   <script type="module">
-    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { FontParser } from '../dist/data/FontParser.js';
     import { Table } from '../dist/table/Table.js';
 
     const grid = document.getElementById('grid');
@@ -178,7 +178,7 @@
     function loadAndRender() {
       grid.innerHTML = '';
       const fontUrl = fonts[Number(fontSelect.value)]?.url ?? fonts[0].url;
-      FontParserTTF.load(fontUrl)
+      FontParser.load(fontUrl)
         .then(font => {
           tableSpecs.forEach(spec => {
             const table = font.getTableByType(spec.tag);

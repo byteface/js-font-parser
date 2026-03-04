@@ -44,7 +44,7 @@
   <script src="https://unpkg.com/planck-js@0.3.0/dist/planck.min.js"></script>
   <script type="module">
     const planck = window.planck;
-    import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+    import { FontParser } from "../dist/data/FontParser.js";
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
     import { Table } from "../dist/table/Table.js";
 
@@ -109,7 +109,7 @@
     }
 
     async function boot() {
-      font = await FontParserTTF.load(fontSelect.value);
+      font = await FontParser.load(fontSelect.value);
       setupWorld();
       buildPile();
     }

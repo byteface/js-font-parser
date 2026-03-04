@@ -154,8 +154,7 @@
     </div>
 
     <script type="module">
-        import { FontParserTTF } from "../dist/data/FontParserTTF.js";
-        import { ByteArray } from "../dist/utils/ByteArray.js";
+        import { FontParser } from "../dist/data/FontParser.js";
         import { Table } from "../dist/table/Table.js";
         import { SVGFont } from "../dist/render/SVGFont.js";
         import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
@@ -272,7 +271,7 @@
         }
 
         async function loadBuiltInFont(url) {
-            return FontParserTTF.load(url);
+            return FontParser.load(url);
         }
 
         async function parseAndRender() {
@@ -280,7 +279,7 @@
             const file = fileInput.files && fileInput.files[0];
             if (file) {
                 const buffer = await file.arrayBuffer();
-                font = new FontParserTTF(new ByteArray(new Uint8Array(buffer)));
+                font = FontParser.fromArrayBuffer(buffer);
             } else {
                 font = await loadBuiltInFont(fontSelect.value);
             }

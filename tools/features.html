@@ -94,7 +94,7 @@
   <div id="output" class="wrap"></div>
 
   <script type="module">
-    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { FontParser } from '../dist/data/FontParser.js';
     import { Table } from '../dist/table/Table.js';
 
     const output = document.getElementById('output');
@@ -176,7 +176,7 @@
     function loadAndRender() {
       output.innerHTML = '';
       const fontUrl = fonts[Number(fontSelect.value)]?.url ?? fonts[0].url;
-      FontParserTTF.load(fontUrl)
+      FontParser.load(fontUrl)
         .then(font => {
           const gsub = font.getTableByType(Table.GSUB);
           const gpos = font.getTableByType(Table.GPOS);

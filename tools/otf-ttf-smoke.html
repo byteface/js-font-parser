@@ -40,7 +40,7 @@
   <div class="grid" id="grid"></div>
 
   <script type="module">
-    import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+    import { FontParser } from "../dist/data/FontParser.js";
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
     import { Table } from "../dist/table/Table.js";
 
@@ -173,7 +173,7 @@
         const isOtf = entry.url.toLowerCase().endsWith(".otf");
         if ((isOtf && !showOtf) || (!isOtf && !showTtf)) continue;
         try {
-          const font = await FontParserTTF.load(entry.url);
+          const font = await FontParser.load(entry.url);
           const hasGlyf = !!font.getTableByType(Table.glyf);
           const hasCff = !!font.getTableByType(Table.CFF);
           const hasCff2 = !!font.getTableByType(Table.CFF2);

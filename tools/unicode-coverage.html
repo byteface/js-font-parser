@@ -52,7 +52,7 @@
   <div class="panel note">Tip: This shows glyph presence only. Shaping is not applied.</div>
 
   <script type="module">
-    import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+    import { FontParser } from "../dist/data/FontParser.js";
 
     const fonts = [
       { name: "DiscoMo", url: "../truetypefonts/DiscoMo.ttf" },
@@ -100,7 +100,7 @@
 
     async function loadFont() {
       const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
-      return FontParserTTF.load(selected.url);
+      return FontParser.load(selected.url);
     }
 
     function renderBlock(font, block) {

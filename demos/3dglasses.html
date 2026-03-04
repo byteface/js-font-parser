@@ -14,13 +14,13 @@
 <div class="label">3D Glasses (red/cyan offset)</div>
 <canvas id="myDrawing" width="1000" height="500"></canvas>
 <script type="module">
-    import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+    import { FontParser } from '../dist/data/FontParser.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const canvas = document.getElementById('myDrawing');
     const ctx = canvas.getContext('2d');
 
-    FontParserTTF.load("../truetypefonts/JoeJack.ttf")
+    FontParser.load("../truetypefonts/JoeJack.ttf")
         .then(font => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             CanvasRenderer.drawString(font, "BYTEFACE", canvas, {

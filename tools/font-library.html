@@ -110,7 +110,7 @@
     </div>
 
     <script type="module">
-        import { FontParserTTF } from "../dist/data/FontParserTTF.js";
+        import { FontParser } from "../dist/data/FontParser.js";
         import { FontParserWOFF } from "../dist/data/FontParserWOFF.js";
         import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
         import { Table } from "../dist/table/Table.js";
@@ -223,7 +223,7 @@
             if (isWoff(url)) {
                 font = await FontParserWOFF.load(url);
             } else {
-                font = await FontParserTTF.load(url);
+                font = await FontParser.load(url);
             }
             cache.set(url, font);
             return font;

@@ -1,4 +1,4 @@
-import { FontParserTTF } from '../../dist/data/FontParserTTF.js';
+import { FontParser } from '../../dist/data/FontParser.js';
 
 export function setupParticleDemo(config) {
     const canvas = document.getElementById(config.canvasId || 'myDrawing');
@@ -20,7 +20,7 @@ export function setupParticleDemo(config) {
         });
     }
 
-    FontParserTTF.load(config.fontUrl)
+    FontParser.load(config.fontUrl)
         .then((font) => {
             let glyph = null;
             if (config.char) {
