@@ -245,7 +245,7 @@
                 if (glyph) {
                     const bounds = i === 0 ? getGlyphBounds(glyph) : null;
                     const centerX = bounds ? (bounds.minx + bounds.maxx) * 0.5 : 0;
-                    const centerY = bounds ? (bounds.miny + bounds.maxy) * 0.5 : 0;
+                    const centerY = bounds ? 0 : 0;
                     CanvasRenderer.drawGlyphToContext(ctx, glyph, {
                         x: x + cell * 0.5 - (centerX * scale),
                         y: y + cell * 0.7 + (centerY * scale),

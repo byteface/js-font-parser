@@ -89,7 +89,7 @@ var CanvasRenderer = /** @class */ (function () {
                 continue;
             }
             if (p2 && p2.onCurve) {
-                context.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y);
+                context.bezierCurveTo(p1.x, p1.y, p1.x, p1.y, p2.x, p2.y);
                 offset += 2;
                 continue;
             }
