@@ -167,11 +167,10 @@ export class GvarTable implements ITable {
         for (let i = 0; i < this.axisCount; i++) {
             const coord = coords[i] ?? 0;
             const peakVal = peak[i] ?? 0;
-            if (coord === 0) {
-                scalar = 0;
-                break;
-            }
             if (peakVal === 0) {
+                continue;
+            }
+            if (coord === 0) {
                 scalar = 0;
                 break;
             }

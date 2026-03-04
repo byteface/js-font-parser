@@ -143,11 +143,10 @@ var GvarTable = /** @class */ (function () {
         for (var i = 0; i < this.axisCount; i++) {
             var coord = (_a = coords[i]) !== null && _a !== void 0 ? _a : 0;
             var peakVal = (_b = peak[i]) !== null && _b !== void 0 ? _b : 0;
-            if (coord === 0) {
-                scalar = 0;
-                break;
-            }
             if (peakVal === 0) {
+                continue;
+            }
+            if (coord === 0) {
                 scalar = 0;
                 break;
             }

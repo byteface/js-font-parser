@@ -138,15 +138,22 @@
         }
         shaped = font.layoutString(text, { gsubFeatures: features, scriptTags, gpos: enableGpos.checked, gposFeatures });
       }
+      const gsubIndices = font.getGlyphIndicesForStringWithGsub
+        ? font.getGlyphIndicesForStringWithGsub(text, features, scriptTags)
+        : [];
+      const shapedFallback = gsubIndices.map(gid => {
+        const glyph = font.getGlyph(gid);
+        return { glyphIndex: gid, xAdvance: glyph ? glyph.advanceWidth : 0, xOffset: 0, yOffset: 0 };
+      });
       if (!shaped || shaped.length === 0) {
-        status.textContent = "Shaped output is empty; falling back to raw glyphs.";
-        drawPositioned(shapedCanvas, rawPositioned, 0.12, 150);
+        status.textContent = "Shaped output is empty; showing GSUB-only fallback.";
+        drawPositioned(shapedCanvas, shapedFallback.length ? shapedFallback : rawPositioned, 0.12, 150);
       } else {
         status.textContent = "";
         drawPositioned(shapedCanvas, shaped, 0.12, 150);
       }
       if (summary) {
-        summary.textContent = `Raw glyphs: ${raw.length} | Shaped glyphs: ${shaped.length}`;
+        summary.textContent = `Raw glyphs: ${raw.length} | GSUB glyphs: ${gsubIndices.length} | Shaped glyphs: ${shaped.length}`;
       }
     }
 
