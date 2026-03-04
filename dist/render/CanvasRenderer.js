@@ -130,6 +130,9 @@ var CanvasRenderer = /** @class */ (function () {
         if (options.fillRule) {
             context.fill(options.fillRule);
         }
+        else if (glyph.isCubic) {
+            context.fill("evenodd");
+        }
         else {
             context.fill();
         }

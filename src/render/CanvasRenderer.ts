@@ -150,6 +150,8 @@ export class CanvasRenderer {
         context.stroke();
         if (options.fillRule) {
             context.fill(options.fillRule);
+        } else if (glyph.isCubic) {
+            context.fill("evenodd");
         } else {
             context.fill();
         }
