@@ -3,7 +3,7 @@ import { Coverage } from "./Coverage.js";
 import { ICoverage } from "./ICoverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
 import { GsubTable } from "./GsubTable.js";
-import { GsubMatchContext, matchInputSequence } from "./GsubMatch.js";
+import { GsubMatchContext, matchInputSequence, nextNonIgnoredIndex } from "./GsubMatch.js";
 
 export class ContextSubstFormat1 extends LookupSubtable {
     private coverage: ICoverage | null;
@@ -66,6 +66,8 @@ export class ContextSubstFormat1 extends LookupSubtable {
         let out = glyphs.slice();
         let i = 0;
         while (i < out.length) {
+            i = nextNonIgnoredIndex(out, i, ctx);
+            if (i >= out.length) break;
             const covIndex = this.coverage.findGlyph(out[i]);
             if (covIndex < 0) {
                 i++;

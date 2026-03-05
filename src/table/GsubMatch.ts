@@ -39,6 +39,18 @@ export function matchInputSequence<T>(
     return indices;
 }
 
+export function nextNonIgnoredIndex(glyphs: number[], startIndex: number, ctx?: GsubMatchContext): number {
+    let i = startIndex;
+    while (i < glyphs.length && isIgnoredGlyph(ctx, glyphs[i])) i++;
+    return i;
+}
+
+export function prevNonIgnoredIndex(glyphs: number[], startIndex: number, ctx?: GsubMatchContext): number {
+    let i = startIndex;
+    while (i >= 0 && isIgnoredGlyph(ctx, glyphs[i])) i--;
+    return i;
+}
+
 export function matchBacktrackSequence<T>(
     glyphs: number[],
     startIndex: number,

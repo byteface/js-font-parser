@@ -15,7 +15,7 @@ var __extends = (this && this.__extends) || (function () {
 })();
 import { Coverage } from "./Coverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
-import { matchInputSequence } from "./GsubMatch.js";
+import { matchInputSequence, nextNonIgnoredIndex } from "./GsubMatch.js";
 var ContextSubstFormat1 = /** @class */ (function (_super) {
     __extends(ContextSubstFormat1, _super);
     function ContextSubstFormat1(byte_ar, offset, gsub) {
@@ -78,6 +78,9 @@ var ContextSubstFormat1 = /** @class */ (function (_super) {
         var out = glyphs.slice();
         var i = 0;
         while (i < out.length) {
+            i = nextNonIgnoredIndex(out, i, ctx);
+            if (i >= out.length)
+                break;
             var covIndex = this.coverage.findGlyph(out[i]);
             if (covIndex < 0) {
                 i++;

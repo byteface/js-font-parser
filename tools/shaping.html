@@ -70,6 +70,7 @@
     import { FontParser } from "../dist/data/FontParser.js";
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
     import { detectScriptTags } from "../dist/utils/ScriptDetector.js";
+    import { Table } from "../dist/table/Table.js";
 
     const fontSelect = document.getElementById("fontSelect");
     const scriptTagsInput = document.getElementById("scriptTags");
@@ -153,11 +154,28 @@
         drawPositioned(shapedCanvas, shaped, 0.12, 150);
       }
       if (summary) {
-        summary.textContent = `Raw glyphs: ${raw.length} | GSUB glyphs: ${gsubIndices.length} | Shaped glyphs: ${shaped.length}`;
+        const gsub = font.getTableByType ? font.getTableByType(Table.GSUB) : null;
+        const gdef = font.getTableByType ? font.getTableByType(Table.GDEF) : null;
+        const gpos = font.getTableByType ? font.getTableByType(Table.GPOS) : null;
+        const lookups = gsub?.lookupList?.getLookups?.() ?? [];
+        const contextLookups = lookups.filter(l => l.getType && (l.getType() === 5 || l.getType() === 6)).length;
+        summary.textContent = `Raw glyphs: ${raw.length} | GSUB glyphs: ${gsubIndices.length} | Shaped glyphs: ${shaped.length} | GDEF: ${gdef ? 'yes' : 'no'} | GSUB lookups: ${lookups.length} (contextual ${contextLookups}) | GPOS: ${gpos ? 'yes' : 'no'}`;
       }
     }
 
-    fontSelect.addEventListener("change", loadFont);
+    fontSelect.addEventListener("change", () => {
+      const value = fontSelect.value;
+      if (value.includes("Arabic")) {
+        sampleInput.value = "مرحبا بالعالم";
+        scriptTagsInput.value = "arab,DFLT";
+        featuresInput.value = "ccmp,locl,init,medi,fina,isol,rlig,liga,calt";
+      } else {
+        sampleInput.value = "नमस्ते दुनिया";
+        scriptTagsInput.value = "deva,DFLT";
+        featuresInput.value = "ccmp,locl,liga,clig,rlig,calt";
+      }
+      loadFont();
+    });
     scriptTagsInput.addEventListener("input", render);
     featuresInput.addEventListener("input", render);
     gposFeaturesInput.addEventListener("input", render);

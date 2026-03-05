@@ -40,6 +40,18 @@ export function matchInputSequence(glyphs, startIndex, expected, matchFn, ctx) {
     }
     return indices;
 }
+export function nextNonIgnoredIndex(glyphs, startIndex, ctx) {
+    var i = startIndex;
+    while (i < glyphs.length && isIgnoredGlyph(ctx, glyphs[i]))
+        i++;
+    return i;
+}
+export function prevNonIgnoredIndex(glyphs, startIndex, ctx) {
+    var i = startIndex;
+    while (i >= 0 && isIgnoredGlyph(ctx, glyphs[i]))
+        i--;
+    return i;
+}
 export function matchBacktrackSequence(glyphs, startIndex, expected, matchFn, ctx) {
     var cursor = startIndex - 1;
     for (var b = 0; b < expected.length; b++) {

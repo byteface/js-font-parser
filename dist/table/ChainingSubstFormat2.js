@@ -15,7 +15,7 @@ var __extends = (this && this.__extends) || (function () {
 })();
 import { Coverage } from "./Coverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
-import { matchBacktrackSequence, matchInputSequence, matchLookaheadSequence } from "./GsubMatch.js";
+import { matchBacktrackSequence, matchInputSequence, matchLookaheadSequence, nextNonIgnoredIndex } from "./GsubMatch.js";
 import { ClassDefReader } from "./ClassDefReader.js";
 var ChainingSubstFormat2 = /** @class */ (function (_super) {
     __extends(ChainingSubstFormat2, _super);
@@ -99,6 +99,9 @@ var ChainingSubstFormat2 = /** @class */ (function (_super) {
         var out = glyphs.slice();
         var i = 0;
         while (i < out.length) {
+            i = nextNonIgnoredIndex(out, i, ctx);
+            if (i >= out.length)
+                break;
             var covIndex = this.coverage.findGlyph(out[i]);
             if (covIndex < 0) {
                 i++;
