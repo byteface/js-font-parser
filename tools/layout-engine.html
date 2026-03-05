@@ -82,6 +82,13 @@
             </select>
         </label>
         <label>
+            Direction
+            <select id="directionSelect">
+                <option value="ltr" selected>LTR</option>
+                <option value="rtl">RTL</option>
+            </select>
+        </label>
+        <label>
             Line Height
             <input id="lineInput" type="range" min="700" max="1400" value="1100" />
         </label>
@@ -133,7 +140,7 @@
         </label>
     </div>
     <textarea id="textInput">The library can now break lines and align text. Use this to inspect glyph advances, kerning, and spacing across fonts.</textarea>
-    <div class="hint">Layout uses font metrics + kerning. Adjust width and alignment to see line breaking.</div>
+    <div class="hint">Layout uses font metrics + kerning. Adjust width, direction, and alignment to see line breaking.</div>
     <canvas id="canvas" width="980" height="520"></canvas>
 
     <script type="module">
@@ -145,6 +152,7 @@
         const fontSelect = document.getElementById('fontSelect');
         const widthInput = document.getElementById('widthInput');
         const alignSelect = document.getElementById('alignSelect');
+        const directionSelect = document.getElementById('directionSelect');
         const lineInput = document.getElementById('lineInput');
         const breakWords = document.getElementById('breakWords');
         const trimSpaces = document.getElementById('trimSpaces');
@@ -206,6 +214,7 @@
             const layout = LayoutEngine.layoutText(font, textInput.value, {
                 maxWidth: width / scale,
                 align,
+                direction: directionSelect.value,
                 lineHeight,
                 useKerning: true,
                 breakWords: breakWords.value === 'true',
@@ -244,6 +253,7 @@
         fontSelect.addEventListener('change', loadAndRender);
         widthInput.addEventListener('input', render);
         alignSelect.addEventListener('change', render);
+        directionSelect.addEventListener('change', render);
         lineInput.addEventListener('input', render);
         breakWords.addEventListener('change', render);
         trimSpaces.addEventListener('change', render);

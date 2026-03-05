@@ -10,12 +10,20 @@ export class CffIndex {
     }
 
     static read(byte_ar: ByteArray, offset?: number): CffIndex {
+        return this.readWithCountSize(byte_ar, offset, 2);
+    }
+
+    static readCff2(byte_ar: ByteArray, offset?: number): CffIndex {
+        return this.readWithCountSize(byte_ar, offset, 4);
+    }
+
+    private static readWithCountSize(byte_ar: ByteArray, offset: number | undefined, countSize: 2 | 4): CffIndex {
         const prev = byte_ar.offset;
         if (offset != null) {
             byte_ar.offset = offset;
         }
 
-        const count = byte_ar.readUnsignedShort();
+        const count = countSize === 2 ? byte_ar.readUnsignedShort() : byte_ar.readUnsignedInt();
         if (count === 0) {
             return new CffIndex(0, []);
         }
@@ -32,7 +40,11 @@ export class CffIndex {
 
         const dataStart = byte_ar.offset;
         const objects: Uint8Array[] = [];
-        const data = new Uint8Array(byte_ar.dataView.buffer);
+        const data = new Uint8Array(
+            byte_ar.dataView.buffer,
+            byte_ar.dataView.byteOffset,
+            byte_ar.dataView.byteLength
+        );
         for (let i = 0; i < count; i++) {
             const start = dataStart + offsets[i] - 1;
             const end = dataStart + offsets[i + 1] - 1;

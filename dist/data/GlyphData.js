@@ -1,11 +1,12 @@
 import { Point } from './Point.js';
 var GlyphData = /** @class */ (function () {
     function GlyphData(gd, lsb, advance, options) {
-        var _a;
+        var _a, _b;
         this.leftSideBearing = lsb;
         this.advanceWidth = advance;
         this.points = null;
         this.isCubic = (_a = options === null || options === void 0 ? void 0 : options.isCubic) !== null && _a !== void 0 ? _a : false;
+        this.includePhantoms = (_b = options === null || options === void 0 ? void 0 : options.includePhantoms) !== null && _b !== void 0 ? _b : true;
         this.describe(gd);
     }
     GlyphData.prototype.getPoint = function (i) {
@@ -37,10 +38,11 @@ var GlyphData = /** @class */ (function () {
             }
             this.points.push(new Point(gd.getXCoordinate(i), gd.getYCoordinate(i), (gd.getFlags(i) & 0x01) !== 0, endPt));
         }
-        // Append the origin and advanceWidth points (n & n+1)
-        var pointCount = gd.getPointCount();
-        this.points.push(new Point(0, 0, true, true));
-        this.points.push(new Point(this.advanceWidth, 0, true, true));
+        if (this.includePhantoms) {
+            // Append the origin and advanceWidth points (n & n+1)
+            this.points.push(new Point(0, 0, true, true));
+            this.points.push(new Point(this.advanceWidth, 0, true, true));
+        }
     };
     return GlyphData;
 }());

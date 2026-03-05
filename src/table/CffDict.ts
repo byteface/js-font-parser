@@ -39,7 +39,7 @@ export class CffDict {
 
         while (i < bytes.length) {
             const b0 = bytes[i++];
-            if (b0 <= 21) {
+            if (b0 <= 21 || b0 === 24) {
                 let opName: string | null = OPERATOR_NAMES[b0] ?? null;
                 if (b0 === 12) {
                     const b1 = bytes[i++];

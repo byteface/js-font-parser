@@ -6,12 +6,14 @@ export class GlyphData {
     advanceWidth: number;
     points: Point[] | null;
     isCubic: boolean;
+    includePhantoms: boolean;
   
-    constructor(gd: IGlyphDescription, lsb: number, advance: number, options?: { isCubic?: boolean }) {
+    constructor(gd: IGlyphDescription, lsb: number, advance: number, options?: { isCubic?: boolean; includePhantoms?: boolean }) {
       this.leftSideBearing = lsb;
       this.advanceWidth = advance;
       this.points = null;
       this.isCubic = options?.isCubic ?? false;
+      this.includePhantoms = options?.includePhantoms ?? true;
       this.describe(gd);
     }
   
@@ -51,9 +53,10 @@ export class GlyphData {
         this.points.push(new Point(gd.getXCoordinate(i), gd.getYCoordinate(i), (gd.getFlags(i) & 0x01) !== 0, endPt));
       }
   
-      // Append the origin and advanceWidth points (n & n+1)
-      const pointCount = gd.getPointCount();
-      this.points.push(new Point(0, 0, true, true));
-      this.points.push(new Point(this.advanceWidth, 0, true, true));
+      if (this.includePhantoms) {
+        // Append the origin and advanceWidth points (n & n+1)
+        this.points.push(new Point(0, 0, true, true));
+        this.points.push(new Point(this.advanceWidth, 0, true, true));
+      }
     }
   }

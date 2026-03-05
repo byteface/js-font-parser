@@ -37,7 +37,7 @@ var CffDict = /** @class */ (function () {
         var stack = [];
         while (i < bytes.length) {
             var b0 = bytes[i++];
-            if (b0 <= 21) {
+            if (b0 <= 21 || b0 === 24) {
                 var opName = (_a = OPERATOR_NAMES[b0]) !== null && _a !== void 0 ? _a : null;
                 if (b0 === 12) {
                     var b1 = bytes[i++];

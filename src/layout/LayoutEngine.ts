@@ -1,6 +1,7 @@
 export type LayoutOptions = {
     maxWidth?: number;
     align?: 'left' | 'center' | 'right' | 'justify';
+    direction?: 'ltr' | 'rtl';
     lineHeight?: number;
     letterSpacing?: number;
     useKerning?: boolean;
@@ -55,6 +56,7 @@ export class LayoutEngine {
         const preserveNbsp = options.preserveNbsp ?? true;
         const tabSize = options.tabSize ?? 4;
         const justifyLastLine = options.justifyLastLine ?? false;
+        const direction = options.direction ?? 'ltr';
 
         const hhea = font.getTableByType?.(0x68686561); // hhea
         const head = font.getTableByType?.(0x68656164); // head
@@ -116,6 +118,16 @@ export class LayoutEngine {
         const resultWidth = maxWidth > 0 ? maxWidth : Math.max(0, ...lines.map(l => l.width));
         lines.forEach((line, index) => {
             const y = index * lineHeight;
+            if (direction === 'rtl') {
+                const reordered = line.glyphs.slice().reverse();
+                let cursor = 0;
+                for (const g of reordered) {
+                    g.x = cursor;
+                    cursor += g.advance;
+                }
+                line.glyphs = reordered;
+                line.width = cursor;
+            }
             if (align === 'center') {
                 const offset = (resultWidth - line.width) * 0.5;
                 line.glyphs.forEach(g => (g.x += offset));

@@ -310,7 +310,7 @@ var FontParserWOFF = /** @class */ (function () {
             var desc = description;
             var lsb = (_c = (_b = this.hmtx) === null || _b === void 0 ? void 0 : _b.getLeftSideBearing(i)) !== null && _c !== void 0 ? _c : 0;
             var advance = (_e = (_d = this.hmtx) === null || _d === void 0 ? void 0 : _d.getAdvanceWidth(i)) !== null && _e !== void 0 ? _e : 0;
-            if (this.gvar && this.variationCoords.length > 0 && !description.isComposite()) {
+            if (this.gvar && this.variationCoords.length > 0) {
                 var basePointCount = description.getPointCount();
                 var gvarPointCount = basePointCount + 4; // phantom points
                 var deltas = this.gvar.getDeltasForGlyph(i, this.variationCoords, gvarPointCount);
@@ -327,6 +327,7 @@ var FontParserWOFF = /** @class */ (function () {
                         dy_1.push(0);
                     while (touched.length < basePointCount)
                         touched.push(false);
+                    // Apply IUP to fill missing deltas (works for composites too).
                     this.applyIupDeltas(base_1, dx_1, dy_1, touched);
                     var lsbDelta = (_f = fullDx[basePointCount]) !== null && _f !== void 0 ? _f : 0;
                     var rsbDelta = (_g = fullDx[basePointCount + 1]) !== null && _g !== void 0 ? _g : 0;
@@ -691,6 +692,9 @@ var FontParserWOFF = /** @class */ (function () {
     };
     FontParserWOFF.prototype.setVariationCoords = function (coords) {
         this.variationCoords = coords.slice();
+        if (this.colr && typeof this.colr.setVariationCoords === 'function') {
+            this.colr.setVariationCoords(coords);
+        }
     };
     FontParserWOFF.prototype.setVariationByAxes = function (values) {
         var _a;
@@ -797,15 +801,44 @@ var FontParserWOFF = /** @class */ (function () {
         var getBaseAnchor = function (anchors, classIndex) {
             return anchors.find(function (a) { return (a.type === 'base' || a.type === 'ligature' || a.type === 'mark2') && a.classIndex === classIndex; });
         };
-        for (var i = 0; i < glyphIndices.length; i++) {
+        var isMarkGlyph = function (gid) { var _a, _b, _c; return ((_c = (_b = (_a = _this.gdef) === null || _a === void 0 ? void 0 : _a.getGlyphClass) === null || _b === void 0 ? void 0 : _b.call(_a, gid)) !== null && _c !== void 0 ? _c : 0) === 3; };
+        var _loop_2 = function (i) {
             var gid = glyphIndices[i];
             var anchors = getAnchors(gid);
             var markAnchor = anchors.find(function (a) { return a.type === 'mark'; });
             if (!markAnchor)
-                continue;
+                return "continue";
+            var attached = false;
+            // Prefer mark-to-mark attachment when available.
+            var prev = i - 1;
+            while (prev >= 0) {
+                var prevGid = glyphIndices[prev];
+                if (!isMarkGlyph(prevGid)) {
+                    prev--;
+                    continue;
+                }
+                var prevAnchors = getAnchors(prevGid);
+                var mark2 = prevAnchors.find(function (a) { return a.type === 'mark2' && a.classIndex === markAnchor.classIndex; });
+                if (mark2) {
+                    positioned[i].xOffset += mark2.x - markAnchor.x;
+                    positioned[i].yOffset += mark2.y - markAnchor.y;
+                    positioned[i].xAdvance = 0;
+                    attached = true;
+                    break;
+                }
+                prev--;
+            }
+            if (attached)
+                return "continue";
+            // Fall back to base/ligature anchor, skipping marks.
             var baseIndex = i - 1;
             while (baseIndex >= 0) {
-                var baseAnchors = getAnchors(glyphIndices[baseIndex]);
+                var baseGid = glyphIndices[baseIndex];
+                if (isMarkGlyph(baseGid)) {
+                    baseIndex--;
+                    continue;
+                }
+                var baseAnchors = getAnchors(baseGid);
                 var baseAnchor = getBaseAnchor(baseAnchors, markAnchor.classIndex);
                 if (baseAnchor) {
                     positioned[i].xOffset += baseAnchor.x - markAnchor.x;
@@ -815,6 +848,9 @@ var FontParserWOFF = /** @class */ (function () {
                 }
                 baseIndex--;
             }
+        };
+        for (var i = 0; i < glyphIndices.length; i++) {
+            _loop_2(i);
         }
         for (var i = 1; i < glyphIndices.length; i++) {
             var prevAnchors = getAnchors(glyphIndices[i - 1]);
@@ -919,14 +955,14 @@ var FontParserWOFF = /** @class */ (function () {
         if (formats.length === 0)
             return null;
         var order = [4, 12, 10, 8, 6, 2, 0];
-        var _loop_2 = function (fmt) {
+        var _loop_3 = function (fmt) {
             var found = formats.find(function (f) { return (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt; });
             if (found)
                 return { value: found };
         };
         for (var _i = 0, order_1 = order; _i < order_1.length; _i++) {
             var fmt = order_1[_i];
-            var state_1 = _loop_2(fmt);
+            var state_1 = _loop_3(fmt);
             if (typeof state_1 === "object")
                 return state_1.value;
         }

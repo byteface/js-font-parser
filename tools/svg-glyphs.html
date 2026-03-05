@@ -59,6 +59,53 @@
 
     let font = null;
 
+    function parseTransform(transform) {
+      if (!transform) return null;
+      const tokens = transform.match(/[a-zA-Z]+\([^)]*\)/g) || [];
+      let m = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+      const multiply = (m1, m2) => ({
+        a: m1.a * m2.a + m1.c * m2.b,
+        b: m1.b * m2.a + m1.d * m2.b,
+        c: m1.a * m2.c + m1.c * m2.d,
+        d: m1.b * m2.c + m1.d * m2.d,
+        e: m1.a * m2.e + m1.c * m2.f + m1.e,
+        f: m1.b * m2.e + m1.d * m2.f + m1.f
+      });
+      for (const t of tokens) {
+        const name = t.slice(0, t.indexOf('('));
+        const args = t.slice(t.indexOf('(') + 1, -1).split(/[ ,]+/).filter(Boolean).map(Number);
+        if (name === 'matrix' && args.length === 6) {
+          m = multiply(m, { a: args[0], b: args[1], c: args[2], d: args[3], e: args[4], f: args[5] });
+        } else if (name === 'translate') {
+          const tx = args[0] || 0;
+          const ty = args[1] || 0;
+          m = multiply(m, { a: 1, b: 0, c: 0, d: 1, e: tx, f: ty });
+        } else if (name === 'scale') {
+          const sx = args[0];
+          const sy = args.length > 1 ? args[1] : sx;
+          m = multiply(m, { a: sx, b: 0, c: 0, d: sy, e: 0, f: 0 });
+        }
+      }
+      return m;
+    }
+
+    function invertMatrix(m) {
+      const det = m.a * m.d - m.b * m.c;
+      if (!det) return null;
+      return {
+        a: m.d / det,
+        b: -m.b / det,
+        c: -m.c / det,
+        d: m.a / det,
+        e: (m.c * m.f - m.d * m.e) / det,
+        f: (m.b * m.e - m.a * m.f) / det
+      };
+    }
+
+    function applyMatrix(m, x, y) {
+      return { x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f };
+    }
+
     async function renderGlyph() {
       if (!font) return;
       const char = charInput.value || "A";
@@ -87,15 +134,20 @@
       if (svgEl) {
         const gWithTransform = svgEl.querySelector('g[transform]');
         const transform = gWithTransform?.getAttribute('transform') || '';
-        if (transform.includes('scale(56.888')) {
-          gWithTransform.removeAttribute('transform');
-          svgEl.setAttribute('viewBox', '0 0 36 36');
-        } else if (!svgEl.getAttribute("viewBox")) {
+        if (!svgEl.getAttribute("viewBox")) {
           const width = parseFloat(svgEl.getAttribute("width") || "");
           const height = parseFloat(svgEl.getAttribute("height") || "");
           if (Number.isFinite(width) && Number.isFinite(height)) {
             svgEl.setAttribute("viewBox", `0 0 ${width} ${height}`);
           }
+        }
+        if (gWithTransform) {
+          const width = parseFloat(svgEl.getAttribute("width") || "36");
+          const height = parseFloat(svgEl.getAttribute("height") || "36");
+          const w = Number.isFinite(width) ? width : 36;
+          const h = Number.isFinite(height) ? height : 36;
+          svgEl.setAttribute("viewBox", `0 0 ${w} ${h}`);
+          gWithTransform.removeAttribute("transform");
         }
         svgEl.setAttribute("width", "100%");
         svgEl.setAttribute("height", "100%");

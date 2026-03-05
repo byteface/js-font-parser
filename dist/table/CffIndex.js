@@ -4,11 +4,17 @@ var CffIndex = /** @class */ (function () {
         this.objects = objects;
     }
     CffIndex.read = function (byte_ar, offset) {
+        return this.readWithCountSize(byte_ar, offset, 2);
+    };
+    CffIndex.readCff2 = function (byte_ar, offset) {
+        return this.readWithCountSize(byte_ar, offset, 4);
+    };
+    CffIndex.readWithCountSize = function (byte_ar, offset, countSize) {
         var prev = byte_ar.offset;
         if (offset != null) {
             byte_ar.offset = offset;
         }
-        var count = byte_ar.readUnsignedShort();
+        var count = countSize === 2 ? byte_ar.readUnsignedShort() : byte_ar.readUnsignedInt();
         if (count === 0) {
             return new CffIndex(0, []);
         }
@@ -23,7 +29,7 @@ var CffIndex = /** @class */ (function () {
         }
         var dataStart = byte_ar.offset;
         var objects = [];
-        var data = new Uint8Array(byte_ar.dataView.buffer);
+        var data = new Uint8Array(byte_ar.dataView.buffer, byte_ar.dataView.byteOffset, byte_ar.dataView.byteLength);
         for (var i = 0; i < count; i++) {
             var start = dataStart + offsets[i] - 1;
             var end = dataStart + offsets[i + 1] - 1;

@@ -42,12 +42,12 @@ export class Cff2Table implements ITable {
         const topDictData = byte_ar.readBytes(topDictLength);
         const topDict = CffDict.parse(topDictData);
 
-        const globalSubrIndex = CffIndex.read(byte_ar, topDictStart + topDictLength);
+        const globalSubrIndex = CffIndex.readCff2(byte_ar, topDictStart + topDictLength);
         this.globalSubrs = globalSubrIndex.objects;
 
         const charStringsOffset = topDict.getNumber('charStrings', 0);
         if (charStringsOffset > 0) {
-            const charStringsIndex = CffIndex.read(byte_ar, this.baseOffset + charStringsOffset);
+            const charStringsIndex = CffIndex.readCff2(byte_ar, this.baseOffset + charStringsOffset);
             this.charStrings = charStringsIndex.objects;
         }
 
@@ -56,7 +56,7 @@ export class Cff2Table implements ITable {
         const vstoreOffset = topDict.getNumber('vstore', 0);
 
         if (fdArrayOffset > 0) {
-            const fdArrayIndex = CffIndex.read(byte_ar, this.baseOffset + fdArrayOffset);
+            const fdArrayIndex = CffIndex.readCff2(byte_ar, this.baseOffset + fdArrayOffset);
             const fdDicts = fdArrayIndex.objects.map(bytes => CffDict.parse(bytes));
             this.privateInfos = fdDicts.map(dict => {
                 const info = dict.getArray('private');
@@ -69,7 +69,7 @@ export class Cff2Table implements ITable {
                 const privateDict = CffDict.parse(privateBytes);
                 const subrsOffset = privateDict.getNumber('subrs', 0);
                 if (subrsOffset > 0) {
-                    const subrsIndex = CffIndex.read(byte_ar, privateStart + subrsOffset);
+                    const subrsIndex = CffIndex.readCff2(byte_ar, privateStart + subrsOffset);
                     return { subrs: subrsIndex.objects };
                 }
                 return { subrs: [] };
@@ -155,11 +155,20 @@ export class Cff2Table implements ITable {
 
     private readVariationStore(byte_ar: ByteArray, offset: number): void {
         const prev = byte_ar.offset;
-        byte_ar.offset = offset;
-        const format = byte_ar.readUnsignedShort();
+        let storeOffset = offset;
+        byte_ar.offset = storeOffset;
+        let format = byte_ar.readUnsignedShort();
         if (format !== 1) {
-            byte_ar.offset = prev;
-            return;
+            // Some fonts appear to prefix the variation store with a 16-bit length.
+            byte_ar.offset = storeOffset + 2;
+            const altFormat = byte_ar.readUnsignedShort();
+            if (altFormat === 1) {
+                storeOffset += 2;
+                format = altFormat;
+            } else {
+                byte_ar.offset = prev;
+                return;
+            }
         }
         const regionListOffset = byte_ar.readUnsignedInt();
         const ivdCount = byte_ar.readUnsignedShort();
@@ -168,7 +177,7 @@ export class Cff2Table implements ITable {
             ivdOffsets.push(byte_ar.readUnsignedInt());
         }
 
-        const regionListPos = offset + regionListOffset;
+        const regionListPos = storeOffset + regionListOffset;
         byte_ar.offset = regionListPos;
         const axisCount = byte_ar.readUnsignedShort();
         const regionCount = byte_ar.readUnsignedShort();
@@ -188,7 +197,7 @@ export class Cff2Table implements ITable {
         this.vstoreRegionCounts = new Array(ivdCount).fill(0);
         this.vstoreRegionIndices = new Array(ivdCount).fill(null).map(() => []);
         for (let i = 0; i < ivdCount; i++) {
-            const ivdPos = offset + ivdOffsets[i];
+            const ivdPos = storeOffset + ivdOffsets[i];
             byte_ar.offset = ivdPos;
             byte_ar.readUnsignedShort(); // itemCount
             byte_ar.readUnsignedShort(); // shortDeltaCount
@@ -212,6 +221,8 @@ export class Cff2Table implements ITable {
         let contourOpen = false;
         let stemCount = 0;
         let vsIndex = 0;
+        let widthUsed = false;
+        let widthLocked = false;
 
         const stack: number[] = [];
         const gsubrs = this.globalSubrs;
@@ -239,8 +250,64 @@ export class Cff2Table implements ITable {
             }
         };
 
+        const applyBlendToStack = (stack: number[], vsIndexValue: number): void => {
+            const n = stack.pop();
+            if (n == null) return;
+            const regionCount = this.vstoreRegionCounts[vsIndexValue] ?? 0;
+            const regionIndices = this.vstoreRegionIndices[vsIndexValue] ?? [];
+            const blendCount = n * (regionCount + 1);
+            if (n <= 0 || stack.length < blendCount) return;
+            const start = stack.length - blendCount;
+            const blendArgs = stack.splice(start, blendCount);
+            const base = blendArgs.slice(0, n);
+            const deltas = blendArgs.slice(n);
+            const coords = this.variationCoords;
+            const regionScalars: number[] = [];
+            for (let r = 0; r < regionCount; r++) {
+                const regionIndex = regionIndices[r] ?? r;
+                const region = this.vstoreRegions[regionIndex];
+                if (!region) { regionScalars.push(0); continue; }
+                let scalar = 1;
+                for (let a = 0; a < region.length; a++) {
+                    const coord = coords[a] ?? 0;
+                    const { start, peak, end } = region[a];
+                    if (start === 0 && peak === 0 && end === 0) {
+                        continue;
+                    }
+                    if (coord === 0) {
+                        if (peak !== 0) { scalar = 0; break; }
+                        continue;
+                    }
+                    if (coord < start || coord > end) { scalar = 0; break; }
+                    if (coord < peak) scalar *= (coord - start) / (peak - start);
+                    else if (coord > peak) scalar *= (end - coord) / (end - peak);
+                }
+                regionScalars.push(scalar);
+            }
+            const out: number[] = base.slice();
+            for (let r = 0; r < regionCount; r++) {
+                const s = regionScalars[r] ?? 0;
+                if (!s) continue;
+                for (let i = 0; i < n; i++) {
+                    out[i] += deltas[r * n + i] * s;
+                }
+            }
+            stack.push(...out);
+            if ((globalThis as any)?.__CFF2_TRACE) {
+                (globalThis as any).__CFF2_TRACE.push({
+                    type: 'blend',
+                    vsIndex: vsIndexValue,
+                    n,
+                    base: base.slice(),
+                    deltas: deltas.slice(),
+                    out: out.slice()
+                });
+            }
+        };
+
         const parse = (bytes: Uint8Array) => {
             let i = 0;
+            let blendCount = 0;
             while (i < bytes.length) {
                 const b0 = bytes[i++];
                 if (b0 >= 32 || b0 === 28 || b0 === 255) {
@@ -254,14 +321,35 @@ export class Cff2Table implements ITable {
                     return;
                 }
                 const args = stack.splice(0, stack.length);
+                const tryConsumeWidthOdd = (lockAfter: boolean) => {
+                    if (!widthLocked && !widthUsed && args.length % 2 === 1) {
+                        args.shift();
+                        widthUsed = true;
+                    }
+                    if (lockAfter || widthUsed) {
+                        widthLocked = true;
+                    }
+                };
+                const tryConsumeWidthMoreThanOne = (lockAfter: boolean) => {
+                    if (!widthLocked && !widthUsed && args.length > 1) {
+                        args.shift();
+                        widthUsed = true;
+                    }
+                    if (lockAfter || widthUsed) {
+                        widthLocked = true;
+                    }
+                };
                 switch (b0) {
                     case 1:
                     case 3:
                     case 18:
-                    case 23:
+                    case 23: {
+                        tryConsumeWidthOdd(false);
                         stemCount += Math.floor(args.length / 2);
                         break;
+                    }
                     case 4: {
+                        tryConsumeWidthMoreThanOne(true);
                         closeContour();
                         const dy = args.pop() ?? 0;
                         y += dy;
@@ -318,12 +406,14 @@ export class Cff2Table implements ITable {
                     }
                     case 19:
                     case 20: {
+                        tryConsumeWidthOdd(false);
                         stemCount += Math.floor(args.length / 2);
                         const maskBytes = Math.ceil(stemCount / 8);
                         i += Math.min(maskBytes, bytes.length - i);
                         break;
                     }
                     case 21: {
+                        tryConsumeWidthOdd(true);
                         closeContour();
                         const dy = args.pop() ?? 0;
                         const dx = args.pop() ?? 0;
@@ -334,6 +424,7 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 22: {
+                        tryConsumeWidthMoreThanOne(true);
                         closeContour();
                         const dx = args.pop() ?? 0;
                         x += dx;
@@ -407,6 +498,21 @@ export class Cff2Table implements ITable {
                         }
                         break;
                     }
+                    case 15: { // vsindex (CFF2 single-byte)
+                        vsIndex = args.pop() ?? 0;
+                        if (args.length) stack.push(...args);
+                        // debug
+                        if ((globalThis as any)?.__CFF2_DEBUG) {
+                            console.log('CFF2 vsindex', vsIndex);
+                        }
+                        break;
+                    }
+                    case 16: { // blend (CFF2 single-byte)
+                        stack.push(...args);
+                        applyBlendToStack(stack, vsIndex);
+                        blendCount++;
+                        break;
+                    }
                     case 29: {
                         const subrIndex = (args.pop() ?? 0) + gBias;
                         if (args.length) stack.push(...args);
@@ -453,46 +559,16 @@ export class Cff2Table implements ITable {
                         const op = bytes[i++];
                         if (op === 16) { // vsindex
                             vsIndex = args.pop() ?? 0;
+                            if (args.length) stack.push(...args);
+                            if ((globalThis as any)?.__CFF2_DEBUG) {
+                                console.log('CFF2 vsindex (esc)', vsIndex);
+                            }
                             break;
                         }
                         if (op === 17) { // blend
-                            const n = args.pop() ?? 0;
-                            const regionCount = this.vstoreRegionCounts[vsIndex] ?? 0;
-                            const regionIndices = this.vstoreRegionIndices[vsIndex] ?? [];
-                            const expected = n * (regionCount + 1);
-                            if (n > 0 && args.length >= expected) {
-                                const base = args.slice(0, n);
-                                const deltas = args.slice(n);
-                                const coords = this.variationCoords;
-                                const regionScalars: number[] = [];
-                                for (let r = 0; r < regionCount; r++) {
-                                    const regionIndex = regionIndices[r] ?? r;
-                                    const region = this.vstoreRegions[regionIndex];
-                                    if (!region) { regionScalars.push(0); continue; }
-                                    let scalar = 1;
-                                    for (let a = 0; a < region.length; a++) {
-                                        const coord = coords[a] ?? 0;
-                                        const { start, peak, end } = region[a];
-                                        if (coord === 0 || start === 0 && peak === 0 && end === 0) continue;
-                                        if (coord < start || coord > end) { scalar = 0; break; }
-                                        if (coord < peak) scalar *= (coord - start) / (peak - start);
-                                        else if (coord > peak) scalar *= (end - coord) / (end - peak);
-                                    }
-                                    regionScalars.push(scalar);
-                                }
-                                const out: number[] = base.slice();
-                                for (let r = 0; r < regionCount; r++) {
-                                    const s = regionScalars[r] ?? 0;
-                                    if (!s) continue;
-                                    for (let i = 0; i < n; i++) {
-                                        out[i] += deltas[r * n + i] * s;
-                                    }
-                                }
-                                stack.push(...out);
-                            } else if (n > 0 && args.length >= n) {
-                                const base = args.slice(0, n);
-                                stack.push(...base);
-                            }
+                            stack.push(...args);
+                            applyBlendToStack(stack, vsIndex);
+                            blendCount++;
                             break;
                         }
                         if (op === 34 && args.length >= 7) { // hflex
@@ -547,6 +623,17 @@ export class Cff2Table implements ITable {
                     default:
                         break;
                 }
+                if ((globalThis as any)?.__CFF2_TRACE) {
+                    (globalThis as any).__CFF2_TRACE.push({
+                        type: 'op',
+                        op: b0,
+                        args: args.slice()
+                    });
+                }
+            }
+            if ((globalThis as any)?.__CFF2_DEBUG && blendCount) {
+                const regionIndices = this.vstoreRegionIndices[vsIndex] ?? [];
+                console.log('CFF2 blends', blendCount, 'vsindex', vsIndex, 'regions', regionIndices);
             }
         };
 

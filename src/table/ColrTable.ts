@@ -19,6 +19,9 @@ export type ColrBaseGlyphPaintRecord = {
     paintOffset: number;
 };
 
+type VariationRegion = { start: number; peak: number; end: number };
+type ClipBox = { xMin: number; yMin: number; xMax: number; yMax: number };
+
 export class ColrTable implements ITable {
     version: number = 0;
 
@@ -42,6 +45,14 @@ export class ColrTable implements ITable {
     private view: DataView;
     private baseGlyphListStart: number = 0;
     private layerListStart: number = 0;
+    private variationCoords: number[] = [];
+    private varStore: {
+        axisCount: number;
+        regions: VariationRegion[][];
+        dataOffsets: number[];
+        start: number;
+    } | null = null;
+    private clipBoxes: Map<number, ClipBox> = new Map();
 
     constructor(de: DirectoryEntry, byteArray: ByteArray) {
         const start = de.offset;
@@ -138,6 +149,13 @@ export class ColrTable implements ITable {
                     this.layerPaintOffsets.push(listOffset + rel);
                 }
             }
+
+            if (this.clipListOffset) {
+                this.readClipList(byteArray, start + this.clipListOffset);
+            }
+            if (this.varStoreOffset) {
+                this.readVariationStore(byteArray, start + this.varStoreOffset);
+            }
         }
     }
 
@@ -152,6 +170,14 @@ export class ColrTable implements ITable {
 
     getType(): string | number {
         return Table.COLR;
+    }
+
+    setVariationCoords(coords: number[]): void {
+        this.variationCoords = coords.slice();
+    }
+
+    getClipForGlyph(glyphId: number): ClipBox | null {
+        return this.clipBoxes.get(glyphId) ?? null;
     }
 
     getPaintForGlyph(glyphId: number): any | null {
@@ -190,7 +216,8 @@ export class ColrTable implements ITable {
                 const alphaRaw = this.view.getInt16(offset + 3, false);
                 const alpha = alphaRaw / 16384;
                 const varIndexBase = this.view.getUint32(offset + 5, false);
-                return { format, paletteIndex, alpha, varIndexBase };
+                const deltas = this.getVarDeltas(varIndexBase, 1);
+                return { format, paletteIndex, alpha: alpha + (deltas[0] ?? 0), varIndexBase };
             }
             case 4: { // PaintLinearGradient
                 const colorLineOffset = this.readOffset24(offset + 1);
@@ -212,8 +239,19 @@ export class ColrTable implements ITable {
                 const x2 = this.view.getInt16(offset + 12, false);
                 const y2 = this.view.getInt16(offset + 14, false);
                 const varIndexBase = this.view.getUint32(offset + 16, false);
+                const deltas = this.getVarDeltas(varIndexBase, 6);
                 const colorLine = this.readColorLine(baseOffset + colorLineOffset);
-                return { format, colorLine, x0, y0, x1, y1, x2, y2, varIndexBase };
+                return {
+                    format,
+                    colorLine,
+                    x0: x0 + (deltas[0] ?? 0),
+                    y0: y0 + (deltas[1] ?? 0),
+                    x1: x1 + (deltas[2] ?? 0),
+                    y1: y1 + (deltas[3] ?? 0),
+                    x2: x2 + (deltas[4] ?? 0),
+                    y2: y2 + (deltas[5] ?? 0),
+                    varIndexBase
+                };
             }
             case 8: { // PaintRadialGradient
                 const colorLineOffset = this.readOffset24(offset + 1);
@@ -235,8 +273,19 @@ export class ColrTable implements ITable {
                 const r0 = this.view.getInt16(offset + 12, false);
                 const r1 = this.view.getInt16(offset + 14, false);
                 const varIndexBase = this.view.getUint32(offset + 16, false);
+                const deltas = this.getVarDeltas(varIndexBase, 6);
                 const colorLine = this.readColorLine(baseOffset + colorLineOffset);
-                return { format, colorLine, x0, y0, x1, y1, r0, r1, varIndexBase };
+                return {
+                    format,
+                    colorLine,
+                    x0: x0 + (deltas[0] ?? 0),
+                    y0: y0 + (deltas[1] ?? 0),
+                    x1: x1 + (deltas[2] ?? 0),
+                    y1: y1 + (deltas[3] ?? 0),
+                    r0: r0 + (deltas[4] ?? 0),
+                    r1: r1 + (deltas[5] ?? 0),
+                    varIndexBase
+                };
             }
             case 6: { // PaintSweepGradient
                 const colorLineOffset = this.readOffset24(offset + 1);
@@ -254,8 +303,17 @@ export class ColrTable implements ITable {
                 const startAngle = this.readF2Dot14(offset + 8);
                 const endAngle = this.readF2Dot14(offset + 10);
                 const varIndexBase = this.view.getUint32(offset + 12, false);
+                const deltas = this.getVarDeltas(varIndexBase, 4);
                 const colorLine = this.readColorLine(baseOffset + colorLineOffset);
-                return { format, colorLine, centerX, centerY, startAngle, endAngle, varIndexBase };
+                return {
+                    format,
+                    colorLine,
+                    centerX: centerX + (deltas[0] ?? 0),
+                    centerY: centerY + (deltas[1] ?? 0),
+                    startAngle: startAngle + (deltas[2] ?? 0),
+                    endAngle: endAngle + (deltas[3] ?? 0),
+                    varIndexBase
+                };
             }
             case 10: { // PaintGlyph
                 const paintOffset = this.readOffset24(offset + 1);
@@ -279,8 +337,17 @@ export class ColrTable implements ITable {
                 const transformOffset = this.readOffset24(offset + 4);
                 const varIndexBase = this.view.getUint32(offset + 7, false);
                 const transform = this.readAffine2x3(baseOffset + transformOffset);
+                const deltas = this.getVarDeltas(varIndexBase, 6);
+                const adjusted = {
+                    xx: transform.xx + (deltas[0] ?? 0),
+                    yx: transform.yx + (deltas[1] ?? 0),
+                    xy: transform.xy + (deltas[2] ?? 0),
+                    yy: transform.yy + (deltas[3] ?? 0),
+                    dx: transform.dx + (deltas[4] ?? 0),
+                    dy: transform.dy + (deltas[5] ?? 0)
+                };
                 const paint = this.readPaint(baseOffset + paintOffset, baseOffset + paintOffset, depth + 1);
-                return { format, paint, transform, varIndexBase };
+                return { format, paint, transform: adjusted, varIndexBase };
             }
             case 14: { // PaintTranslate
                 const paintOffset = this.readOffset24(offset + 1);
@@ -294,8 +361,9 @@ export class ColrTable implements ITable {
                 const dx = this.view.getInt16(offset + 4, false);
                 const dy = this.view.getInt16(offset + 6, false);
                 const varIndexBase = this.view.getUint32(offset + 8, false);
+                const deltas = this.getVarDeltas(varIndexBase, 2);
                 const paint = this.readPaint(baseOffset + paintOffset, baseOffset + paintOffset, depth + 1);
-                return { format, paint, dx, dy, varIndexBase };
+                return { format, paint, dx: dx + (deltas[0] ?? 0), dy: dy + (deltas[1] ?? 0), varIndexBase };
             }
             case 16: { // PaintScale
                 const paintOffset = this.readOffset24(offset + 1);
@@ -309,8 +377,9 @@ export class ColrTable implements ITable {
                 const scaleX = this.readF2Dot14(offset + 4);
                 const scaleY = this.readF2Dot14(offset + 6);
                 const varIndexBase = this.view.getUint32(offset + 8, false);
+                const deltas = this.getVarDeltas(varIndexBase, 2);
                 const paint = this.readPaint(baseOffset + paintOffset, baseOffset + paintOffset, depth + 1);
-                return { format, paint, scaleX, scaleY, varIndexBase };
+                return { format, paint, scaleX: scaleX + (deltas[0] ?? 0), scaleY: scaleY + (deltas[1] ?? 0), varIndexBase };
             }
             case 18: { // PaintScaleAroundCenter
                 const paintOffset = this.readOffset24(offset + 1);
@@ -328,8 +397,17 @@ export class ColrTable implements ITable {
                 const centerX = this.view.getInt16(offset + 8, false);
                 const centerY = this.view.getInt16(offset + 10, false);
                 const varIndexBase = this.view.getUint32(offset + 12, false);
+                const deltas = this.getVarDeltas(varIndexBase, 4);
                 const paint = this.readPaint(baseOffset + paintOffset, baseOffset + paintOffset, depth + 1);
-                return { format, paint, scaleX, scaleY, centerX, centerY, varIndexBase };
+                return {
+                    format,
+                    paint,
+                    scaleX: scaleX + (deltas[0] ?? 0),
+                    scaleY: scaleY + (deltas[1] ?? 0),
+                    centerX: centerX + (deltas[2] ?? 0),
+                    centerY: centerY + (deltas[3] ?? 0),
+                    varIndexBase
+                };
             }
             case 22: { // PaintScaleUniformAroundCenter
                 const paintOffset = this.readOffset24(offset + 1);
@@ -349,8 +427,9 @@ export class ColrTable implements ITable {
                 const paintOffset = this.readOffset24(offset + 1);
                 const scale = this.readF2Dot14(offset + 4);
                 const varIndexBase = this.view.getUint32(offset + 6, false);
+                const deltas = this.getVarDeltas(varIndexBase, 1);
                 const paint = this.readPaint(baseOffset + paintOffset, baseOffset + paintOffset, depth + 1);
-                return { format, paint, scale, varIndexBase };
+                return { format, paint, scale: scale + (deltas[0] ?? 0), varIndexBase };
             }
             case 23: { // PaintVarScaleUniformAroundCenter
                 const paintOffset = this.readOffset24(offset + 1);
@@ -358,8 +437,16 @@ export class ColrTable implements ITable {
                 const centerX = this.view.getInt16(offset + 6, false);
                 const centerY = this.view.getInt16(offset + 8, false);
                 const varIndexBase = this.view.getUint32(offset + 10, false);
+                const deltas = this.getVarDeltas(varIndexBase, 3);
                 const paint = this.readPaint(baseOffset + paintOffset, baseOffset + paintOffset, depth + 1);
-                return { format, paint, scale, centerX, centerY, varIndexBase };
+                return {
+                    format,
+                    paint,
+                    scale: scale + (deltas[0] ?? 0),
+                    centerX: centerX + (deltas[1] ?? 0),
+                    centerY: centerY + (deltas[2] ?? 0),
+                    varIndexBase
+                };
             }
             case 24: { // PaintRotate
                 const paintOffset = this.readOffset24(offset + 1);
@@ -371,8 +458,9 @@ export class ColrTable implements ITable {
                 const paintOffset = this.readOffset24(offset + 1);
                 const angle = this.readF2Dot14(offset + 4);
                 const varIndexBase = this.view.getUint32(offset + 6, false);
+                const deltas = this.getVarDeltas(varIndexBase, 1);
                 const paint = this.readPaint(baseOffset + paintOffset, baseOffset + paintOffset, depth + 1);
-                return { format, paint, angle, varIndexBase };
+                return { format, paint, angle: angle + (deltas[0] ?? 0), varIndexBase };
             }
             case 26: { // PaintRotateAroundCenter
                 const paintOffset = this.readOffset24(offset + 1);
@@ -388,8 +476,16 @@ export class ColrTable implements ITable {
                 const centerX = this.view.getInt16(offset + 6, false);
                 const centerY = this.view.getInt16(offset + 8, false);
                 const varIndexBase = this.view.getUint32(offset + 10, false);
+                const deltas = this.getVarDeltas(varIndexBase, 3);
                 const paint = this.readPaint(baseOffset + paintOffset, baseOffset + paintOffset, depth + 1);
-                return { format, paint, angle, centerX, centerY, varIndexBase };
+                return {
+                    format,
+                    paint,
+                    angle: angle + (deltas[0] ?? 0),
+                    centerX: centerX + (deltas[1] ?? 0),
+                    centerY: centerY + (deltas[2] ?? 0),
+                    varIndexBase
+                };
             }
             case 30: { // PaintSkew
                 const paintOffset = this.readOffset24(offset + 1);
@@ -403,8 +499,9 @@ export class ColrTable implements ITable {
                 const xSkew = this.readF2Dot14(offset + 4);
                 const ySkew = this.readF2Dot14(offset + 6);
                 const varIndexBase = this.view.getUint32(offset + 8, false);
+                const deltas = this.getVarDeltas(varIndexBase, 2);
                 const paint = this.readPaint(baseOffset + paintOffset, baseOffset + paintOffset, depth + 1);
-                return { format, paint, xSkew, ySkew, varIndexBase };
+                return { format, paint, xSkew: xSkew + (deltas[0] ?? 0), ySkew: ySkew + (deltas[1] ?? 0), varIndexBase };
             }
             case 32: { // PaintComposite
                 const sourceOffset = this.readOffset24(offset + 1);
@@ -466,5 +563,150 @@ export class ColrTable implements ITable {
             cursor += 6;
         }
         return { extend, stops };
+    }
+
+    private readVariationStore(byteArray: ByteArray, offset: number): void {
+        const prev = byteArray.offset;
+        byteArray.offset = offset;
+        const format = byteArray.readUnsignedShort();
+        if (format !== 1) {
+            byteArray.offset = prev;
+            return;
+        }
+        const regionListOffset = byteArray.readUnsignedInt();
+        const dataCount = byteArray.readUnsignedShort();
+        const dataOffsets: number[] = [];
+        for (let i = 0; i < dataCount; i++) {
+            dataOffsets.push(byteArray.readUnsignedInt());
+        }
+
+        const regionListPos = offset + regionListOffset;
+        byteArray.offset = regionListPos;
+        const axisCount = byteArray.readUnsignedShort();
+        const regionCount = byteArray.readUnsignedShort();
+        const regions: VariationRegion[][] = [];
+        for (let r = 0; r < regionCount; r++) {
+            const region: VariationRegion[] = [];
+            for (let a = 0; a < axisCount; a++) {
+                const start = byteArray.readShort() / 16384;
+                const peak = byteArray.readShort() / 16384;
+                const end = byteArray.readShort() / 16384;
+                region.push({ start, peak, end });
+            }
+            regions.push(region);
+        }
+
+        this.varStore = { axisCount, regions, dataOffsets, start: offset };
+        byteArray.offset = prev;
+    }
+
+    private getVarDeltas(varIndexBase: number, count: number): number[] {
+        const out = new Array(count).fill(0);
+        for (let i = 0; i < count; i++) {
+            out[i] = this.getVarDelta(varIndexBase + i);
+        }
+        return out;
+    }
+
+    private getVarDelta(varIndex: number): number {
+        if (!this.varStore) return 0;
+        const outer = (varIndex >>> 16) & 0xffff;
+        const inner = varIndex & 0xffff;
+        const dataOffset = this.varStore.dataOffsets[outer];
+        if (dataOffset == null) return 0;
+
+        const dataPos = this.varStore.start + dataOffset;
+        const view = this.view;
+        const itemCount = view.getUint16(dataPos, false);
+        const shortDeltaCount = view.getUint16(dataPos + 2, false);
+        const regionIndexCount = view.getUint16(dataPos + 4, false);
+        if (inner >= itemCount) return 0;
+
+        const regionIndices: number[] = [];
+        let cursor = dataPos + 6;
+        for (let i = 0; i < regionIndexCount; i++) {
+            regionIndices.push(view.getUint16(cursor, false));
+            cursor += 2;
+        }
+
+        const scalar = (regionIndex: number): number => {
+            const region = this.varStore!.regions[regionIndex];
+            if (!region) return 0;
+            let s = 1;
+            for (let a = 0; a < region.length; a++) {
+                const coord = this.variationCoords[a] ?? 0;
+                const { start, peak, end } = region[a];
+                if (coord === 0 || (start === 0 && peak === 0 && end === 0)) continue;
+                if (coord < start || coord > end) { s = 0; break; }
+                if (coord < peak) s *= (coord - start) / (peak - start);
+                else if (coord > peak) s *= (end - coord) / (end - peak);
+            }
+            return s;
+        };
+
+        const deltaRecordSize = shortDeltaCount * 2 + (regionIndexCount - shortDeltaCount);
+        const recordStart = cursor + inner * deltaRecordSize;
+        let delta = 0;
+        let p = recordStart;
+        for (let r = 0; r < regionIndexCount; r++) {
+            const regionIdx = regionIndices[r];
+            const s = scalar(regionIdx);
+            const d = r < shortDeltaCount ? view.getInt16(p, false) : view.getInt8(p);
+            p += r < shortDeltaCount ? 2 : 1;
+            delta += d * s;
+        }
+        return delta;
+    }
+
+    private readClipList(byteArray: ByteArray, offset: number): void {
+        const prev = byteArray.offset;
+        byteArray.offset = offset;
+        let format = byteArray.readUnsignedShort();
+        if (format !== 1 && format !== 2) {
+            const alt = byteArray.readUnsignedByte();
+            if (alt === 1 || alt === 2) {
+                format = alt;
+            } else {
+                byteArray.offset = prev;
+                return;
+            }
+        }
+        const clipCount = byteArray.readUnsignedShort();
+        for (let i = 0; i < clipCount; i++) {
+            const glyphId = byteArray.readUnsignedShort();
+            const clipOffset = byteArray.readUnsignedInt();
+            const box = this.readClipBox(offset + clipOffset);
+            if (box) this.clipBoxes.set(glyphId, box);
+        }
+        byteArray.offset = prev;
+    }
+
+    private readClipBox(offset: number): ClipBox | null {
+        let format = this.view.getUint16(offset, false);
+        let cursor = offset + 2;
+        if (format !== 1 && format !== 2) {
+            format = this.view.getUint8(offset);
+            cursor = offset + 1;
+        }
+        if (format !== 1 && format !== 2) return null;
+        const xMin = this.view.getInt16(cursor, false);
+        const yMin = this.view.getInt16(cursor + 2, false);
+        const xMax = this.view.getInt16(cursor + 4, false);
+        const yMax = this.view.getInt16(cursor + 6, false);
+        if (format === 1) {
+            return { xMin, yMin, xMax, yMax };
+        }
+        // ClipBoxVar: four VariationIndex values follow
+        const varIndexBase = cursor + 8;
+        const dxMin = this.getVarDelta(this.view.getUint32(varIndexBase, false));
+        const dyMin = this.getVarDelta(this.view.getUint32(varIndexBase + 4, false));
+        const dxMax = this.getVarDelta(this.view.getUint32(varIndexBase + 8, false));
+        const dyMax = this.getVarDelta(this.view.getUint32(varIndexBase + 12, false));
+        return {
+            xMin: xMin + dxMin,
+            yMin: yMin + dyMin,
+            xMax: xMax + dxMax,
+            yMax: yMax + dyMax
+        };
     }
 }

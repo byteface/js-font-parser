@@ -12,7 +12,7 @@ var LayoutEngine = /** @class */ (function () {
     }
     LayoutEngine.layoutText = function (font, text, options) {
         var _this = this;
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u;
         if (options === void 0) { options = {}; }
         var maxWidth = (_a = options.maxWidth) !== null && _a !== void 0 ? _a : 0;
         var align = (_b = options.align) !== null && _b !== void 0 ? _b : 'left';
@@ -25,10 +25,11 @@ var LayoutEngine = /** @class */ (function () {
         var preserveNbsp = (_j = options.preserveNbsp) !== null && _j !== void 0 ? _j : true;
         var tabSize = (_k = options.tabSize) !== null && _k !== void 0 ? _k : 4;
         var justifyLastLine = (_l = options.justifyLastLine) !== null && _l !== void 0 ? _l : false;
-        var hhea = (_m = font.getTableByType) === null || _m === void 0 ? void 0 : _m.call(font, 0x68686561); // hhea
-        var head = (_o = font.getTableByType) === null || _o === void 0 ? void 0 : _o.call(font, 0x68656164); // head
-        var unitsPerEm = (_p = head === null || head === void 0 ? void 0 : head.unitsPerEm) !== null && _p !== void 0 ? _p : 1000;
-        var lineHeight = (_q = options.lineHeight) !== null && _q !== void 0 ? _q : (((_r = hhea === null || hhea === void 0 ? void 0 : hhea.ascender) !== null && _r !== void 0 ? _r : unitsPerEm * 0.8) - ((_s = hhea === null || hhea === void 0 ? void 0 : hhea.descender) !== null && _s !== void 0 ? _s : -unitsPerEm * 0.2) + ((_t = hhea === null || hhea === void 0 ? void 0 : hhea.lineGap) !== null && _t !== void 0 ? _t : 0));
+        var direction = (_m = options.direction) !== null && _m !== void 0 ? _m : 'ltr';
+        var hhea = (_o = font.getTableByType) === null || _o === void 0 ? void 0 : _o.call(font, 0x68686561); // hhea
+        var head = (_p = font.getTableByType) === null || _p === void 0 ? void 0 : _p.call(font, 0x68656164); // head
+        var unitsPerEm = (_q = head === null || head === void 0 ? void 0 : head.unitsPerEm) !== null && _q !== void 0 ? _q : 1000;
+        var lineHeight = (_r = options.lineHeight) !== null && _r !== void 0 ? _r : (((_s = hhea === null || hhea === void 0 ? void 0 : hhea.ascender) !== null && _s !== void 0 ? _s : unitsPerEm * 0.8) - ((_t = hhea === null || hhea === void 0 ? void 0 : hhea.descender) !== null && _t !== void 0 ? _t : -unitsPerEm * 0.2) + ((_u = hhea === null || hhea === void 0 ? void 0 : hhea.lineGap) !== null && _u !== void 0 ? _u : 0));
         var lines = [];
         var current = [];
         var cursorX = 0;
@@ -54,8 +55,8 @@ var LayoutEngine = /** @class */ (function () {
                 pushLine(false);
             }
             if (maxWidth > 0 && breakWords && tokenWidth > maxWidth) {
-                for (var _u = 0, tokenGlyphs_1 = tokenGlyphs; _u < tokenGlyphs_1.length; _u++) {
-                    var glyph = tokenGlyphs_1[_u];
+                for (var _v = 0, tokenGlyphs_1 = tokenGlyphs; _v < tokenGlyphs_1.length; _v++) {
+                    var glyph = tokenGlyphs_1[_v];
                     if (maxWidth > 0 && cursorX > 0 && cursorX + glyph.advance > maxWidth) {
                         pushLine(false);
                     }
@@ -66,8 +67,8 @@ var LayoutEngine = /** @class */ (function () {
                 }
                 continue;
             }
-            for (var _v = 0, tokenGlyphs_2 = tokenGlyphs; _v < tokenGlyphs_2.length; _v++) {
-                var glyph = tokenGlyphs_2[_v];
+            for (var _w = 0, tokenGlyphs_2 = tokenGlyphs; _w < tokenGlyphs_2.length; _w++) {
+                var glyph = tokenGlyphs_2[_w];
                 glyph.x = cursorX + glyph.x;
                 glyph.y = 0;
                 cursorX += glyph.advance;
@@ -78,6 +79,17 @@ var LayoutEngine = /** @class */ (function () {
         var resultWidth = maxWidth > 0 ? maxWidth : Math.max.apply(Math, __spreadArray([0], lines.map(function (l) { return l.width; }), false));
         lines.forEach(function (line, index) {
             var y = index * lineHeight;
+            if (direction === 'rtl') {
+                var reordered = line.glyphs.slice().reverse();
+                var cursor = 0;
+                for (var _i = 0, reordered_1 = reordered; _i < reordered_1.length; _i++) {
+                    var g = reordered_1[_i];
+                    g.x = cursor;
+                    cursor += g.advance;
+                }
+                line.glyphs = reordered;
+                line.width = cursor;
+            }
             if (align === 'center') {
                 var offset_1 = (resultWidth - line.width) * 0.5;
                 line.glyphs.forEach(function (g) { return (g.x += offset_1); });

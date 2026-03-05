@@ -262,7 +262,7 @@ export class FontParserWOFF {
             let desc = description;
             let lsb = this.hmtx?.getLeftSideBearing(i) ?? 0;
             let advance = this.hmtx?.getAdvanceWidth(i) ?? 0;
-            if (this.gvar && this.variationCoords.length > 0 && !description.isComposite()) {
+            if (this.gvar && this.variationCoords.length > 0) {
                 const basePointCount = description.getPointCount();
                 const gvarPointCount = basePointCount + 4; // phantom points
                 const deltas = this.gvar.getDeltasForGlyph(i, this.variationCoords, gvarPointCount);
@@ -276,6 +276,7 @@ export class FontParserWOFF {
                     while (dx.length < basePointCount) dx.push(0);
                     while (dy.length < basePointCount) dy.push(0);
                     while (touched.length < basePointCount) touched.push(false);
+                    // Apply IUP to fill missing deltas (works for composites too).
                     this.applyIupDeltas(base, dx, dy, touched);
 
                     const lsbDelta = fullDx[basePointCount] ?? 0;
@@ -615,6 +616,9 @@ export class FontParserWOFF {
 
     public setVariationCoords(coords: number[]): void {
         this.variationCoords = coords.slice();
+        if (this.colr && typeof (this.colr as any).setVariationCoords === 'function') {
+            (this.colr as any).setVariationCoords(coords);
+        }
     }
 
     public setVariationByAxes(values: Record<string, number>): void {
@@ -728,15 +732,45 @@ export class FontParserWOFF {
             return anchors.find(a => (a.type === 'base' || a.type === 'ligature' || a.type === 'mark2') && a.classIndex === classIndex);
         };
 
+        const isMarkGlyph = (gid: number) => (this.gdef?.getGlyphClass?.(gid) ?? 0) === 3;
+
         for (let i = 0; i < glyphIndices.length; i++) {
             const gid = glyphIndices[i];
             const anchors = getAnchors(gid);
             const markAnchor = anchors.find(a => a.type === 'mark');
             if (!markAnchor) continue;
 
+            let attached = false;
+            // Prefer mark-to-mark attachment when available.
+            let prev = i - 1;
+            while (prev >= 0) {
+                const prevGid = glyphIndices[prev];
+                if (!isMarkGlyph(prevGid)) {
+                    prev--;
+                    continue;
+                }
+                const prevAnchors = getAnchors(prevGid);
+                const mark2 = prevAnchors.find(a => a.type === 'mark2' && a.classIndex === markAnchor.classIndex);
+                if (mark2) {
+                    positioned[i].xOffset += mark2.x - markAnchor.x;
+                    positioned[i].yOffset += mark2.y - markAnchor.y;
+                    positioned[i].xAdvance = 0;
+                    attached = true;
+                    break;
+                }
+                prev--;
+            }
+            if (attached) continue;
+
+            // Fall back to base/ligature anchor, skipping marks.
             let baseIndex = i - 1;
             while (baseIndex >= 0) {
-                const baseAnchors = getAnchors(glyphIndices[baseIndex]);
+                const baseGid = glyphIndices[baseIndex];
+                if (isMarkGlyph(baseGid)) {
+                    baseIndex--;
+                    continue;
+                }
+                const baseAnchors = getAnchors(baseGid);
                 const baseAnchor = getBaseAnchor(baseAnchors, markAnchor.classIndex);
                 if (baseAnchor) {
                     positioned[i].xOffset += baseAnchor.x - markAnchor.x;

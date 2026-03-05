@@ -30,6 +30,7 @@
     <div class="row">
       <label>Font
         <select id="fontSelect">
+          <option value="../truetypefonts/color/colrv1-var/Nabla.ttf">Nabla (COLRv1 variable)</option>
           <option value="../truetypefonts/color/nabla/Nabla[EDPT,EHLT].ttf">Nabla (COLRv1 letters)</option>
           <option value="../truetypefonts/color/colrv1/test_glyphs-glyf_colr_1.ttf">COLRv1 Test Shapes</option>
         </select>
@@ -42,6 +43,7 @@
       <button id="useChar">Use Char</button>
     </div>
   <div class="hint" id="info"></div>
+  <div class="row" id="axesRow" style="margin-top:10px;gap:16px;flex-wrap:wrap"></div>
   <div class="hint">Note: the test font uses geometric shapes (squares/ovals) rather than alphabet letters.</div>
   </div>
 
@@ -66,6 +68,7 @@
     const glyphInput = document.getElementById("glyphInput");
     const charInput = document.getElementById("charInput");
     const useCharBtn = document.getElementById("useChar");
+    const axesRow = document.getElementById("axesRow");
     const paintTree = document.getElementById("paintTree");
     const info = document.getElementById("info");
     const unsupportedEl = document.getElementById("unsupported");
@@ -76,6 +79,8 @@
     let colr = null;
     let records = [];
     let index = 0;
+    let clipBox = null;
+    let axes = [];
 
     function identity() {
       return { xx: 1, yx: 0, xy: 0, yy: 1, dx: 0, dy: 0 };
@@ -443,6 +448,16 @@
       ctx.save();
       ctx.translate(80, 220);
       ctx.transform(transform.xx, transform.yx, transform.xy, transform.yy, transform.dx, transform.dy);
+      if (clipBox) {
+        ctx.beginPath();
+        ctx.rect(
+          clipBox.xMin * scale,
+          -clipBox.yMax * scale,
+          (clipBox.xMax - clipBox.xMin) * scale,
+          (clipBox.yMax - clipBox.yMin) * scale
+        );
+        ctx.clip();
+      }
       CanvasRenderer.drawGlyphToContext(ctx, glyph, {
         x: 0,
         y: 0,
@@ -461,6 +476,16 @@
       ctx.save();
       ctx.translate(80, 220);
       ctx.transform(transform.xx, transform.yx, transform.xy, transform.yy, transform.dx, transform.dy);
+      if (clipBox) {
+        ctx.beginPath();
+        ctx.rect(
+          clipBox.xMin * scale,
+          -clipBox.yMax * scale,
+          (clipBox.xMax - clipBox.xMin) * scale,
+          (clipBox.yMax - clipBox.yMin) * scale
+        );
+        ctx.clip();
+      }
       const grad = ctx.createLinearGradient(
         gradientPaint.x0 * scale,
         -gradientPaint.y0 * scale,
@@ -494,6 +519,16 @@
       ctx.save();
       ctx.translate(80, 220);
       ctx.transform(transform.xx, transform.yx, transform.xy, transform.yy, transform.dx, transform.dy);
+      if (clipBox) {
+        ctx.beginPath();
+        ctx.rect(
+          clipBox.xMin * scale,
+          -clipBox.yMax * scale,
+          (clipBox.xMax - clipBox.xMin) * scale,
+          (clipBox.yMax - clipBox.yMin) * scale
+        );
+        ctx.clip();
+      }
       const grad = ctx.createRadialGradient(
         gradientPaint.x0 * scale,
         -gradientPaint.y0 * scale,
@@ -529,6 +564,16 @@
       ctx.save();
       ctx.translate(80, 220);
       ctx.transform(transform.xx, transform.yx, transform.xy, transform.yy, transform.dx, transform.dy);
+      if (clipBox) {
+        ctx.beginPath();
+        ctx.rect(
+          clipBox.xMin * scale,
+          -clipBox.yMax * scale,
+          (clipBox.xMax - clipBox.xMin) * scale,
+          (clipBox.yMax - clipBox.yMin) * scale
+        );
+        ctx.clip();
+      }
       const cx = gradientPaint.centerX * scale;
       const cy = -gradientPaint.centerY * scale;
       const start = gradientPaint.startAngle * Math.PI * 2;
@@ -554,6 +599,7 @@
     function render() {
       if (!font || !colr) return;
       const glyphId = Number(glyphInput.value);
+      clipBox = colr.getClipForGlyph?.(glyphId) ?? null;
       const paint = colr.getPaintForGlyph(glyphId);
       paintTree.textContent = paint ? paintToString(paint) : "No COLRv1 paint for glyph.";
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -585,6 +631,37 @@
       unsupportedEl.textContent = unsupported.size ? `Unsupported paint formats: ${Array.from(unsupported).join(", ")}` : "All paints supported in this glyph.";
     }
 
+    function renderAxes() {
+      axesRow.innerHTML = "";
+      const fvar = font?.getTableByType?.(Table.fvar);
+      if (!fvar || !fvar.axes || !fvar.axes.length) return;
+      axes = fvar.axes.map(axis => ({ ...axis, value: axis.defaultValue }));
+      axes.forEach(axis => {
+        const wrapper = document.createElement("label");
+        wrapper.style.display = "flex";
+        wrapper.style.flexDirection = "column";
+        wrapper.style.fontSize = "11px";
+        wrapper.textContent = `${axis.name} (${axis.minValue}→${axis.maxValue})`;
+        const slider = document.createElement("input");
+        slider.type = "range";
+        slider.min = String(axis.minValue);
+        slider.max = String(axis.maxValue);
+        slider.step = "1";
+        slider.value = String(axis.defaultValue);
+        slider.addEventListener("input", () => {
+          axis.value = Number(slider.value);
+          if (typeof font.setVariationByAxes === "function") {
+            const values = {};
+            axes.forEach(a => { values[a.name] = a.value; });
+            font.setVariationByAxes(values);
+          }
+          render();
+        });
+        wrapper.appendChild(slider);
+        axesRow.appendChild(wrapper);
+      });
+    }
+
     async function loadSampleFont() {
       const response = await fetch(fontSelect.value);
       const buf = await response.arrayBuffer();
@@ -592,6 +669,7 @@
       colr = font.getTableByType(Table.COLR);
       records = colr?.baseGlyphPaintRecords ?? [];
       index = 0;
+      renderAxes();
       const label = fontSelect.options[fontSelect.selectedIndex]?.textContent ?? "Font";
       if (records.length) {
         glyphInput.value = String(records[0].glyphId);
@@ -607,13 +685,12 @@
       if (!font) return;
       const value = (charInput.value || "").trim();
       if (!value) return;
-      const codePoint = value.codePointAt(0);
-      if (codePoint == null) return;
-      const gid = font.getGlyphIndexByChar(codePoint);
+      const gid = font.getGlyphIndexByChar(value);
       if (gid == null) return;
       glyphInput.value = String(gid);
       render();
     });
+    fontSelect.addEventListener("change", loadSampleFont);
     prevBtn.addEventListener("click", () => {
       if (!records.length) return;
       index = (index - 1 + records.length) % records.length;

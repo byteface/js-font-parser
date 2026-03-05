@@ -131,10 +131,8 @@ var CanvasRenderer = /** @class */ (function () {
         if (options.fillRule) {
             context.fill(options.fillRule);
         }
-        else if (glyph.isCubic) {
-            context.fill("evenodd");
-        }
         else {
+            // CFF/CFF2 outlines use nonzero winding by default
             context.fill();
         }
         context.restore();

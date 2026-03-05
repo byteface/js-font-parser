@@ -82,6 +82,22 @@
             <input id="enableGvar" type="checkbox" checked />
             Enable gvar
         </label>
+        <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:normal;">
+            <input id="soloAxis" type="checkbox" />
+            Solo first axis
+        </label>
+        <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:normal;">
+            <input id="swapAxes" type="checkbox" />
+            Swap axis order
+        </label>
+        <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:normal;">
+            <input id="lockOrigin" type="checkbox" />
+            Lock origin
+        </label>
+        <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:normal;">
+            <input id="debugContours" type="checkbox" />
+            Debug contours
+        </label>
     </div>
 
     <div class="layout">
@@ -124,12 +140,18 @@
         const probeCtx = probeCanvas.getContext('2d');
         const status = document.getElementById('status');
         const enableGvar = document.getElementById('enableGvar');
+        const debugContours = document.getElementById('debugContours');
+        const soloAxis = document.getElementById('soloAxis');
+        const swapAxes = document.getElementById('swapAxes');
+        const lockOrigin = document.getElementById('lockOrigin');
         const probeGlyphInput = document.getElementById('probeGlyph');
         const probeMaxBtn = document.getElementById('probeMax');
         const axesMinBtn = document.getElementById('axesMin');
         const axesMaxBtn = document.getElementById('axesMax');
         const axesResetBtn = document.getElementById('axesReset');
         const compareAxes = document.getElementById('compareAxes');
+        const logDeltas = true;
+        let loggedVstore = false;
         let baselinePoints = null;
 
         const fonts = [
@@ -166,19 +188,141 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
+        function renderContours(glyph, context, scale, originX, originY) {
+            if (!glyph || !context) return;
+            const colors = ['#1f6feb', '#e5534b', '#2da44e', '#a371f7', '#bf8700', '#f85149'];
+            let contourIndex = 0;
+            let start = 0;
+            for (let i = 0; i < glyph.getPointCount(); i++) {
+                const p = glyph.getPoint(i);
+                if (!p || !p.endOfContour) continue;
+                const color = colors[contourIndex % colors.length];
+                // debug: contour stats
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                let area = 0;
+                let prev = glyph.getPoint(i);
+                for (let j = start; j <= i; j++) {
+                    const pt = glyph.getPoint(j);
+                    if (!pt) continue;
+                    minX = Math.min(minX, pt.x);
+                    maxX = Math.max(maxX, pt.x);
+                    minY = Math.min(minY, pt.y);
+                    maxY = Math.max(maxY, pt.y);
+                    if (prev) {
+                        area += (prev.x * pt.y) - (pt.x * prev.y);
+                    }
+                    prev = pt;
+                }
+                if (prev) {
+                    const first = glyph.getPoint(start);
+                    if (first) {
+                        area += (prev.x * first.y) - (first.x * prev.y);
+                    }
+                }
+                const w = maxX - minX;
+                const h = maxY - minY;
+                console.log(`Contour ${contourIndex}: pts=${i - start + 1} bounds=[${minX},${minY}]→[${maxX},${maxY}] w=${w} h=${h} area=${area / 2}`);
+
+                context.save();
+                context.translate(originX, originY);
+                context.scale(scale, -scale);
+                context.beginPath();
+                let first = true;
+                for (let j = start; j <= i; j++) {
+                    const pt = glyph.getPoint(j);
+                    if (!pt) continue;
+                    if (first) {
+                        context.moveTo(pt.x, pt.y);
+                        first = false;
+                    } else {
+                        context.lineTo(pt.x, pt.y);
+                    }
+                }
+                context.closePath();
+                context.strokeStyle = color;
+                context.lineWidth = 2 / scale;
+                context.stroke();
+                context.restore();
+                // label contour index near its first point (screen space)
+                const firstPt = glyph.getPoint(start);
+                if (firstPt) {
+                    const sx = originX + (firstPt.x * scale);
+                    const sy = originY - (firstPt.y * scale);
+                    context.save();
+                    context.fillStyle = color;
+                    context.font = '14px monospace';
+                    context.fillText(String(contourIndex), sx + 4, sy - 4);
+                    context.beginPath();
+                    context.arc(sx, sy, 3, 0, Math.PI * 2);
+                    context.fill();
+                    context.restore();
+                }
+                start = i + 1;
+                contourIndex++;
+            }
+        }
+
         function renderText() {
             if (!font) return;
             clear();
             const head = font.getTableByType(Table.head);
             const unitsPerEm = head?.unitsPerEm ?? 1000;
             const scale = 160 / unitsPerEm;
-            CanvasRenderer.drawString(font, textInput.value, canvas, {
-                x: 40,
-                y: 220,
-                scale,
-                spacing: 4,
-                styles: { fillStyle: '#2f4f7a', strokeStyle: '#2f4f7a', lineWidth: 1 }
-            });
+            if (debugContours.checked) {
+                const glyph = font.getGlyphByChar ? font.getGlyphByChar('A') : null;
+                let ox = 60;
+                let oy = 220;
+                if (lockOrigin.checked && glyph) {
+                    let minX = Infinity, minY = Infinity;
+                    for (let i = 0; i < glyph.getPointCount(); i++) {
+                        const p = glyph.getPoint(i);
+                        if (!p) continue;
+                        if (p.x < minX) minX = p.x;
+                        if (p.y < minY) minY = p.y;
+                    }
+                    if (minX !== Infinity) ox = ox - (minX * scale);
+                    if (minY !== Infinity) oy = oy + (minY * scale);
+                    if (logDeltas) {
+                        console.log('CFF2 glyph min', { minX, minY });
+                    }
+                }
+                renderContours(glyph, ctx, scale, ox, oy);
+            } else if (lockOrigin.checked) {
+                let cursorX = 40;
+                const baselineY = 220;
+                for (const ch of textInput.value) {
+                    const glyph = font.getGlyphByChar ? font.getGlyphByChar(ch) : null;
+                    if (!glyph) {
+                        cursorX += 8;
+                        continue;
+                    }
+                    let minX = Infinity;
+                    let minY = Infinity;
+                    for (let i = 0; i < glyph.getPointCount(); i++) {
+                        const p = glyph.getPoint(i);
+                        if (!p) continue;
+                        if (p.x < minX) minX = p.x;
+                        if (p.y < minY) minY = p.y;
+                    }
+                    const drawX = minX !== Infinity ? cursorX - (minX * scale) : cursorX;
+                    const drawY = minY !== Infinity ? baselineY + (minY * scale) : baselineY;
+                    CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+                        x: drawX,
+                        y: drawY,
+                        scale,
+                        styles: { fillStyle: '#2f4f7a', strokeStyle: '#2f4f7a', lineWidth: 1 }
+                    });
+                    cursorX += (glyph.advanceWidth ?? 0) * scale + 4;
+                }
+            } else {
+                CanvasRenderer.drawString(font, textInput.value, canvas, {
+                    x: 40,
+                    y: 220,
+                    scale,
+                    spacing: 4,
+                    styles: { fillStyle: '#2f4f7a', strokeStyle: '#2f4f7a', lineWidth: 1 }
+                });
+            }
 
             const glyph = font.getGlyphByChar ? font.getGlyphByChar('H') : null;
             let maxDelta = 0;
@@ -217,6 +361,37 @@
             probeCtx.clearRect(0, 0, probeCanvas.width, probeCanvas.height);
             probeCtx.fillStyle = '#fbfcff';
             probeCtx.fillRect(0, 0, probeCanvas.width, probeCanvas.height);
+
+            if (font.getTableByType(Table.CFF2) && axes.length > 0) {
+                const restore = font.variationCoords ? font.variationCoords.slice() : [];
+                const renderWithCoords = (coords, color) => {
+                    font.setVariationCoords(coords);
+                    const g = font.getGlyph(gid);
+                    if (g) {
+                        CanvasRenderer.drawGlyphToContext(probeCtx, g, {
+                            x: 20,
+                            y: 220,
+                            scale,
+                            styles: { fillStyle: color, strokeStyle: color, lineWidth: 1 }
+                        });
+                    }
+                };
+                const baseCoords = new Array(axes.length).fill(0);
+                renderWithCoords(baseCoords, 'rgba(120,120,120,0.35)');
+                const wghtIndex = axes.findIndex(a => a.name === 'wght');
+                const opszIndex = axes.findIndex(a => a.name === 'opsz');
+                if (wghtIndex >= 0) {
+                    const coords = baseCoords.slice();
+                    coords[wghtIndex] = 1;
+                    renderWithCoords(coords, 'rgba(40,120,220,0.45)');
+                }
+                if (opszIndex >= 0) {
+                    const coords = baseCoords.slice();
+                    coords[opszIndex] = 1;
+                    renderWithCoords(coords, 'rgba(220,80,80,0.45)');
+                }
+                font.setVariationCoords(restore);
+            }
 
             if (compareAxes.checked && axes.length) {
                 const restoreValues = axes.map(axis => axis.value);
@@ -326,12 +501,47 @@
                 renderText();
                 return;
             }
-            if (typeof font.setVariationByAxes !== 'function') return;
-            const values = {};
-            axes.forEach(axis => {
-                values[axis.name] = axis.value;
-            });
-            font.setVariationByAxes(values);
+            if (font.getTableByType(Table.CFF2) && typeof font.setVariationCoords === 'function') {
+                const coords = axes.map((axis, idx) => {
+                    const value = (soloAxis.checked && idx > 0) ? axis.defaultValue : axis.value;
+                    const norm = value === axis.defaultValue
+                        ? 0
+                        : value > axis.defaultValue
+                            ? (value - axis.defaultValue) / (axis.maxValue - axis.defaultValue)
+                            : (value - axis.defaultValue) / (axis.defaultValue - axis.minValue);
+                    return Math.max(-1, Math.min(1, norm));
+                });
+                if (swapAxes.checked && coords.length > 1) {
+                    coords.reverse();
+                }
+                font.setVariationCoords(coords);
+                if (logDeltas) {
+                    console.log('CFF2 coords', coords, 'axes', axes.map(a => a.name));
+                }
+                if (!loggedVstore && font.cff2?.vstoreRegions?.length) {
+                    loggedVstore = true;
+                    const axisNames = axes.map(a => a.name);
+                    const regions = font.cff2.vstoreRegions.map((region, idx) => {
+                        const active = region
+                            .map((r, a) => ({ axis: axisNames[a] ?? `a${a}`, start: r.start, peak: r.peak, end: r.end }))
+                            .filter(r => !(r.start === 0 && r.peak === 0 && r.end === 0));
+                        return { idx, active };
+                    });
+                    const summary = regions.filter(r => r.active.length > 0).slice(0, 24);
+                    console.log('CFF2 vstore regions (first 24 active):', summary);
+                }
+            } else {
+                if (typeof font.setVariationByAxes !== 'function') return;
+                const values = {};
+                axes.forEach((axis, idx) => {
+                    if (soloAxis.checked && idx > 0) {
+                        values[axis.name] = axis.defaultValue;
+                    } else {
+                        values[axis.name] = axis.value;
+                    }
+                });
+                font.setVariationByAxes(values);
+            }
             renderText();
         }
 
@@ -374,6 +584,7 @@
         async function loadAndRender() {
             const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
             font = await loadFont(selected.url);
+            window.__font = font;
             const fvar = font.getTableByType(Table.fvar);
             renderAxes(fvar);
             let baseGlyph = null;
@@ -397,6 +608,10 @@
         textInput.addEventListener('input', renderText);
         enableGvar.addEventListener('change', applyAxisValues);
         probeGlyphInput.addEventListener('input', renderText);
+        debugContours.addEventListener('input', renderText);
+        soloAxis.addEventListener('input', applyAxisValues);
+        swapAxes.addEventListener('input', applyAxisValues);
+        lockOrigin.addEventListener('input', renderText);
         probeMaxBtn.addEventListener('click', findMaxDeltaGlyph);
         compareAxes.addEventListener('change', renderText);
         axesMinBtn.addEventListener('click', () => setAllAxes('min'));
