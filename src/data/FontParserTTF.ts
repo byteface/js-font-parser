@@ -54,6 +54,7 @@ export class FontParserTTF {
     private colr: ColrTable | null = null;
     private cpal: CpalTable | null = null;
     private gpos: GposTable | null = null;
+    private gdef: any | null = null;
     private fvar: FvarTable | null = null;
     private svg: SvgTable | null = null;
     private gvar: GvarTable | null = null;
@@ -115,6 +116,10 @@ export class FontParserTTF {
         this.colr = this.getTable(Table.COLR) as ColrTable | null;
         this.cpal = this.getTable(Table.CPAL) as CpalTable | null;
         this.gpos = this.getTable(Table.GPOS) as GposTable | null;
+        this.gdef = this.getTable(Table.GDEF) as any | null;
+        if (this.gsub && this.gdef && typeof (this.gsub as any).setGdef === 'function') {
+            (this.gsub as any).setGdef(this.gdef);
+        }
         this.fvar = this.getTable(Table.fvar) as FvarTable | null;
         this.svg = this.getTable(Table.SVG) as SvgTable | null;
         this.gvar = this.getTable(Table.gvar) as GvarTable | null;
@@ -192,41 +197,7 @@ export class FontParserTTF {
     public getGlyphIndicesForStringWithGsub(text: string, featureTags: string[] = ["liga"], scriptTags: string[] = ["DFLT", "latn"]): number[] {
         const glyphs = this.getGlyphIndicesForString(text);
         if (!this.gsub || glyphs.length === 0) return glyphs;
-
-        const subtables = this.gsub.getSubtablesForFeatures(featureTags, scriptTags);
-
-        let result = glyphs.slice();
-        for (const st of subtables) {
-            if (!st) continue;
-
-            if (typeof (st as any).substitute === "function") {
-                result = result.map(g => (st as any).substitute(g));
-                continue;
-            }
-
-            if (typeof (st as any).applyToGlyphs === "function") {
-                result = (st as any).applyToGlyphs(result);
-                continue;
-            }
-
-            if (st instanceof LigatureSubstFormat1) {
-                const lig = st as LigatureSubstFormat1;
-                const next: number[] = [];
-                let i = 0;
-                while (i < result.length) {
-                    const match = lig.tryLigature(result, i);
-                    if (match) {
-                        next.push(match.glyphId);
-                        i += match.length;
-                    } else {
-                        next.push(result[i]);
-                        i += 1;
-                    }
-                }
-                result = next;
-            }
-        }
-        return result;
+        return this.gsub.applyFeatures(glyphs, featureTags, scriptTags);
     }
 
     public getKerningValueByGlyphs(leftGlyph: number, rightGlyph: number): number {
@@ -432,13 +403,29 @@ export class FontParserTTF {
         const description = this.glyf?.getDescription(i);
         if (description != null) {
             let desc = description;
-            if (this.gvar && this.variationCoords.length > 0) {
-                const deltas = this.gvar.getDeltasForGlyph(i, this.variationCoords, description.getPointCount());
+            let lsb = this.hmtx?.getLeftSideBearing(i) ?? 0;
+            let advance = this.hmtx?.getAdvanceWidth(i) ?? 0;
+            if (this.gvar && this.variationCoords.length > 0 && !description.isComposite()) {
+                const basePointCount = description.getPointCount();
+                const gvarPointCount = basePointCount + 4; // phantom points
+                const deltas = this.gvar.getDeltasForGlyph(i, this.variationCoords, gvarPointCount);
                 if (deltas) {
                     const base = description;
-                    const dx = deltas.dx;
-                    const dy = deltas.dy;
-                    this.applyIupDeltas(base, dx, dy, deltas.touched);
+                    const fullDx = deltas.dx;
+                    const fullDy = deltas.dy;
+                    const dx = fullDx.slice(0, basePointCount);
+                    const dy = fullDy.slice(0, basePointCount);
+                    const touched = deltas.touched.slice(0, basePointCount);
+                    while (dx.length < basePointCount) dx.push(0);
+                    while (dy.length < basePointCount) dy.push(0);
+                    while (touched.length < basePointCount) touched.push(false);
+                    this.applyIupDeltas(base, dx, dy, touched);
+
+                    const lsbDelta = fullDx[basePointCount] ?? 0;
+                    const rsbDelta = fullDx[basePointCount + 1] ?? 0;
+                    lsb += lsbDelta;
+                    advance += (rsbDelta - lsbDelta);
+
                     desc = {
                         getPointCount: () => base.getPointCount(),
                         getContourCount: () => base.getContourCount(),
@@ -455,7 +442,7 @@ export class FontParserTTF {
                     };
                 }
             }
-            return new GlyphData(desc, this.hmtx?.getLeftSideBearing(i) ?? 0, this.hmtx?.getAdvanceWidth(i) ?? 0);
+            return new GlyphData(desc, lsb, advance);
         }
         if (this.cff2) {
             const cff2Desc = this.cff2.getGlyphDescription(i);
@@ -510,6 +497,33 @@ export class FontParserTTF {
         const glyphId = this.getGlyphIndexByChar(char);
         if (glyphId == null) return [];
         return this.getColorLayersForGlyph(glyphId, paletteIndex);
+    }
+
+    public getColrV1LayersForGlyph(glyphId: number, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
+        if (!this.colr || this.colr.version === 0) return [];
+        const paint = this.colr.getPaintForGlyph(glyphId);
+        if (!paint) return [];
+        return this.flattenColrV1Paint(paint, paletteIndex);
+    }
+
+    private flattenColrV1Paint(paint: any, paletteIndex: number): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
+        if (!paint) return [];
+        if (paint.format === 1 && Array.isArray(paint.layers)) {
+            return paint.layers.flatMap((p: any) => this.flattenColrV1Paint(p, paletteIndex));
+        }
+        if (paint.format === 10) {
+            const child = paint.paint;
+            if (child && child.format === 2) {
+                const color = this.cpal?.getPalette(paletteIndex)?.[child.paletteIndex];
+                const rgba = color ? `rgba(${color.red}, ${color.green}, ${color.blue}, ${(color.alpha / 255) * (child.alpha ?? 1)})` : null;
+                return [{ glyphId: paint.glyphID, color: rgba, paletteIndex: child.paletteIndex }];
+            }
+            return this.flattenColrV1Paint(child, paletteIndex).map(layer => ({ ...layer, glyphId: paint.glyphID }));
+        }
+        if (paint.format === 11) {
+            return this.getColrV1LayersForGlyph(paint.glyphID, paletteIndex);
+        }
+        return [];
     }
 
     public getMarkAnchorsForGlyph(
@@ -682,6 +696,82 @@ export class FontParserTTF {
 
     public getTableByType(tableType: number): ITable | null {
         return this.getTable(tableType);
+    }
+
+    public getNameInfo(): {
+        family: string;
+        subfamily: string;
+        fullName: string;
+        postScriptName: string;
+        version: string;
+        manufacturer: string;
+        designer: string;
+        description: string;
+        typoFamily: string;
+        typoSubfamily: string;
+    } {
+        return {
+            family: this.getNameRecord(1),
+            subfamily: this.getNameRecord(2),
+            fullName: this.getNameRecord(4),
+            postScriptName: this.getNameRecord(6),
+            version: this.getNameRecord(5),
+            manufacturer: this.getNameRecord(8),
+            designer: this.getNameRecord(9),
+            description: this.getNameRecord(10),
+            typoFamily: this.getNameRecord(16),
+            typoSubfamily: this.getNameRecord(17)
+        };
+    }
+
+    public getOs2Info(): {
+        weightClass: number;
+        widthClass: number;
+        typoAscender: number;
+        typoDescender: number;
+        typoLineGap: number;
+        winAscent: number;
+        winDescent: number;
+        unicodeRanges: number[];
+        codePageRanges: number[];
+        vendorId: string;
+        fsSelection: number;
+    } | null {
+        if (!this.os2) return null;
+        const vendorId = String.fromCharCode(
+            (this.os2.achVendorID >> 24) & 0xff,
+            (this.os2.achVendorID >> 16) & 0xff,
+            (this.os2.achVendorID >> 8) & 0xff,
+            this.os2.achVendorID & 0xff
+        ).replace(/\0/g, '');
+        return {
+            weightClass: this.os2.usWeightClass,
+            widthClass: this.os2.usWidthClass,
+            typoAscender: this.os2.sTypoAscender,
+            typoDescender: this.os2.sTypoDescender,
+            typoLineGap: this.os2.sTypoLineGap,
+            winAscent: this.os2.usWinAscent,
+            winDescent: this.os2.usWinDescent,
+            unicodeRanges: [this.os2.ulUnicodeRange1, this.os2.ulUnicodeRange2, this.os2.ulUnicodeRange3, this.os2.ulUnicodeRange4],
+            codePageRanges: [this.os2.ulCodePageRange1, this.os2.ulCodePageRange2],
+            vendorId,
+            fsSelection: this.os2.fsSelection
+        };
+    }
+
+    public getPostInfo(): {
+        italicAngle: number;
+        underlinePosition: number;
+        underlineThickness: number;
+        isFixedPitch: number;
+    } | null {
+        if (!this.post) return null;
+        return {
+            italicAngle: this.post.italicAngle / 65536,
+            underlinePosition: this.post.underlinePosition,
+            underlineThickness: this.post.underlineThickness,
+            isFixedPitch: this.post.isFixedPitch
+        };
     }
 
     // Return a table by type

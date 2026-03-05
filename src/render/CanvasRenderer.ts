@@ -269,9 +269,12 @@ export class CanvasRenderer {
         const context = canvas.getContext('2d');
         if (!context) return;
 
-        const layers = typeof font.getColorLayersForGlyph === 'function'
+        let layers = typeof font.getColorLayersForGlyph === 'function'
             ? font.getColorLayersForGlyph(glyphIndex, options.paletteIndex ?? 0)
             : [];
+        if ((!layers || layers.length === 0) && typeof font.getColrV1LayersForGlyph === 'function') {
+            layers = font.getColrV1LayersForGlyph(glyphIndex, options.paletteIndex ?? 0);
+        }
 
         if (!layers || layers.length === 0) {
             const glyph = font.getGlyph(glyphIndex);

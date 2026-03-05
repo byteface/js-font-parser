@@ -78,15 +78,35 @@
             Text
             <input id="textInput" value="VARIABLE" />
         </label>
+        <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:normal;">
+            <input id="enableGvar" type="checkbox" checked />
+            Enable gvar
+        </label>
     </div>
 
     <div class="layout">
         <div class="card">
             <div id="axes"></div>
+            <div class="axis">
+                <label>Probe glyph id</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <input id="probeGlyph" type="text" value="4" style="min-width:120px" />
+                    <button id="probeMax">Find max Δ glyph</button>
+                    <button id="axesMin">All axes min</button>
+                    <button id="axesMax">All axes max</button>
+                    <button id="axesReset">Reset axes</button>
+                </div>
+            </div>
+            <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:normal;">
+                <input id="compareAxes" type="checkbox" />
+                Compare min/max overlay (probe)
+            </label>
             <div class="hint" id="status">Axes are read from `fvar`. gvar interpolation is experimental but includes IUP.</div>
         </div>
         <div class="card">
-            <canvas id="canvas" width="900" height="320"></canvas>
+            <canvas id="canvas" width="900" height="260"></canvas>
+            <div class="hint" style="margin-top:8px">Probe glyph render</div>
+            <canvas id="probeCanvas" width="260" height="260"></canvas>
         </div>
     </div>
 
@@ -100,10 +120,20 @@
         const axesContainer = document.getElementById('axes');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        const probeCanvas = document.getElementById('probeCanvas');
+        const probeCtx = probeCanvas.getContext('2d');
         const status = document.getElementById('status');
+        const enableGvar = document.getElementById('enableGvar');
+        const probeGlyphInput = document.getElementById('probeGlyph');
+        const probeMaxBtn = document.getElementById('probeMax');
+        const axesMinBtn = document.getElementById('axesMin');
+        const axesMaxBtn = document.getElementById('axesMax');
+        const axesResetBtn = document.getElementById('axesReset');
+        const compareAxes = document.getElementById('compareAxes');
         let baselinePoints = null;
 
         const fonts = [
+            { name: 'Source Serif 4 Variable (CFF2)', url: '../truetypefonts/OTF/source-serif4/SourceSerif4Variable-Roman.otf' },
             { name: 'Playwrite GB S Variable', url: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-VariableFont_wght.ttf' },
             { name: 'Playwrite GB S Italic Variable', url: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-Italic-VariableFont_wght.ttf' },
             { name: 'Arimo Variable', url: '../truetypefonts/arimo/Arimo[wght].ttf' }
@@ -151,9 +181,9 @@
             });
 
             const glyph = font.getGlyphByChar ? font.getGlyphByChar('H') : null;
+            let maxDelta = 0;
             if (glyph && glyph.getPointCount && baselinePoints) {
                 const count = Math.min(glyph.getPointCount(), baselinePoints.length);
-                let maxDelta = 0;
                 for (let i = 0; i < count; i++) {
                     const p = glyph.getPoint(i);
                     const b = baselinePoints[i];
@@ -163,8 +193,98 @@
                     const d = Math.sqrt(dx * dx + dy * dy);
                     if (d > maxDelta) maxDelta = d;
                 }
-                status.textContent += ` | max Δ: ${maxDelta.toFixed(2)}`;
             }
+            const axisSummary = axes.map(axis => `${axis.name}=${axis.value}`).join(', ');
+            const coords = axes.map(axis => {
+                const norm = axis.value === axis.defaultValue
+                    ? 0
+                    : axis.value > axis.defaultValue
+                        ? (axis.value - axis.defaultValue) / (axis.maxValue - axis.defaultValue)
+                        : (axis.value - axis.defaultValue) / (axis.defaultValue - axis.minValue);
+                return Math.max(-1, Math.min(1, norm)).toFixed(2);
+            }).join(',');
+            const probeInfo = renderProbeGlyph();
+            status.textContent = `fvar: ${font.getTableByType(Table.fvar) ? 'yes' : 'no'} | gvar: ${font.getTableByType(Table.gvar) ? 'yes' : 'no'} | cff2: ${font.getTableByType(Table.CFF2) ? 'yes' : 'no'} | max Δ: ${maxDelta.toFixed(2)} | coords: [${coords}]${axisSummary ? ' | ' + axisSummary : ''}${probeInfo ? ' | ' + probeInfo : ''}`;
+        }
+
+        function renderProbeGlyph() {
+            if (!font || !probeCtx) return '';
+            const head = font.getTableByType(Table.head);
+            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const scale = 220 / unitsPerEm;
+            const gid = Number(probeGlyphInput.value);
+            if (!Number.isFinite(gid)) return 'probe: invalid';
+            probeCtx.clearRect(0, 0, probeCanvas.width, probeCanvas.height);
+            probeCtx.fillStyle = '#fbfcff';
+            probeCtx.fillRect(0, 0, probeCanvas.width, probeCanvas.height);
+
+            if (compareAxes.checked && axes.length) {
+                const restoreValues = axes.map(axis => axis.value);
+                setAllAxes('min');
+                const minGlyph = font.getGlyph(gid);
+                if (minGlyph) {
+                    CanvasRenderer.drawGlyphToContext(probeCtx, minGlyph, {
+                        x: 20,
+                        y: 220,
+                        scale,
+                        styles: { fillStyle: 'rgba(64,120,200,0.35)', strokeStyle: 'rgba(64,120,200,0.9)', lineWidth: 1 }
+                    });
+                }
+                setAllAxes('max');
+                const maxGlyph = font.getGlyph(gid);
+                if (maxGlyph) {
+                    CanvasRenderer.drawGlyphToContext(probeCtx, maxGlyph, {
+                        x: 20,
+                        y: 220,
+                        scale,
+                        styles: { fillStyle: 'rgba(216,74,74,0.35)', strokeStyle: 'rgba(216,74,74,0.9)', lineWidth: 1 }
+                    });
+                }
+                axes.forEach((axis, idx) => {
+                    axis.value = restoreValues[idx];
+                    if (axis._slider) axis._slider.value = String(axis.value);
+                });
+                applyAxisValues();
+            } else {
+                const glyph = font.getGlyph(gid);
+                if (!glyph) return `probe gid ${gid}: no glyph`;
+
+                // draw baseline (default coords) in light gray for comparison
+                const restoreCoords = font.variationCoords ? font.variationCoords.slice() : [];
+                if (typeof font.setVariationCoords === 'function') {
+                    font.setVariationCoords([]);
+                    const baseGlyph = font.getGlyph(gid);
+                    if (baseGlyph) {
+                        CanvasRenderer.drawGlyphToContext(probeCtx, baseGlyph, {
+                            x: 20,
+                            y: 220,
+                            scale,
+                            styles: { fillStyle: 'rgba(120,140,170,0.35)', strokeStyle: 'rgba(120,140,170,0.5)', lineWidth: 1 }
+                        });
+                    }
+                    font.setVariationCoords(restoreCoords);
+                }
+
+                CanvasRenderer.drawGlyphToContext(probeCtx, glyph, {
+                    x: 20,
+                    y: 220,
+                    scale,
+                    styles: { fillStyle: '#2f4f7a', strokeStyle: '#2f4f7a', lineWidth: 1.2 }
+                });
+            }
+
+            const gvar = font.getTableByType(Table.gvar);
+            if (!gvar || !font.glyf?.getDescription) return `probe gid ${gid}`;
+            const desc = font.glyf.getDescription(gid);
+            if (!desc || desc.isComposite()) return `probe gid ${gid} (composite/no desc)`;
+            const deltas = gvar.getDeltasForGlyph(gid, font.variationCoords ?? [], desc.getPointCount() + 4);
+            if (!deltas) return `probe gid ${gid} (no deltas)`;
+            let max = 0;
+            for (let i = 0; i < desc.getPointCount(); i++) {
+                const d = Math.hypot(deltas.dx[i], deltas.dy[i]);
+                if (d > max) max = d;
+            }
+            return `probe gid ${gid} maxΔ ${max.toFixed(2)}`;
         }
 
         function renderAxes(fvar) {
@@ -190,6 +310,7 @@
                     axis.value = Number(slider.value);
                     applyAxisValues();
                 });
+                axis._slider = slider;
                 wrapper.appendChild(label);
                 wrapper.appendChild(slider);
                 axesContainer.appendChild(wrapper);
@@ -197,7 +318,15 @@
         }
 
         function applyAxisValues() {
-            if (!font || typeof font.setVariationByAxes !== 'function') return;
+            if (!font) return;
+            if (!enableGvar.checked) {
+                if (typeof font.setVariationCoords === 'function') {
+                    font.setVariationCoords([]);
+                }
+                renderText();
+                return;
+            }
+            if (typeof font.setVariationByAxes !== 'function') return;
             const values = {};
             axes.forEach(axis => {
                 values[axis.name] = axis.value;
@@ -206,24 +335,73 @@
             renderText();
         }
 
+        function setAllAxes(to) {
+            axes.forEach(axis => {
+                if (to === 'min') axis.value = axis.minValue;
+                if (to === 'max') axis.value = axis.maxValue;
+                if (to === 'default') axis.value = axis.defaultValue;
+                if (axis._slider) axis._slider.value = String(axis.value);
+            });
+            applyAxisValues();
+        }
+
+        function findMaxDeltaGlyph() {
+            if (!font) return;
+            const gvar = font.getTableByType(Table.gvar);
+            if (!gvar || !font.glyf?.getDescription) return;
+            let bestGid = 0;
+            let bestDelta = 0;
+            const limit = Math.min(font.getNumGlyphs?.() ?? 0, 512);
+            for (let gid = 0; gid < limit; gid++) {
+                const desc = font.glyf.getDescription(gid);
+                if (!desc || desc.isComposite()) continue;
+                const deltas = gvar.getDeltasForGlyph(gid, font.variationCoords ?? [], desc.getPointCount() + 4);
+                if (!deltas) continue;
+                let max = 0;
+                for (let i = 0; i < desc.getPointCount(); i++) {
+                    const d = Math.hypot(deltas.dx[i], deltas.dy[i]);
+                    if (d > max) max = d;
+                }
+                if (max > bestDelta) {
+                    bestDelta = max;
+                    bestGid = gid;
+                }
+            }
+            probeGlyphInput.value = String(bestGid);
+            renderText();
+        }
+
         async function loadAndRender() {
             const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
             font = await loadFont(selected.url);
             const fvar = font.getTableByType(Table.fvar);
             renderAxes(fvar);
-            applyAxisValues();
-            const gvar = font.getTableByType(Table.gvar);
-            status.textContent = `fvar: ${fvar ? 'yes' : 'no'} | gvar: ${gvar ? 'yes' : 'no'}`;
-            const baseGlyph = font.getGlyphByChar ? font.getGlyphByChar('H') : null;
+            let baseGlyph = null;
+            const restoreCoords = font.variationCoords ? font.variationCoords.slice() : [];
+            if (typeof font.setVariationCoords === 'function') {
+                font.setVariationCoords([]);
+                baseGlyph = font.getGlyphByChar ? font.getGlyphByChar('H') : null;
+                font.setVariationCoords(restoreCoords);
+            } else {
+                baseGlyph = font.getGlyphByChar ? font.getGlyphByChar('H') : null;
+            }
             baselinePoints = baseGlyph ? Array.from({ length: baseGlyph.getPointCount() }, (_, i) => {
                 const p = baseGlyph.getPoint(i);
                 return p ? { x: p.x, y: p.y } : null;
             }) : null;
+            applyAxisValues();
             renderText();
         }
 
         fontSelect.addEventListener('change', loadAndRender);
         textInput.addEventListener('input', renderText);
+        enableGvar.addEventListener('change', applyAxisValues);
+        probeGlyphInput.addEventListener('input', renderText);
+        probeMaxBtn.addEventListener('click', findMaxDeltaGlyph);
+        compareAxes.addEventListener('change', renderText);
+        axesMinBtn.addEventListener('click', () => setAllAxes('min'));
+        axesMaxBtn.addEventListener('click', () => setAllAxes('max'));
+        axesResetBtn.addEventListener('click', () => setAllAxes('default'));
 
         populateFonts();
         loadAndRender();

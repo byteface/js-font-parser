@@ -32,4 +32,12 @@ export class LangSys {
         }
         return false;
     }
+
+    public getRequiredFeatureIndex(): number {
+        return this.reqFeatureIndex;
+    }
+
+    public getFeatureIndices(): number[] {
+        return this.featureIndex.slice();
+    }
 }

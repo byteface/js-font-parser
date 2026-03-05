@@ -15,6 +15,7 @@ var __extends = (this && this.__extends) || (function () {
 })();
 import { Coverage } from "./Coverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
+import { matchInputSequence } from "./GsubMatch.js";
 var ContextSubstFormat3 = /** @class */ (function (_super) {
     __extends(ContextSubstFormat3, _super);
     function ContextSubstFormat3(byte_ar, offset, gsub) {
@@ -49,28 +50,30 @@ var ContextSubstFormat3 = /** @class */ (function (_super) {
         return _this;
     }
     ContextSubstFormat3.prototype.applyToGlyphs = function (glyphs) {
+        return this.applyToGlyphsWithContext(glyphs, undefined);
+    };
+    ContextSubstFormat3.prototype.applyToGlyphsWithContext = function (glyphs, ctx) {
+        var _a, _b;
         if (this.glyphCount === 0 || this.coverages.length !== this.glyphCount)
             return glyphs;
         var out = glyphs.slice();
         var i = 0;
-        while (i <= out.length - this.glyphCount) {
-            var match = true;
-            for (var j = 0; j < this.glyphCount; j++) {
-                var cov = this.coverages[j];
-                if (!cov || cov.findGlyph(out[i + j]) < 0) {
-                    match = false;
-                    break;
-                }
-            }
-            if (!match) {
+        while (i < out.length) {
+            if (this.coverages[0].findGlyph(out[i]) < 0) {
                 i++;
                 continue;
             }
-            for (var _i = 0, _a = this.records; _i < _a.length; _i++) {
-                var rec = _a[_i];
-                out = this.gsub.applyLookupAt(rec.lookupListIndex, out, i + rec.sequenceIndex);
+            var matched = matchInputSequence(out, i, this.coverages.slice(1), function (expected, gid) { return expected.findGlyph(gid) >= 0; }, ctx);
+            if (!matched) {
+                i++;
+                continue;
             }
-            i += this.glyphCount;
+            for (var _i = 0, _c = this.records; _i < _c.length; _i++) {
+                var rec = _c[_i];
+                var targetIndex = (_a = matched[rec.sequenceIndex]) !== null && _a !== void 0 ? _a : (i + rec.sequenceIndex);
+                out = this.gsub.applyLookupAt(rec.lookupListIndex, out, targetIndex);
+            }
+            i = ((_b = matched[matched.length - 1]) !== null && _b !== void 0 ? _b : i) + 1;
         }
         return out;
     };

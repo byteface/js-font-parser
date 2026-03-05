@@ -235,7 +235,7 @@ var CanvasRenderer = /** @class */ (function () {
         context.restore();
     };
     CanvasRenderer.drawColorGlyph = function (font, glyphIndex, canvas, options) {
-        var _a, _b, _c, _d, _e, _f, _g, _h;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         if (options === void 0) { options = {}; }
         var scale = (_a = options.scale) !== null && _a !== void 0 ? _a : 0.1;
         var x = (_b = options.x) !== null && _b !== void 0 ? _b : 0;
@@ -246,6 +246,9 @@ var CanvasRenderer = /** @class */ (function () {
         var layers = typeof font.getColorLayersForGlyph === 'function'
             ? font.getColorLayersForGlyph(glyphIndex, (_d = options.paletteIndex) !== null && _d !== void 0 ? _d : 0)
             : [];
+        if ((!layers || layers.length === 0) && typeof font.getColrV1LayersForGlyph === 'function') {
+            layers = font.getColrV1LayersForGlyph(glyphIndex, (_e = options.paletteIndex) !== null && _e !== void 0 ? _e : 0);
+        }
         if (!layers || layers.length === 0) {
             var glyph = font.getGlyph(glyphIndex);
             if (!glyph)
@@ -258,7 +261,7 @@ var CanvasRenderer = /** @class */ (function () {
             var glyph = font.getGlyph(layer.glyphId);
             if (!glyph)
                 continue;
-            var fill = (_h = (_f = (_e = layer.color) !== null && _e !== void 0 ? _e : options.fallbackFill) !== null && _f !== void 0 ? _f : (_g = options.styles) === null || _g === void 0 ? void 0 : _g.fillStyle) !== null && _h !== void 0 ? _h : '#111';
+            var fill = (_j = (_g = (_f = layer.color) !== null && _f !== void 0 ? _f : options.fallbackFill) !== null && _g !== void 0 ? _g : (_h = options.styles) === null || _h === void 0 ? void 0 : _h.fillStyle) !== null && _j !== void 0 ? _j : '#111';
             this.drawGlyphToContext(context, glyph, {
                 x: x,
                 y: y,

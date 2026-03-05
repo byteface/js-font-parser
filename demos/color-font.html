@@ -227,6 +227,10 @@
             const baseline = colorCanvas.height * 0.7;
 
             const glyphs = Array.from(text).map(ch => font.getGlyphIndexByChar(ch)).filter(g => g != null);
+            const colrVersion = colr?.version ?? 0;
+            if (colrVersion >= 1) {
+                colorInfo.textContent = "COLRv1 paint tables detected.";
+            }
 
             if (glyphs.length === 0 && colr?.baseGlyphRecords?.length) {
                 colorInfo.textContent = "No glyphs found for that text; showing first COLR glyphs instead.";

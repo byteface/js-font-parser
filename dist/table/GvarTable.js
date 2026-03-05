@@ -47,7 +47,7 @@ var GvarTable = /** @class */ (function () {
         return Table.gvar;
     };
     GvarTable.prototype.getDeltasForGlyph = function (glyphId, coords, pointCount) {
-        var _a;
+        var _a, _b;
         if (glyphId < 0 || glyphId >= this.glyphCount)
             return null;
         var start = this.dataOffset + this.offsets[glyphId];
@@ -56,6 +56,8 @@ var GvarTable = /** @class */ (function () {
             return null;
         var cursor = start;
         var tupleVariationCount = this.view.getUint16(cursor, false);
+        cursor += 2;
+        var offsetToData = this.view.getUint16(cursor, false);
         cursor += 2;
         var hasSharedPoints = (tupleVariationCount & 0x8000) !== 0;
         var count = tupleVariationCount & 0x0fff;
@@ -70,7 +72,7 @@ var GvarTable = /** @class */ (function () {
             var sharedIndex = tupleIndex & 0x0fff;
             var peak = hasEmbeddedPeak
                 ? this.readTuple(cursor)
-                : ((_a = this.sharedTuples[sharedIndex]) !== null && _a !== void 0 ? _a : new Array(this.axisCount).fill(0));
+                : ((_b = (_a = this.sharedTuples[sharedIndex]) !== null && _a !== void 0 ? _a : this.sharedTuples[0]) !== null && _b !== void 0 ? _b : new Array(this.axisCount).fill(0));
             if (hasEmbeddedPeak)
                 cursor += this.axisCount * 2;
             var startTuple = void 0;
@@ -82,26 +84,31 @@ var GvarTable = /** @class */ (function () {
                 cursor += this.axisCount * 2;
             }
             tuples.push({
-                dataOffset: cursor,
+                dataOffset: 0,
                 dataSize: dataSize,
                 peak: peak,
                 start: startTuple,
                 end: endTuple,
                 hasPrivatePoints: hasPrivatePoints
             });
-            cursor += dataSize;
         }
         var sharedPoints = null;
+        var dataCursor = start + offsetToData;
         if (hasSharedPoints) {
-            var result = this.readPointNumbers(cursor, pointCount);
+            var result = this.readPointNumbers(dataCursor, pointCount);
             sharedPoints = result.points;
-            cursor += result.size;
+            dataCursor += result.size;
+        }
+        for (var _i = 0, tuples_1 = tuples; _i < tuples_1.length; _i++) {
+            var tuple = tuples_1[_i];
+            tuple.dataOffset = dataCursor;
+            dataCursor += tuple.dataSize;
         }
         var dx = new Array(pointCount).fill(0);
         var dy = new Array(pointCount).fill(0);
         var touched = new Array(pointCount).fill(false);
-        for (var _i = 0, tuples_1 = tuples; _i < tuples_1.length; _i++) {
-            var tuple = tuples_1[_i];
+        for (var _c = 0, tuples_2 = tuples; _c < tuples_2.length; _c++) {
+            var tuple = tuples_2[_c];
             var scalar = this.computeScalar(coords, tuple.peak, tuple.start, tuple.end);
             if (scalar === 0)
                 continue;
@@ -116,8 +123,8 @@ var GvarTable = /** @class */ (function () {
                 points = sharedPoints;
             }
             var indices = points !== null && points !== void 0 ? points : this.rangePoints(pointCount);
-            for (var _b = 0, indices_1 = indices; _b < indices_1.length; _b++) {
-                var idx = indices_1[_b];
+            for (var _d = 0, indices_1 = indices; _d < indices_1.length; _d++) {
+                var idx = indices_1[_d];
                 if (idx >= 0 && idx < pointCount)
                     touched[idx] = true;
             }
@@ -216,16 +223,19 @@ var GvarTable = /** @class */ (function () {
             var control = this.view.getUint8(cursor++);
             var runCount = (control & 0x3f) + 1;
             if (control & 0x80) {
+                // 0x80 = zero run
+                for (var i = 0; i < runCount; i++)
+                    values.push(0);
+            }
+            else if (control & 0x40) {
+                // 0x40 = 16-bit signed deltas
                 for (var i = 0; i < runCount; i++) {
                     values.push(this.view.getInt16(cursor, false));
                     cursor += 2;
                 }
             }
-            else if (control & 0x40) {
-                for (var i = 0; i < runCount; i++)
-                    values.push(0);
-            }
             else {
+                // 0x00 = 8-bit signed deltas
                 for (var i = 0; i < runCount; i++) {
                     values.push(this.view.getInt8(cursor++));
                 }

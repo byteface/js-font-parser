@@ -23,6 +23,12 @@ var LangSys = /** @class */ (function () {
         }
         return false;
     };
+    LangSys.prototype.getRequiredFeatureIndex = function () {
+        return this.reqFeatureIndex;
+    };
+    LangSys.prototype.getFeatureIndices = function () {
+        return this.featureIndex.slice();
+    };
     return LangSys;
 }());
 export { LangSys };

@@ -15,6 +15,7 @@ var __extends = (this && this.__extends) || (function () {
 })();
 import { Coverage } from "./Coverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
+import { matchBacktrackSequence, matchInputSequence, matchLookaheadSequence } from "./GsubMatch.js";
 var ChainingSubstFormat1 = /** @class */ (function (_super) {
     __extends(ChainingSubstFormat1, _super);
     function ChainingSubstFormat1(byte_ar, offset, gsub) {
@@ -75,6 +76,10 @@ var ChainingSubstFormat1 = /** @class */ (function (_super) {
         return _this;
     }
     ChainingSubstFormat1.prototype.applyToGlyphs = function (glyphs) {
+        return this.applyToGlyphsWithContext(glyphs, undefined);
+    };
+    ChainingSubstFormat1.prototype.applyToGlyphsWithContext = function (glyphs, ctx) {
+        var _a, _b, _c;
         if (!this.coverage)
             return glyphs;
         var out = glyphs.slice();
@@ -89,43 +94,20 @@ var ChainingSubstFormat1 = /** @class */ (function (_super) {
             var applied = false;
             for (var _i = 0, rules_1 = rules; _i < rules_1.length; _i++) {
                 var rule = rules_1[_i];
-                if (i + rule.input.length >= out.length)
+                if (!matchBacktrackSequence(out, i, rule.backtrack, function (expected, gid) { return gid === expected; }, ctx))
                     continue;
-                var match = true;
-                // backtrack: compare from nearest to farthest
-                for (var b = 0; b < rule.backtrack.length; b++) {
-                    var idx = i - 1 - b;
-                    if (idx < 0 || out[idx] !== rule.backtrack[rule.backtrack.length - 1 - b]) {
-                        match = false;
-                        break;
-                    }
-                }
-                if (!match)
+                var matched = matchInputSequence(out, i, rule.input, function (expected, gid) { return gid === expected; }, ctx);
+                if (!matched)
                     continue;
-                // input
-                for (var j = 0; j < rule.input.length; j++) {
-                    if (out[i + 1 + j] !== rule.input[j]) {
-                        match = false;
-                        break;
-                    }
-                }
-                if (!match)
+                var lookStart = (_a = matched[matched.length - 1]) !== null && _a !== void 0 ? _a : i;
+                if (!matchLookaheadSequence(out, lookStart, rule.lookahead, function (expected, gid) { return gid === expected; }, ctx))
                     continue;
-                // lookahead
-                for (var l = 0; l < rule.lookahead.length; l++) {
-                    var idx = i + 1 + rule.input.length + l;
-                    if (idx >= out.length || out[idx] !== rule.lookahead[l]) {
-                        match = false;
-                        break;
-                    }
+                for (var _d = 0, _e = rule.records; _d < _e.length; _d++) {
+                    var rec = _e[_d];
+                    var targetIndex = (_b = matched[rec.sequenceIndex]) !== null && _b !== void 0 ? _b : (i + rec.sequenceIndex);
+                    out = this.gsub.applyLookupAt(rec.lookupListIndex, out, targetIndex);
                 }
-                if (!match)
-                    continue;
-                for (var _a = 0, _b = rule.records; _a < _b.length; _a++) {
-                    var rec = _b[_a];
-                    out = this.gsub.applyLookupAt(rec.lookupListIndex, out, i + rec.sequenceIndex);
-                }
-                i += rule.input.length + 1;
+                i = ((_c = matched[matched.length - 1]) !== null && _c !== void 0 ? _c : i) + 1;
                 applied = true;
                 break;
             }

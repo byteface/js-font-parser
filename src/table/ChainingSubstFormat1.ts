@@ -3,6 +3,7 @@ import { Coverage } from "./Coverage.js";
 import { ICoverage } from "./ICoverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
 import { GsubTable } from "./GsubTable.js";
+import { GsubMatchContext, matchBacktrackSequence, matchInputSequence, matchLookaheadSequence } from "./GsubMatch.js";
 
 export class ChainingSubstFormat1 extends LookupSubtable {
     private coverage: ICoverage | null;
@@ -65,6 +66,10 @@ export class ChainingSubstFormat1 extends LookupSubtable {
     }
 
     applyToGlyphs(glyphs: number[]): number[] {
+        return this.applyToGlyphsWithContext(glyphs, undefined);
+    }
+
+    applyToGlyphsWithContext(glyphs: number[], ctx?: GsubMatchContext): number[] {
         if (!this.coverage) return glyphs;
         let out = glyphs.slice();
         let i = 0;
@@ -74,42 +79,20 @@ export class ChainingSubstFormat1 extends LookupSubtable {
                 i++;
                 continue;
             }
-            const rules: Array<{ backtrack: number[]; input: number[]; lookahead: number[]; records: Array<{ sequenceIndex: number; lookupListIndex: number }> }> = this.ruleSets[covIndex] || [];
+            const rules = this.ruleSets[covIndex] || [];
             let applied = false;
             for (const rule of rules) {
-                if (i + rule.input.length >= out.length) continue;
-                let match = true;
-                // backtrack: compare from nearest to farthest
-                for (let b = 0; b < rule.backtrack.length; b++) {
-                    const idx = i - 1 - b;
-                    if (idx < 0 || out[idx] !== rule.backtrack[rule.backtrack.length - 1 - b]) {
-                        match = false;
-                        break;
-                    }
-                }
-                if (!match) continue;
-                // input
-                for (let j = 0; j < rule.input.length; j++) {
-                    if (out[i + 1 + j] !== rule.input[j]) {
-                        match = false;
-                        break;
-                    }
-                }
-                if (!match) continue;
-                // lookahead
-                for (let l = 0; l < rule.lookahead.length; l++) {
-                    const idx = i + 1 + rule.input.length + l;
-                    if (idx >= out.length || out[idx] !== rule.lookahead[l]) {
-                        match = false;
-                        break;
-                    }
-                }
-                if (!match) continue;
+                if (!matchBacktrackSequence(out, i, rule.backtrack, (expected, gid) => gid === expected, ctx)) continue;
+                const matched = matchInputSequence(out, i, rule.input, (expected, gid) => gid === expected, ctx);
+                if (!matched) continue;
+                const lookStart = matched[matched.length - 1] ?? i;
+                if (!matchLookaheadSequence(out, lookStart, rule.lookahead, (expected, gid) => gid === expected, ctx)) continue;
 
                 for (const rec of rule.records) {
-                    out = this.gsub.applyLookupAt(rec.lookupListIndex, out, i + rec.sequenceIndex);
+                    const targetIndex = matched[rec.sequenceIndex] ?? (i + rec.sequenceIndex);
+                    out = this.gsub.applyLookupAt(rec.lookupListIndex, out, targetIndex);
                 }
-                i += rule.input.length + 1;
+                i = (matched[matched.length - 1] ?? i) + 1;
                 applied = true;
                 break;
             }

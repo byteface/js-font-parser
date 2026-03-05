@@ -16,6 +16,7 @@ export class Lookup {
     private subTableCount: number;
     private subTableOffsets: number[];
     private subTables: Array<LookupSubtable | null>;
+    private markFilteringSet: number | null = null;
 
     constructor(factory: ILookupSubtableFactory, byte_ar: ByteArray, offset: number) {
         byte_ar.offset = offset;
@@ -28,6 +29,10 @@ export class Lookup {
         for (let i = 0; i < this.subTableCount; i++) {
             this.subTableOffsets[i] = byte_ar.readUnsignedShort();
         }
+
+        if (this.flag & 0x0010) {
+            this.markFilteringSet = byte_ar.readUnsignedShort();
+        }
         
         for (let j = 0; j < this.subTableCount; j++) {
             this.subTables[j] = factory.read(this.type, byte_ar, offset + this.subTableOffsets[j]);
@@ -38,11 +43,19 @@ export class Lookup {
         return this.type;
     }
 
+    public getFlag(): number {
+        return this.flag;
+    }
+
     public getSubtableCount(): number {
         return this.subTableCount;
     }
 
     public getSubtable(i: number): LookupSubtable | null {
         return this.subTables[i];
+    }
+
+    public getMarkFilteringSet(): number | null {
+        return this.markFilteringSet;
     }
 }

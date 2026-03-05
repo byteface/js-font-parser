@@ -16,7 +16,7 @@
 <div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
 
 <h1>Font Metadata</h1>
-<div class="note">Reads the name table (where available) using the current TS parser.</div>
+<div class="note">Reads name/OS2/post convenience APIs and the raw name records.</div>
 <label for="fontSelect">Font:</label>
 <select id="fontSelect"></select>
 <div id="output"></div>
@@ -71,17 +71,40 @@
         output.innerHTML = 'Loading...';
         FontParser.load(url).then(font => {
             const records = font.getAllNameRecords();
-            renderRecords(records);
+            renderRecords(records, font);
         }).catch(err => {
             output.textContent = `Failed to load font: ${err}`;
         });
     }
 
-    function renderRecords(records) {
+    function renderRecords(records, font) {
         if (!records.length) {
             output.textContent = 'No name records found.';
             return;
         }
+
+        const nameInfo = typeof font.getNameInfo === 'function' ? font.getNameInfo() : null;
+        const os2Info = typeof font.getOs2Info === 'function' ? font.getOs2Info() : null;
+        const postInfo = typeof font.getPostInfo === 'function' ? font.getPostInfo() : null;
+
+        const summary = document.createElement('div');
+        summary.style.marginBottom = '12px';
+        summary.style.color = '#444';
+        const chunks = [];
+        if (nameInfo) {
+            chunks.push(`<strong>Name</strong>: ${nameInfo.fullName || nameInfo.family || 'Unknown'}`);
+            if (nameInfo.postScriptName) chunks.push(`PostScript: ${nameInfo.postScriptName}`);
+            if (nameInfo.version) chunks.push(`Version: ${nameInfo.version}`);
+        }
+        if (os2Info) {
+            chunks.push(`<strong>OS/2</strong>: weight ${os2Info.weightClass}, width ${os2Info.widthClass}, vendor ${os2Info.vendorId || '?'}`);
+            chunks.push(`Typo asc/desc/lineGap: ${os2Info.typoAscender}/${os2Info.typoDescender}/${os2Info.typoLineGap}`);
+            chunks.push(`Win ascent/descent: ${os2Info.winAscent}/${os2Info.winDescent}`);
+        }
+        if (postInfo) {
+            chunks.push(`<strong>Post</strong>: italicAngle ${postInfo.italicAngle.toFixed(2)}, underline ${postInfo.underlinePosition}/${postInfo.underlineThickness}`);
+        }
+        summary.innerHTML = chunks.join(' | ');
 
         const rows = records
             .filter(r => r.record && r.record.trim().length > 0)
@@ -105,6 +128,7 @@
         table.appendChild(tbody);
 
         output.innerHTML = '';
+        output.appendChild(summary);
         output.appendChild(table);
     }
 </script>

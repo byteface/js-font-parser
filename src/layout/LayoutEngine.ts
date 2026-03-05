@@ -4,6 +4,13 @@ export type LayoutOptions = {
     lineHeight?: number;
     letterSpacing?: number;
     useKerning?: boolean;
+    breakWords?: boolean;
+    trimLeadingSpaces?: boolean;
+    trimTrailingSpaces?: boolean;
+    collapseSpaces?: boolean;
+    preserveNbsp?: boolean;
+    tabSize?: number;
+    justifyLastLine?: boolean;
 };
 
 export type LayoutGlyph = {
@@ -41,6 +48,13 @@ export class LayoutEngine {
         const align = options.align ?? 'left';
         const letterSpacing = options.letterSpacing ?? 0;
         const useKerning = options.useKerning ?? true;
+        const breakWords = options.breakWords ?? true;
+        const trimLeadingSpaces = options.trimLeadingSpaces ?? true;
+        const trimTrailingSpaces = options.trimTrailingSpaces ?? true;
+        const collapseSpaces = options.collapseSpaces ?? false;
+        const preserveNbsp = options.preserveNbsp ?? true;
+        const tabSize = options.tabSize ?? 4;
+        const justifyLastLine = options.justifyLastLine ?? false;
 
         const hhea = font.getTableByType?.(0x68686561); // hhea
         const head = font.getTableByType?.(0x68656164); // head
@@ -52,16 +66,20 @@ export class LayoutEngine {
         let cursorX = 0;
 
         const pushLine = (isLastLine: boolean) => {
-            const width = cursorX;
+            const width = this.measureLineWidth(current, trimTrailingSpaces);
             lines.push({ glyphs: current, width, isLastLine });
             current = [];
             cursorX = 0;
         };
 
-        const tokens = this.tokenize(text);
+        const tokens = this.tokenize(text, collapseSpaces, preserveNbsp, tabSize);
         for (const token of tokens) {
             if (token === '\n') {
                 pushLine(false);
+                continue;
+            }
+
+            if (trimLeadingSpaces && cursorX === 0 && /^\s+$/.test(token)) {
                 continue;
             }
 
@@ -70,6 +88,19 @@ export class LayoutEngine {
 
             if (maxWidth > 0 && cursorX > 0 && cursorX + tokenWidth > maxWidth) {
                 pushLine(false);
+            }
+
+            if (maxWidth > 0 && breakWords && tokenWidth > maxWidth) {
+                for (const glyph of tokenGlyphs) {
+                    if (maxWidth > 0 && cursorX > 0 && cursorX + glyph.advance > maxWidth) {
+                        pushLine(false);
+                    }
+                    glyph.x = cursorX + glyph.x;
+                    glyph.y = 0;
+                    cursorX += glyph.advance;
+                    current.push(glyph);
+                }
+                continue;
             }
 
             for (const glyph of tokenGlyphs) {
@@ -91,7 +122,7 @@ export class LayoutEngine {
             } else if (align === 'right') {
                 const offset = resultWidth - line.width;
                 line.glyphs.forEach(g => (g.x += offset));
-            } else if (align === 'justify' && !line.isLastLine && maxWidth > 0) {
+            } else if (align === 'justify' && maxWidth > 0 && (!line.isLastLine || justifyLastLine)) {
                 this.justifyLine(line, resultWidth);
             }
             line.glyphs.forEach(g => (g.y = y));
@@ -105,23 +136,49 @@ export class LayoutEngine {
         };
     }
 
-    private static tokenize(text: string): string[] {
+    private static tokenize(text: string, collapseSpaces: boolean, preserveNbsp: boolean, tabSize: number): string[] {
         const tokens: string[] = [];
         let buffer = '';
+        let lastWasSpace = false;
         for (const ch of text) {
             if (ch === '\n') {
                 if (buffer) tokens.push(buffer);
                 tokens.push('\n');
                 buffer = '';
+                lastWasSpace = false;
+                continue;
+            }
+            if (ch === '\t') {
+                if (buffer) tokens.push(buffer);
+                const count = Math.max(1, tabSize);
+                if (collapseSpaces) {
+                    if (!lastWasSpace) tokens.push(' ');
+                    lastWasSpace = true;
+                } else {
+                    for (let i = 0; i < count; i++) tokens.push(' ');
+                    lastWasSpace = true;
+                }
+                buffer = '';
+                continue;
+            }
+            if (preserveNbsp && ch === '\u00A0') {
+                buffer += ch;
+                lastWasSpace = false;
                 continue;
             }
             if (/\s/.test(ch)) {
                 if (buffer) tokens.push(buffer);
-                tokens.push(ch);
+                if (collapseSpaces) {
+                    if (!lastWasSpace) tokens.push(' ');
+                    lastWasSpace = true;
+                } else {
+                    tokens.push(ch);
+                }
                 buffer = '';
                 continue;
             }
             buffer += ch;
+            lastWasSpace = false;
         }
         if (buffer) tokens.push(buffer);
         return tokens;
@@ -148,7 +205,9 @@ export class LayoutEngine {
 
     private static justifyLine(line: LayoutLine, targetWidth: number): void {
         if (!line.glyphs.length) return;
-        const spaces = line.glyphs.filter(g => g.char === ' ');
+        let lastIndex = line.glyphs.length - 1;
+        while (lastIndex >= 0 && line.glyphs[lastIndex].char === ' ') lastIndex--;
+        const spaces = line.glyphs.filter((g, idx) => g.char === ' ' && idx <= lastIndex);
         if (!spaces.length) return;
         const extra = targetWidth - line.width;
         if (extra <= 0) return;
@@ -162,5 +221,19 @@ export class LayoutEngine {
             }
         }
         line.width = targetWidth;
+    }
+
+    private static measureLineWidth(glyphs: LayoutGlyph[], trimTrailingSpaces: boolean): number {
+        if (!glyphs.length) return 0;
+        let lastIndex = glyphs.length - 1;
+        if (trimTrailingSpaces) {
+            while (lastIndex >= 0 && glyphs[lastIndex].char === ' ') lastIndex--;
+        }
+        if (lastIndex < 0) return 0;
+        let width = 0;
+        for (let i = 0; i <= lastIndex; i++) {
+            width += glyphs[i].advance;
+        }
+        return width;
     }
 }

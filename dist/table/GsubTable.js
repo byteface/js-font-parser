@@ -11,6 +11,7 @@ import { MultipleSubst } from "./MultipleSubst.js";
 import { AlternateSubst } from "./AlternateSubst.js";
 var GsubTable = /** @class */ (function () {
     function GsubTable(de, byte_ar) {
+        this.gdef = null;
         byte_ar.offset = de.offset;
         byte_ar.readInt();
         var scriptListOffset = byte_ar.readUnsignedShort();
@@ -23,6 +24,9 @@ var GsubTable = /** @class */ (function () {
         // Lookup List
         this.lookupList = new LookupList(byte_ar, de.offset + lookupListOffset, this);
     }
+    GsubTable.prototype.setGdef = function (gdef) {
+        this.gdef = gdef;
+    };
     /**
      * 1 - Single - Replace one glyph with one glyph
      * 2 - Multiple - Replace one glyph with more than one glyph
@@ -66,6 +70,8 @@ var GsubTable = /** @class */ (function () {
             if (!st)
                 continue;
             if (index < 0 || index >= out.length)
+                continue;
+            if (this.isGlyphIgnored(lookup, out[index]))
                 continue;
             if (typeof st.applyAt === "function") {
                 var nextGlyphs = st.applyAt(out, index);
@@ -144,6 +150,121 @@ var GsubTable = /** @class */ (function () {
             }
         }
         return subtables;
+    };
+    GsubTable.prototype.applyFeatures = function (glyphs, featureTags, scriptTags) {
+        if (scriptTags === void 0) { scriptTags = ["DFLT", "latn"]; }
+        var script = this.findPreferredScript(scriptTags);
+        var langSys = this.getDefaultLangSys(script);
+        if (!langSys)
+            return glyphs;
+        var tagSet = new Set(featureTags);
+        var featureRecords = this.featureList.getFeatureRecords();
+        var requiredIndex = langSys.getRequiredFeatureIndex();
+        var orderedFeatureIndices = langSys.getFeatureIndices();
+        var featureOrder = [];
+        if (requiredIndex != null && requiredIndex !== 0xffff) {
+            featureOrder.push(requiredIndex);
+        }
+        for (var _i = 0, orderedFeatureIndices_1 = orderedFeatureIndices; _i < orderedFeatureIndices_1.length; _i++) {
+            var idx = orderedFeatureIndices_1[_i];
+            if (idx === requiredIndex)
+                continue;
+            featureOrder.push(idx);
+        }
+        var out = glyphs.slice();
+        for (var _a = 0, featureOrder_1 = featureOrder; _a < featureOrder_1.length; _a++) {
+            var featureIndex = featureOrder_1[_a];
+            var record = featureRecords[featureIndex];
+            if (!record)
+                continue;
+            var tag = this.tagToString(record.getTag());
+            var isRequired = featureIndex === requiredIndex;
+            if (!isRequired && !tagSet.has(tag))
+                continue;
+            var feature = this.featureList.features[featureIndex];
+            if (!feature)
+                continue;
+            for (var i = 0; i < feature.getLookupCount(); i++) {
+                var lookupIndex = feature.getLookupListIndex(i);
+                out = this.applyLookup(lookupIndex, out);
+            }
+        }
+        return out;
+    };
+    GsubTable.prototype.applyLookup = function (lookupIndex, glyphs) {
+        var _a, _b, _c, _d, _e, _f;
+        var lookup = (_b = (_a = this.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)[lookupIndex];
+        if (!lookup)
+            return glyphs;
+        var out = glyphs.slice();
+        var _loop_1 = function (s) {
+            var st = lookup.getSubtable(s);
+            if (!st)
+                return "continue";
+            if (typeof st.applyToGlyphsWithContext === "function") {
+                out = st.applyToGlyphsWithContext(out, {
+                    gdef: this_1.gdef,
+                    lookupFlag: (_d = (_c = lookup.getFlag) === null || _c === void 0 ? void 0 : _c.call(lookup)) !== null && _d !== void 0 ? _d : 0,
+                    markFilteringSet: (_f = (_e = lookup.getMarkFilteringSet) === null || _e === void 0 ? void 0 : _e.call(lookup)) !== null && _f !== void 0 ? _f : null
+                });
+                return "continue";
+            }
+            if (typeof st.applyToGlyphs === "function") {
+                out = st.applyToGlyphs(out);
+                return "continue";
+            }
+            if (typeof st.substitute === "function") {
+                out = out.map(function (g) {
+                    var sub = st.substitute(g);
+                    return (sub == null || sub === 0) ? g : sub;
+                });
+                return "continue";
+            }
+            if (st instanceof LigatureSubstFormat1) {
+                var lig = st;
+                var next = [];
+                var i = 0;
+                while (i < out.length) {
+                    var match = lig.tryLigature(out, i);
+                    if (match) {
+                        next.push(match.glyphId);
+                        i += match.length;
+                    }
+                    else {
+                        next.push(out[i]);
+                        i += 1;
+                    }
+                }
+                out = next;
+            }
+        };
+        var this_1 = this;
+        for (var s = 0; s < lookup.getSubtableCount(); s++) {
+            _loop_1(s);
+        }
+        return out;
+    };
+    GsubTable.prototype.hasIgnoreFlags = function (lookup) {
+        var _a, _b;
+        var flag = (_b = (_a = lookup === null || lookup === void 0 ? void 0 : lookup.getFlag) === null || _a === void 0 ? void 0 : _a.call(lookup)) !== null && _b !== void 0 ? _b : 0;
+        return (flag & 0x0002) !== 0 || (flag & 0x0004) !== 0 || (flag & 0x0008) !== 0;
+    };
+    GsubTable.prototype.isGlyphIgnored = function (lookup, glyphId) {
+        var _a, _b, _c, _d, _e;
+        if (!this.gdef)
+            return false;
+        var flag = (_b = (_a = lookup === null || lookup === void 0 ? void 0 : lookup.getFlag) === null || _a === void 0 ? void 0 : _a.call(lookup)) !== null && _b !== void 0 ? _b : 0;
+        var glyphClass = (_e = (_d = (_c = this.gdef).getGlyphClass) === null || _d === void 0 ? void 0 : _d.call(_c, glyphId)) !== null && _e !== void 0 ? _e : 0;
+        if ((flag & 0x0002) && glyphClass === 1)
+            return true;
+        if ((flag & 0x0004) && glyphClass === 2)
+            return true;
+        if ((flag & 0x0008) && glyphClass === 3)
+            return true;
+        return false;
+    };
+    GsubTable.prototype.tagToString = function (tag) {
+        return String.fromCharCode((tag >> 24) & 0xff, (tag >> 16) & 0xff, (tag >> 8) & 0xff, tag & 0xff);
     };
     GsubTable.prototype.getType = function () {
         return Table.GSUB;

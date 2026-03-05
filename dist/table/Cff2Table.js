@@ -10,6 +10,7 @@ var Cff2Table = /** @class */ (function () {
         this.fdSelect = [];
         this.privateInfos = [];
         this.vstoreRegionCounts = [];
+        this.vstoreRegionIndices = [];
         this.vstoreRegions = [];
         this.vstoreAxisCount = 0;
         this.variationCoords = [];
@@ -165,6 +166,7 @@ var Cff2Table = /** @class */ (function () {
             this.vstoreRegions.push(region);
         }
         this.vstoreRegionCounts = new Array(ivdCount).fill(0);
+        this.vstoreRegionIndices = new Array(ivdCount).fill(null).map(function () { return []; });
         for (var i = 0; i < ivdCount; i++) {
             var ivdPos = offset + ivdOffsets[i];
             byte_ar.offset = ivdPos;
@@ -172,6 +174,11 @@ var Cff2Table = /** @class */ (function () {
             byte_ar.readUnsignedShort(); // shortDeltaCount
             var regionIndexCount = byte_ar.readUnsignedShort();
             this.vstoreRegionCounts[i] = regionIndexCount;
+            var indices = [];
+            for (var r = 0; r < regionIndexCount; r++) {
+                indices.push(byte_ar.readUnsignedShort());
+            }
+            this.vstoreRegionIndices[i] = indices;
         }
         byte_ar.offset = prev;
     };
@@ -208,12 +215,12 @@ var Cff2Table = /** @class */ (function () {
             }
         };
         var parse = function (bytes) {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22;
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24;
             var i = 0;
             while (i < bytes.length) {
                 var b0 = bytes[i++];
                 if (b0 >= 32 || b0 === 28 || b0 === 255) {
-                    var _23 = _this.readCharStringNumber(bytes, i - 1), num = _23[0], next = _23[1];
+                    var _25 = _this.readCharStringNumber(bytes, i - 1), num = _25[0], next = _25[1];
                     stack.push(num);
                     i = next;
                     continue;
@@ -435,6 +442,7 @@ var Cff2Table = /** @class */ (function () {
                         if (op === 17) { // blend
                             var n = (_19 = args.pop()) !== null && _19 !== void 0 ? _19 : 0;
                             var regionCount = (_20 = _this.vstoreRegionCounts[vsIndex]) !== null && _20 !== void 0 ? _20 : 0;
+                            var regionIndices = (_21 = _this.vstoreRegionIndices[vsIndex]) !== null && _21 !== void 0 ? _21 : [];
                             var expected = n * (regionCount + 1);
                             if (n > 0 && args.length >= expected) {
                                 var base = args.slice(0, n);
@@ -442,15 +450,16 @@ var Cff2Table = /** @class */ (function () {
                                 var coords = _this.variationCoords;
                                 var regionScalars = [];
                                 for (var r = 0; r < regionCount; r++) {
-                                    var region = _this.vstoreRegions[r];
+                                    var regionIndex = (_22 = regionIndices[r]) !== null && _22 !== void 0 ? _22 : r;
+                                    var region = _this.vstoreRegions[regionIndex];
                                     if (!region) {
                                         regionScalars.push(0);
                                         continue;
                                     }
                                     var scalar = 1;
                                     for (var a = 0; a < region.length; a++) {
-                                        var coord = (_21 = coords[a]) !== null && _21 !== void 0 ? _21 : 0;
-                                        var _24 = region[a], start = _24.start, peak = _24.peak, end = _24.end;
+                                        var coord = (_23 = coords[a]) !== null && _23 !== void 0 ? _23 : 0;
+                                        var _26 = region[a], start = _26.start, peak = _26.peak, end = _26.end;
                                         if (coord === 0 || start === 0 && peak === 0 && end === 0)
                                             continue;
                                         if (coord < start || coord > end) {
@@ -466,7 +475,7 @@ var Cff2Table = /** @class */ (function () {
                                 }
                                 var out = base.slice();
                                 for (var r = 0; r < regionCount; r++) {
-                                    var s = (_22 = regionScalars[r]) !== null && _22 !== void 0 ? _22 : 0;
+                                    var s = (_24 = regionScalars[r]) !== null && _24 !== void 0 ? _24 : 0;
                                     if (!s)
                                         continue;
                                     for (var i_1 = 0; i_1 < n; i_1++) {
@@ -532,7 +541,6 @@ var Cff2Table = /** @class */ (function () {
                             addPoint(dx5, dy5, false);
                             addPoint(dx6, dy6, true);
                         }
-                        // CFF2 blend/vsindex ignored (default positions)
                         break;
                     }
                     default:

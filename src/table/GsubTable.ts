@@ -20,6 +20,7 @@ export class GsubTable implements ITable {
     scriptList: ScriptList;
     featureList: FeatureList;
     lookupList: LookupList;
+    private gdef: any | null = null;
 
     constructor(de: DirectoryEntry, byte_ar: ByteArray) {
         byte_ar.offset = de.offset;
@@ -38,6 +39,10 @@ export class GsubTable implements ITable {
 
         // Lookup List
         this.lookupList = new LookupList(byte_ar, de.offset + lookupListOffset, this);
+    }
+
+    setGdef(gdef: any | null): void {
+        this.gdef = gdef;
     }
 
     /**
@@ -82,6 +87,7 @@ export class GsubTable implements ITable {
             const st = lookup.getSubtable(s);
             if (!st) continue;
             if (index < 0 || index >= out.length) continue;
+            if (this.isGlyphIgnored(lookup, out[index])) continue;
 
             if (typeof (st as any).applyAt === "function") {
                 const nextGlyphs = (st as any).applyAt(out, index);
@@ -162,6 +168,112 @@ export class GsubTable implements ITable {
             }
         }
         return subtables;
+    }
+
+    applyFeatures(glyphs: number[], featureTags: string[], scriptTags: string[] = ["DFLT", "latn"]): number[] {
+        const script = this.findPreferredScript(scriptTags);
+        const langSys = this.getDefaultLangSys(script);
+        if (!langSys) return glyphs;
+
+        const tagSet = new Set(featureTags);
+        const featureRecords = this.featureList.getFeatureRecords();
+        const requiredIndex = langSys.getRequiredFeatureIndex();
+        const orderedFeatureIndices = langSys.getFeatureIndices();
+        const featureOrder: number[] = [];
+
+        if (requiredIndex != null && requiredIndex !== 0xffff) {
+            featureOrder.push(requiredIndex);
+        }
+        for (const idx of orderedFeatureIndices) {
+            if (idx === requiredIndex) continue;
+            featureOrder.push(idx);
+        }
+
+        let out = glyphs.slice();
+        for (const featureIndex of featureOrder) {
+            const record = featureRecords[featureIndex];
+            if (!record) continue;
+            const tag = this.tagToString(record.getTag());
+            const isRequired = featureIndex === requiredIndex;
+            if (!isRequired && !tagSet.has(tag)) continue;
+            const feature = this.featureList.features[featureIndex];
+            if (!feature) continue;
+            for (let i = 0; i < feature.getLookupCount(); i++) {
+                const lookupIndex = feature.getLookupListIndex(i);
+                out = this.applyLookup(lookupIndex, out);
+            }
+        }
+        return out;
+    }
+
+    private applyLookup(lookupIndex: number, glyphs: number[]): number[] {
+        const lookup = this.lookupList?.getLookups?.()[lookupIndex];
+        if (!lookup) return glyphs;
+        let out = glyphs.slice();
+        for (let s = 0; s < lookup.getSubtableCount(); s++) {
+            const st = lookup.getSubtable(s);
+            if (!st) continue;
+            if (typeof (st as any).applyToGlyphsWithContext === "function") {
+                out = (st as any).applyToGlyphsWithContext(out, {
+                    gdef: this.gdef,
+                    lookupFlag: lookup.getFlag?.() ?? 0,
+                    markFilteringSet: lookup.getMarkFilteringSet?.() ?? null
+                });
+                continue;
+            }
+            if (typeof (st as any).applyToGlyphs === "function") {
+                out = (st as any).applyToGlyphs(out);
+                continue;
+            }
+            if (typeof (st as any).substitute === "function") {
+                out = out.map(g => {
+                    const sub = (st as any).substitute(g);
+                    return (sub == null || sub === 0) ? g : sub;
+                });
+                continue;
+            }
+            if (st instanceof LigatureSubstFormat1) {
+                const lig = st as LigatureSubstFormat1;
+                const next: number[] = [];
+                let i = 0;
+                while (i < out.length) {
+                    const match = lig.tryLigature(out, i);
+                    if (match) {
+                        next.push(match.glyphId);
+                        i += match.length;
+                    } else {
+                        next.push(out[i]);
+                        i += 1;
+                    }
+                }
+                out = next;
+            }
+        }
+        return out;
+    }
+
+    private hasIgnoreFlags(lookup: any): boolean {
+        const flag = lookup?.getFlag?.() ?? 0;
+        return (flag & 0x0002) !== 0 || (flag & 0x0004) !== 0 || (flag & 0x0008) !== 0;
+    }
+
+    private isGlyphIgnored(lookup: any, glyphId: number): boolean {
+        if (!this.gdef) return false;
+        const flag = lookup?.getFlag?.() ?? 0;
+        const glyphClass = this.gdef.getGlyphClass?.(glyphId) ?? 0;
+        if ((flag & 0x0002) && glyphClass === 1) return true;
+        if ((flag & 0x0004) && glyphClass === 2) return true;
+        if ((flag & 0x0008) && glyphClass === 3) return true;
+        return false;
+    }
+
+    private tagToString(tag: number): string {
+        return String.fromCharCode(
+            (tag >> 24) & 0xff,
+            (tag >> 16) & 0xff,
+            (tag >> 8) & 0xff,
+            tag & 0xff
+        );
     }
 
     getType(): number {

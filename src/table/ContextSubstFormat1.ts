@@ -3,6 +3,7 @@ import { Coverage } from "./Coverage.js";
 import { ICoverage } from "./ICoverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
 import { GsubTable } from "./GsubTable.js";
+import { GsubMatchContext, matchInputSequence } from "./GsubMatch.js";
 
 export class ContextSubstFormat1 extends LookupSubtable {
     private coverage: ICoverage | null;
@@ -57,6 +58,10 @@ export class ContextSubstFormat1 extends LookupSubtable {
     }
 
     applyToGlyphs(glyphs: number[]): number[] {
+        return this.applyToGlyphsWithContext(glyphs, undefined);
+    }
+
+    applyToGlyphsWithContext(glyphs: number[], ctx?: GsubMatchContext): number[] {
         if (!this.coverage) return glyphs;
         let out = glyphs.slice();
         let i = 0;
@@ -69,19 +74,13 @@ export class ContextSubstFormat1 extends LookupSubtable {
             const rules = this.ruleSets[covIndex] || [];
             let applied = false;
             for (const rule of rules) {
-                if (i + rule.input.length >= out.length) continue;
-                let match = true;
-                for (let j = 0; j < rule.input.length; j++) {
-                    if (out[i + 1 + j] !== rule.input[j]) {
-                        match = false;
-                        break;
-                    }
-                }
-                if (!match) continue;
+                const matched = matchInputSequence(out, i, rule.input, (expected, gid) => gid === expected, ctx);
+                if (!matched) continue;
                 for (const rec of rule.records) {
-                    out = this.gsub.applyLookupAt(rec.lookupListIndex, out, i + rec.sequenceIndex);
+                    const targetIndex = matched[rec.sequenceIndex] ?? (i + rec.sequenceIndex);
+                    out = this.gsub.applyLookupAt(rec.lookupListIndex, out, targetIndex);
                 }
-                i += rule.input.length + 1;
+                i = (matched[matched.length - 1] ?? i) + 1;
                 applied = true;
                 break;
             }

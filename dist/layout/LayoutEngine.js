@@ -12,30 +12,40 @@ var LayoutEngine = /** @class */ (function () {
     }
     LayoutEngine.layoutText = function (font, text, options) {
         var _this = this;
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
         if (options === void 0) { options = {}; }
         var maxWidth = (_a = options.maxWidth) !== null && _a !== void 0 ? _a : 0;
         var align = (_b = options.align) !== null && _b !== void 0 ? _b : 'left';
         var letterSpacing = (_c = options.letterSpacing) !== null && _c !== void 0 ? _c : 0;
         var useKerning = (_d = options.useKerning) !== null && _d !== void 0 ? _d : true;
-        var hhea = (_e = font.getTableByType) === null || _e === void 0 ? void 0 : _e.call(font, 0x68686561); // hhea
-        var head = (_f = font.getTableByType) === null || _f === void 0 ? void 0 : _f.call(font, 0x68656164); // head
-        var unitsPerEm = (_g = head === null || head === void 0 ? void 0 : head.unitsPerEm) !== null && _g !== void 0 ? _g : 1000;
-        var lineHeight = (_h = options.lineHeight) !== null && _h !== void 0 ? _h : (((_j = hhea === null || hhea === void 0 ? void 0 : hhea.ascender) !== null && _j !== void 0 ? _j : unitsPerEm * 0.8) - ((_k = hhea === null || hhea === void 0 ? void 0 : hhea.descender) !== null && _k !== void 0 ? _k : -unitsPerEm * 0.2) + ((_l = hhea === null || hhea === void 0 ? void 0 : hhea.lineGap) !== null && _l !== void 0 ? _l : 0));
+        var breakWords = (_e = options.breakWords) !== null && _e !== void 0 ? _e : true;
+        var trimLeadingSpaces = (_f = options.trimLeadingSpaces) !== null && _f !== void 0 ? _f : true;
+        var trimTrailingSpaces = (_g = options.trimTrailingSpaces) !== null && _g !== void 0 ? _g : true;
+        var collapseSpaces = (_h = options.collapseSpaces) !== null && _h !== void 0 ? _h : false;
+        var preserveNbsp = (_j = options.preserveNbsp) !== null && _j !== void 0 ? _j : true;
+        var tabSize = (_k = options.tabSize) !== null && _k !== void 0 ? _k : 4;
+        var justifyLastLine = (_l = options.justifyLastLine) !== null && _l !== void 0 ? _l : false;
+        var hhea = (_m = font.getTableByType) === null || _m === void 0 ? void 0 : _m.call(font, 0x68686561); // hhea
+        var head = (_o = font.getTableByType) === null || _o === void 0 ? void 0 : _o.call(font, 0x68656164); // head
+        var unitsPerEm = (_p = head === null || head === void 0 ? void 0 : head.unitsPerEm) !== null && _p !== void 0 ? _p : 1000;
+        var lineHeight = (_q = options.lineHeight) !== null && _q !== void 0 ? _q : (((_r = hhea === null || hhea === void 0 ? void 0 : hhea.ascender) !== null && _r !== void 0 ? _r : unitsPerEm * 0.8) - ((_s = hhea === null || hhea === void 0 ? void 0 : hhea.descender) !== null && _s !== void 0 ? _s : -unitsPerEm * 0.2) + ((_t = hhea === null || hhea === void 0 ? void 0 : hhea.lineGap) !== null && _t !== void 0 ? _t : 0));
         var lines = [];
         var current = [];
         var cursorX = 0;
         var pushLine = function (isLastLine) {
-            var width = cursorX;
+            var width = _this.measureLineWidth(current, trimTrailingSpaces);
             lines.push({ glyphs: current, width: width, isLastLine: isLastLine });
             current = [];
             cursorX = 0;
         };
-        var tokens = this.tokenize(text);
+        var tokens = this.tokenize(text, collapseSpaces, preserveNbsp, tabSize);
         for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
             var token = tokens_1[_i];
             if (token === '\n') {
                 pushLine(false);
+                continue;
+            }
+            if (trimLeadingSpaces && cursorX === 0 && /^\s+$/.test(token)) {
                 continue;
             }
             var tokenGlyphs = this.buildTokenGlyphs(font, token, letterSpacing, useKerning);
@@ -43,8 +53,21 @@ var LayoutEngine = /** @class */ (function () {
             if (maxWidth > 0 && cursorX > 0 && cursorX + tokenWidth > maxWidth) {
                 pushLine(false);
             }
-            for (var _m = 0, tokenGlyphs_1 = tokenGlyphs; _m < tokenGlyphs_1.length; _m++) {
-                var glyph = tokenGlyphs_1[_m];
+            if (maxWidth > 0 && breakWords && tokenWidth > maxWidth) {
+                for (var _u = 0, tokenGlyphs_1 = tokenGlyphs; _u < tokenGlyphs_1.length; _u++) {
+                    var glyph = tokenGlyphs_1[_u];
+                    if (maxWidth > 0 && cursorX > 0 && cursorX + glyph.advance > maxWidth) {
+                        pushLine(false);
+                    }
+                    glyph.x = cursorX + glyph.x;
+                    glyph.y = 0;
+                    cursorX += glyph.advance;
+                    current.push(glyph);
+                }
+                continue;
+            }
+            for (var _v = 0, tokenGlyphs_2 = tokenGlyphs; _v < tokenGlyphs_2.length; _v++) {
+                var glyph = tokenGlyphs_2[_v];
                 glyph.x = cursorX + glyph.x;
                 glyph.y = 0;
                 cursorX += glyph.advance;
@@ -63,7 +86,7 @@ var LayoutEngine = /** @class */ (function () {
                 var offset_2 = resultWidth - line.width;
                 line.glyphs.forEach(function (g) { return (g.x += offset_2); });
             }
-            else if (align === 'justify' && !line.isLastLine && maxWidth > 0) {
+            else if (align === 'justify' && maxWidth > 0 && (!line.isLastLine || justifyLastLine)) {
                 _this.justifyLine(line, resultWidth);
             }
             line.glyphs.forEach(function (g) { return (g.y = y); });
@@ -75,9 +98,10 @@ var LayoutEngine = /** @class */ (function () {
             lineHeight: lineHeight
         };
     };
-    LayoutEngine.tokenize = function (text) {
+    LayoutEngine.tokenize = function (text, collapseSpaces, preserveNbsp, tabSize) {
         var tokens = [];
         var buffer = '';
+        var lastWasSpace = false;
         for (var _i = 0, text_1 = text; _i < text_1.length; _i++) {
             var ch = text_1[_i];
             if (ch === '\n') {
@@ -85,16 +109,47 @@ var LayoutEngine = /** @class */ (function () {
                     tokens.push(buffer);
                 tokens.push('\n');
                 buffer = '';
+                lastWasSpace = false;
+                continue;
+            }
+            if (ch === '\t') {
+                if (buffer)
+                    tokens.push(buffer);
+                var count = Math.max(1, tabSize);
+                if (collapseSpaces) {
+                    if (!lastWasSpace)
+                        tokens.push(' ');
+                    lastWasSpace = true;
+                }
+                else {
+                    for (var i = 0; i < count; i++)
+                        tokens.push(' ');
+                    lastWasSpace = true;
+                }
+                buffer = '';
+                continue;
+            }
+            if (preserveNbsp && ch === '\u00A0') {
+                buffer += ch;
+                lastWasSpace = false;
                 continue;
             }
             if (/\s/.test(ch)) {
                 if (buffer)
                     tokens.push(buffer);
-                tokens.push(ch);
+                if (collapseSpaces) {
+                    if (!lastWasSpace)
+                        tokens.push(' ');
+                    lastWasSpace = true;
+                }
+                else {
+                    tokens.push(ch);
+                }
                 buffer = '';
                 continue;
             }
             buffer += ch;
+            lastWasSpace = false;
         }
         if (buffer)
             tokens.push(buffer);
@@ -122,7 +177,10 @@ var LayoutEngine = /** @class */ (function () {
     LayoutEngine.justifyLine = function (line, targetWidth) {
         if (!line.glyphs.length)
             return;
-        var spaces = line.glyphs.filter(function (g) { return g.char === ' '; });
+        var lastIndex = line.glyphs.length - 1;
+        while (lastIndex >= 0 && line.glyphs[lastIndex].char === ' ')
+            lastIndex--;
+        var spaces = line.glyphs.filter(function (g, idx) { return g.char === ' ' && idx <= lastIndex; });
         if (!spaces.length)
             return;
         var extra = targetWidth - line.width;
@@ -139,6 +197,22 @@ var LayoutEngine = /** @class */ (function () {
             }
         }
         line.width = targetWidth;
+    };
+    LayoutEngine.measureLineWidth = function (glyphs, trimTrailingSpaces) {
+        if (!glyphs.length)
+            return 0;
+        var lastIndex = glyphs.length - 1;
+        if (trimTrailingSpaces) {
+            while (lastIndex >= 0 && glyphs[lastIndex].char === ' ')
+                lastIndex--;
+        }
+        if (lastIndex < 0)
+            return 0;
+        var width = 0;
+        for (var i = 0; i <= lastIndex; i++) {
+            width += glyphs[i].advance;
+        }
+        return width;
     };
     return LayoutEngine;
 }());

@@ -74,6 +74,8 @@ export class GvarTable implements ITable {
         let cursor = start;
         const tupleVariationCount = this.view.getUint16(cursor, false);
         cursor += 2;
+        const offsetToData = this.view.getUint16(cursor, false);
+        cursor += 2;
         const hasSharedPoints = (tupleVariationCount & 0x8000) !== 0;
         const count = tupleVariationCount & 0x0fff;
         const tuples: TupleHeader[] = [];
@@ -90,7 +92,7 @@ export class GvarTable implements ITable {
 
             const peak = hasEmbeddedPeak
                 ? this.readTuple(cursor)
-                : (this.sharedTuples[sharedIndex] ?? new Array(this.axisCount).fill(0));
+                : (this.sharedTuples[sharedIndex] ?? this.sharedTuples[0] ?? new Array(this.axisCount).fill(0));
             if (hasEmbeddedPeak) cursor += this.axisCount * 2;
 
             let startTuple: number[] | undefined;
@@ -103,21 +105,26 @@ export class GvarTable implements ITable {
             }
 
             tuples.push({
-                dataOffset: cursor,
+                dataOffset: 0,
                 dataSize,
                 peak,
                 start: startTuple,
                 end: endTuple,
                 hasPrivatePoints
             });
-            cursor += dataSize;
         }
 
         let sharedPoints: number[] | null = null;
+        let dataCursor = start + offsetToData;
         if (hasSharedPoints) {
-            const result = this.readPointNumbers(cursor, pointCount);
+            const result = this.readPointNumbers(dataCursor, pointCount);
             sharedPoints = result.points;
-            cursor += result.size;
+            dataCursor += result.size;
+        }
+
+        for (const tuple of tuples) {
+            tuple.dataOffset = dataCursor;
+            dataCursor += tuple.dataSize;
         }
 
         const dx = new Array(pointCount).fill(0);
@@ -238,13 +245,16 @@ export class GvarTable implements ITable {
             const control = this.view.getUint8(cursor++);
             const runCount = (control & 0x3f) + 1;
             if (control & 0x80) {
+                // 0x80 = zero run
+                for (let i = 0; i < runCount; i++) values.push(0);
+            } else if (control & 0x40) {
+                // 0x40 = 16-bit signed deltas
                 for (let i = 0; i < runCount; i++) {
                     values.push(this.view.getInt16(cursor, false));
                     cursor += 2;
                 }
-            } else if (control & 0x40) {
-                for (let i = 0; i < runCount; i++) values.push(0);
             } else {
+                // 0x00 = 8-bit signed deltas
                 for (let i = 0; i < runCount; i++) {
                     values.push(this.view.getInt8(cursor++));
                 }

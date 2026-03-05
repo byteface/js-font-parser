@@ -3,6 +3,7 @@ import { Coverage } from "./Coverage.js";
 import { ICoverage } from "./ICoverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
 import { GsubTable } from "./GsubTable.js";
+import { GsubMatchContext, matchBacktrackSequence, matchInputSequence, matchLookaheadSequence } from "./GsubMatch.js";
 import { ClassDefReader } from "./ClassDefReader.js";
 import { ClassDef } from "./ClassDef.js";
 
@@ -82,6 +83,10 @@ export class ChainingSubstFormat2 extends LookupSubtable {
     }
 
     applyToGlyphs(glyphs: number[]): number[] {
+        return this.applyToGlyphsWithContext(glyphs, undefined);
+    }
+
+    applyToGlyphsWithContext(glyphs: number[], ctx?: GsubMatchContext): number[] {
         if (!this.coverage || !this.inputClassDef || !this.backtrackClassDef || !this.lookaheadClassDef) return glyphs;
         let out = glyphs.slice();
         let i = 0;
@@ -95,40 +100,19 @@ export class ChainingSubstFormat2 extends LookupSubtable {
             const rules = this.classSets[classId] || [];
             let applied = false;
             for (const rule of rules) {
-                if (i + rule.input.length >= out.length) continue;
-                let match = true;
-                // backtrack
-                for (let b = 0; b < rule.backtrack.length; b++) {
-                    const idx = i - 1 - b;
-                    const want = rule.backtrack[rule.backtrack.length - 1 - b];
-                    if (idx < 0 || this.backtrackClassDef.getGlyphClass(out[idx]) !== want) {
-                        match = false;
-                        break;
-                    }
-                }
-                if (!match) continue;
-                // input
-                for (let j = 0; j < rule.input.length; j++) {
-                    if (this.inputClassDef.getGlyphClass(out[i + 1 + j]) !== rule.input[j]) {
-                        match = false;
-                        break;
-                    }
-                }
-                if (!match) continue;
-                // lookahead
-                for (let l = 0; l < rule.lookahead.length; l++) {
-                    const idx = i + 1 + rule.input.length + l;
-                    if (idx >= out.length || this.lookaheadClassDef.getGlyphClass(out[idx]) !== rule.lookahead[l]) {
-                        match = false;
-                        break;
-                    }
-                }
-                if (!match) continue;
+                const backOk = matchBacktrackSequence(out, i, rule.backtrack, (expected, gid) => this.backtrackClassDef!.getGlyphClass(gid) === expected, ctx);
+                if (!backOk) continue;
+                const matched = matchInputSequence(out, i, rule.input, (expected, gid) => this.inputClassDef!.getGlyphClass(gid) === expected, ctx);
+                if (!matched) continue;
+                const lookStart = matched[matched.length - 1] ?? i;
+                const lookOk = matchLookaheadSequence(out, lookStart, rule.lookahead, (expected, gid) => this.lookaheadClassDef!.getGlyphClass(gid) === expected, ctx);
+                if (!lookOk) continue;
 
                 for (const rec of rule.records) {
-                    out = this.gsub.applyLookupAt(rec.lookupListIndex, out, i + rec.sequenceIndex);
+                    const targetIndex = matched[rec.sequenceIndex] ?? (i + rec.sequenceIndex);
+                    out = this.gsub.applyLookupAt(rec.lookupListIndex, out, targetIndex);
                 }
-                i += rule.input.length + 1;
+                i = (matched[matched.length - 1] ?? i) + 1;
                 applied = true;
                 break;
             }

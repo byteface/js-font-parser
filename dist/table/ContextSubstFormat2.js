@@ -15,6 +15,7 @@ var __extends = (this && this.__extends) || (function () {
 })();
 import { Coverage } from "./Coverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
+import { matchInputSequence } from "./GsubMatch.js";
 import { ClassDefReader } from "./ClassDefReader.js";
 var ContextSubstFormat2 = /** @class */ (function (_super) {
     __extends(ContextSubstFormat2, _super);
@@ -72,6 +73,11 @@ var ContextSubstFormat2 = /** @class */ (function (_super) {
         return _this;
     }
     ContextSubstFormat2.prototype.applyToGlyphs = function (glyphs) {
+        return this.applyToGlyphsWithContext(glyphs, undefined);
+    };
+    ContextSubstFormat2.prototype.applyToGlyphsWithContext = function (glyphs, ctx) {
+        var _this = this;
+        var _a, _b;
         if (!this.coverage || !this.classDef)
             return glyphs;
         var out = glyphs.slice();
@@ -87,23 +93,15 @@ var ContextSubstFormat2 = /** @class */ (function (_super) {
             var applied = false;
             for (var _i = 0, rules_1 = rules; _i < rules_1.length; _i++) {
                 var rule = rules_1[_i];
-                if (i + rule.inputClasses.length >= out.length)
+                var matched = matchInputSequence(out, i, rule.inputClasses, function (expected, gid) { return _this.classDef.getGlyphClass(gid) === expected; }, ctx);
+                if (!matched)
                     continue;
-                var match = true;
-                for (var j = 0; j < rule.inputClasses.length; j++) {
-                    var cls = this.classDef.getGlyphClass(out[i + 1 + j]);
-                    if (cls !== rule.inputClasses[j]) {
-                        match = false;
-                        break;
-                    }
+                for (var _c = 0, _d = rule.records; _c < _d.length; _c++) {
+                    var rec = _d[_c];
+                    var targetIndex = (_a = matched[rec.sequenceIndex]) !== null && _a !== void 0 ? _a : (i + rec.sequenceIndex);
+                    out = this.gsub.applyLookupAt(rec.lookupListIndex, out, targetIndex);
                 }
-                if (!match)
-                    continue;
-                for (var _a = 0, _b = rule.records; _a < _b.length; _a++) {
-                    var rec = _b[_a];
-                    out = this.gsub.applyLookupAt(rec.lookupListIndex, out, i + rec.sequenceIndex);
-                }
-                i += rule.inputClasses.length + 1;
+                i = ((_b = matched[matched.length - 1]) !== null && _b !== void 0 ? _b : i) + 1;
                 applied = true;
                 break;
             }

@@ -3,6 +3,7 @@ import { Coverage } from "./Coverage.js";
 import { ICoverage } from "./ICoverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
 import { GsubTable } from "./GsubTable.js";
+import { GsubMatchContext, matchInputSequence } from "./GsubMatch.js";
 
 export class ContextSubstFormat3 extends LookupSubtable {
     private glyphCount: number;
@@ -41,26 +42,28 @@ export class ContextSubstFormat3 extends LookupSubtable {
     }
 
     applyToGlyphs(glyphs: number[]): number[] {
+        return this.applyToGlyphsWithContext(glyphs, undefined);
+    }
+
+    applyToGlyphsWithContext(glyphs: number[], ctx?: GsubMatchContext): number[] {
         if (this.glyphCount === 0 || this.coverages.length !== this.glyphCount) return glyphs;
         let out = glyphs.slice();
         let i = 0;
-        while (i <= out.length - this.glyphCount) {
-            let match = true;
-            for (let j = 0; j < this.glyphCount; j++) {
-                const cov = this.coverages[j];
-                if (!cov || cov.findGlyph(out[i + j]) < 0) {
-                    match = false;
-                    break;
-                }
+        while (i < out.length) {
+            if (this.coverages[0].findGlyph(out[i]) < 0) {
+                i++;
+                continue;
             }
-            if (!match) {
+            const matched = matchInputSequence(out, i, this.coverages.slice(1), (expected, gid) => expected.findGlyph(gid) >= 0, ctx);
+            if (!matched) {
                 i++;
                 continue;
             }
             for (const rec of this.records) {
-                out = this.gsub.applyLookupAt(rec.lookupListIndex, out, i + rec.sequenceIndex);
+                const targetIndex = matched[rec.sequenceIndex] ?? (i + rec.sequenceIndex);
+                out = this.gsub.applyLookupAt(rec.lookupListIndex, out, targetIndex);
             }
-            i += this.glyphCount;
+            i = (matched[matched.length - 1] ?? i) + 1;
         }
         return out;
     }

@@ -3,6 +3,7 @@ import { Coverage } from "./Coverage.js";
 import { ICoverage } from "./ICoverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
 import { GsubTable } from "./GsubTable.js";
+import { GsubMatchContext, matchInputSequence } from "./GsubMatch.js";
 import { ClassDefReader } from "./ClassDefReader.js";
 import { ClassDef } from "./ClassDef.js";
 
@@ -63,6 +64,10 @@ export class ContextSubstFormat2 extends LookupSubtable {
     }
 
     applyToGlyphs(glyphs: number[]): number[] {
+        return this.applyToGlyphsWithContext(glyphs, undefined);
+    }
+
+    applyToGlyphsWithContext(glyphs: number[], ctx?: GsubMatchContext): number[] {
         if (!this.coverage || !this.classDef) return glyphs;
         let out = glyphs.slice();
         let i = 0;
@@ -76,20 +81,13 @@ export class ContextSubstFormat2 extends LookupSubtable {
             const rules = this.classSets[classId] || [];
             let applied = false;
             for (const rule of rules) {
-                if (i + rule.inputClasses.length >= out.length) continue;
-                let match = true;
-                for (let j = 0; j < rule.inputClasses.length; j++) {
-                    const cls = this.classDef.getGlyphClass(out[i + 1 + j]);
-                    if (cls !== rule.inputClasses[j]) {
-                        match = false;
-                        break;
-                    }
-                }
-                if (!match) continue;
+                const matched = matchInputSequence(out, i, rule.inputClasses, (expected, gid) => this.classDef!.getGlyphClass(gid) === expected, ctx);
+                if (!matched) continue;
                 for (const rec of rule.records) {
-                    out = this.gsub.applyLookupAt(rec.lookupListIndex, out, i + rec.sequenceIndex);
+                    const targetIndex = matched[rec.sequenceIndex] ?? (i + rec.sequenceIndex);
+                    out = this.gsub.applyLookupAt(rec.lookupListIndex, out, targetIndex);
                 }
-                i += rule.inputClasses.length + 1;
+                i = (matched[matched.length - 1] ?? i) + 1;
                 applied = true;
                 break;
             }

@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>COLRv1 Paint Explorer</title>
+  <style>
+    :root { --bg:#f6f4f1; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e3e1db; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 20px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    input[type="text"] { padding:6px; border-radius:6px; border:1px solid #ccc; min-width:120px; }
+    button { padding:6px 10px; border-radius:6px; border:1px solid #ccc; background:#fff; }
+    #paintTree { white-space:pre-wrap; font-size:12px; color:#2f3a4a; background:#fdfbf7; padding:10px; border-radius:8px; border:1px dashed #e3e1db; max-height:320px; overflow:auto; }
+    #canvas { width:100%; height:280px; border:1px dashed #ddd; background:#fff; }
+    .hint { font-size:12px; color:var(--muted); margin-top:6px; }
+  </style>
+</head>
+<body>
+<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+  <header>
+    <h1>COLRv1 Paint Explorer</h1>
+    <p>Inspect COLRv1 paint trees and render supported paints.</p>
+  </header>
+
+  <div class="panel">
+    <div class="row">
+      <label>Font
+        <select id="fontSelect">
+          <option value="../truetypefonts/color/nabla/Nabla[EDPT,EHLT].ttf">Nabla (COLRv1 letters)</option>
+          <option value="../truetypefonts/color/colrv1/test_glyphs-glyf_colr_1.ttf">COLRv1 Test Shapes</option>
+        </select>
+      </label>
+      <button id="loadSample">Load</button>
+      <button id="prevGlyph">Prev</button>
+      <button id="nextGlyph">Next</button>
+      <label>Glyph ID <input id="glyphInput" type="text" value="" /></label>
+      <label>Char <input id="charInput" type="text" value="A" maxlength="2" /></label>
+      <button id="useChar">Use Char</button>
+    </div>
+  <div class="hint" id="info"></div>
+  <div class="hint">Note: the test font uses geometric shapes (squares/ovals) rather than alphabet letters.</div>
+  </div>
+
+  <div class="panel">
+    <canvas id="canvas" width="900" height="280"></canvas>
+    <div class="hint" id="unsupported"></div>
+  </div>
+
+  <div class="panel">
+    <div id="paintTree"></div>
+  </div>
+
+  <script type="module">
+    import { FontParser } from "../dist/data/FontParser.js";
+    import { Table } from "../dist/table/Table.js";
+    import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
+
+    const loadSample = document.getElementById("loadSample");
+    const fontSelect = document.getElementById("fontSelect");
+    const prevBtn = document.getElementById("prevGlyph");
+    const nextBtn = document.getElementById("nextGlyph");
+    const glyphInput = document.getElementById("glyphInput");
+    const charInput = document.getElementById("charInput");
+    const useCharBtn = document.getElementById("useChar");
+    const paintTree = document.getElementById("paintTree");
+    const info = document.getElementById("info");
+    const unsupportedEl = document.getElementById("unsupported");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    let font = null;
+    let colr = null;
+    let records = [];
+    let index = 0;
+
+    function identity() {
+      return { xx: 1, yx: 0, xy: 0, yy: 1, dx: 0, dy: 0 };
+    }
+
+    function multiply(a, b) {
+      return {
+        xx: a.xx * b.xx + a.xy * b.yx,
+        xy: a.xx * b.xy + a.xy * b.yy,
+        yx: a.yx * b.xx + a.yy * b.yx,
+        yy: a.yx * b.xy + a.yy * b.yy,
+        dx: a.xx * b.dx + a.xy * b.dy + a.dx,
+        dy: a.yx * b.dx + a.yy * b.dy + a.dy
+      };
+    }
+
+    function paintToString(paint, depth = 0) {
+      if (!paint) return '';
+      const indent = '  '.repeat(depth);
+      const base = `${indent}- format ${paint.format}`;
+      if (paint.format === 2) return `${base} (solid idx=${paint.paletteIndex} alpha=${paint.alpha})`;
+      if (paint.format === 3) return `${base} (var solid idx=${paint.paletteIndex} alpha=${paint.alpha})`;
+      if (paint.format === 4) return `${base} (linear gradient stops=${paint.colorLine?.stops?.length ?? 0})`;
+      if (paint.format === 5) return `${base} (var linear gradient stops=${paint.colorLine?.stops?.length ?? 0})`;
+      if (paint.format === 6) return `${base} (sweep gradient stops=${paint.colorLine?.stops?.length ?? 0})`;
+      if (paint.format === 7) return `${base} (var sweep gradient stops=${paint.colorLine?.stops?.length ?? 0})`;
+      if (paint.format === 8) return `${base} (radial gradient stops=${paint.colorLine?.stops?.length ?? 0})`;
+      if (paint.format === 9) return `${base} (var radial gradient stops=${paint.colorLine?.stops?.length ?? 0})`;
+      if (paint.format === 10) return `${base} (glyph ${paint.glyphID})\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 11) return `${base} (colrGlyph ${paint.glyphID})`;
+      if (paint.format === 12) return `${base} (transform)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 13) return `${base} (var transform)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 14) return `${base} (translate ${paint.dx},${paint.dy})\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 15) return `${base} (var translate ${paint.dx},${paint.dy})\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 16) return `${base} (scale ${paint.scaleX},${paint.scaleY})\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 17) return `${base} (var scale ${paint.scaleX},${paint.scaleY})\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 18) return `${base} (scale around center)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 19) return `${base} (var scale around center)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 20) return `${base} (scale uniform)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 21) return `${base} (var scale uniform)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 22) return `${base} (scale uniform around center)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 23) return `${base} (var scale uniform around center)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 24) return `${base} (rotate)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 25) return `${base} (var rotate)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 26) return `${base} (rotate around center)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 27) return `${base} (var rotate around center)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 29) return `${base} (var skew)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 30) return `${base} (skew)\n${paintToString(paint.paint, depth + 1)}`;
+      if (paint.format === 31) return `${base} (var composite mode=${paint.compositeMode})\n${paintToString(paint.backdropPaint, depth + 1)}\n${paintToString(paint.sourcePaint, depth + 1)}`;
+      if (paint.format === 32) return `${base} (composite mode=${paint.compositeMode})\n${paintToString(paint.backdropPaint, depth + 1)}\n${paintToString(paint.sourcePaint, depth + 1)}`;
+      if (paint.format === 1 && Array.isArray(paint.layers)) {
+        return `${base} (layers ${paint.layers.length})\n` + paint.layers.map(p => paintToString(p, depth + 1)).join("\n");
+      }
+      return base;
+    }
+
+    function renderPaint(paint, transform, unsupported, paletteIndex = 0, visited = new Set(), depth = 0) {
+      if (!paint) return;
+      if (depth > 64) return;
+      if (paint.format === 1 && Array.isArray(paint.layers)) {
+        paint.layers.forEach(layer => renderPaint(layer, transform, unsupported, paletteIndex, visited, depth + 1));
+        return;
+      }
+      if (paint.format === 10) {
+        renderGlyphWithPaint(paint.glyphID, paint.paint, transform, unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 11) {
+        const key = `colr:${paint.glyphID}`;
+        if (visited.has(key)) return;
+        visited.add(key);
+        const nextPaint = colr.getPaintForGlyph(paint.glyphID);
+        if (nextPaint) renderPaint(nextPaint, transform, unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 12 && paint.transform) {
+        renderPaint(paint.paint, multiply(transform, paint.transform), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 13 && paint.transform) {
+        renderPaint(paint.paint, multiply(transform, paint.transform), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 14) {
+        renderPaint(paint.paint, multiply(transform, { ...identity(), dx: paint.dx, dy: paint.dy }), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 15) {
+        renderPaint(paint.paint, multiply(transform, { ...identity(), dx: paint.dx, dy: paint.dy }), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 16) {
+        renderPaint(paint.paint, multiply(transform, { xx: paint.scaleX, yx: 0, xy: 0, yy: paint.scaleY, dx: 0, dy: 0 }), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 17) {
+        renderPaint(paint.paint, multiply(transform, { xx: paint.scaleX, yx: 0, xy: 0, yy: paint.scaleY, dx: 0, dy: 0 }), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 18) {
+        const toCenter = { ...identity(), dx: paint.centerX, dy: paint.centerY };
+        const fromCenter = { ...identity(), dx: -paint.centerX, dy: -paint.centerY };
+        const scale = { xx: paint.scaleX, yx: 0, xy: 0, yy: paint.scaleY, dx: 0, dy: 0 };
+        renderPaint(paint.paint, multiply(transform, multiply(toCenter, multiply(scale, fromCenter))), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 19) {
+        const toCenter = { ...identity(), dx: paint.centerX, dy: paint.centerY };
+        const fromCenter = { ...identity(), dx: -paint.centerX, dy: -paint.centerY };
+        const scale = { xx: paint.scaleX, yx: 0, xy: 0, yy: paint.scaleY, dx: 0, dy: 0 };
+        renderPaint(paint.paint, multiply(transform, multiply(toCenter, multiply(scale, fromCenter))), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 20) {
+        const scale = { xx: paint.scale, yx: 0, xy: 0, yy: paint.scale, dx: 0, dy: 0 };
+        renderPaint(paint.paint, multiply(transform, scale), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 21) {
+        const scale = { xx: paint.scale, yx: 0, xy: 0, yy: paint.scale, dx: 0, dy: 0 };
+        renderPaint(paint.paint, multiply(transform, scale), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 22) {
+        const toCenter = { ...identity(), dx: paint.centerX, dy: paint.centerY };
+        const fromCenter = { ...identity(), dx: -paint.centerX, dy: -paint.centerY };
+        const scale = { xx: paint.scale, yx: 0, xy: 0, yy: paint.scale, dx: 0, dy: 0 };
+        renderPaint(paint.paint, multiply(transform, multiply(toCenter, multiply(scale, fromCenter))), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 23) {
+        const toCenter = { ...identity(), dx: paint.centerX, dy: paint.centerY };
+        const fromCenter = { ...identity(), dx: -paint.centerX, dy: -paint.centerY };
+        const scale = { xx: paint.scale, yx: 0, xy: 0, yy: paint.scale, dx: 0, dy: 0 };
+        renderPaint(paint.paint, multiply(transform, multiply(toCenter, multiply(scale, fromCenter))), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 24) {
+        const angle = paint.angle * Math.PI * 2;
+        const rot = { xx: Math.cos(angle), yx: Math.sin(angle), xy: -Math.sin(angle), yy: Math.cos(angle), dx: 0, dy: 0 };
+        renderPaint(paint.paint, multiply(transform, rot), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 25) {
+        const angle = paint.angle * Math.PI * 2;
+        const rot = { xx: Math.cos(angle), yx: Math.sin(angle), xy: -Math.sin(angle), yy: Math.cos(angle), dx: 0, dy: 0 };
+        renderPaint(paint.paint, multiply(transform, rot), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 26) {
+        const angle = paint.angle * Math.PI * 2;
+        const rot = { xx: Math.cos(angle), yx: Math.sin(angle), xy: -Math.sin(angle), yy: Math.cos(angle), dx: 0, dy: 0 };
+        const toCenter = { ...identity(), dx: paint.centerX, dy: paint.centerY };
+        const fromCenter = { ...identity(), dx: -paint.centerX, dy: -paint.centerY };
+        renderPaint(paint.paint, multiply(transform, multiply(toCenter, multiply(rot, fromCenter))), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 27) {
+        const angle = paint.angle * Math.PI * 2;
+        const rot = { xx: Math.cos(angle), yx: Math.sin(angle), xy: -Math.sin(angle), yy: Math.cos(angle), dx: 0, dy: 0 };
+        const toCenter = { ...identity(), dx: paint.centerX, dy: paint.centerY };
+        const fromCenter = { ...identity(), dx: -paint.centerX, dy: -paint.centerY };
+        renderPaint(paint.paint, multiply(transform, multiply(toCenter, multiply(rot, fromCenter))), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 29) {
+        const skew = { xx: 1, yx: Math.tan(paint.ySkew * Math.PI * 2), xy: Math.tan(paint.xSkew * Math.PI * 2), yy: 1, dx: 0, dy: 0 };
+        renderPaint(paint.paint, multiply(transform, skew), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 30) {
+        const skew = { xx: 1, yx: Math.tan(paint.ySkew * Math.PI * 2), xy: Math.tan(paint.xSkew * Math.PI * 2), yy: 1, dx: 0, dy: 0 };
+        renderPaint(paint.paint, multiply(transform, skew), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 31) {
+        if (paint.backdropPaint) renderPaint(paint.backdropPaint, transform, unsupported, paletteIndex, visited, depth + 1);
+        if (paint.sourcePaint) renderPaint(paint.sourcePaint, transform, unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 32) {
+        if (paint.backdropPaint) renderPaint(paint.backdropPaint, transform, unsupported, paletteIndex, visited, depth + 1);
+        if (paint.sourcePaint) renderPaint(paint.sourcePaint, transform, unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      unsupported.add(paint.format);
+    }
+
+    function renderGlyphWithPaint(gid, paint, transform, unsupported, paletteIndex, visited = new Set(), depth = 0) {
+      if (!paint) return;
+      if (depth > 64) return;
+      if (paint.format === 2) {
+        const palette = font.getTableByType(Table.CPAL)?.getPalette(paletteIndex) ?? [];
+        const entry = palette[paint.paletteIndex];
+        const rgba = entry
+          ? `rgba(${entry.red}, ${entry.green}, ${entry.blue}, ${(entry.alpha / 255) * (paint.alpha ?? 1)})`
+          : "#111";
+        drawGlyph(gid, rgba, transform);
+        return;
+      }
+      if (paint.format === 3) {
+        const palette = font.getTableByType(Table.CPAL)?.getPalette(paletteIndex) ?? [];
+        const entry = palette[paint.paletteIndex];
+        const rgba = entry
+          ? `rgba(${entry.red}, ${entry.green}, ${entry.blue}, ${(entry.alpha / 255) * (paint.alpha ?? 1)})`
+          : "#111";
+        drawGlyph(gid, rgba, transform);
+        return;
+      }
+      if (paint.format === 4) {
+        drawGlyphGradient(gid, paint, transform, paletteIndex);
+        return;
+      }
+      if (paint.format === 5) {
+        drawGlyphGradient(gid, paint, transform, paletteIndex);
+        return;
+      }
+      if (paint.format === 6) {
+        drawGlyphSweepGradient(gid, paint, transform, paletteIndex);
+        return;
+      }
+      if (paint.format === 7) {
+        drawGlyphSweepGradient(gid, paint, transform, paletteIndex);
+        return;
+      }
+      if (paint.format === 8) {
+        drawGlyphRadialGradient(gid, paint, transform, paletteIndex);
+        return;
+      }
+      if (paint.format === 9) {
+        drawGlyphRadialGradient(gid, paint, transform, paletteIndex);
+        return;
+      }
+      if (paint.format === 10) {
+        renderGlyphWithPaint(paint.glyphID, paint.paint, transform, unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 11) {
+        const key = `colr:${paint.glyphID}`;
+        if (visited.has(key)) return;
+        visited.add(key);
+        const nextPaint = colr.getPaintForGlyph(paint.glyphID);
+        if (nextPaint) renderPaint(nextPaint, transform, unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 12 && paint.transform) {
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, paint.transform), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 13 && paint.transform) {
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, paint.transform), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 14) {
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, { ...identity(), dx: paint.dx, dy: paint.dy }), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 15) {
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, { ...identity(), dx: paint.dx, dy: paint.dy }), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 16) {
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, { xx: paint.scaleX, yx: 0, xy: 0, yy: paint.scaleY, dx: 0, dy: 0 }), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 17) {
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, { xx: paint.scaleX, yx: 0, xy: 0, yy: paint.scaleY, dx: 0, dy: 0 }), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 18) {
+        const toCenter = { ...identity(), dx: paint.centerX, dy: paint.centerY };
+        const fromCenter = { ...identity(), dx: -paint.centerX, dy: -paint.centerY };
+        const scale = { xx: paint.scaleX, yx: 0, xy: 0, yy: paint.scaleY, dx: 0, dy: 0 };
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, multiply(toCenter, multiply(scale, fromCenter))), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 19) {
+        const toCenter = { ...identity(), dx: paint.centerX, dy: paint.centerY };
+        const fromCenter = { ...identity(), dx: -paint.centerX, dy: -paint.centerY };
+        const scale = { xx: paint.scaleX, yx: 0, xy: 0, yy: paint.scaleY, dx: 0, dy: 0 };
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, multiply(toCenter, multiply(scale, fromCenter))), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 20) {
+        const scale = { xx: paint.scale, yx: 0, xy: 0, yy: paint.scale, dx: 0, dy: 0 };
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, scale), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 21) {
+        const scale = { xx: paint.scale, yx: 0, xy: 0, yy: paint.scale, dx: 0, dy: 0 };
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, scale), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 22) {
+        const toCenter = { ...identity(), dx: paint.centerX, dy: paint.centerY };
+        const fromCenter = { ...identity(), dx: -paint.centerX, dy: -paint.centerY };
+        const scale = { xx: paint.scale, yx: 0, xy: 0, yy: paint.scale, dx: 0, dy: 0 };
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, multiply(toCenter, multiply(scale, fromCenter))), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 23) {
+        const toCenter = { ...identity(), dx: paint.centerX, dy: paint.centerY };
+        const fromCenter = { ...identity(), dx: -paint.centerX, dy: -paint.centerY };
+        const scale = { xx: paint.scale, yx: 0, xy: 0, yy: paint.scale, dx: 0, dy: 0 };
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, multiply(toCenter, multiply(scale, fromCenter))), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 24) {
+        const angle = paint.angle * Math.PI * 2;
+        const rot = { xx: Math.cos(angle), yx: Math.sin(angle), xy: -Math.sin(angle), yy: Math.cos(angle), dx: 0, dy: 0 };
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, rot), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 25) {
+        const angle = paint.angle * Math.PI * 2;
+        const rot = { xx: Math.cos(angle), yx: Math.sin(angle), xy: -Math.sin(angle), yy: Math.cos(angle), dx: 0, dy: 0 };
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, rot), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 26) {
+        const angle = paint.angle * Math.PI * 2;
+        const rot = { xx: Math.cos(angle), yx: Math.sin(angle), xy: -Math.sin(angle), yy: Math.cos(angle), dx: 0, dy: 0 };
+        const toCenter = { ...identity(), dx: paint.centerX, dy: paint.centerY };
+        const fromCenter = { ...identity(), dx: -paint.centerX, dy: -paint.centerY };
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, multiply(toCenter, multiply(rot, fromCenter))), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 27) {
+        const angle = paint.angle * Math.PI * 2;
+        const rot = { xx: Math.cos(angle), yx: Math.sin(angle), xy: -Math.sin(angle), yy: Math.cos(angle), dx: 0, dy: 0 };
+        const toCenter = { ...identity(), dx: paint.centerX, dy: paint.centerY };
+        const fromCenter = { ...identity(), dx: -paint.centerX, dy: -paint.centerY };
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, multiply(toCenter, multiply(rot, fromCenter))), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 29) {
+        const skew = { xx: 1, yx: Math.tan(paint.ySkew * Math.PI * 2), xy: Math.tan(paint.xSkew * Math.PI * 2), yy: 1, dx: 0, dy: 0 };
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, skew), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 30) {
+        const skew = { xx: 1, yx: Math.tan(paint.ySkew * Math.PI * 2), xy: Math.tan(paint.xSkew * Math.PI * 2), yy: 1, dx: 0, dy: 0 };
+        renderGlyphWithPaint(gid, paint.paint, multiply(transform, skew), unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 31) {
+        if (paint.backdropPaint) renderGlyphWithPaint(gid, paint.backdropPaint, transform, unsupported, paletteIndex, visited, depth + 1);
+        if (paint.sourcePaint) renderGlyphWithPaint(gid, paint.sourcePaint, transform, unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      if (paint.format === 32) {
+        if (paint.backdropPaint) renderGlyphWithPaint(gid, paint.backdropPaint, transform, unsupported, paletteIndex, visited, depth + 1);
+        if (paint.sourcePaint) renderGlyphWithPaint(gid, paint.sourcePaint, transform, unsupported, paletteIndex, visited, depth + 1);
+        return;
+      }
+      unsupported.add(paint.format);
+    }
+
+    function drawGlyph(gid, fill, transform) {
+      const head = font.getTableByType(Table.head);
+      const unitsPerEm = head?.unitsPerEm ?? 1000;
+      const scale = 220 / unitsPerEm;
+      const glyph = font.getGlyph(gid);
+      if (!glyph) return;
+      ctx.save();
+      ctx.translate(80, 220);
+      ctx.transform(transform.xx, transform.yx, transform.xy, transform.yy, transform.dx, transform.dy);
+      CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+        x: 0,
+        y: 0,
+        scale,
+        styles: { fillStyle: fill, strokeStyle: "rgba(0,0,0,0)", lineWidth: 0 }
+      });
+      ctx.restore();
+    }
+
+    function drawGlyphGradient(gid, gradientPaint, transform, paletteIndex) {
+      const head = font.getTableByType(Table.head);
+      const unitsPerEm = head?.unitsPerEm ?? 1000;
+      const scale = 220 / unitsPerEm;
+      const glyph = font.getGlyph(gid);
+      if (!glyph) return;
+      ctx.save();
+      ctx.translate(80, 220);
+      ctx.transform(transform.xx, transform.yx, transform.xy, transform.yy, transform.dx, transform.dy);
+      const grad = ctx.createLinearGradient(
+        gradientPaint.x0 * scale,
+        -gradientPaint.y0 * scale,
+        gradientPaint.x1 * scale,
+        -gradientPaint.y1 * scale
+      );
+      const palette = font.getTableByType(Table.CPAL)?.getPalette(paletteIndex) ?? [];
+      const stops = gradientPaint.colorLine?.stops ?? [];
+      stops.forEach(stop => {
+        const entry = palette[stop.paletteIndex];
+        const rgba = entry
+          ? `rgba(${entry.red}, ${entry.green}, ${entry.blue}, ${(entry.alpha / 255) * (stop.alpha ?? 1)})`
+          : "#111";
+        grad.addColorStop(Math.max(0, Math.min(1, stop.stopOffset)), rgba);
+      });
+      CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+        x: 0,
+        y: 0,
+        scale,
+        styles: { fillStyle: grad, strokeStyle: "rgba(0,0,0,0)", lineWidth: 0 }
+      });
+      ctx.restore();
+    }
+
+    function drawGlyphRadialGradient(gid, gradientPaint, transform, paletteIndex) {
+      const head = font.getTableByType(Table.head);
+      const unitsPerEm = head?.unitsPerEm ?? 1000;
+      const scale = 220 / unitsPerEm;
+      const glyph = font.getGlyph(gid);
+      if (!glyph) return;
+      ctx.save();
+      ctx.translate(80, 220);
+      ctx.transform(transform.xx, transform.yx, transform.xy, transform.yy, transform.dx, transform.dy);
+      const grad = ctx.createRadialGradient(
+        gradientPaint.x0 * scale,
+        -gradientPaint.y0 * scale,
+        Math.abs(gradientPaint.r0 * scale),
+        gradientPaint.x1 * scale,
+        -gradientPaint.y1 * scale,
+        Math.abs(gradientPaint.r1 * scale)
+      );
+      const palette = font.getTableByType(Table.CPAL)?.getPalette(paletteIndex) ?? [];
+      const stops = gradientPaint.colorLine?.stops ?? [];
+      stops.forEach(stop => {
+        const entry = palette[stop.paletteIndex];
+        const rgba = entry
+          ? `rgba(${entry.red}, ${entry.green}, ${entry.blue}, ${(entry.alpha / 255) * (stop.alpha ?? 1)})`
+          : "#111";
+        grad.addColorStop(Math.max(0, Math.min(1, stop.stopOffset)), rgba);
+      });
+      CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+        x: 0,
+        y: 0,
+        scale,
+        styles: { fillStyle: grad, strokeStyle: "rgba(0,0,0,0)", lineWidth: 0 }
+      });
+      ctx.restore();
+    }
+
+    function drawGlyphSweepGradient(gid, gradientPaint, transform, paletteIndex) {
+      const head = font.getTableByType(Table.head);
+      const unitsPerEm = head?.unitsPerEm ?? 1000;
+      const scale = 220 / unitsPerEm;
+      const glyph = font.getGlyph(gid);
+      if (!glyph) return;
+      ctx.save();
+      ctx.translate(80, 220);
+      ctx.transform(transform.xx, transform.yx, transform.xy, transform.yy, transform.dx, transform.dy);
+      const cx = gradientPaint.centerX * scale;
+      const cy = -gradientPaint.centerY * scale;
+      const start = gradientPaint.startAngle * Math.PI * 2;
+      const grad = ctx.createConicGradient(start, cx, cy);
+      const palette = font.getTableByType(Table.CPAL)?.getPalette(paletteIndex) ?? [];
+      const stops = gradientPaint.colorLine?.stops ?? [];
+      stops.forEach(stop => {
+        const entry = palette[stop.paletteIndex];
+        const rgba = entry
+          ? `rgba(${entry.red}, ${entry.green}, ${entry.blue}, ${(entry.alpha / 255) * (stop.alpha ?? 1)})`
+          : "#111";
+        grad.addColorStop(Math.max(0, Math.min(1, stop.stopOffset)), rgba);
+      });
+      CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+        x: 0,
+        y: 0,
+        scale,
+        styles: { fillStyle: grad, strokeStyle: "rgba(0,0,0,0)", lineWidth: 0 }
+      });
+      ctx.restore();
+    }
+
+    function render() {
+      if (!font || !colr) return;
+      const glyphId = Number(glyphInput.value);
+      const paint = colr.getPaintForGlyph(glyphId);
+      paintTree.textContent = paint ? paintToString(paint) : "No COLRv1 paint for glyph.";
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const unsupported = new Set();
+      let rendered = false;
+      if (paint) {
+        const before = unsupported.size;
+        renderPaint(paint, identity(), unsupported);
+        rendered = true;
+      }
+      if (!paint || unsupported.size > 0) {
+        const glyph = font.getGlyph(glyphId);
+        if (glyph) {
+          CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+            x: 80,
+            y: 220,
+            scale: 220 / (font.getTableByType(Table.head)?.unitsPerEm ?? 1000),
+            styles: { fillStyle: "rgba(60,70,90,0.15)", strokeStyle: "#6b7a90", lineWidth: 1 }
+          });
+          rendered = true;
+        }
+      }
+      if (!rendered) {
+        ctx.fillStyle = "#a33a2a";
+        ctx.fillText("No renderable paint for this glyph.", 20, 30);
+      }
+      unsupportedEl.textContent = unsupported.size ? `Unsupported paint formats: ${Array.from(unsupported).join(", ")}` : "All paints supported in this glyph.";
+    }
+
+    async function loadSampleFont() {
+      const response = await fetch(fontSelect.value);
+      const buf = await response.arrayBuffer();
+      font = FontParser.fromArrayBuffer(buf);
+      colr = font.getTableByType(Table.COLR);
+      records = colr?.baseGlyphPaintRecords ?? [];
+      index = 0;
+      const label = fontSelect.options[fontSelect.selectedIndex]?.textContent ?? "Font";
+      if (records.length) {
+        glyphInput.value = String(records[0].glyphId);
+        info.textContent = `${label} | COLR version ${colr.version} | base glyph paints: ${records.length}`;
+      } else {
+        info.textContent = `${label} | No COLRv1 base glyph records found.`;
+      }
+      render();
+    }
+
+    loadSample.addEventListener("click", loadSampleFont);
+    useCharBtn.addEventListener("click", () => {
+      if (!font) return;
+      const value = (charInput.value || "").trim();
+      if (!value) return;
+      const codePoint = value.codePointAt(0);
+      if (codePoint == null) return;
+      const gid = font.getGlyphIndexByChar(codePoint);
+      if (gid == null) return;
+      glyphInput.value = String(gid);
+      render();
+    });
+    prevBtn.addEventListener("click", () => {
+      if (!records.length) return;
+      index = (index - 1 + records.length) % records.length;
+      glyphInput.value = String(records[index].glyphId);
+      render();
+    });
+    nextBtn.addEventListener("click", () => {
+      if (!records.length) return;
+      index = (index + 1) % records.length;
+      glyphInput.value = String(records[index].glyphId);
+      render();
+    });
+    glyphInput.addEventListener("input", render);
+    loadSampleFont();
+  </script>
+</body>
+</html>

@@ -85,6 +85,52 @@
             Line Height
             <input id="lineInput" type="range" min="700" max="1400" value="1100" />
         </label>
+        <label>
+            Break Words
+            <select id="breakWords">
+                <option value="true" selected>On</option>
+                <option value="false">Off</option>
+            </select>
+        </label>
+        <label>
+            Trim Leading Spaces
+            <select id="trimSpaces">
+                <option value="true" selected>On</option>
+                <option value="false">Off</option>
+            </select>
+        </label>
+        <label>
+            Trim Trailing Spaces
+            <select id="trimTrailing">
+                <option value="true" selected>On</option>
+                <option value="false">Off</option>
+            </select>
+        </label>
+        <label>
+            Collapse Spaces
+            <select id="collapseSpaces">
+                <option value="false" selected>Off</option>
+                <option value="true">On</option>
+            </select>
+        </label>
+        <label>
+            Preserve NBSP
+            <select id="preserveNbsp">
+                <option value="true" selected>On</option>
+                <option value="false">Off</option>
+            </select>
+        </label>
+        <label>
+            Tab Size
+            <input id="tabSize" type="range" min="2" max="8" value="4" />
+        </label>
+        <label>
+            Justify Last Line
+            <select id="justifyLast">
+                <option value="false" selected>Off</option>
+                <option value="true">On</option>
+            </select>
+        </label>
     </div>
     <textarea id="textInput">The library can now break lines and align text. Use this to inspect glyph advances, kerning, and spacing across fonts.</textarea>
     <div class="hint">Layout uses font metrics + kerning. Adjust width and alignment to see line breaking.</div>
@@ -100,6 +146,13 @@
         const widthInput = document.getElementById('widthInput');
         const alignSelect = document.getElementById('alignSelect');
         const lineInput = document.getElementById('lineInput');
+        const breakWords = document.getElementById('breakWords');
+        const trimSpaces = document.getElementById('trimSpaces');
+        const trimTrailing = document.getElementById('trimTrailing');
+        const collapseSpaces = document.getElementById('collapseSpaces');
+        const preserveNbsp = document.getElementById('preserveNbsp');
+        const tabSize = document.getElementById('tabSize');
+        const justifyLast = document.getElementById('justifyLast');
         const textInput = document.getElementById('textInput');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -108,6 +161,9 @@
             { name: 'Noto Sans Regular', url: '../truetypefonts/noto/NotoSans-Regular.ttf' },
             { name: 'Gotham Narrow Ultra (OTF)', url: '../truetypefonts/GothamNarrow-Ultra.otf' },
             { name: 'Source Code Pro Regular (OTF)', url: '../truetypefonts/source-code-pro/SourceCodePro-Regular.otf' },
+            { name: 'Font Awesome (OTF)', url: '../truetypefonts/FontAwesome.otf' },
+            { name: 'Minecraft', url: '../truetypefonts/Minecraft.ttf' },
+            { name: 'Kremlin Minister', url: '../truetypefonts/kremlin_minister/Kremlin Minister.ttf' },
             { name: 'DevilInside', url: '../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf' }
         ];
 
@@ -151,7 +207,14 @@
                 maxWidth: width / scale,
                 align,
                 lineHeight,
-                useKerning: true
+                useKerning: true,
+                breakWords: breakWords.value === 'true',
+                trimLeadingSpaces: trimSpaces.value === 'true',
+                trimTrailingSpaces: trimTrailing.value === 'true',
+                collapseSpaces: collapseSpaces.value === 'true',
+                preserveNbsp: preserveNbsp.value === 'true',
+                tabSize: Number(tabSize.value) || 4,
+                justifyLastLine: justifyLast.value === 'true'
             });
 
             ctx.strokeStyle = '#dbe2e7';
@@ -182,6 +245,13 @@
         widthInput.addEventListener('input', render);
         alignSelect.addEventListener('change', render);
         lineInput.addEventListener('input', render);
+        breakWords.addEventListener('change', render);
+        trimSpaces.addEventListener('change', render);
+        trimTrailing.addEventListener('change', render);
+        collapseSpaces.addEventListener('change', render);
+        preserveNbsp.addEventListener('change', render);
+        tabSize.addEventListener('input', render);
+        justifyLast.addEventListener('change', render);
         textInput.addEventListener('input', render);
 
         populateFonts();

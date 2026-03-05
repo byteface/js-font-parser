@@ -3,6 +3,7 @@ import { Coverage } from "./Coverage.js";
 import { ICoverage } from "./ICoverage.js";
 import { LookupSubtable } from "./LookupSubtable.js";
 import { GsubTable } from "./GsubTable.js";
+import { GsubMatchContext, matchBacktrackSequence, matchInputSequence, matchLookaheadSequence } from "./GsubMatch.js";
 
 export class ChainingSubstFormat3 extends LookupSubtable {
     private backtrackCount: number;
@@ -67,51 +68,40 @@ export class ChainingSubstFormat3 extends LookupSubtable {
     }
 
     applyToGlyphs(glyphs: number[]): number[] {
+        return this.applyToGlyphsWithContext(glyphs, undefined);
+    }
+
+    applyToGlyphsWithContext(glyphs: number[], ctx?: GsubMatchContext): number[] {
         if (this.inputCount === 0 || this.inputCoverages.length !== this.inputCount) return glyphs;
         let out = glyphs.slice();
         let i = 0;
-        while (i <= out.length - this.inputCount) {
-            // backtrack
-            let match = true;
-            for (let b = 0; b < this.backtrackCoverages.length; b++) {
-                const idx = i - 1 - b;
-                if (idx < 0 || this.backtrackCoverages[b].findGlyph(out[idx]) < 0) {
-                    match = false;
-                    break;
-                }
-            }
-            if (!match) {
+        while (i < out.length) {
+            const backOk = matchBacktrackSequence(out, i, this.backtrackCoverages, (expected, gid) => expected.findGlyph(gid) >= 0, ctx);
+            if (!backOk) {
                 i++;
                 continue;
             }
-            // input
-            for (let j = 0; j < this.inputCount; j++) {
-                if (this.inputCoverages[j].findGlyph(out[i + j]) < 0) {
-                    match = false;
-                    break;
-                }
-            }
-            if (!match) {
+            const matched = matchInputSequence(out, i, this.inputCoverages.slice(1), (expected, gid) => expected.findGlyph(gid) >= 0, ctx);
+            if (!matched) {
                 i++;
                 continue;
             }
-            // lookahead
-            for (let l = 0; l < this.lookaheadCoverages.length; l++) {
-                const idx = i + this.inputCount + l;
-                if (idx >= out.length || this.lookaheadCoverages[l].findGlyph(out[idx]) < 0) {
-                    match = false;
-                    break;
-                }
+            if (this.inputCoverages[0].findGlyph(out[i]) < 0) {
+                i++;
+                continue;
             }
-            if (!match) {
+            const lookStart = matched[matched.length - 1] ?? i;
+            const lookOk = matchLookaheadSequence(out, lookStart, this.lookaheadCoverages, (expected, gid) => expected.findGlyph(gid) >= 0, ctx);
+            if (!lookOk) {
                 i++;
                 continue;
             }
 
             for (const rec of this.records) {
-                out = this.gsub.applyLookupAt(rec.lookupListIndex, out, i + rec.sequenceIndex);
+                const targetIndex = matched[rec.sequenceIndex] ?? (i + rec.sequenceIndex);
+                out = this.gsub.applyLookupAt(rec.lookupListIndex, out, targetIndex);
             }
-            i += this.inputCount;
+            i = (matched[matched.length - 1] ?? i) + 1;
         }
         return out;
     }

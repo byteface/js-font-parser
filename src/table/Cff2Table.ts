@@ -19,6 +19,7 @@ export class Cff2Table implements ITable {
     private fdSelect: number[] = [];
     private privateInfos: PrivateInfo[] = [];
     private vstoreRegionCounts: number[] = [];
+    private vstoreRegionIndices: number[][] = [];
     private vstoreRegions: VariationRegion[][] = [];
     private vstoreAxisCount: number = 0;
     private variationCoords: number[] = [];
@@ -185,6 +186,7 @@ export class Cff2Table implements ITable {
         }
 
         this.vstoreRegionCounts = new Array(ivdCount).fill(0);
+        this.vstoreRegionIndices = new Array(ivdCount).fill(null).map(() => []);
         for (let i = 0; i < ivdCount; i++) {
             const ivdPos = offset + ivdOffsets[i];
             byte_ar.offset = ivdPos;
@@ -192,6 +194,11 @@ export class Cff2Table implements ITable {
             byte_ar.readUnsignedShort(); // shortDeltaCount
             const regionIndexCount = byte_ar.readUnsignedShort();
             this.vstoreRegionCounts[i] = regionIndexCount;
+            const indices: number[] = [];
+            for (let r = 0; r < regionIndexCount; r++) {
+                indices.push(byte_ar.readUnsignedShort());
+            }
+            this.vstoreRegionIndices[i] = indices;
         }
 
         byte_ar.offset = prev;
@@ -451,6 +458,7 @@ export class Cff2Table implements ITable {
                         if (op === 17) { // blend
                             const n = args.pop() ?? 0;
                             const regionCount = this.vstoreRegionCounts[vsIndex] ?? 0;
+                            const regionIndices = this.vstoreRegionIndices[vsIndex] ?? [];
                             const expected = n * (regionCount + 1);
                             if (n > 0 && args.length >= expected) {
                                 const base = args.slice(0, n);
@@ -458,7 +466,8 @@ export class Cff2Table implements ITable {
                                 const coords = this.variationCoords;
                                 const regionScalars: number[] = [];
                                 for (let r = 0; r < regionCount; r++) {
-                                    const region = this.vstoreRegions[r];
+                                    const regionIndex = regionIndices[r] ?? r;
+                                    const region = this.vstoreRegions[regionIndex];
                                     if (!region) { regionScalars.push(0); continue; }
                                     let scalar = 1;
                                     for (let a = 0; a < region.length; a++) {
@@ -533,7 +542,6 @@ export class Cff2Table implements ITable {
                             addPoint(dx5, dy5, false);
                             addPoint(dx6, dy6, true);
                         }
-                        // CFF2 blend/vsindex ignored (default positions)
                         break;
                     }
                     default:

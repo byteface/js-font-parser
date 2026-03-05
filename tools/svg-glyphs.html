@@ -13,8 +13,8 @@
     .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 20px; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
     input[type="file"], input[type="text"] { padding:6px; border-radius:6px; border:1px solid #ccc; }
-    #svgPreview { border:1px dashed #ddd; background:#fff; padding:16px; min-height:180px; }
-    #svgPreview svg { width: 180px; height: 180px; }
+    #svgPreview { border:1px dashed #ddd; background:#fff; padding:16px; min-height:420px; display:flex; align-items:center; justify-content:center; }
+    #svgPreview svg { width: 420px; height: 420px; max-width: 90vw; max-height: 70vh; }
     .hint { font-size:12px; color:var(--muted); margin-top:8px; }
   </style>
 </head>
@@ -77,7 +77,33 @@
         preview.textContent = result.isCompressed ? "SVG data is compressed; decompression failed." : "No SVG glyph found.";
         return;
       }
-      preview.innerHTML = result.svgText;
+      const rawText = result.svgText;
+      const svgStart = rawText.indexOf("<svg");
+      const cleaned = svgStart >= 0 ? rawText.slice(svgStart) : rawText;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(cleaned, "image/svg+xml");
+      const svgEl = doc.querySelector("svg");
+      preview.innerHTML = "";
+      if (svgEl) {
+        const gWithTransform = svgEl.querySelector('g[transform]');
+        const transform = gWithTransform?.getAttribute('transform') || '';
+        if (transform.includes('scale(56.888')) {
+          gWithTransform.removeAttribute('transform');
+          svgEl.setAttribute('viewBox', '0 0 36 36');
+        } else if (!svgEl.getAttribute("viewBox")) {
+          const width = parseFloat(svgEl.getAttribute("width") || "");
+          const height = parseFloat(svgEl.getAttribute("height") || "");
+          if (Number.isFinite(width) && Number.isFinite(height)) {
+            svgEl.setAttribute("viewBox", `0 0 ${width} ${height}`);
+          }
+        }
+        svgEl.setAttribute("width", "100%");
+        svgEl.setAttribute("height", "100%");
+        svgEl.setAttribute("preserveAspectRatio", "xMidYMid meet");
+        preview.appendChild(svgEl);
+      } else {
+        preview.textContent = "SVG glyph parsed, but no <svg> root found.";
+      }
     }
 
     input.addEventListener("change", async (e) => {

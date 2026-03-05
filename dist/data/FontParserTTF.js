@@ -1,3 +1,14 @@
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -39,7 +50,6 @@ import { Table } from '../table/Table.js';
 import { TableDirectory } from '../table/TableDirectory.js';
 import { TableFactory } from '../table/TableFactory.js';
 import { GlyphData } from './GlyphData.js';
-import { LigatureSubstFormat1 } from '../table/LigatureSubstFormat1.js';
 import { MarkBasePosFormat1 } from '../table/MarkBasePosFormat1.js';
 import { MarkLigPosFormat1 } from '../table/MarkLigPosFormat1.js';
 import { MarkMarkPosFormat1 } from '../table/MarkMarkPosFormat1.js';
@@ -69,6 +79,7 @@ var FontParserTTF = /** @class */ (function () {
         this.colr = null;
         this.cpal = null;
         this.gpos = null;
+        this.gdef = null;
         this.fvar = null;
         this.svg = null;
         this.gvar = null;
@@ -125,6 +136,10 @@ var FontParserTTF = /** @class */ (function () {
         this.colr = this.getTable(Table.COLR);
         this.cpal = this.getTable(Table.CPAL);
         this.gpos = this.getTable(Table.GPOS);
+        this.gdef = this.getTable(Table.GDEF);
+        if (this.gsub && this.gdef && typeof this.gsub.setGdef === 'function') {
+            this.gsub.setGdef(this.gdef);
+        }
         this.fvar = this.getTable(Table.fvar);
         this.svg = this.getTable(Table.SVG);
         this.gvar = this.getTable(Table.gvar);
@@ -199,42 +214,7 @@ var FontParserTTF = /** @class */ (function () {
         var glyphs = this.getGlyphIndicesForString(text);
         if (!this.gsub || glyphs.length === 0)
             return glyphs;
-        var subtables = this.gsub.getSubtablesForFeatures(featureTags, scriptTags);
-        var result = glyphs.slice();
-        var _loop_1 = function (st) {
-            if (!st)
-                return "continue";
-            if (typeof st.substitute === "function") {
-                result = result.map(function (g) { return st.substitute(g); });
-                return "continue";
-            }
-            if (typeof st.applyToGlyphs === "function") {
-                result = st.applyToGlyphs(result);
-                return "continue";
-            }
-            if (st instanceof LigatureSubstFormat1) {
-                var lig = st;
-                var next = [];
-                var i = 0;
-                while (i < result.length) {
-                    var match = lig.tryLigature(result, i);
-                    if (match) {
-                        next.push(match.glyphId);
-                        i += match.length;
-                    }
-                    else {
-                        next.push(result[i]);
-                        i += 1;
-                    }
-                }
-                result = next;
-            }
-        };
-        for (var _i = 0, subtables_1 = subtables; _i < subtables_1.length; _i++) {
-            var st = subtables_1[_i];
-            _loop_1(st);
-        }
-        return result;
+        return this.gsub.applyFeatures(glyphs, featureTags, scriptTags);
     };
     FontParserTTF.prototype.getKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
         var _a;
@@ -351,8 +331,8 @@ var FontParserTTF = /** @class */ (function () {
         if (!this.gpos)
             return;
         var subtables = this.gpos.getSubtablesForFeatures(gposFeatures, scriptTags);
-        for (var _i = 0, subtables_2 = subtables; _i < subtables_2.length; _i++) {
-            var st = subtables_2[_i];
+        for (var _i = 0, subtables_1 = subtables; _i < subtables_1.length; _i++) {
+            var st = subtables_1[_i];
             if (st instanceof SinglePosSubtable) {
                 for (var i = 0; i < glyphIndices.length; i++) {
                     var adj = (_b = (_a = st).getAdjustment) === null || _b === void 0 ? void 0 : _b.call(_a, glyphIndices[i]);
@@ -431,17 +411,34 @@ var FontParserTTF = /** @class */ (function () {
     };
     // Get a glyph description by index
     FontParserTTF.prototype.getGlyph = function (i) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
         var description = (_a = this.glyf) === null || _a === void 0 ? void 0 : _a.getDescription(i);
         if (description != null) {
             var desc = description;
-            if (this.gvar && this.variationCoords.length > 0) {
-                var deltas = this.gvar.getDeltasForGlyph(i, this.variationCoords, description.getPointCount());
+            var lsb = (_c = (_b = this.hmtx) === null || _b === void 0 ? void 0 : _b.getLeftSideBearing(i)) !== null && _c !== void 0 ? _c : 0;
+            var advance = (_e = (_d = this.hmtx) === null || _d === void 0 ? void 0 : _d.getAdvanceWidth(i)) !== null && _e !== void 0 ? _e : 0;
+            if (this.gvar && this.variationCoords.length > 0 && !description.isComposite()) {
+                var basePointCount = description.getPointCount();
+                var gvarPointCount = basePointCount + 4; // phantom points
+                var deltas = this.gvar.getDeltasForGlyph(i, this.variationCoords, gvarPointCount);
                 if (deltas) {
                     var base_1 = description;
-                    var dx_1 = deltas.dx;
-                    var dy_1 = deltas.dy;
-                    this.applyIupDeltas(base_1, dx_1, dy_1, deltas.touched);
+                    var fullDx = deltas.dx;
+                    var fullDy = deltas.dy;
+                    var dx_1 = fullDx.slice(0, basePointCount);
+                    var dy_1 = fullDy.slice(0, basePointCount);
+                    var touched = deltas.touched.slice(0, basePointCount);
+                    while (dx_1.length < basePointCount)
+                        dx_1.push(0);
+                    while (dy_1.length < basePointCount)
+                        dy_1.push(0);
+                    while (touched.length < basePointCount)
+                        touched.push(false);
+                    this.applyIupDeltas(base_1, dx_1, dy_1, touched);
+                    var lsbDelta = (_f = fullDx[basePointCount]) !== null && _f !== void 0 ? _f : 0;
+                    var rsbDelta = (_g = fullDx[basePointCount + 1]) !== null && _g !== void 0 ? _g : 0;
+                    lsb += lsbDelta;
+                    advance += (rsbDelta - lsbDelta);
                     desc = {
                         getPointCount: function () { return base_1.getPointCount(); },
                         getContourCount: function () { return base_1.getContourCount(); },
@@ -458,18 +455,18 @@ var FontParserTTF = /** @class */ (function () {
                     };
                 }
             }
-            return new GlyphData(desc, (_c = (_b = this.hmtx) === null || _b === void 0 ? void 0 : _b.getLeftSideBearing(i)) !== null && _c !== void 0 ? _c : 0, (_e = (_d = this.hmtx) === null || _d === void 0 ? void 0 : _d.getAdvanceWidth(i)) !== null && _e !== void 0 ? _e : 0);
+            return new GlyphData(desc, lsb, advance);
         }
         if (this.cff2) {
             var cff2Desc = this.cff2.getGlyphDescription(i);
             if (cff2Desc) {
-                return new GlyphData(cff2Desc, (_g = (_f = this.hmtx) === null || _f === void 0 ? void 0 : _f.getLeftSideBearing(i)) !== null && _g !== void 0 ? _g : 0, (_j = (_h = this.hmtx) === null || _h === void 0 ? void 0 : _h.getAdvanceWidth(i)) !== null && _j !== void 0 ? _j : 0, { isCubic: true });
+                return new GlyphData(cff2Desc, (_j = (_h = this.hmtx) === null || _h === void 0 ? void 0 : _h.getLeftSideBearing(i)) !== null && _j !== void 0 ? _j : 0, (_l = (_k = this.hmtx) === null || _k === void 0 ? void 0 : _k.getAdvanceWidth(i)) !== null && _l !== void 0 ? _l : 0, { isCubic: true });
             }
         }
         if (this.cff) {
             var cffDesc = this.cff.getGlyphDescription(i);
             if (cffDesc) {
-                return new GlyphData(cffDesc, (_l = (_k = this.hmtx) === null || _k === void 0 ? void 0 : _k.getLeftSideBearing(i)) !== null && _l !== void 0 ? _l : 0, (_o = (_m = this.hmtx) === null || _m === void 0 ? void 0 : _m.getAdvanceWidth(i)) !== null && _o !== void 0 ? _o : 0, { isCubic: true });
+                return new GlyphData(cffDesc, (_o = (_m = this.hmtx) === null || _m === void 0 ? void 0 : _m.getLeftSideBearing(i)) !== null && _o !== void 0 ? _o : 0, (_q = (_p = this.hmtx) === null || _p === void 0 ? void 0 : _p.getAdvanceWidth(i)) !== null && _q !== void 0 ? _q : 0, { isCubic: true });
             }
         }
         return null;
@@ -516,6 +513,37 @@ var FontParserTTF = /** @class */ (function () {
         if (glyphId == null)
             return [];
         return this.getColorLayersForGlyph(glyphId, paletteIndex);
+    };
+    FontParserTTF.prototype.getColrV1LayersForGlyph = function (glyphId, paletteIndex) {
+        if (paletteIndex === void 0) { paletteIndex = 0; }
+        if (!this.colr || this.colr.version === 0)
+            return [];
+        var paint = this.colr.getPaintForGlyph(glyphId);
+        if (!paint)
+            return [];
+        return this.flattenColrV1Paint(paint, paletteIndex);
+    };
+    FontParserTTF.prototype.flattenColrV1Paint = function (paint, paletteIndex) {
+        var _this = this;
+        var _a, _b, _c;
+        if (!paint)
+            return [];
+        if (paint.format === 1 && Array.isArray(paint.layers)) {
+            return paint.layers.flatMap(function (p) { return _this.flattenColrV1Paint(p, paletteIndex); });
+        }
+        if (paint.format === 10) {
+            var child = paint.paint;
+            if (child && child.format === 2) {
+                var color = (_b = (_a = this.cpal) === null || _a === void 0 ? void 0 : _a.getPalette(paletteIndex)) === null || _b === void 0 ? void 0 : _b[child.paletteIndex];
+                var rgba = color ? "rgba(".concat(color.red, ", ").concat(color.green, ", ").concat(color.blue, ", ").concat((color.alpha / 255) * ((_c = child.alpha) !== null && _c !== void 0 ? _c : 1), ")") : null;
+                return [{ glyphId: paint.glyphID, color: rgba, paletteIndex: child.paletteIndex }];
+            }
+            return this.flattenColrV1Paint(child, paletteIndex).map(function (layer) { return (__assign(__assign({}, layer), { glyphId: paint.glyphID })); });
+        }
+        if (paint.format === 11) {
+            return this.getColrV1LayersForGlyph(paint.glyphID, paletteIndex);
+        }
+        return [];
     };
     FontParserTTF.prototype.getMarkAnchorsForGlyph = function (glyphId, subtables) {
         var _this = this;
@@ -630,7 +658,7 @@ var FontParserTTF = /** @class */ (function () {
             endPts.push(base.getEndPtOfContours(c));
         }
         var start = 0;
-        var _loop_2 = function (end) {
+        var _loop_1 = function (end) {
             var indices = [];
             var touchedIndices = [];
             for (var i = start; i <= end; i++) {
@@ -679,7 +707,7 @@ var FontParserTTF = /** @class */ (function () {
         var this_1 = this;
         for (var _i = 0, endPts_1 = endPts; _i < endPts_1.length; _i++) {
             var end = endPts_1[_i];
-            _loop_2(end);
+            _loop_1(end);
         }
     };
     FontParserTTF.prototype.interpolate = function (aCoord, bCoord, aDelta, bDelta, pCoord) {
@@ -700,6 +728,48 @@ var FontParserTTF = /** @class */ (function () {
     };
     FontParserTTF.prototype.getTableByType = function (tableType) {
         return this.getTable(tableType);
+    };
+    FontParserTTF.prototype.getNameInfo = function () {
+        return {
+            family: this.getNameRecord(1),
+            subfamily: this.getNameRecord(2),
+            fullName: this.getNameRecord(4),
+            postScriptName: this.getNameRecord(6),
+            version: this.getNameRecord(5),
+            manufacturer: this.getNameRecord(8),
+            designer: this.getNameRecord(9),
+            description: this.getNameRecord(10),
+            typoFamily: this.getNameRecord(16),
+            typoSubfamily: this.getNameRecord(17)
+        };
+    };
+    FontParserTTF.prototype.getOs2Info = function () {
+        if (!this.os2)
+            return null;
+        var vendorId = String.fromCharCode((this.os2.achVendorID >> 24) & 0xff, (this.os2.achVendorID >> 16) & 0xff, (this.os2.achVendorID >> 8) & 0xff, this.os2.achVendorID & 0xff).replace(/\0/g, '');
+        return {
+            weightClass: this.os2.usWeightClass,
+            widthClass: this.os2.usWidthClass,
+            typoAscender: this.os2.sTypoAscender,
+            typoDescender: this.os2.sTypoDescender,
+            typoLineGap: this.os2.sTypoLineGap,
+            winAscent: this.os2.usWinAscent,
+            winDescent: this.os2.usWinDescent,
+            unicodeRanges: [this.os2.ulUnicodeRange1, this.os2.ulUnicodeRange2, this.os2.ulUnicodeRange3, this.os2.ulUnicodeRange4],
+            codePageRanges: [this.os2.ulCodePageRange1, this.os2.ulCodePageRange2],
+            vendorId: vendorId,
+            fsSelection: this.os2.fsSelection
+        };
+    };
+    FontParserTTF.prototype.getPostInfo = function () {
+        if (!this.post)
+            return null;
+        return {
+            italicAngle: this.post.italicAngle / 65536,
+            underlinePosition: this.post.underlinePosition,
+            underlineThickness: this.post.underlineThickness,
+            isFixedPitch: this.post.isFixedPitch
+        };
     };
     // Return a table by type
     FontParserTTF.prototype.getTable = function (tableType) {
@@ -739,14 +809,14 @@ var FontParserTTF = /** @class */ (function () {
         if (formats.length === 0)
             return null;
         var order = [4, 12, 10, 8, 6, 2, 0];
-        var _loop_3 = function (fmt) {
+        var _loop_2 = function (fmt) {
             var found = formats.find(function (f) { return (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt; });
             if (found)
                 return { value: found };
         };
         for (var _i = 0, order_1 = order; _i < order_1.length; _i++) {
             var fmt = order_1[_i];
-            var state_1 = _loop_3(fmt);
+            var state_1 = _loop_2(fmt);
             if (typeof state_1 === "object")
                 return state_1.value;
         }

@@ -3,6 +3,7 @@ import { DirectoryEntry } from './DirectoryEntry.js'
 import { Table } from './Table.js'
 import { GsubTable } from './GsubTable.js'
 import { GposTable } from './GposTable.js'
+import { GdefTable } from './GdefTable.js'
 import { CvtTable } from './CvtTable.js'
 import { FpgmTable } from './FpgmTable.js'
 import { Os2Table } from './Os2Table.js'
@@ -36,6 +37,8 @@ export class TableFactory {
                 return new GsubTable(de, byte_ar);
             case Table.GPOS:
                 return new GposTable(de, byte_ar);
+            case Table.GDEF:
+                return new GdefTable(de, byte_ar);
             case Table.OS_2:
                 return new Os2Table(de, byte_ar);
             case Table.cmap:
