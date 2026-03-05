@@ -5,11 +5,12 @@
     <meta charset="utf-8">
 </head>
 <body>
-<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+<div data-nav="main"></div>
 
 <div id="font-list"></div>
 <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
+    import { getFontList } from '../tools/shared/font-catalog.js';
     import { Debug } from '../dist/utils/Debug.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
     import { Table } from '../dist/table/Table.js';
@@ -17,22 +18,7 @@
     const DEBUG = false;
     Debug.enabled = DEBUG;
 
-    const fonts = [
-        "2006 Team.ttf",
-        "20FACES.TTF",
-        "AUGIE___.TTF",
-        "Aims in your Life normal.ttf",
-        "CARDS.TTF",
-        "DiscoMo.ttf",
-        "devil-inside-font/DevilInside-G3xP.ttf",
-        "ELLO____.TTF",
-        "GothamNarrow-Ultra.otf",
-        "JoeJack.ttf",
-        "Quill.ttf",
-        "RENAV___.TTF",
-        "ZWISDOM.ttf",
-        "slkscr.ttf"
-    ];
+    const fonts = getFontList('stringExplorer');
 
     const container = document.getElementById("font-list");
 
@@ -93,5 +79,6 @@
     };
 
 </script>
+  <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

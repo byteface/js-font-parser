@@ -60,9 +60,24 @@ font.getDescent();
 
 ## Metadata
 ```js
-font.getNameRecord(1); // family name
-font.getAllNameRecords(); // array of { nameId, record }
+// Legacy name-table helpers
+font.getNameRecord(1);
+font.getAllNameRecords();
+
+// Expanded metadata convenience API
+font.getFontNames();
+font.getOs2Metrics();
+font.getPostMetrics();
+font.getWeightClass();
+font.getWidthClass();
+font.getFsTypeFlags();
+font.getFsSelectionFlags();
+font.isBold();
+font.isItalic();
+font.isMonospace();
+font.getMetadata();
 ```
+
 
 ## Notes
 - Composite glyphs are partially supported.

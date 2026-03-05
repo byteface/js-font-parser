@@ -22,7 +22,7 @@
   </style>
 </head>
 <body>
-<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+<div data-nav="main"></div>
 
   <header>
     <h1>Unicode Coverage</h1>
@@ -53,18 +53,9 @@
 
   <script type="module">
     import { FontParser } from "../dist/data/FontParser.js";
+    import { getFontList } from "./shared/font-catalog.js";
 
-    const fonts = [
-      { name: "DiscoMo", url: "../truetypefonts/DiscoMo.ttf" },
-      { name: "DiscoMo ES (localised)", url: "../truetypefonts/DiscoMo-es.ttf" },
-      { name: "DiscoMo PL (localised)", url: "../truetypefonts/DiscoMo-pl.ttf" },
-      { name: "DiscoMo CS (localised)", url: "../truetypefonts/DiscoMo-cs.ttf" },
-      { name: "DiscoMo HU (localised)", url: "../truetypefonts/DiscoMo-hu.ttf" },
-      { name: "DiscoMo TR (localised)", url: "../truetypefonts/DiscoMo-tr.ttf" },
-      { name: "DiscoMo RO (localised)", url: "../truetypefonts/DiscoMo-ro.ttf" },
-      { name: "DevilInside", url: "../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf" },
-      { name: "Noto Sans", url: "../truetypefonts/noto/NotoSans-Regular.ttf" }
-    ];
+    const fonts = getFontList('unicodeCoverage');
 
     const blocks = [
       { name: "Basic Latin", start: 0x0020, end: 0x007F },
@@ -144,5 +135,6 @@
     blockSelect.addEventListener("change", render);
     render();
   </script>
+  <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

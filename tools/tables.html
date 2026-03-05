@@ -72,7 +72,7 @@
   </style>
 </head>
 <body>
-<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+<div data-nav="main"></div>
 
   <header>
     <h1>Font Tables Overview</h1>
@@ -89,22 +89,12 @@
 
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
+    import { getFontList } from './shared/font-catalog.js';
     import { Table } from '../dist/table/Table.js';
 
     const grid = document.getElementById('grid');
     const fontSelect = document.getElementById('fontSelect');
-    const fonts = [
-      { name: 'Noto Sans', url: '../truetypefonts/noto/NotoSans-Regular.ttf' },
-      { name: 'Noto Sans Hebrew', url: '../truetypefonts/noto/NotoSansHebrew-Regular.ttf' },
-      { name: 'Noto Sans Thai', url: '../truetypefonts/noto/NotoSansThaiLooped-Regular.ttf' },
-      { name: 'Noto Sans Devanagari', url: '../truetypefonts/noto/NotoSansDevanagari-Regular.ttf' },
-      { name: 'Noto Naskh Arabic', url: '../truetypefonts/noto/NotoNaskhArabic-Regular.ttf' },
-      { name: 'DiscoMo', url: '../truetypefonts/DiscoMo.ttf' },
-      { name: 'DevilInside', url: '../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf' },
-      { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' },
-      { name: 'Quill', url: '../truetypefonts/Quill.ttf' },
-      { name: 'Twemoji Mozilla (color)', url: '../truetypefonts/color/TwemojiMozilla.ttf' }
-    ];
+    const fonts = getFontList('featureMatrix');
 
     const tableSpecs = [
       { tag: Table.cmap, name: 'cmap', desc: 'Character to glyph mapping.' },
@@ -194,5 +184,6 @@
     fontSelect.addEventListener('change', loadAndRender);
     loadAndRender();
   </script>
+  <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

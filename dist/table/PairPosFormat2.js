@@ -50,14 +50,21 @@ var PairPosFormat2 = /** @class */ (function (_super) {
         byte_ar.offset = offset + classDef2Offset;
         _this.classDef2 = ClassDefReader.read(byte_ar);
         _this.classRecords = [];
-        for (var i = 0; i < _this.class1Count; i++) {
-            var row = [];
-            for (var j = 0; j < _this.class2Count; j++) {
-                var v1 = ValueRecord.read(byte_ar, _this.valueFormat1);
-                var v2 = ValueRecord.read(byte_ar, _this.valueFormat2);
-                row.push({ v1: v1, v2: v2 });
+        try {
+            for (var i = 0; i < _this.class1Count; i++) {
+                var row = [];
+                for (var j = 0; j < _this.class2Count; j++) {
+                    var v1 = ValueRecord.read(byte_ar, _this.valueFormat1);
+                    var v2 = ValueRecord.read(byte_ar, _this.valueFormat2);
+                    row.push({ v1: v1, v2: v2 });
+                }
+                _this.classRecords.push(row);
             }
-            _this.classRecords.push(row);
+        }
+        catch (_a) {
+            // Some fonts contain inconsistent PairPosFormat2 class matrix lengths.
+            // Keep parsing alive and treat this subtable as empty.
+            _this.classRecords = [];
         }
         byte_ar.offset = prev;
         return _this;

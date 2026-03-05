@@ -12,6 +12,7 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 ## Feature Coverage
 - `demos/features.html` shows GSUB/GPOS script and feature tags. GPOS subtables are not parsed yet.
 - `demos/tables.html` shows per-table summaries and presence/absence.
+- `tools/metadata.html` uses metadata convenience methods for name + OS/2 + post fields.
 - `demos/svg-export.html` exports strings to SVG paths.
 - `demos/gsub.html` previews GSUB ligature substitutions (when available).
 - `demos/kerning.html` previews kerning adjustments from kern + GPOS pair positioning.

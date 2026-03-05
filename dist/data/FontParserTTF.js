@@ -762,6 +762,212 @@ var FontParserTTF = /** @class */ (function () {
             return [];
         return this.pName.records.map(function (r) { return ({ nameId: r.nameId, record: r.record }); });
     };
+    FontParserTTF.prototype.getAllNameRecordsDetailed = function () {
+        if (!this.pName)
+            return [];
+        return this.pName.records.map(function (r) { return ({
+            nameId: r.nameId,
+            record: r.record,
+            platformId: r.platformId,
+            encodingId: r.encodingId,
+            languageId: r.languageId
+        }); });
+    };
+    FontParserTTF.prototype.getFontNames = function () {
+        return {
+            family: this.getPreferredNameRecord(1),
+            subfamily: this.getPreferredNameRecord(2),
+            uniqueSubfamily: this.getPreferredNameRecord(3),
+            fullName: this.getPreferredNameRecord(4),
+            version: this.getPreferredNameRecord(5),
+            postScriptName: this.getPreferredNameRecord(6),
+            manufacturer: this.getPreferredNameRecord(8),
+            designer: this.getPreferredNameRecord(9),
+            description: this.getPreferredNameRecord(10),
+            vendorUrl: this.getPreferredNameRecord(11),
+            designerUrl: this.getPreferredNameRecord(12),
+            license: this.getPreferredNameRecord(13),
+            licenseUrl: this.getPreferredNameRecord(14),
+            typographicFamily: this.getPreferredNameRecord(16),
+            typographicSubfamily: this.getPreferredNameRecord(17)
+        };
+    };
+    FontParserTTF.prototype.getOs2Metrics = function () {
+        if (!this.os2)
+            return null;
+        return {
+            version: this.os2.version,
+            weightClass: this.os2.usWeightClass,
+            widthClass: this.os2.usWidthClass,
+            fsType: this.os2.fsType,
+            fsSelection: this.os2.fsSelection,
+            typoAscender: this.os2.sTypoAscender,
+            typoDescender: this.os2.sTypoDescender,
+            typoLineGap: this.os2.sTypoLineGap,
+            winAscent: this.os2.usWinAscent,
+            winDescent: this.os2.usWinDescent,
+            firstCharIndex: this.os2.usFirstCharIndex,
+            lastCharIndex: this.os2.usLastCharIndex,
+            vendorId: this.decodeOs2VendorId(this.os2.achVendorID),
+            panose: this.os2.panose
+                ? {
+                    familyType: this.os2.panose.bFamilyType,
+                    serifStyle: this.os2.panose.bSerifStyle,
+                    weight: this.os2.panose.bWeight,
+                    proportion: this.os2.panose.bProportion,
+                    contrast: this.os2.panose.bContrast,
+                    strokeVariation: this.os2.panose.bStrokeVariation,
+                    armStyle: this.os2.panose.bArmStyle,
+                    letterform: this.os2.panose.bLetterform,
+                    midline: this.os2.panose.bMidline,
+                    xHeight: this.os2.panose.bXHeight
+                }
+                : null
+        };
+    };
+    FontParserTTF.prototype.getPostMetrics = function () {
+        if (!this.post)
+            return null;
+        return {
+            version: this.post.version / 65536,
+            italicAngle: this.post.italicAngle / 65536,
+            underlinePosition: this.post.underlinePosition,
+            underlineThickness: this.post.underlineThickness,
+            isFixedPitch: this.post.isFixedPitch !== 0,
+            rawIsFixedPitch: this.post.isFixedPitch
+        };
+    };
+    FontParserTTF.prototype.getWeightClass = function () {
+        var _a, _b;
+        return (_b = (_a = this.os2) === null || _a === void 0 ? void 0 : _a.usWeightClass) !== null && _b !== void 0 ? _b : 0;
+    };
+    FontParserTTF.prototype.getWidthClass = function () {
+        var _a, _b;
+        return (_b = (_a = this.os2) === null || _a === void 0 ? void 0 : _a.usWidthClass) !== null && _b !== void 0 ? _b : 0;
+    };
+    FontParserTTF.prototype.getFsTypeFlags = function () {
+        var _a, _b;
+        var fsType = (_b = (_a = this.os2) === null || _a === void 0 ? void 0 : _a.fsType) !== null && _b !== void 0 ? _b : 0;
+        if (fsType === 0)
+            return ['installable-embedding'];
+        var flags = [];
+        if (fsType & 0x0002)
+            flags.push('restricted-license-embedding');
+        if (fsType & 0x0004)
+            flags.push('preview-print-embedding');
+        if (fsType & 0x0008)
+            flags.push('editable-embedding');
+        if (fsType & 0x0100)
+            flags.push('no-subsetting');
+        if (fsType & 0x0200)
+            flags.push('bitmap-embedding-only');
+        return flags;
+    };
+    FontParserTTF.prototype.getFsSelectionFlags = function () {
+        var _a, _b;
+        var fsSelection = (_b = (_a = this.os2) === null || _a === void 0 ? void 0 : _a.fsSelection) !== null && _b !== void 0 ? _b : 0;
+        var flags = [];
+        if (fsSelection & 0x0001)
+            flags.push('italic');
+        if (fsSelection & 0x0002)
+            flags.push('underscore');
+        if (fsSelection & 0x0004)
+            flags.push('negative');
+        if (fsSelection & 0x0008)
+            flags.push('outlined');
+        if (fsSelection & 0x0010)
+            flags.push('strikeout');
+        if (fsSelection & 0x0020)
+            flags.push('bold');
+        if (fsSelection & 0x0040)
+            flags.push('regular');
+        if (fsSelection & 0x0080)
+            flags.push('use-typo-metrics');
+        if (fsSelection & 0x0100)
+            flags.push('wws');
+        if (fsSelection & 0x0200)
+            flags.push('oblique');
+        return flags;
+    };
+    FontParserTTF.prototype.isItalic = function () {
+        var _a, _b, _c, _d;
+        var fsSelection = (_b = (_a = this.os2) === null || _a === void 0 ? void 0 : _a.fsSelection) !== null && _b !== void 0 ? _b : 0;
+        if (fsSelection & 0x0001)
+            return true;
+        if (fsSelection & 0x0200)
+            return true;
+        if (((_d = (_c = this.post) === null || _c === void 0 ? void 0 : _c.italicAngle) !== null && _d !== void 0 ? _d : 0) !== 0)
+            return true;
+        var subfamily = this.getPreferredNameRecord(2).toLowerCase();
+        return subfamily.includes('italic') || subfamily.includes('oblique');
+    };
+    FontParserTTF.prototype.isBold = function () {
+        var _a, _b, _c, _d;
+        var fsSelection = (_b = (_a = this.os2) === null || _a === void 0 ? void 0 : _a.fsSelection) !== null && _b !== void 0 ? _b : 0;
+        if (fsSelection & 0x0020)
+            return true;
+        if (((_d = (_c = this.os2) === null || _c === void 0 ? void 0 : _c.usWeightClass) !== null && _d !== void 0 ? _d : 0) >= 700)
+            return true;
+        return this.getPreferredNameRecord(2).toLowerCase().includes('bold');
+    };
+    FontParserTTF.prototype.isMonospace = function () {
+        var _a, _b;
+        return ((_b = (_a = this.post) === null || _a === void 0 ? void 0 : _a.isFixedPitch) !== null && _b !== void 0 ? _b : 0) !== 0;
+    };
+    FontParserTTF.prototype.getMetadata = function () {
+        return {
+            names: this.getFontNames(),
+            nameRecords: this.getAllNameRecordsDetailed(),
+            os2: this.getOs2Metrics(),
+            post: this.getPostMetrics(),
+            style: {
+                isBold: this.isBold(),
+                isItalic: this.isItalic(),
+                isMonospace: this.isMonospace(),
+                weightClass: this.getWeightClass(),
+                widthClass: this.getWidthClass(),
+                fsTypeFlags: this.getFsTypeFlags(),
+                fsSelectionFlags: this.getFsSelectionFlags()
+            }
+        };
+    };
+    FontParserTTF.prototype.getPreferredNameRecord = function (nameId) {
+        if (!this.pName || this.pName.records.length === 0)
+            return '';
+        var candidates = this.pName.records.filter(function (r) { return r.nameId === nameId && !!r.record && r.record.trim().length > 0; });
+        if (candidates.length === 0)
+            return '';
+        var score = function (rec) {
+            var s = 0;
+            if (rec.platformId === Table.platformMicrosoft)
+                s += 100;
+            else if (rec.platformId === Table.platformAppleUnicode)
+                s += 80;
+            else if (rec.platformId === Table.platformMacintosh)
+                s += 60;
+            if (rec.languageId === 0x0409)
+                s += 30; // English (US)
+            if (rec.languageId === 0)
+                s += 10;
+            return s;
+        };
+        var best = candidates[0];
+        var bestScore = score(best);
+        for (var i = 1; i < candidates.length; i++) {
+            var current = candidates[i];
+            var currentScore = score(current);
+            if (currentScore > bestScore) {
+                best = current;
+                bestScore = currentScore;
+            }
+        }
+        return best.record;
+    };
+    FontParserTTF.prototype.decodeOs2VendorId = function (vendor) {
+        var n = vendor >>> 0;
+        var text = String.fromCharCode((n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff);
+        return text.replace(/\0/g, '').trim();
+    };
     FontParserTTF.prototype.getTableByType = function (tableType) {
         return this.getTable(tableType);
     };

@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage",
     "build:dist": "tsc",
     "build:bundle": "webpack",
     "build": "npm run build:dist && npm run build:bundle"

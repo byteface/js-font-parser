@@ -51,14 +51,20 @@ export class PairPosFormat2 extends LookupSubtable {
         this.classDef2 = ClassDefReader.read(byte_ar);
 
         this.classRecords = [];
-        for (let i = 0; i < this.class1Count; i++) {
-            const row: Array<{ v1: ValueRecordData; v2: ValueRecordData }> = [];
-            for (let j = 0; j < this.class2Count; j++) {
-                const v1 = ValueRecord.read(byte_ar, this.valueFormat1);
-                const v2 = ValueRecord.read(byte_ar, this.valueFormat2);
-                row.push({ v1, v2 });
+        try {
+            for (let i = 0; i < this.class1Count; i++) {
+                const row: Array<{ v1: ValueRecordData; v2: ValueRecordData }> = [];
+                for (let j = 0; j < this.class2Count; j++) {
+                    const v1 = ValueRecord.read(byte_ar, this.valueFormat1);
+                    const v2 = ValueRecord.read(byte_ar, this.valueFormat2);
+                    row.push({ v1, v2 });
+                }
+                this.classRecords.push(row);
             }
-            this.classRecords.push(row);
+        } catch {
+            // Some fonts contain inconsistent PairPosFormat2 class matrix lengths.
+            // Keep parsing alive and treat this subtable as empty.
+            this.classRecords = [];
         }
 
         byte_ar.offset = prev;

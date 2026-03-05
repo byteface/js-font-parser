@@ -17,7 +17,7 @@
   </style>
 </head>
 <body>
-<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+<div data-nav="main"></div>
 
   <header>
     <h1>Kerning Demo</h1>
@@ -39,6 +39,7 @@
 
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
+    import { getFontList } from './shared/font-catalog.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const input = document.getElementById('textInput');
@@ -48,13 +49,7 @@
     const kernCanvas = document.getElementById('kerned');
     const kernInfo = document.getElementById('kernInfo');
 
-    const fonts = [
-      { name: 'DiscoMo (kern table)', url: '../truetypefonts/DiscoMo.ttf' },
-      { name: 'DevilInside', url: '../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf' },
-      { name: 'CARDS (kern table)', url: '../truetypefonts/CARDS.TTF' },
-      { name: 'Noto Sans (GPOS)', url: '../truetypefonts/noto/NotoSans-Regular.ttf' },
-      { name: 'AUGIE', url: '../truetypefonts/AUGIE___.TTF' }
-    ];
+    const fonts = getFontList('kerning');
     const cache = new Map();
     let font = null;
 
@@ -110,5 +105,6 @@
     populateFonts();
     loadFont(fonts[0].url).then(f => { font = f; render(); });
   </script>
+  <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

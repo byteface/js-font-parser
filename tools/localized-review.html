@@ -21,7 +21,7 @@
   </style>
 </head>
 <body>
-<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+<div data-nav="main"></div>
 
   <header>
     <h1>Localized Glyph Review</h1>
@@ -67,16 +67,9 @@
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
     import { Table } from "../dist/table/Table.js";
     import { listLanguages, supportsLanguage } from "../dist/utils/LanguageSupport.js";
+    import { getFontList } from "./shared/font-catalog.js";
 
-    const fonts = [
-      { name: "DiscoMo (base)", url: "../truetypefonts/DiscoMo.ttf" },
-      { name: "DiscoMo ES", url: "../truetypefonts/DiscoMo-es.ttf" },
-      { name: "DiscoMo PL", url: "../truetypefonts/DiscoMo-pl.ttf" },
-      { name: "DiscoMo CS", url: "../truetypefonts/DiscoMo-cs.ttf" },
-      { name: "DiscoMo HU", url: "../truetypefonts/DiscoMo-hu.ttf" },
-      { name: "DiscoMo TR", url: "../truetypefonts/DiscoMo-tr.ttf" },
-      { name: "DiscoMo RO", url: "../truetypefonts/DiscoMo-ro.ttf" }
-    ];
+    const fonts = getFontList('localizedReview');
 
     const samples = [
       { code: "pl", label: "Polish", text: "Zażółć gęślą jaźń" },
@@ -166,5 +159,6 @@
     sampleSelect.addEventListener("change", render);
     render();
   </script>
+  <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

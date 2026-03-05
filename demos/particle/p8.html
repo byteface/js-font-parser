@@ -10,7 +10,7 @@
     </style>
 </head>
 <body>
-<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+<div data-nav="main" data-nav-root="../.."></div>
 
 <div class="label">p8 - Gotham (OTF)</div>
     <div class="note">Note: CFF2 outlines are not supported yet. Some OTFs may still fail.</div>
@@ -31,5 +31,6 @@
         pointSize: 2
     });
 </script>
+  <script type="module" src="../../tools/shared/main-nav.js"></script>
 </body>
 </html>

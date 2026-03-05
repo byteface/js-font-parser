@@ -738,6 +738,259 @@ export class FontParserTTF {
         return this.pName.records.map(r => ({ nameId: r.nameId, record: r.record }));
     }
 
+    public getAllNameRecordsDetailed(): Array<{ nameId: number; record: string; platformId: number; encodingId: number; languageId: number }> {
+        if (!this.pName) return [];
+        return this.pName.records.map(r => ({
+            nameId: r.nameId,
+            record: r.record,
+            platformId: r.platformId,
+            encodingId: r.encodingId,
+            languageId: r.languageId
+        }));
+    }
+
+    public getFontNames(): {
+        family: string;
+        subfamily: string;
+        fullName: string;
+        postScriptName: string;
+        version: string;
+        uniqueSubfamily: string;
+        manufacturer: string;
+        designer: string;
+        description: string;
+        vendorUrl: string;
+        designerUrl: string;
+        license: string;
+        licenseUrl: string;
+        typographicFamily: string;
+        typographicSubfamily: string;
+    } {
+        return {
+            family: this.getPreferredNameRecord(1),
+            subfamily: this.getPreferredNameRecord(2),
+            uniqueSubfamily: this.getPreferredNameRecord(3),
+            fullName: this.getPreferredNameRecord(4),
+            version: this.getPreferredNameRecord(5),
+            postScriptName: this.getPreferredNameRecord(6),
+            manufacturer: this.getPreferredNameRecord(8),
+            designer: this.getPreferredNameRecord(9),
+            description: this.getPreferredNameRecord(10),
+            vendorUrl: this.getPreferredNameRecord(11),
+            designerUrl: this.getPreferredNameRecord(12),
+            license: this.getPreferredNameRecord(13),
+            licenseUrl: this.getPreferredNameRecord(14),
+            typographicFamily: this.getPreferredNameRecord(16),
+            typographicSubfamily: this.getPreferredNameRecord(17)
+        };
+    }
+
+    public getOs2Metrics(): {
+        version: number;
+        weightClass: number;
+        widthClass: number;
+        fsType: number;
+        fsSelection: number;
+        typoAscender: number;
+        typoDescender: number;
+        typoLineGap: number;
+        winAscent: number;
+        winDescent: number;
+        firstCharIndex: number;
+        lastCharIndex: number;
+        vendorId: string;
+        panose: {
+            familyType: number;
+            serifStyle: number;
+            weight: number;
+            proportion: number;
+            contrast: number;
+            strokeVariation: number;
+            armStyle: number;
+            letterform: number;
+            midline: number;
+            xHeight: number;
+        } | null;
+    } | null {
+        if (!this.os2) return null;
+        return {
+            version: this.os2.version,
+            weightClass: this.os2.usWeightClass,
+            widthClass: this.os2.usWidthClass,
+            fsType: this.os2.fsType,
+            fsSelection: this.os2.fsSelection,
+            typoAscender: this.os2.sTypoAscender,
+            typoDescender: this.os2.sTypoDescender,
+            typoLineGap: this.os2.sTypoLineGap,
+            winAscent: this.os2.usWinAscent,
+            winDescent: this.os2.usWinDescent,
+            firstCharIndex: this.os2.usFirstCharIndex,
+            lastCharIndex: this.os2.usLastCharIndex,
+            vendorId: this.decodeOs2VendorId(this.os2.achVendorID),
+            panose: this.os2.panose
+                ? {
+                    familyType: this.os2.panose.bFamilyType,
+                    serifStyle: this.os2.panose.bSerifStyle,
+                    weight: this.os2.panose.bWeight,
+                    proportion: this.os2.panose.bProportion,
+                    contrast: this.os2.panose.bContrast,
+                    strokeVariation: this.os2.panose.bStrokeVariation,
+                    armStyle: this.os2.panose.bArmStyle,
+                    letterform: this.os2.panose.bLetterform,
+                    midline: this.os2.panose.bMidline,
+                    xHeight: this.os2.panose.bXHeight
+                }
+                : null
+        };
+    }
+
+    public getPostMetrics(): {
+        version: number;
+        italicAngle: number;
+        underlinePosition: number;
+        underlineThickness: number;
+        isFixedPitch: boolean;
+        rawIsFixedPitch: number;
+    } | null {
+        if (!this.post) return null;
+        return {
+            version: this.post.version / 65536,
+            italicAngle: this.post.italicAngle / 65536,
+            underlinePosition: this.post.underlinePosition,
+            underlineThickness: this.post.underlineThickness,
+            isFixedPitch: this.post.isFixedPitch !== 0,
+            rawIsFixedPitch: this.post.isFixedPitch
+        };
+    }
+
+    public getWeightClass(): number {
+        return this.os2?.usWeightClass ?? 0;
+    }
+
+    public getWidthClass(): number {
+        return this.os2?.usWidthClass ?? 0;
+    }
+
+    public getFsTypeFlags(): string[] {
+        const fsType = this.os2?.fsType ?? 0;
+        if (fsType === 0) return ['installable-embedding'];
+        const flags: string[] = [];
+        if (fsType & 0x0002) flags.push('restricted-license-embedding');
+        if (fsType & 0x0004) flags.push('preview-print-embedding');
+        if (fsType & 0x0008) flags.push('editable-embedding');
+        if (fsType & 0x0100) flags.push('no-subsetting');
+        if (fsType & 0x0200) flags.push('bitmap-embedding-only');
+        return flags;
+    }
+
+    public getFsSelectionFlags(): string[] {
+        const fsSelection = this.os2?.fsSelection ?? 0;
+        const flags: string[] = [];
+        if (fsSelection & 0x0001) flags.push('italic');
+        if (fsSelection & 0x0002) flags.push('underscore');
+        if (fsSelection & 0x0004) flags.push('negative');
+        if (fsSelection & 0x0008) flags.push('outlined');
+        if (fsSelection & 0x0010) flags.push('strikeout');
+        if (fsSelection & 0x0020) flags.push('bold');
+        if (fsSelection & 0x0040) flags.push('regular');
+        if (fsSelection & 0x0080) flags.push('use-typo-metrics');
+        if (fsSelection & 0x0100) flags.push('wws');
+        if (fsSelection & 0x0200) flags.push('oblique');
+        return flags;
+    }
+
+    public isItalic(): boolean {
+        const fsSelection = this.os2?.fsSelection ?? 0;
+        if (fsSelection & 0x0001) return true;
+        if (fsSelection & 0x0200) return true;
+        if ((this.post?.italicAngle ?? 0) !== 0) return true;
+        const subfamily = this.getPreferredNameRecord(2).toLowerCase();
+        return subfamily.includes('italic') || subfamily.includes('oblique');
+    }
+
+    public isBold(): boolean {
+        const fsSelection = this.os2?.fsSelection ?? 0;
+        if (fsSelection & 0x0020) return true;
+        if ((this.os2?.usWeightClass ?? 0) >= 700) return true;
+        return this.getPreferredNameRecord(2).toLowerCase().includes('bold');
+    }
+
+    public isMonospace(): boolean {
+        return (this.post?.isFixedPitch ?? 0) !== 0;
+    }
+
+    public getMetadata(): {
+        names: ReturnType<FontParserTTF['getFontNames']>;
+        nameRecords: ReturnType<FontParserTTF['getAllNameRecordsDetailed']>;
+        os2: ReturnType<FontParserTTF['getOs2Metrics']>;
+        post: ReturnType<FontParserTTF['getPostMetrics']>;
+        style: {
+            isBold: boolean;
+            isItalic: boolean;
+            isMonospace: boolean;
+            weightClass: number;
+            widthClass: number;
+            fsTypeFlags: string[];
+            fsSelectionFlags: string[];
+        };
+    } {
+        return {
+            names: this.getFontNames(),
+            nameRecords: this.getAllNameRecordsDetailed(),
+            os2: this.getOs2Metrics(),
+            post: this.getPostMetrics(),
+            style: {
+                isBold: this.isBold(),
+                isItalic: this.isItalic(),
+                isMonospace: this.isMonospace(),
+                weightClass: this.getWeightClass(),
+                widthClass: this.getWidthClass(),
+                fsTypeFlags: this.getFsTypeFlags(),
+                fsSelectionFlags: this.getFsSelectionFlags()
+            }
+        };
+    }
+
+    private getPreferredNameRecord(nameId: number): string {
+        if (!this.pName || this.pName.records.length === 0) return '';
+        const candidates = this.pName.records.filter(r => r.nameId === nameId && !!r.record && r.record.trim().length > 0);
+        if (candidates.length === 0) return '';
+
+        const score = (rec: { platformId: number; languageId: number }): number => {
+            let s = 0;
+            if (rec.platformId === Table.platformMicrosoft) s += 100;
+            else if (rec.platformId === Table.platformAppleUnicode) s += 80;
+            else if (rec.platformId === Table.platformMacintosh) s += 60;
+
+            if (rec.languageId === 0x0409) s += 30; // English (US)
+            if (rec.languageId === 0) s += 10;
+            return s;
+        };
+
+        let best = candidates[0];
+        let bestScore = score(best);
+        for (let i = 1; i < candidates.length; i++) {
+            const current = candidates[i];
+            const currentScore = score(current);
+            if (currentScore > bestScore) {
+                best = current;
+                bestScore = currentScore;
+            }
+        }
+        return best.record;
+    }
+
+    private decodeOs2VendorId(vendor: number): string {
+        const n = vendor >>> 0;
+        const text = String.fromCharCode(
+            (n >>> 24) & 0xff,
+            (n >>> 16) & 0xff,
+            (n >>> 8) & 0xff,
+            n & 0xff
+        );
+        return text.replace(/\0/g, '').trim();
+    }
+
     public getTableByType(tableType: number): ITable | null {
         return this.getTable(tableType);
     }

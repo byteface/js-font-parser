@@ -39,6 +39,21 @@ test('exposes name records and core tables', () => {
   assert.ok(cmap, 'expected cmap table');
 });
 
+test('exposes expanded metadata convenience API', () => {
+  const font = loadFont('truetypefonts/noto/NotoSans-Regular.ttf');
+  const names = font.getFontNames();
+  const os2 = font.getOs2Metrics();
+  const post = font.getPostMetrics();
+  const meta = font.getMetadata();
+
+  assert.ok(names.family && names.family.length > 0, 'expected convenience family name');
+  assert.ok(os2 && typeof os2.weightClass === 'number', 'expected OS/2 convenience metrics');
+  assert.ok(post && typeof post.italicAngle === 'number', 'expected post convenience metrics');
+  assert.ok(Array.isArray(font.getFsTypeFlags()), 'expected fsType flags');
+  assert.ok(Array.isArray(font.getFsSelectionFlags()), 'expected fsSelection flags');
+  assert.equal(meta.style.weightClass, font.getWeightClass(), 'expected metadata style weight');
+});
+
 test('exports SVG for a string', () => {
   const font = loadFont('truetypefonts/DiscoMo.ttf');
   const svg = SVGFont.exportStringSvg(font, 'Hello', { scale: 0.08 });
