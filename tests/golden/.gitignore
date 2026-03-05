@@ -1,0 +1,5 @@
+current/*
+!current/.gitkeep
+
+diff/*
+!diff/.gitkeep

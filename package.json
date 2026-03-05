@@ -6,6 +6,9 @@
   "scripts": {
     "test": "node --test",
     "test:coverage": "node --test --experimental-test-coverage",
+    "test:golden:capture": "node tests/golden/scripts/capture.mjs --out tests/golden/current",
+    "test:golden:compare": "node tests/golden/scripts/compare.mjs --base tests/golden/baseline --head tests/golden/current --out tests/golden/diff",
+    "test:golden:between": "node tests/golden/scripts/between-commits.mjs",
     "build:dist": "tsc",
     "build:bundle": "webpack",
     "build": "npm run build:dist && npm run build:bundle"

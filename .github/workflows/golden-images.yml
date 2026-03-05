@@ -1,0 +1,82 @@
+name: Golden Images
+
+on:
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+    inputs:
+      base_sha:
+        description: "Base commit SHA (optional; defaults by event)"
+        required: false
+        type: string
+      head_sha:
+        description: "Head commit SHA (optional; defaults by event)"
+        required: false
+        type: string
+
+jobs:
+  visual-regression:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright package
+        run: npm install --no-save playwright
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Resolve SHAs
+        id: shas
+        shell: bash
+        run: |
+          BASE_INPUT="${{ github.event.inputs.base_sha || '' }}"
+          HEAD_INPUT="${{ github.event.inputs.head_sha || '' }}"
+
+          if [[ -n "$BASE_INPUT" ]]; then
+            BASE_SHA="$BASE_INPUT"
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE_SHA="${{ github.sha }}"
+          fi
+
+          if [[ -n "$HEAD_INPUT" ]]; then
+            HEAD_SHA="$HEAD_INPUT"
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            HEAD_SHA="${{ github.sha }}"
+          fi
+
+          echo "base=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "head=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "Using base=$BASE_SHA head=$HEAD_SHA"
+
+      - name: Capture and compare
+        run: |
+          node tests/golden/scripts/between-commits.mjs \
+            --base "${{ steps.shas.outputs.base }}" \
+            --head "${{ steps.shas.outputs.head }}" \
+            --out tests/golden/diff
+
+      - name: Upload diff artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-image-diff
+          path: |
+            tests/golden/diff

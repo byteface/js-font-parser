@@ -1,0 +1,8 @@
+[
+  { "id": "demos-index", "path": "/demos/index.html", "width": 1440, "height": 1100 },
+  { "id": "tools-index", "path": "/tools/index.html", "width": 1440, "height": 1200 },
+  { "id": "tools-metadata", "path": "/tools/metadata.html", "width": 1400, "height": 1400, "waitMs": 1200 },
+  { "id": "tools-shaping", "path": "/tools/shaping.html", "width": 1440, "height": 1000, "waitMs": 1200 },
+  { "id": "tools-variable-font", "path": "/tools/variable-font.html", "width": 1440, "height": 1200, "waitMs": 1200 },
+  { "id": "tools-all-glyphs", "path": "/tools/all-glyphs.html", "width": 1440, "height": 1800, "waitMs": 1500 }
+]

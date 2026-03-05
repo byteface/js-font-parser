@@ -20,6 +20,12 @@ Open:
   Run all tests with Node's built-in test runner.
 - `npm run test:coverage`  
   Run tests with coverage output (`--experimental-test-coverage`).
+- `npm run test:golden:capture`  
+  Capture visual snapshots for key demo/tool pages.
+- `npm run test:golden:compare`  
+  Diff baseline vs current snapshots (fails on changes).
+- `npm run test:golden:between -- --base <sha> --head <sha>`  
+  Compare screenshots produced from two commits.
 - `npm run build:dist`  
   Compile TypeScript to `dist/`.
 - `npm run build:bundle`  
@@ -54,9 +60,9 @@ Removing those extensions may compile but break runtime module resolution in dem
 - `docs/PORTING.md`
 - `docs/DEMO_NOTES.md`
 - `docs/WISHLIST.md`
+- `tests/golden/README.md`
 
 ## Bundle Output
 
 `npm run build` writes bundled output to:
 - `dist-build/fontparser.min.js`
-
