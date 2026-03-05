@@ -1,93 +1,62 @@
 # JS Font Parser
 
-This library parses TrueType fonts. It obtains the glyph points allowing a user to draw shapes on the canvas.
+Parses TTF/OTF/WOFF/WOFF2 fonts and exposes glyph geometry, tables, shaping helpers, metadata, and rendering utilities for demos/tools.
 
-## Usage
-
-### Build the Dist Outputs
-The demos import from `dist/`, so you need to compile the TypeScript before running them:
+## Quick Start
 
 ```bash
-cd /Users/byteface/Desktop/projects/js-font-parser
+npm install
 npm run build:dist
-```
-
-### Run the Demos (raw JS in `dist/`)
-The demos **must** be served over HTTP.
-
-```bash
-cd /Users/byteface/Desktop/projects/js-font-parser
 python3 -m http.server 8080
 ```
 
 Open:
-`http://localhost:8080/demos/index.html`
+- `http://localhost:8080/demos/index.html`
+- `http://localhost:8080/tools/index.html`
 
-### WOFF2 Support
-WOFF2 decoding requires an external decoder. Provide one via:
+## Scripts
+
+- `npm test`  
+  Run all tests with Node's built-in test runner.
+- `npm run test:coverage`  
+  Run tests with coverage output (`--experimental-test-coverage`).
+- `npm run build:dist`  
+  Compile TypeScript to `dist/`.
+- `npm run build:bundle`  
+  Build bundle output via webpack.
+- `npm run build`  
+  Run both `build:dist` and `build:bundle`.
+
+## Running Demos and Tools
+
+Pages must be served over HTTP (not opened via `file://`).
+
+```bash
+python3 -m http.server 8080
+```
+
+## WOFF2 Support
+
+WOFF2 decoding requires a decoder in runtime. Provide one via:
 - `setWoff2Decoder()` from `src/utils/Woff2Decoder.ts`, or
-- a global `WOFF2.decode()` function in the browser.
+- global `WOFF2.decode()`.
 
-The `tools/woff2.html` demo expects a decoder to be present.
+The WOFF2 smoke page is `tools/woff2.html`.
 
-### Language Support Demo
-`demos/language-support.html` checks glyph coverage for a list of languages.
+## Important Note About TS Imports
 
-### Important: Keep `.js` in TS Imports
-TypeScript source files intentionally import with `.js` extensions (for example `../dist/.../Foo.js`).
-This ensures the compiled output works in the browser without bundlers.  
-If you remove those `.js` extensions, `tsc` might pass, but the demos will break in the browser.
+TypeScript source intentionally uses `.js` import extensions so browser-loaded compiled output resolves correctly.  
+Removing those extensions may compile but break runtime module resolution in demos/tools.
 
-## Tests
-```sh
-npm test
-```
+## API and Docs
 
-## Minified Build
-```sh
-npm run build
-```
-
-Output is written to `dist-build/fontparser.min.js`. See `minifyTest.html` for a simple usage example.
-Arabic/Devanagari shaping is not implemented yet, so those scripts will render unshaped outlines.
-
-### Include The Bundled Library
-Build a UMD bundle and include it in your HTML file:
-
-```bash
-npm install
-npm run build
-```
-
-Build output: `dist-build/fontparser.min.js`
-
-Then include the bundled library in your HTML file:
-
-```html
-<script src="fontparser.min.js"></script>
-```
-
-```js
-import { FontParserTTF } from "./dist/data/FontParserTTF.js";
-
-FontParserTTF.load("truetypefonts/DiscoMo.ttf").then((font) => {
-  const glyph = font.getGlyphByChar("H");
-  const indices = font.getGlyphIndicesForString("hello world");
-  console.log(glyph, indices);
-});
-```
-
-### CLI (prototype)
-```bash
-npm run build:dist
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --coverage
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --localise es --out /tmp/DiscoMo-es.ttf
-```
-`--localise` attempts to compose missing Latin glyphs using base + combining marks.
-
-
-### Docs
 - `docs/API.md`
 - `docs/PORTING.md`
-- `docs/WISHLIST.md`
 - `docs/DEMO_NOTES.md`
+- `docs/WISHLIST.md`
+
+## Bundle Output
+
+`npm run build` writes bundled output to:
+- `dist-build/fontparser.min.js`
+

@@ -1,110 +1,62 @@
-<!DOCTYPE HTML>
+<!doctype html>
 <html lang="en">
 <head>
-    <title>JS Font Parser Demos</title>
-    <meta charset="utf-8">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            color: #222;
-        }
-        h1 {
-            margin-bottom: 8px;
-        }
-        p {
-            margin-top: 0;
-            color: #555;
-        }
-        ul {
-            padding-left: 20px;
-        }
-        li {
-            margin: 8px 0;
-        }
-        a {
-            color: #0b57d0;
-            text-decoration: none;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-        code {
-            background: #f3f3f3;
-            padding: 2px 4px;
-            border-radius: 4px;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Font Demos</title>
+  <style>
+    :root { --bg:#f6f4f1; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e3e1db; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    ul { list-style:none; padding:0; margin:12px 20px 30px; }
+    li { background:var(--panel); border:1px solid var(--border); border-radius:12px; margin:10px 0; padding:10px 12px; }
+    a { color:#2c3e50; text-decoration:none; font-weight:600; }
+    .desc { display:block; color:var(--muted); font-size:12px; margin-top:4px; }
+  </style>
 </head>
 <body>
 <div data-nav="main"></div>
 
-    <h1>JS Font Parser Demos</h1>
-    <p>Demos:</p>
-    <ul>
-        <li><a href="string.html">String demo (hello world)</a></li>
-        <li><a href="particle.html">Particle demo (ported style)</a></li>
-        <li><a href="particle/p1.html">Particle p1</a></li>
-        <li><a href="particle/p3.html">Particle p3</a></li>
-        <li><a href="particle/p7.html">Particle p7</a></li>
-        <li><a href="particle/p8.html">Particle p8 (OTF, unsupported)</a></li>
-        <li><a href="particle/p9.html">Particle p9</a></li>
-        <li><a href="3dglasses.html">3dglasses</a></li>
-        <li><a href="shadow.html">shadow</a></li>
-        <li><a href="stack.html">stack</a></li>
-        <li><a href="path-tracing.html">path-tracing</a></li>
-        <li><a href="morphing.html">morphing</a></li>
-        <li><a href="breathing.html">breathing</a></li>
-        <li><a href="emotion.html">emotion</a></li>
-        <li><a href="color-font.html">color-font (COLRv0 layers)</a></li>
-        <li><a href="../tools/colrv1.html">COLRv1 paint explorer</a></li>
-        <li><a href="ribbon.html">ribbon</a></li>
-        <li><a href="particle-word.html">particle-word</a></li>
-        <li><a href="orbit.html">orbit</a></li>
-        <li><a href="threejs-points.html">threejs-points</a></li>
-        <li><a href="threejs-lines.html">threejs-lines</a></li>
-        <li><a href="threejs-voxels.html">threejs-voxels</a></li>
-        <li><a href="threejs-tubes.html">threejs-tubes</a></li>
-        <li><a href="threejs-sprites.html">threejs-sprites</a></li>
-        <li><a href="threejs-hybrid-physics.html">threejs-hybrid-physics</a></li>
-        <li><a href="box2d-rigid.html">box2d-rigid</a></li>
-        <li><a href="box2d-stack.html">box2d-stack</a></li>
-        <li><a href="box2d-hang.html">box2d-hang</a></li>
-        <li><a href="box2d-springs.html">box2d-springs</a></li>
-        <li><a href="box2d-ramp.html">box2d-ramp</a></li>
-        <li><a href="box2d-pile.html">box2d-pile</a></li>
-    </ul>
-    <p>Tools:</p>
-    <ul>
-        <li><a href="../tools/index.html">Tools index</a></li>
-        <li><a href="../tools/all-glyphs.html">All glyphs</a></li>
-        <li><a href="../tools/unicode-coverage.html">Unicode coverage</a></li>
-        <li><a href="../tools/language-support.html">Language support</a></li>
-        <li><a href="../tools/localized-review.html">Localized glyph review</a></li>
-        <li><a href="../tools/multilang.html">Multilingual sample</a></li>
-        <li><a href="../tools/glyph-inspector.html">Glyph inspector</a></li>
-        <li><a href="../tools/layout-engine.html">Layout engine</a></li>
-        <li><a href="../tools/shaping.html">GSUB/GPOS shaping</a></li>
-        <li><a href="../tools/tables.html">Font tables</a></li>
-        <li><a href="../tools/metadata.html">Metadata</a></li>
-        <li><a href="../tools/metrics.html">Metrics</a></li>
-        <li><a href="../tools/features.html">Features</a></li>
-        <li><a href="../tools/gsub.html">GSUB ligatures</a></li>
-        <li><a href="../tools/kerning.html">Kerning</a></li>
-        <li><a href="../tools/marks.html">Marks</a></li>
-        <li><a href="../tools/variable-font.html">Variable font</a></li>
-        <li><a href="../tools/cff2.html">CFF2 inspector</a></li>
-        <li><a href="../tools/woff.html">WOFF loader</a></li>
-        <li><a href="../tools/woff2.html">WOFF2 loader</a></li>
-        <li><a href="../tools/svg-export.html">SVG export</a></li>
-        <li><a href="../tools/svg-glyphs.html">SVG glyphs</a></li>
-        <li><a href="../tools/font-library.html">Font library</a></li>
-        <li><a href="../tools/otf-ttf-smoke.html">OTF/TTF smoke test</a></li>
-    </ul>
-    <p>
-        Run a local server from the repo root and open
-        <code>http://localhost:8080/demos/index.html</code>.
-    </p>
+  <header>
+    <h1>Font Demos</h1>
+    <p>Interactive visual demos built on the parser and renderer.</p>
+  </header>
+
+  <ul>
+    <li><a href="string.html">String demo</a><span class="desc">Load a local file and render text outlines.</span></li>
+    <li><a href="particle.html">Particle demo</a><span class="desc">Animated glyph particles with mouse interaction.</span></li>
+    <li><a href="particle/p1.html">Particle p1</a><span class="desc">Gravity-to-mouse and bounce behavior.</span></li>
+    <li><a href="particle/p3.html">Particle p3</a><span class="desc">Variation of particle movement and damping.</span></li>
+    <li><a href="particle/p7.html">Particle p7</a><span class="desc">Particle variation preset p7.</span></li>
+    <li><a href="particle/p8.html">Particle p8</a><span class="desc">OTF-oriented particle preset.</span></li>
+    <li><a href="particle/p9.html">Particle p9</a><span class="desc">Particle variation preset p9.</span></li>
+    <li><a href="3dglasses.html">3dglasses</a><span class="desc">Stylized layered rendering effect.</span></li>
+    <li><a href="shadow.html">shadow</a><span class="desc">Shadowed glyph rendering study.</span></li>
+    <li><a href="stack.html">stack</a><span class="desc">Stacked layers and depth-style composition.</span></li>
+    <li><a href="path-tracing.html">path-tracing</a><span class="desc">Path sampling and progressive drawing.</span></li>
+    <li><a href="morphing.html">morphing</a><span class="desc">Animated interpolation between glyph forms.</span></li>
+    <li><a href="breathing.html">breathing</a><span class="desc">Pulse and scale-based outline animation.</span></li>
+    <li><a href="emotion.html">emotion</a><span class="desc">Expressive motion presets on glyph geometry.</span></li>
+    <li><a href="color-font.html">color-font</a><span class="desc">Color glyph and palette rendering.</span></li>
+    <li><a href="ribbon.html">ribbon</a><span class="desc">Wave-driven ribbon sampled from glyph points.</span></li>
+    <li><a href="particle-word.html">particle-word</a><span class="desc">Word-level particle animation from outlines.</span></li>
+    <li><a href="orbit.html">orbit</a><span class="desc">Orbital motion mapped to glyph points.</span></li>
+    <li><a href="threejs-points.html">threejs-points</a><span class="desc">Three.js point cloud generated from glyphs.</span></li>
+    <li><a href="threejs-lines.html">threejs-lines</a><span class="desc">Three.js line rendering of glyph paths.</span></li>
+    <li><a href="threejs-voxels.html">threejs-voxels</a><span class="desc">Voxelized 3D interpretation of glyph shapes.</span></li>
+    <li><a href="threejs-tubes.html">threejs-tubes</a><span class="desc">Tube geometry generated from contour paths.</span></li>
+    <li><a href="threejs-sprites.html">threejs-sprites</a><span class="desc">Sprite-based 3D point rendering.</span></li>
+    <li><a href="threejs-hybrid-physics.html">threejs-hybrid-physics</a><span class="desc">Three.js scene with physics-driven glyphs.</span></li>
+    <li><a href="box2d-rigid.html">box2d-rigid</a><span class="desc">Rigid-body glyph physics.</span></li>
+    <li><a href="box2d-stack.html">box2d-stack</a><span class="desc">Stacking simulation with glyph bodies.</span></li>
+    <li><a href="box2d-hang.html">box2d-hang</a><span class="desc">Hanging constraints with glyph bodies.</span></li>
+    <li><a href="box2d-springs.html">box2d-springs</a><span class="desc">Spring joints applied to glyph points.</span></li>
+    <li><a href="box2d-ramp.html">box2d-ramp</a><span class="desc">Ramp and collision behavior demo.</span></li>
+    <li><a href="box2d-pile.html">box2d-pile</a><span class="desc">Pile simulation with multiple glyphs.</span></li>
+  </ul>
+
   <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>
