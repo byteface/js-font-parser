@@ -12,3 +12,8 @@
 2. **Glyph path simplifier** — reduce points while preserving shape (for optimization).
 3. **Auto-hinting preview** — show hinted vs unhinted outlines (visual diff).
 4. **Baseline/grid overlay demo** — configurable typographic grid for layout debugging.
+
+
+upgrade node
+inline documentation / clean code
+clean tools to shared libs
