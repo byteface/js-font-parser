@@ -5,20 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Unicode Coverage</title>
   <style>
-    :root { --bg:#f6f4f1; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e3e1db; --ok:#1f7a3f; --bad:#b2432c; }
+    :root {
+      --bg:#f6f4f1;
+      --ink:#1e1f24;
+      --muted:#5e6574;
+      --panel:#fff;
+      --border:#e3e1db;
+      --ok:#1f7a3f;
+      --bad:#b2432c;
+      --okSoft:#e7f6ec;
+      --badSoft:#fdeae6;
+    }
     body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
     header { padding:22px 20px 10px; }
     h1 { margin:0 0 6px; font-size:26px; }
     p { margin:0 0 14px; color:var(--muted); }
     .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 20px; }
-    select { padding:8px 10px; border-radius:8px; border:1px solid var(--border); }
+    .controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; align-items:end; }
+    label { display:block; font-size:12px; color:var(--muted); }
+    select, input { margin-top:4px; width:100%; box-sizing:border-box; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:#fff; color:var(--ink); }
+    .stats { display:flex; flex-wrap:wrap; gap:10px; font-size:13px; color:var(--muted); margin-bottom:10px; }
+    .stats strong { color:var(--ink); }
     .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(24px,1fr)); gap:6px; }
     .cell { width:24px; height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:12px; border:1px solid #ddd; }
-    .ok { background:#e7f6ec; color:var(--ok); }
-    .bad { background:#fdeae6; color:var(--bad); }
+    .ok { background:var(--okSoft); color:var(--ok); }
+    .bad { background:var(--badSoft); color:var(--bad); }
+    .missing-list { margin-top:10px; font-size:12px; color:var(--muted); max-height:170px; overflow:auto; border-top:1px dashed var(--border); padding-top:8px; }
+    .chip { display:inline-block; border:1px solid #d9d5cc; background:#fbfaf7; border-radius:999px; padding:2px 7px; margin:2px 4px 2px 0; font-size:11px; color:var(--ink); }
     table { width:100%; border-collapse:collapse; font-size:13px; }
-    th, td { border-bottom:1px solid #eee; padding:8px; text-align:left; }
+    th, td { border-bottom:1px solid #eee; padding:8px; text-align:left; vertical-align:middle; }
+    tr.clickable { cursor:pointer; }
+    tr.clickable:hover { background:#faf8f2; }
+    .bar { width:100%; height:8px; border-radius:999px; background:#efece4; overflow:hidden; }
+    .bar > span { display:block; height:100%; background:#2f8f57; }
     .note { color:var(--muted); font-size:12px; }
+    @media (max-width: 640px) {
+      .grid { grid-template-columns:repeat(auto-fit,minmax(20px,1fr)); }
+      .cell { width:20px; height:20px; font-size:10px; }
+    }
   </style>
 </head>
 <body>
@@ -26,36 +50,63 @@
 
   <header>
     <h1>Unicode Coverage</h1>
-    <p>Browse Unicode blocks and see which characters are present in the font.</p>
+    <p>Inspect Unicode block coverage, find missing glyphs, and jump quickly across script ranges.</p>
   </header>
+
   <div class="panel">
-    <label>Font
-      <select id="fontSelect"></select>
-    </label>
-    <label style="margin-left:12px;">Block
-      <select id="blockSelect"></select>
-    </label>
+    <div class="controls">
+      <label>Font
+        <select id="fontSelect"></select>
+      </label>
+      <label>Block
+        <select id="blockSelect"></select>
+      </label>
+      <label>Cell mode
+        <select id="cellModeSelect">
+          <option value="all">All code points</option>
+          <option value="missing">Missing only</option>
+          <option value="present">Present only</option>
+        </select>
+      </label>
+      <label>Max preview cells
+        <input id="maxCellsInput" type="number" min="32" max="2048" step="32" value="512" />
+      </label>
+      <label>Summary filter (% <=)
+        <input id="maxCoverageFilter" type="number" min="0" max="100" step="1" value="100" />
+      </label>
+    </div>
   </div>
+
   <div class="panel">
     <div id="blockTitle"></div>
+    <div class="stats" id="blockStats"></div>
     <div class="grid" id="grid"></div>
+    <div class="missing-list" id="missingList"></div>
   </div>
+
   <div class="panel">
     <h3>Block Summary</h3>
     <table>
       <thead>
-        <tr><th>Block</th><th>Range</th><th>Coverage</th></tr>
+        <tr>
+          <th>Block</th>
+          <th>Range</th>
+          <th>Coverage</th>
+          <th>Missing</th>
+          <th style="width:35%">Heat</th>
+        </tr>
       </thead>
       <tbody id="summary"></tbody>
     </table>
   </div>
-  <div class="panel note">Tip: This shows glyph presence only. Shaping is not applied.</div>
+
+  <div class="panel note">Tip: This checks glyph presence via cmap only. It does not verify shaping/GSUB/GPOS behavior.</div>
 
   <script type="module">
     import { FontParser } from "../dist/data/FontParser.js";
     import { getFontList } from "./shared/font-catalog.js";
 
-    const fonts = getFontList('unicodeCoverage');
+    const fonts = getFontList("unicodeCoverage");
 
     const blocks = [
       { name: "Basic Latin", start: 0x0020, end: 0x007F },
@@ -63,76 +114,225 @@
       { name: "Latin Extended-A", start: 0x0100, end: 0x017F },
       { name: "Latin Extended-B", start: 0x0180, end: 0x024F },
       { name: "IPA Extensions", start: 0x0250, end: 0x02AF },
-      { name: "Greek", start: 0x0370, end: 0x03FF },
+      { name: "Greek and Coptic", start: 0x0370, end: 0x03FF },
       { name: "Cyrillic", start: 0x0400, end: 0x04FF },
       { name: "Hebrew", start: 0x0590, end: 0x05FF },
-      { name: "Arabic", start: 0x0600, end: 0x06FF }
+      { name: "Arabic", start: 0x0600, end: 0x06FF },
+      { name: "Arabic Supplement", start: 0x0750, end: 0x077F },
+      { name: "Devanagari", start: 0x0900, end: 0x097F },
+      { name: "Thai", start: 0x0E00, end: 0x0E7F },
+      { name: "General Punctuation", start: 0x2000, end: 0x206F },
+      { name: "Currency Symbols", start: 0x20A0, end: 0x20CF },
+      { name: "Letterlike Symbols", start: 0x2100, end: 0x214F },
+      { name: "Number Forms", start: 0x2150, end: 0x218F },
+      { name: "Arrows", start: 0x2190, end: 0x21FF },
+      { name: "Mathematical Operators", start: 0x2200, end: 0x22FF },
+      { name: "Box Drawing", start: 0x2500, end: 0x257F },
+      { name: "Block Elements", start: 0x2580, end: 0x259F },
+      { name: "Geometric Shapes", start: 0x25A0, end: 0x25FF },
+      { name: "Misc Symbols", start: 0x2600, end: 0x26FF },
+      { name: "Dingbats", start: 0x2700, end: 0x27BF },
+      { name: "CJK Symbols and Punctuation", start: 0x3000, end: 0x303F },
+      { name: "Hiragana", start: 0x3040, end: 0x309F },
+      { name: "Katakana", start: 0x30A0, end: 0x30FF },
+      { name: "Hangul Compatibility Jamo", start: 0x3130, end: 0x318F },
+      { name: "CJK Unified Ideographs (sample)", start: 0x4E00, end: 0x4EFF },
+      { name: "Hangul Syllables (sample)", start: 0xAC00, end: 0xAD7F },
+      { name: "Emoticons", start: 0x1F600, end: 0x1F64F },
+      { name: "Misc Symbols and Pictographs", start: 0x1F300, end: 0x1F5FF },
+      { name: "Transport and Map Symbols", start: 0x1F680, end: 0x1F6FF }
     ];
 
     const fontSelect = document.getElementById("fontSelect");
     const blockSelect = document.getElementById("blockSelect");
+    const cellModeSelect = document.getElementById("cellModeSelect");
+    const maxCellsInput = document.getElementById("maxCellsInput");
+    const maxCoverageFilter = document.getElementById("maxCoverageFilter");
     const grid = document.getElementById("grid");
     const summary = document.getElementById("summary");
     const blockTitle = document.getElementById("blockTitle");
+    const blockStats = document.getElementById("blockStats");
+    const missingList = document.getElementById("missingList");
 
-    fonts.forEach((f, i) => {
-      const opt = document.createElement("option");
-      opt.value = String(i);
-      opt.textContent = f.name;
-      fontSelect.appendChild(opt);
-    });
+    const fontCache = new Map();
 
-    blocks.forEach((b, i) => {
-      const opt = document.createElement("option");
-      opt.value = String(i);
-      opt.textContent = b.name;
-      blockSelect.appendChild(opt);
-    });
-
-    async function loadFont() {
-      const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
-      return FontParser.load(selected.url);
+    function codePointLabel(cp) {
+      return `U+${cp.toString(16).toUpperCase().padStart(cp > 0xFFFF ? 6 : 4, "0")}`;
     }
 
-    function renderBlock(font, block) {
-      grid.innerHTML = "";
-      blockTitle.textContent = `${block.name} (U+${block.start.toString(16).padStart(4,"0")}–U+${block.end.toString(16).padStart(4,"0")})`;
+    function showCharOrDot(ch) {
+      if (!ch || /^\s$/u.test(ch)) return "·";
+      return ch;
+    }
+
+    function hasGlyph(font, codePoint) {
+      const ch = String.fromCodePoint(codePoint);
+      return font.getGlyphIndexByChar(ch) != null;
+    }
+
+    function getCoverageDataForBlock(font, block) {
+      let total = 0;
+      let present = 0;
+      const missingCodePoints = [];
       for (let cp = block.start; cp <= block.end; cp++) {
-        const ch = String.fromCharCode(cp);
-        const has = font.getGlyphIndexByChar(ch);
-        const div = document.createElement("div");
-        div.className = `cell ${has ? "ok" : "bad"}`;
-        div.title = `U+${cp.toString(16).padStart(4,"0")}`;
-        div.textContent = ch.trim() ? ch : "·";
-        grid.appendChild(div);
+        total += 1;
+        if (hasGlyph(font, cp)) present += 1;
+        else missingCodePoints.push(cp);
+      }
+      const coverage = total ? ((present / total) * 100) : 0;
+      return {
+        total,
+        present,
+        missing: total - present,
+        coverage,
+        missingCodePoints
+      };
+    }
+
+    async function loadFontAndCoverage(fontIndex) {
+      const fontConfig = fonts[fontIndex] ?? fonts[0];
+      const cacheKey = `${fontConfig.name}::${fontConfig.url}`;
+      if (fontCache.has(cacheKey)) return fontCache.get(cacheKey);
+
+      const font = await FontParser.load(fontConfig.url);
+      const coverageByBlock = blocks.map((block) => ({ block, ...getCoverageDataForBlock(font, block) }));
+      const payload = { font, coverageByBlock };
+      fontCache.set(cacheKey, payload);
+      return payload;
+    }
+
+    function setStatsText(textParts) {
+      blockStats.innerHTML = "";
+      for (const part of textParts) {
+        const el = document.createElement("div");
+        el.innerHTML = part;
+        blockStats.appendChild(el);
       }
     }
 
-    function renderSummary(font) {
+    function renderBlock(font, coverageEntry) {
+      const block = coverageEntry.block;
+      const cellMode = cellModeSelect.value;
+      const maxCells = Math.max(32, Math.min(2048, Number(maxCellsInput.value) || 512));
+      const blockSize = block.end - block.start + 1;
+      const step = Math.max(1, Math.ceil(blockSize / maxCells));
+
+      grid.innerHTML = "";
+      blockTitle.textContent = `${block.name} (${codePointLabel(block.start)}-${codePointLabel(block.end)})`;
+
+      let shown = 0;
+      for (let cp = block.start; cp <= block.end; cp += step) {
+        const present = hasGlyph(font, cp);
+        if (cellMode === "missing" && present) continue;
+        if (cellMode === "present" && !present) continue;
+
+        const ch = String.fromCodePoint(cp);
+        const gid = font.getGlyphIndexByChar(ch);
+        const div = document.createElement("div");
+        div.className = `cell ${present ? "ok" : "bad"}`;
+        div.title = `${codePointLabel(cp)} | glyph: ${gid ?? "missing"}`;
+        div.textContent = showCharOrDot(ch);
+        grid.appendChild(div);
+        shown += 1;
+      }
+
+      setStatsText([
+        `<strong>Total:</strong> ${coverageEntry.total}`,
+        `<strong>Present:</strong> ${coverageEntry.present}`,
+        `<strong>Missing:</strong> ${coverageEntry.missing}`,
+        `<strong>Coverage:</strong> ${coverageEntry.coverage.toFixed(1)}%`,
+        `<strong>Previewed:</strong> ${shown} cells${step > 1 ? ` (sampled every ${step})` : ""}`
+      ]);
+
+      const missingPreview = coverageEntry.missingCodePoints.slice(0, 80);
+      missingList.innerHTML = "";
+      if (!missingPreview.length) {
+        missingList.textContent = "No missing code points in this block.";
+        return;
+      }
+
+      const heading = document.createElement("div");
+      heading.textContent = `Missing preview (${missingPreview.length}${coverageEntry.missingCodePoints.length > 80 ? ` of ${coverageEntry.missingCodePoints.length}` : ""}):`;
+      missingList.appendChild(heading);
+      for (const cp of missingPreview) {
+        const ch = String.fromCodePoint(cp);
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.title = codePointLabel(cp);
+        chip.textContent = `${showCharOrDot(ch)} ${codePointLabel(cp)}`;
+        missingList.appendChild(chip);
+      }
+    }
+
+    function renderSummary(coverageByBlock) {
+      const threshold = Math.max(0, Math.min(100, Number(maxCoverageFilter.value) || 100));
       summary.innerHTML = "";
-      blocks.forEach(b => {
-        let total = 0;
-        let missing = 0;
-        for (let cp = b.start; cp <= b.end; cp++) {
-          total++;
-          if (!font.getGlyphIndexByChar(String.fromCharCode(cp))) missing++;
-        }
-        const coverage = Math.round(((total - missing) / total) * 100);
+
+      coverageByBlock
+        .filter((entry) => entry.coverage <= threshold)
+        .sort((a, b) => a.coverage - b.coverage)
+        .forEach((entry) => {
+          const block = entry.block;
+          const tr = document.createElement("tr");
+          tr.className = "clickable";
+          tr.innerHTML = `
+            <td>${block.name}</td>
+            <td>${codePointLabel(block.start)}-${codePointLabel(block.end)}</td>
+            <td>${entry.coverage.toFixed(1)}%</td>
+            <td>${entry.missing}/${entry.total}</td>
+            <td><div class="bar"><span style="width:${Math.max(0, Math.min(100, entry.coverage)).toFixed(1)}%"></span></div></td>
+          `;
+          tr.addEventListener("click", () => {
+            const blockIndex = blocks.findIndex((b) => b.name === block.name && b.start === block.start && b.end === block.end);
+            if (blockIndex >= 0) {
+              blockSelect.value = String(blockIndex);
+              render();
+            }
+          });
+          summary.appendChild(tr);
+        });
+
+      if (!summary.children.length) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${b.name}</td><td>U+${b.start.toString(16)}–U+${b.end.toString(16)}</td><td>${coverage}%</td>`;
+        tr.innerHTML = `<td colspan="5" class="note">No blocks under ${threshold}% coverage.</td>`;
         summary.appendChild(tr);
-      });
+      }
     }
 
     async function render() {
-      const font = await loadFont();
-      const block = blocks[Number(blockSelect.value)] ?? blocks[0];
-      renderBlock(font, block);
-      renderSummary(font);
+      const fontIndex = Number(fontSelect.value) || 0;
+      const selectedBlockIndex = Number(blockSelect.value) || 0;
+
+      const { font, coverageByBlock } = await loadFontAndCoverage(fontIndex);
+      const coverageEntry = coverageByBlock[selectedBlockIndex] ?? coverageByBlock[0];
+
+      renderBlock(font, coverageEntry);
+      renderSummary(coverageByBlock);
+    }
+
+    function populate() {
+      fonts.forEach((f, i) => {
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = f.name;
+        fontSelect.appendChild(opt);
+      });
+
+      blocks.forEach((b, i) => {
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = b.name;
+        blockSelect.appendChild(opt);
+      });
     }
 
     fontSelect.addEventListener("change", render);
     blockSelect.addEventListener("change", render);
+    cellModeSelect.addEventListener("change", render);
+    maxCellsInput.addEventListener("change", render);
+    maxCoverageFilter.addEventListener("input", render);
+
+    populate();
     render();
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>

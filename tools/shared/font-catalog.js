@@ -101,7 +101,12 @@ export const FONT_LISTS = {
     { name: 'DiscoMo TR (localised)', url: PATHS.discomoTr },
     { name: 'DiscoMo RO (localised)', url: PATHS.discomoRo },
     { name: 'DevilInside', url: PATHS.devilInside },
-    { name: 'Noto Sans', url: PATHS.notoSans }
+    { name: 'Noto Sans', url: PATHS.notoSans },
+    { name: 'Noto Sans Hebrew', url: PATHS.notoHebrew },
+    { name: 'Noto Sans Thai', url: PATHS.notoThai },
+    { name: 'Noto Sans Devanagari', url: PATHS.notoDevanagari },
+    { name: 'Noto Naskh Arabic', url: PATHS.notoArabic },
+    { name: 'Twemoji Mozilla (color)', url: PATHS.twemoji }
   ],
   variableFonts: [
     { name: 'Playwrite GB S Variable', url: PATHS.playwriteVar },
