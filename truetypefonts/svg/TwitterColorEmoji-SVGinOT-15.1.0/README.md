@@ -30,7 +30,7 @@ outline emoji are included for backwards/fallback compatibility.
 ## Examples
 
 Demo in Firefox on Linux.
-![Firefox color emoji in Linux](images/twemoji-font-demo.png?raw=true)
+Example image omitted in this vendored copy.
 
 ## What is SVGinOT?
 *SVG in Open Type* is a standard by Adobe and Mozilla for color OpenType

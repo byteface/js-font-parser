@@ -59,9 +59,8 @@ Removing those extensions may compile but break runtime module resolution in dem
 ## API and Docs
 
 - `docs/API.md`
-- `docs/PORTING.md`
-- `docs/DEMO_NOTES.md`
 - `docs/WISHLIST.md`
+- `proj/fontparser/README.md` (CLI)
 - `tests/golden/README.md`
 
 ## Bundle Output

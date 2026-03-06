@@ -2,6 +2,30 @@
 
 Current public API for loading and inspecting TTF/OTF/WOFF/WOFF2 fonts.
 
+## Package Exports
+
+Top-level exports from `dist/index.js`:
+
+```js
+import {
+  FontParser,
+  FontParserTTF,
+  FontParserWOFF,
+  FontParserWOFF2,
+  GlyphData,
+  SVGFont,
+  CanvasRenderer,
+  CanvasGlyph,
+  LayoutEngine,
+  getSupportedLanguages,
+  supportsLanguage,
+  listLanguages,
+  setWoff2Decoder,
+  detectScriptTags,
+  Color
+} from "./dist/index.js";
+```
+
 ## Loading
 
 Use the unified loader in most cases:
@@ -54,6 +78,29 @@ font.layoutString("Hello", {
 
 ```js
 font.layoutStringAuto("مرحبا"); // auto-detects script/features
+```
+
+`LayoutEngine` is also exported for generic line wrapping/alignment:
+
+```js
+const layout = LayoutEngine.layoutText(font, "hyphen\u00ADation sample", {
+  maxWidth: 1200,
+  align: "justify",          // left | center | right | justify
+  direction: "auto",         // ltr | rtl | auto
+  useKerning: true,
+  letterSpacing: 0,
+  breakWords: true,
+  trimLeadingSpaces: true,
+  trimTrailingSpaces: true,
+  collapseSpaces: false,
+  preserveNbsp: true,
+  tabSize: 4,
+  justifyLastLine: false,
+  bidi: "simple",            // none | simple
+  hyphenate: "soft",         // none | soft
+  hyphenChar: "-",
+  hyphenMinWordLength: 6
+});
 ```
 
 ## Variation Fonts
@@ -145,8 +192,47 @@ CanvasRenderer.drawString(font, "Hello", canvas, {
 });
 ```
 
+## Language Coverage Helpers
+
+```js
+const all = getSupportedLanguages(font);
+// -> [{ code, name, supported, missing, coverage, notes? }, ...]
+
+const fr = supportsLanguage(font, "fr");
+// -> { code, name, supported, missing, coverage, notes? } | null
+
+const defs = listLanguages();
+// -> [{ code, name, required, optional?, notes? }, ...]
+```
+
+## Script Detection Helper
+
+```js
+const { scripts, features } = detectScriptTags("مرحبا Hello");
+// scripts: e.g. ["arab", "latn"]
+// features: merged recommended GSUB features for detected scripts
+```
+
+## WOFF2 Decoder Hook
+
+```js
+setWoff2Decoder((compressedBytes) => decodedTtfBytes);
+// compressedBytes: Uint8Array (WOFF2 payload)
+// return: Uint8Array (decoded sfnt/TTF bytes)
+```
+
+## Color Utility
+
+```js
+Color.rndColor();
+Color.rgbaToCss(255, 0, 0, 0.5);
+Color.hexToRgba("#336699cc");
+Color.blend({ r: 255, g: 0, b: 0, a: 0.5 }, { r: 0, g: 0, b: 0, a: 1 });
+Color.paletteToCss([{ red: 255, green: 0, blue: 0, alpha: 255 }]);
+```
+
 ## Notes
 
 - `FontParser.load(...)` returns a parser instance for the detected format.
-- WOFF2 parsing requires a WOFF2 decoder (`decodeWoff2`) in your runtime.
+- WOFF2 parsing requires a decoder in your runtime (set via `setWoff2Decoder(...)` or global `WOFF2.decode(...)`).
 - Some methods are format-dependent (for example, `layoutStringAuto` is currently on `FontParserTTF`).
