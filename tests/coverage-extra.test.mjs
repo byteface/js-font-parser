@@ -13,6 +13,7 @@ import { FontParserWOFF } from '../dist/data/FontParserWOFF.js';
 import { FontParserWOFF2 } from '../dist/data/FontParserWOFF2.js';
 import { decodeWoff2, setWoff2Decoder } from '../dist/utils/Woff2Decoder.js';
 import { Table } from '../dist/table/Table.js';
+import { LayoutEngine } from '../dist/layout/LayoutEngine.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -260,6 +261,28 @@ test('Color and variable font APIs return structured data', () => {
     assert.equal(typeof layers[0].glyphId, 'number');
   }
 
+  // COLRv1: ensure paint trees can be flattened without throwing
+  const colrBytes = readBytes('truetypefonts/color/colrv1/test_glyphs-glyf_colr_1.ttf');
+  const colrFont = FontParser.fromArrayBuffer(toArrayBuffer(colrBytes));
+  const colrGlyphId = colrFont.getGlyphIndexByChar('A') ?? 0;
+  const colrLayers = colrFont.getColrV1LayersForGlyph(colrGlyphId, 0);
+  assert.ok(Array.isArray(colrLayers));
+  // Unhappy palette index should not throw and should produce null colors when palette is missing.
+  const colrLayersMissingPalette = colrFont.getColrV1LayersForGlyph(colrGlyphId, 999);
+  assert.ok(Array.isArray(colrLayersMissingPalette));
+
+  // COLRv1 on a non-color font should be empty.
+  const plainBytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
+  const plainFont = FontParser.fromArrayBuffer(toArrayBuffer(plainBytes));
+  assert.deepEqual(plainFont.getColrV1LayersForGlyph(0), []);
+
+  const colrTable = colrFont.getTableByType(Table.COLR);
+  if (colrTable) {
+    assert.doesNotThrow(() => colrTable.getPaintForGlyph(colrGlyphId));
+    assert.doesNotThrow(() => colrTable.getClipForGlyph(colrGlyphId));
+    assert.equal(colrTable.getPaintForGlyph(999999), null);
+  }
+
   const varBytes = readBytes('truetypefonts/arimo/Arimo[wght].ttf');
   const varFont = FontParser.fromArrayBuffer(toArrayBuffer(varBytes));
   const axes = varFont.getVariationAxes();
@@ -270,6 +293,28 @@ test('Color and variable font APIs return structured data', () => {
   }
   const laidOut = varFont.layoutStringAuto('Hello');
   assert.ok(laidOut.length > 0);
+});
+
+test('CFF fonts expose core metrics and reject empty glyph lookups', () => {
+  const otfBytes = readBytes('truetypefonts/curated/SourceSerif4-Regular.otf');
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(otfBytes));
+  assert.ok(font instanceof FontParserTTF);
+
+  const post = font.getPostMetrics();
+  assert.ok(post && typeof post.italicAngle === 'number');
+  assert.equal(typeof font.isItalic(), 'boolean');
+  assert.equal(typeof font.isMonospace(), 'boolean');
+
+  assert.equal(font.getGlyphIndexByChar(''), null);
+  assert.equal(font.getGlyphByChar(''), null);
+
+  const cff = font.getTableByType(Table.CFF);
+  if (cff) {
+    assert.equal(cff.getGlyphDescription(-1), null);
+    assert.equal(cff.getGlyphDescription(999999), null);
+    const debug = cff.debugCharString(0);
+    assert.ok(debug === null || Array.isArray(debug));
+  }
 });
 
 test('SVG table API returns payload or null without throwing', async () => {
@@ -322,6 +367,35 @@ test('TTF parser exposes stable null/empty behavior for missing data', () => {
   assert.equal(typeof detailed[0].platformId, 'number');
   assert.equal(typeof detailed[0].encodingId, 'number');
   assert.equal(typeof detailed[0].languageId, 'number');
+
+  // Variation setters should be a no-op when no fvar is present.
+  assert.doesNotThrow(() => font.setVariationByAxes({ wght: 700 }));
+});
+
+test('Layout engine supports auto direction and soft hyphens', () => {
+  const bytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
+
+  const measure = (text) => {
+    let width = 0;
+    for (const ch of text) {
+      const gid = font.getGlyphIndexByChar(ch);
+      const glyph = gid != null ? font.getGlyph(gid) : null;
+      width += glyph?.advanceWidth ?? 0;
+    }
+    return width;
+  };
+
+  const maxWidth = measure('hyphen') + measure('-') + 1;
+  const layout = LayoutEngine.layoutText(font, 'hyphen\u00ADation', {
+    maxWidth,
+    hyphenate: 'soft',
+    breakWords: true,
+    direction: 'auto'
+  });
+  assert.ok(layout.lines.length >= 1);
+  const firstLineChars = layout.lines[0].glyphs.map(g => g.char).join('');
+  assert.ok(firstLineChars.includes('-'), 'expected soft hyphen to insert "-"');
 });
 
 test('Table access works for known tags on multiple font formats', () => {
