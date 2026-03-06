@@ -457,6 +457,15 @@ export class FontParserTTF {
                     if (!base.isComposite()) {
                         this.applyIupDeltas(base, dx, dy, touched);
                     }
+                    if (base instanceof GlyfCompositeDescript) {
+                        for (let p = 0; p < basePointCount; p++) {
+                            const comp = base.getComponentForPointIndex(p);
+                            if (!comp || !comp.hasTransform()) continue;
+                            const transformed = comp.transformDelta(dx[p] ?? 0, dy[p] ?? 0);
+                            dx[p] = transformed.dx;
+                            dy[p] = transformed.dy;
+                        }
+                    }
 
                     const lsbDelta = fullDx[basePointCount] ?? 0;
                     const rsbDelta = fullDx[basePointCount + 1] ?? 0;

@@ -100,10 +100,14 @@ export class GlyfCompositeComp {
         return Math.round((x * this.scale01) + (y * this.yscale));
     }
 
+    hasTransform(): boolean {
+        return this.xscale !== 1 || this.yscale !== 1 || this.scale01 !== 0 || this.scale10 !== 0;
+    }
+
     transformDelta(dx: number, dy: number): { dx: number; dy: number } {
         return {
-            dx: Math.round((dx * this.xscale) + (dy * this.scale10)),
-            dy: Math.round((dx * this.scale01) + (dy * this.yscale))
+            dx: (dx * this.xscale) + (dy * this.scale10),
+            dy: (dx * this.scale01) + (dy * this.yscale)
         };
     }
 }

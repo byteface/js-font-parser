@@ -474,6 +474,16 @@ var FontParserTTF = /** @class */ (function () {
                     if (!base_1.isComposite()) {
                         this.applyIupDeltas(base_1, dx_1, dy_1, touched);
                     }
+                    if (base_1 instanceof GlyfCompositeDescript) {
+                        for (var p = 0; p < basePointCount; p++) {
+                            var comp = base_1.getComponentForPointIndex(p);
+                            if (!comp || !comp.hasTransform())
+                                continue;
+                            var transformed = comp.transformDelta((_h = dx_1[p]) !== null && _h !== void 0 ? _h : 0, (_j = dy_1[p]) !== null && _j !== void 0 ? _j : 0);
+                            dx_1[p] = transformed.dx;
+                            dy_1[p] = transformed.dy;
+                        }
+                    }
                     var lsbDelta = (_f = fullDx[basePointCount]) !== null && _f !== void 0 ? _f : 0;
                     var rsbDelta = (_g = fullDx[basePointCount + 1]) !== null && _g !== void 0 ? _g : 0;
                     lsb += lsbDelta;

@@ -83,10 +83,13 @@ var GlyfCompositeComp = /** @class */ (function () {
     GlyfCompositeComp.prototype.scaleY = function (x, y) {
         return Math.round((x * this.scale01) + (y * this.yscale));
     };
+    GlyfCompositeComp.prototype.hasTransform = function () {
+        return this.xscale !== 1 || this.yscale !== 1 || this.scale01 !== 0 || this.scale10 !== 0;
+    };
     GlyfCompositeComp.prototype.transformDelta = function (dx, dy) {
         return {
-            dx: Math.round((dx * this.xscale) + (dy * this.scale10)),
-            dy: Math.round((dx * this.scale01) + (dy * this.yscale))
+            dx: (dx * this.xscale) + (dy * this.scale10),
+            dy: (dx * this.scale01) + (dy * this.yscale)
         };
     };
     // Constants
