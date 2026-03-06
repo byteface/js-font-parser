@@ -267,34 +267,46 @@ export class FontParserWOFF {
             let advance = this.hmtx?.getAdvanceWidth(i) ?? 0;
             if (this.gvar && this.variationCoords.length > 0) {
                 const basePointCount = description.getPointCount();
-                const gvarPointCount = basePointCount + 4; // phantom points
+                const isComposite = description.isComposite();
+                const componentCount = isComposite && description instanceof GlyfCompositeDescript
+                    ? description.getComponentCount()
+                    : 0;
+                const gvarPointCount = (isComposite ? componentCount : basePointCount) + 4; // phantom points
                 const deltas = this.gvar.getDeltasForGlyph(i, this.variationCoords, gvarPointCount);
                 if (deltas) {
                     const base = description;
                     const fullDx = deltas.dx;
                     const fullDy = deltas.dy;
-                    const dx = fullDx.slice(0, basePointCount);
-                    const dy = fullDy.slice(0, basePointCount);
-                    const touched = deltas.touched.slice(0, basePointCount);
-                    while (dx.length < basePointCount) dx.push(0);
-                    while (dy.length < basePointCount) dy.push(0);
-                    while (touched.length < basePointCount) touched.push(false);
-                    // Apply IUP only to simple glyphs.
-                    if (!base.isComposite()) {
+                    let dx: number[] = [];
+                    let dy: number[] = [];
+                    let compDx: number[] | null = null;
+                    let compDy: number[] | null = null;
+
+                    if (!isComposite) {
+                        dx = fullDx.slice(0, basePointCount);
+                        dy = fullDy.slice(0, basePointCount);
+                        const touched = deltas.touched.slice(0, basePointCount);
+                        while (dx.length < basePointCount) dx.push(0);
+                        while (dy.length < basePointCount) dy.push(0);
+                        while (touched.length < basePointCount) touched.push(false);
                         this.applyIupDeltas(base, dx, dy, touched);
-                    }
-                    if (base instanceof GlyfCompositeDescript) {
-                        for (let p = 0; p < basePointCount; p++) {
-                            const comp = base.getComponentForPointIndex(p);
-                            if (!comp || !comp.hasTransform()) continue;
-                            const transformed = comp.transformDelta(dx[p] ?? 0, dy[p] ?? 0);
-                            dx[p] = transformed.dx;
-                            dy[p] = transformed.dy;
+                    } else if (base instanceof GlyfCompositeDescript) {
+                        compDx = new Array(componentCount).fill(0);
+                        compDy = new Array(componentCount).fill(0);
+                        for (let c = 0; c < componentCount; c++) {
+                            const rawDx = fullDx[c] ?? 0;
+                            const rawDy = fullDy[c] ?? 0;
+                            const comp = base.components[c];
+                            if (comp && comp.isArgsAreXY()) {
+                                compDx[c] = rawDx;
+                                compDy[c] = rawDy;
+                            }
                         }
                     }
 
-                    const lsbDelta = fullDx[basePointCount] ?? 0;
-                    const rsbDelta = fullDx[basePointCount + 1] ?? 0;
+                    const phantomBase = isComposite ? componentCount : basePointCount;
+                    const lsbDelta = fullDx[phantomBase] ?? 0;
+                    const rsbDelta = fullDx[phantomBase + 1] ?? 0;
                     lsb += lsbDelta;
                     advance += (rsbDelta - lsbDelta);
 
@@ -303,8 +315,12 @@ export class FontParserWOFF {
                     let minY = Infinity;
                     let maxY = -Infinity;
                     for (let p = 0; p < basePointCount; p++) {
-                        const x = base.getXCoordinate(p) + (dx[p] ?? 0);
-                        const y = base.getYCoordinate(p) + (dy[p] ?? 0);
+                        const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
+                        const compIndex = comp ? base.components.indexOf(comp) : -1;
+                        const ox = compIndex >= 0 && compDx ? compDx[compIndex] ?? 0 : 0;
+                        const oy = compIndex >= 0 && compDy ? compDy[compIndex] ?? 0 : 0;
+                        const x = base.getXCoordinate(p) + (dx[p] ?? 0) + ox;
+                        const y = base.getYCoordinate(p) + (dy[p] ?? 0) + oy;
                         if (x < minX) minX = x;
                         if (x > maxX) maxX = x;
                         if (y < minY) minY = y;
@@ -316,8 +332,18 @@ export class FontParserWOFF {
                         getContourCount: () => base.getContourCount(),
                         getEndPtOfContours: (c: number) => base.getEndPtOfContours(c),
                         getFlags: (p: number) => base.getFlags(p),
-                        getXCoordinate: (p: number) => base.getXCoordinate(p) + (dx[p] ?? 0),
-                        getYCoordinate: (p: number) => base.getYCoordinate(p) + (dy[p] ?? 0),
+                        getXCoordinate: (p: number) => {
+                            const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
+                            const compIndex = comp ? base.components.indexOf(comp) : -1;
+                            const ox = compIndex >= 0 && compDx ? compDx[compIndex] ?? 0 : 0;
+                            return base.getXCoordinate(p) + (dx[p] ?? 0) + ox;
+                        },
+                        getYCoordinate: (p: number) => {
+                            const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
+                            const compIndex = comp ? base.components.indexOf(comp) : -1;
+                            const oy = compIndex >= 0 && compDy ? compDy[compIndex] ?? 0 : 0;
+                            return base.getYCoordinate(p) + (dy[p] ?? 0) + oy;
+                        },
                         getXMaximum: () => (maxX !== -Infinity ? maxX : base.getXMaximum()),
                         getXMinimum: () => (minX !== Infinity ? minX : base.getXMinimum()),
                         getYMaximum: () => (maxY !== -Infinity ? maxY : base.getYMaximum()),

@@ -80,6 +80,10 @@ export class GlyfCompositeComp {
         }
     }
 
+    isArgsAreXY(): boolean {
+        return (this.flags & GlyfCompositeComp.ARGS_ARE_XY_VALUES) !== 0;
+    }
+
     /**
      * Transforms an x-coordinate of a point for this component.
      * @param x The x-coordinate of the point to transform

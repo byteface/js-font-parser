@@ -126,6 +126,9 @@ var GlyfCompositeDescript = /** @class */ (function () {
     GlyfCompositeDescript.prototype.getContourCount = function () {
         return this.contourCount;
     };
+    GlyfCompositeDescript.prototype.getComponentCount = function () {
+        return this.components.length;
+    };
     GlyfCompositeDescript.prototype.getXMaximum = function () {
         return this.xMax;
     };

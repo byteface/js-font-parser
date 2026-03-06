@@ -160,6 +160,10 @@ export class GlyfCompositeDescript implements IGlyphDescription {
         return this.contourCount;
     }
 
+    getComponentCount(): number {
+        return this.components.length;
+    }
+
     getXMaximum(): number {
         return this.xMax;
     }

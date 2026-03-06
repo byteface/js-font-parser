@@ -461,37 +461,48 @@ var FontParserTTF = /** @class */ (function () {
             var advance = (_e = (_d = this.hmtx) === null || _d === void 0 ? void 0 : _d.getAdvanceWidth(i)) !== null && _e !== void 0 ? _e : 0;
             if (this.gvar && this.variationCoords.length > 0) {
                 var basePointCount = description.getPointCount();
-                var gvarPointCount = basePointCount + 4; // phantom points
+                var isComposite = description.isComposite();
+                var componentCount = isComposite && description instanceof GlyfCompositeDescript
+                    ? description.getComponentCount()
+                    : 0;
+                var gvarPointCount = (isComposite ? componentCount : basePointCount) + 4; // phantom points
                 var deltas = this.gvar.getDeltasForGlyph(i, this.variationCoords, gvarPointCount);
                 if (deltas) {
                     var base_1 = description;
                     var fullDx = deltas.dx;
                     var fullDy = deltas.dy;
-                    var dx_1 = fullDx.slice(0, basePointCount);
-                    var dy_1 = fullDy.slice(0, basePointCount);
-                    var touched = deltas.touched.slice(0, basePointCount);
-                    while (dx_1.length < basePointCount)
-                        dx_1.push(0);
-                    while (dy_1.length < basePointCount)
-                        dy_1.push(0);
-                    while (touched.length < basePointCount)
-                        touched.push(false);
-                    // Apply IUP only to simple glyphs.
-                    if (!base_1.isComposite()) {
+                    var dx_1 = [];
+                    var dy_1 = [];
+                    var compDx = null;
+                    var compDy = null;
+                    if (!isComposite) {
+                        dx_1 = fullDx.slice(0, basePointCount);
+                        dy_1 = fullDy.slice(0, basePointCount);
+                        var touched = deltas.touched.slice(0, basePointCount);
+                        while (dx_1.length < basePointCount)
+                            dx_1.push(0);
+                        while (dy_1.length < basePointCount)
+                            dy_1.push(0);
+                        while (touched.length < basePointCount)
+                            touched.push(false);
                         this.applyIupDeltas(base_1, dx_1, dy_1, touched);
                     }
-                    if (base_1 instanceof GlyfCompositeDescript) {
-                        for (var p = 0; p < basePointCount; p++) {
-                            var comp = base_1.getComponentForPointIndex(p);
-                            if (!comp || !comp.hasTransform())
-                                continue;
-                            var transformed = comp.transformDelta((_h = dx_1[p]) !== null && _h !== void 0 ? _h : 0, (_j = dy_1[p]) !== null && _j !== void 0 ? _j : 0);
-                            dx_1[p] = transformed.dx;
-                            dy_1[p] = transformed.dy;
+                    else if (base_1 instanceof GlyfCompositeDescript) {
+                        compDx = new Array(componentCount).fill(0);
+                        compDy = new Array(componentCount).fill(0);
+                        for (var c = 0; c < componentCount; c++) {
+                            var rawDx = (_f = fullDx[c]) !== null && _f !== void 0 ? _f : 0;
+                            var rawDy = (_g = fullDy[c]) !== null && _g !== void 0 ? _g : 0;
+                            var comp = base_1.components[c];
+                            if (comp && comp.isArgsAreXY()) {
+                                compDx[c] = rawDx;
+                                compDy[c] = rawDy;
+                            }
                         }
                     }
-                    var lsbDelta = (_f = fullDx[basePointCount]) !== null && _f !== void 0 ? _f : 0;
-                    var rsbDelta = (_g = fullDx[basePointCount + 1]) !== null && _g !== void 0 ? _g : 0;
+                    var phantomBase = isComposite ? componentCount : basePointCount;
+                    var lsbDelta = (_f = fullDx[phantomBase]) !== null && _f !== void 0 ? _f : 0;
+                    var rsbDelta = (_g = fullDx[phantomBase + 1]) !== null && _g !== void 0 ? _g : 0;
                     lsb += lsbDelta;
                     advance += (rsbDelta - lsbDelta);
                     var minX = Infinity;
@@ -499,8 +510,12 @@ var FontParserTTF = /** @class */ (function () {
                     var minY = Infinity;
                     var maxY = -Infinity;
                     for (var p = 0; p < basePointCount; p++) {
-                        var x = base_1.getXCoordinate(p) + ((_h = dx_1[p]) !== null && _h !== void 0 ? _h : 0);
-                        var y = base_1.getYCoordinate(p) + ((_j = dy_1[p]) !== null && _j !== void 0 ? _j : 0);
+                        var comp = isComposite && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
+                        var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                        var ox = compIndex >= 0 && compDx ? (compDx[compIndex] !== undefined ? compDx[compIndex] : 0) : 0;
+                        var oy = compIndex >= 0 && compDy ? (compDy[compIndex] !== undefined ? compDy[compIndex] : 0) : 0;
+                        var x = base_1.getXCoordinate(p) + ((dx_1[p] !== undefined ? dx_1[p] : 0)) + ox;
+                        var y = base_1.getYCoordinate(p) + ((dy_1[p] !== undefined ? dy_1[p] : 0)) + oy;
                         if (x < minX)
                             minX = x;
                         if (x > maxX)
@@ -515,8 +530,18 @@ var FontParserTTF = /** @class */ (function () {
                         getContourCount: function () { return base_1.getContourCount(); },
                         getEndPtOfContours: function (c) { return base_1.getEndPtOfContours(c); },
                         getFlags: function (p) { return base_1.getFlags(p); },
-                        getXCoordinate: function (p) { var _a; return base_1.getXCoordinate(p) + ((_a = dx_1[p]) !== null && _a !== void 0 ? _a : 0); },
-                        getYCoordinate: function (p) { var _a; return base_1.getYCoordinate(p) + ((_a = dy_1[p]) !== null && _a !== void 0 ? _a : 0); },
+                        getXCoordinate: function (p) {
+                            var comp = isComposite && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
+                            var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                            var ox = compIndex >= 0 && compDx ? (compDx[compIndex] !== undefined ? compDx[compIndex] : 0) : 0;
+                            return base_1.getXCoordinate(p) + ((dx_1[p] !== undefined ? dx_1[p] : 0)) + ox;
+                        },
+                        getYCoordinate: function (p) {
+                            var comp = isComposite && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
+                            var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                            var oy = compIndex >= 0 && compDy ? (compDy[compIndex] !== undefined ? compDy[compIndex] : 0) : 0;
+                            return base_1.getYCoordinate(p) + ((dy_1[p] !== undefined ? dy_1[p] : 0)) + oy;
+                        },
                         getXMaximum: function () { return maxX !== -Infinity ? maxX : base_1.getXMaximum(); },
                         getXMinimum: function () { return minX !== Infinity ? minX : base_1.getXMinimum(); },
                         getYMaximum: function () { return maxY !== -Infinity ? maxY : base_1.getYMaximum(); },
