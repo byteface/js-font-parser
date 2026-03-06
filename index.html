@@ -1,50 +1,583 @@
-<!DOCTYPE HTML>
+<!doctype html>
 <html lang="en">
 <head>
-    <title>JS Font Parser Demos</title>
-    <meta charset="utf-8">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            color: #222;
-        }
-        h1 {
-            margin-bottom: 8px;
-        }
-        p {
-            margin-top: 0;
-            color: #555;
-        }
-        ul {
-            padding-left: 20px;
-        }
-        li {
-            margin: 8px 0;
-        }
-        a {
-            color: #0b57d0;
-            text-decoration: none;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-        code {
-            background: #f3f3f3;
-            padding: 2px 4px;
-            border-radius: 4px;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JS Font Parser</title>
+  <style>
+    :root {
+      --bg0: #0e1a21;
+      --bg1: #152833;
+      --ink: #e9f1f4;
+      --muted: #99b2bf;
+      --panel: #11232d;
+      --panel-2: #182f3a;
+      --line: #2f4c5b;
+      --accent: #ff9354;
+      --accent-2: #7ae8d8;
+      --ok: #8be28b;
+      --danger: #f37777;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      font-family: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(80vw 55vw at 8% -8%, #234251 0%, transparent 55%),
+        radial-gradient(65vw 48vw at 100% 0%, #5b3b2f 0%, transparent 45%),
+        linear-gradient(160deg, var(--bg0), var(--bg1));
+      min-height: 100vh;
+    }
+
+    .shell {
+      width: min(1200px, 95vw);
+      margin: 0 auto;
+      padding: 26px 0 34px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(180deg, #142734, #10212a);
+      box-shadow: 0 22px 50px rgba(0,0,0,0.36);
+      overflow: clip;
+    }
+
+    .hero-top {
+      padding: 20px 20px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 20px;
+      align-items: end;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #163140, #122935);
+    }
+
+    .kicker {
+      display: inline-block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .18em;
+      color: var(--accent-2);
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: "Rockwell", "Avenir Next", serif;
+      font-size: clamp(28px, 4.2vw, 56px);
+      line-height: 1;
+      letter-spacing: .02em;
+    }
+
+    .sub {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 70ch;
+    }
+
+    .hero-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .btn {
+      text-decoration: none;
+      color: #091115;
+      background: linear-gradient(180deg, #ffd7c1, #ff9f69);
+      border: 1px solid #ffb183;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .btn.alt {
+      color: var(--ink);
+      background: #1a3340;
+      border-color: #3c6274;
+    }
+
+    .hero-canvas-wrap {
+      padding: 12px 14px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    #heroCanvas {
+      width: 100%;
+      height: min(48vw, 470px);
+      min-height: 280px;
+      border-radius: 12px;
+      border: 1px solid #345464;
+      background: #0f2029;
+      display: block;
+    }
+
+    .controls {
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      background: linear-gradient(180deg, #11232d, #0f1d25);
+    }
+
+    .control-grid {
+      display: grid;
+      gap: 10px 14px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      align-content: start;
+    }
+
+    .field label {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: .02em;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      border: 1px solid #406375;
+      border-radius: 9px;
+      background: #172e3a;
+      color: var(--ink);
+      padding: 8px 9px;
+      font: inherit;
+      min-height: 36px;
+    }
+
+    .field input[type="range"] { padding: 0; }
+    .field input[type="color"] { padding: 2px; min-height: 36px; }
+
+    .switches {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 20px;
+      padding-top: 4px;
+    }
+
+    .switches label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      color: var(--muted);
+      user-select: none;
+    }
+
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .stat {
+      border: 1px solid #355666;
+      background: #162c37;
+      color: #c9d9e1;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      text-decoration: none;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: linear-gradient(180deg, #12252f, #0f2028);
+      padding: 14px;
+      display: grid;
+      gap: 8px;
+      min-height: 118px;
+    }
+
+    .card strong { font-size: 19px; }
+    .card span { color: var(--muted); font-size: 14px; line-height: 1.4; }
+    .card:hover { border-color: var(--accent-2); transform: translateY(-1px); }
+
+    .foot {
+      color: #89a5b3;
+      font-size: 13px;
+      text-align: center;
+      padding: 2px 4px 8px;
+    }
+  </style>
 </head>
 <body>
-    <h1>JS Font Parser</h1>
-    <p>Pick a demo:</p>
-    <ul>
-        <li><a href="demos/index.html">Demos</a></li>
-    </ul>
-    <p>
-        Run a local server from this folder and open
-        <code>http://localhost:8080/index.html</code>.
-    </p>
+  <main class="shell">
+    <section class="hero">
+      <header class="hero-top">
+        <div>
+          <span class="kicker">Font Engineering Playground</span>
+          <h1>JS FONT PARSER</h1>
+          <p class="sub">Inspect, style, and measure real glyph outlines in-browser. The hero below is rendered from the parser build in <code>dist/</code>, with live controls.</p>
+        </div>
+        <nav class="hero-links">
+          <a class="btn" href="demos/index.html">Open Demos</a>
+          <a class="btn alt" href="tools/index.html">Open Tools</a>
+          <a class="btn alt" href="docs/API.md">API Notes</a>
+        </nav>
+      </header>
+
+      <div class="hero-canvas-wrap">
+        <canvas id="heroCanvas" width="1280" height="520"></canvas>
+      </div>
+
+      <section class="controls">
+        <div class="control-grid">
+          <div class="field" style="grid-column: span 2;">
+            <label for="textInput">Hero Text</label>
+            <input id="textInput" value="JS FONT PARSER" />
+          </div>
+          <div class="field">
+            <label for="fontSelect">Font</label>
+            <select id="fontSelect"></select>
+          </div>
+          <div class="field">
+            <label for="fontSize">Font Size (px)</label>
+            <input id="fontSize" type="range" min="48" max="260" step="2" value="146" />
+          </div>
+          <div class="field">
+            <label for="spacing">Letter Spacing (px)</label>
+            <input id="spacing" type="range" min="-6" max="32" step="1" value="4" />
+          </div>
+          <div class="field">
+            <label for="kerning">Kerning Strength</label>
+            <input id="kerning" type="range" min="0" max="8" step="0.2" value="1.6" />
+          </div>
+          <div class="field">
+            <label for="lineHeight">Line Height</label>
+            <input id="lineHeight" type="range" min="0.8" max="2.2" step="0.05" value="1.24" />
+          </div>
+          <div class="field">
+            <label for="fillColor">Fill</label>
+            <input id="fillColor" type="color" value="#f2f7fa" />
+          </div>
+          <div class="field">
+            <label for="strokeColor">Stroke</label>
+            <input id="strokeColor" type="color" value="#7de8d7" />
+          </div>
+          <div class="field">
+            <label for="bgColor">Background</label>
+            <input id="bgColor" type="color" value="#0f2029" />
+          </div>
+          <div class="field">
+            <label for="shadowColor">Shadow</label>
+            <input id="shadowColor" type="color" value="#ff9354" />
+          </div>
+          <div class="field">
+            <label for="shadowBlur">Shadow Blur</label>
+            <input id="shadowBlur" type="range" min="0" max="40" step="1" value="13" />
+          </div>
+          <div class="field">
+            <label for="lineWidth">Stroke Width</label>
+            <input id="lineWidth" type="range" min="0" max="7" step="0.25" value="0.9" />
+          </div>
+        </div>
+
+        <div class="switches">
+          <label><input id="useKerning" type="checkbox" checked /> Use kerning</label>
+          <label><input id="showMetrics" type="checkbox" checked /> Show ascender/descender rulers</label>
+          <label><input id="showGrid" type="checkbox" checked /> Show baseline grid</label>
+          <label><input id="showShadow" type="checkbox" checked /> Enable shadow</label>
+        </div>
+
+        <div id="stats" class="stats"></div>
+      </section>
+    </section>
+
+    <section class="cards">
+      <a class="card" href="demos/index.html">
+        <strong>Demos</strong>
+        <span>Animation-heavy showcases for outlines, particles, color fonts, and visual experiments.</span>
+      </a>
+      <a class="card" href="tools/index.html">
+        <strong>Tools</strong>
+        <span>Inspection surfaces for coverage, kerning, metadata, GSUB/GPOS, tables, and shaping checks.</span>
+      </a>
+      <a class="card" href="proj/fontparser/README.md">
+        <strong>CLI</strong>
+        <span>Use the command-line explorer for metadata, language coverage, subsetting, SVG export, and stats.</span>
+      </a>
+    </section>
+
+    <p class="foot">Run from a local web server, then open <code>http://localhost:8080/index.html</code>.</p>
+  </main>
+
+  <script type="module">
+    import { FontParser } from './dist/data/FontParser.js';
+    import { CanvasRenderer } from './dist/render/CanvasRenderer.js';
+
+    const HERO_FONTS = [
+      { name: 'Gotham Narrow Ultra', url: './truetypefonts/GothamNarrow-Ultra.otf' },
+      { name: 'Noto Sans', url: './truetypefonts/noto/NotoSans-Regular.ttf' },
+      { name: 'Roboto VF', url: './truetypefonts/curated/Roboto-VF.ttf' },
+      { name: 'Arimo Variable', url: './truetypefonts/arimo/Arimo[wght].ttf' },
+      { name: 'DiscoMo', url: './truetypefonts/DiscoMo.ttf' }
+    ];
+
+    const ui = {
+      canvas: document.getElementById('heroCanvas'),
+      textInput: document.getElementById('textInput'),
+      fontSelect: document.getElementById('fontSelect'),
+      fontSize: document.getElementById('fontSize'),
+      spacing: document.getElementById('spacing'),
+      kerning: document.getElementById('kerning'),
+      lineHeight: document.getElementById('lineHeight'),
+      fillColor: document.getElementById('fillColor'),
+      strokeColor: document.getElementById('strokeColor'),
+      bgColor: document.getElementById('bgColor'),
+      shadowColor: document.getElementById('shadowColor'),
+      shadowBlur: document.getElementById('shadowBlur'),
+      lineWidth: document.getElementById('lineWidth'),
+      useKerning: document.getElementById('useKerning'),
+      showMetrics: document.getElementById('showMetrics'),
+      showGrid: document.getElementById('showGrid'),
+      showShadow: document.getElementById('showShadow'),
+      stats: document.getElementById('stats')
+    };
+
+    const cache = new Map();
+    let font = null;
+
+    function populateFonts() {
+      ui.fontSelect.innerHTML = '';
+      HERO_FONTS.forEach((f, i) => {
+        const option = document.createElement('option');
+        option.value = String(i);
+        option.textContent = f.name;
+        ui.fontSelect.appendChild(option);
+      });
+    }
+
+    async function loadFont(url) {
+      if (cache.has(url)) return cache.get(url);
+      const loaded = await FontParser.load(url);
+      cache.set(url, loaded);
+      return loaded;
+    }
+
+    function resizeCanvasToDisplaySize(canvas) {
+      const ratio = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(1, Math.round(rect.width * ratio));
+      const height = Math.max(1, Math.round(rect.height * ratio));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      return ratio;
+    }
+
+    function getUnitsPerEm(fontObj) {
+      return fontObj?.getTableByType?.(0x68656164)?.unitsPerEm ?? 1000;
+    }
+
+    function drawMetrics(ctx, width, baselineY, ascentPx, descentPx, xHeightPx, capHeightPx) {
+      ctx.save();
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 5]);
+
+      ctx.strokeStyle = '#f5c16f';
+      ctx.beginPath();
+      ctx.moveTo(0, baselineY);
+      ctx.lineTo(width, baselineY);
+      ctx.stroke();
+      ctx.fillStyle = '#f5c16f';
+      ctx.fillText('baseline', 8, baselineY - 5);
+
+      ctx.strokeStyle = '#7ae8d8';
+      ctx.beginPath();
+      ctx.moveTo(0, baselineY - ascentPx);
+      ctx.lineTo(width, baselineY - ascentPx);
+      ctx.stroke();
+      ctx.fillStyle = '#7ae8d8';
+      ctx.fillText('ascender', 8, baselineY - ascentPx - 5);
+
+      ctx.strokeStyle = '#f37777';
+      ctx.beginPath();
+      ctx.moveTo(0, baselineY + descentPx);
+      ctx.lineTo(width, baselineY + descentPx);
+      ctx.stroke();
+      ctx.fillStyle = '#f37777';
+      ctx.fillText('descender', 8, baselineY + descentPx - 5);
+
+      if (xHeightPx > 0) {
+        ctx.strokeStyle = '#7fb4ff';
+        ctx.beginPath();
+        ctx.moveTo(0, baselineY - xHeightPx);
+        ctx.lineTo(width, baselineY - xHeightPx);
+        ctx.stroke();
+      }
+
+      if (capHeightPx > 0) {
+        ctx.strokeStyle = '#9fda87';
+        ctx.beginPath();
+        ctx.moveTo(0, baselineY - capHeightPx);
+        ctx.lineTo(width, baselineY - capHeightPx);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawLine(ctx, line, startX, baselineY, options) {
+      const {
+        scale,
+        spacing,
+        styles,
+        useKerning,
+        kerningScale,
+        unitsPerEm,
+        fontSize
+      } = options;
+
+      let cursorX = startX;
+      let prevChar = null;
+      const maxAbsKernUnits = Math.max(1, unitsPerEm * 0.25);
+
+      for (const ch of line) {
+        const glyph = font.getGlyphByChar(ch);
+        if (glyph) {
+          if (useKerning && prevChar != null && typeof font.getKerningValue === 'function') {
+            const rawKern = font.getKerningValue(prevChar, ch) || 0;
+            const safeKern = Math.max(-maxAbsKernUnits, Math.min(maxAbsKernUnits, rawKern));
+            cursorX += safeKern * scale * kerningScale;
+          }
+
+          CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+            x: cursorX,
+            y: baselineY,
+            scale,
+            styles
+          });
+          cursorX += glyph.advanceWidth * scale + spacing;
+          prevChar = ch;
+        } else {
+          cursorX += Math.max(spacing, fontSize * 0.33);
+          prevChar = null;
+        }
+      }
+    }
+
+    function render() {
+      if (!font) return;
+      const ratio = resizeCanvasToDisplaySize(ui.canvas);
+      const ctx = ui.canvas.getContext('2d');
+      if (!ctx) return;
+
+      const widthPx = ui.canvas.width;
+      const heightPx = ui.canvas.height;
+      const fontSize = Number(ui.fontSize.value);
+      const unitsPerEm = getUnitsPerEm(font);
+      const scale = (fontSize / unitsPerEm) * ratio;
+      const spacing = Number(ui.spacing.value) * ratio;
+      const lineHeightFactor = Number(ui.lineHeight.value);
+      const kerningScale = Number(ui.kerning.value);
+      const text = ui.textInput.value || 'JS FONT PARSER';
+      const lines = text.replace(/\\n/g, '\n').split('\n');
+      const padding = 24 * ratio;
+      const ascentPx = font.getAscent() * scale;
+      const descentPx = Math.abs(font.getDescent() * scale);
+      const os2 = font.getOs2Metrics?.() || null;
+      const xHeightPx = os2?.xHeight ? os2.xHeight * scale : 0;
+      const capHeightPx = os2?.capHeight ? os2.capHeight * scale : 0;
+      const lineStep = Math.max((ascentPx + descentPx) * lineHeightFactor, ascentPx + descentPx);
+
+      ctx.clearRect(0, 0, widthPx, heightPx);
+      ctx.fillStyle = ui.bgColor.value;
+      ctx.fillRect(0, 0, widthPx, heightPx);
+
+      if (ui.showGrid.checked) {
+        ctx.strokeStyle = 'rgba(125,232,216,0.13)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < widthPx; x += Math.round(24 * ratio)) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, heightPx);
+          ctx.stroke();
+        }
+      }
+
+      const styles = {
+        fillStyle: ui.fillColor.value,
+        strokeStyle: ui.strokeColor.value,
+        lineWidth: Number(ui.lineWidth.value) * ratio,
+        shadowColor: ui.showShadow.checked ? ui.shadowColor.value : 'transparent',
+        shadowBlur: ui.showShadow.checked ? Number(ui.shadowBlur.value) * ratio : 0,
+        shadowOffsetX: ui.showShadow.checked ? 0 : 0,
+        shadowOffsetY: ui.showShadow.checked ? 0 : 0
+      };
+
+      ctx.font = `${Math.round(12 * ratio)}px "Avenir Next", sans-serif`;
+
+      lines.forEach((line, idx) => {
+        const baselineY = padding + ascentPx + idx * lineStep;
+        drawLine(ctx, line, padding, baselineY, {
+          scale,
+          spacing,
+          styles,
+          useKerning: ui.useKerning.checked,
+          kerningScale,
+          unitsPerEm,
+          fontSize: fontSize * ratio
+        });
+        if (ui.showMetrics.checked) {
+          drawMetrics(ctx, widthPx, baselineY, ascentPx, descentPx, xHeightPx, capHeightPx);
+        }
+      });
+
+      const stats = [
+        `Font: ${HERO_FONTS[Number(ui.fontSelect.value)]?.name ?? 'Unknown'}`,
+        `Units/em: ${unitsPerEm}`,
+        `Ascent: ${font.getAscent()}`,
+        `Descent: ${font.getDescent()}`,
+        `xHeight: ${os2?.xHeight ?? 'n/a'}`,
+        `CapHeight: ${os2?.capHeight ?? 'n/a'}`,
+        `Kerning: ${ui.useKerning.checked ? `on x${kerningScale.toFixed(1)}` : 'off'}`
+      ];
+      ui.stats.innerHTML = stats.map(s => `<span class="stat">${s}</span>`).join('');
+    }
+
+    async function changeFont() {
+      const selected = HERO_FONTS[Number(ui.fontSelect.value)] ?? HERO_FONTS[0];
+      font = await loadFont(selected.url);
+      render();
+    }
+
+    populateFonts();
+    changeFont().catch((err) => {
+      ui.stats.innerHTML = `<span class="stat">Failed to load font: ${err.message}</span>`;
+    });
+
+    [
+      ui.textInput, ui.fontSize, ui.spacing, ui.kerning, ui.lineHeight, ui.fillColor,
+      ui.strokeColor, ui.bgColor, ui.shadowColor, ui.shadowBlur, ui.lineWidth,
+      ui.useKerning, ui.showMetrics, ui.showGrid, ui.showShadow
+    ].forEach(el => el.addEventListener('input', render));
+
+    ui.fontSelect.addEventListener('change', () => { changeFont(); });
+    window.addEventListener('resize', render);
+  </script>
 </body>
 </html>
