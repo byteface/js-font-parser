@@ -57,6 +57,31 @@ function printSupportedLanguages(font, minCoverage = 1, asJson = false) {
   });
 }
 
+function printMissingChars(font, langCode, asJson = false) {
+  const info = supportsLanguage(font, langCode);
+  if (!info) {
+    throw new Error(`Unknown language code: ${langCode}`);
+  }
+  const payload = {
+    code: info.code,
+    name: info.name,
+    coverage: info.coverage,
+    missingCount: info.missing.length,
+    missing: info.missing
+  };
+  if (asJson) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+  const pct = Math.round(info.coverage * 100);
+  console.log(`${info.code} ${info.name} coverage: ${pct}%`);
+  if (info.missing.length === 0) {
+    console.log("Missing chars: (none)");
+    return;
+  }
+  console.log(`Missing chars (${info.missing.length}): ${info.missing.join(" ")}`);
+}
+
 function parseBoolean(value, defaultValue = false) {
   if (value == null) return defaultValue;
   if (typeof value === "boolean") return value;
@@ -1470,6 +1495,7 @@ function exportSvgText(font, text, options = {}) {
 
 function usage() {
   console.log("fontparser --font path.ttf [--coverage] [--supported-languages] [--min-coverage 100] [--supported-languages-json] [--meta|--meta-json] [--list-languages]");
+  console.log("fontparser --font path.ttf --missing-chars --lang <code> [--json]");
   console.log("fontparser --font path.ttf [--tables|--tables-json] [--glyph-stats|--glyph-stats-json]");
   console.log("fontparser --font path.ttf [--kerning-stats|--kerning-stats-json] [--kerning-chars \"AVTo\"] [--kerning-limit 20]");
   console.log("fontparser --font path.ttf --overview [--min-coverage 90] [--kerning-chars \"AVTo\"] [--kerning-limit 10]");
@@ -1503,6 +1529,14 @@ async function main() {
       throw new Error("--min-coverage must be a number between 0 and 100.");
     }
     printSupportedLanguages(font, minCoveragePct / 100, Boolean(args["supported-languages-json"]));
+  }
+
+  if (args["missing-chars"]) {
+    const lang = args.lang != null ? String(args.lang) : null;
+    if (!lang) {
+      throw new Error("--missing-chars requires --lang <code>.");
+    }
+    printMissingChars(font, lang, Boolean(args.json));
   }
 
   if (args.tables || args["tables-json"]) {

@@ -11,6 +11,8 @@ node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --coverage
 node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --supported-languages
 node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --supported-languages --min-coverage 80
 node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --supported-languages-json --min-coverage 95
+node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --missing-chars --lang hu
+node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --missing-chars --lang hu --json
 node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --meta
 node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --meta-json
 node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --list-languages
@@ -28,6 +30,8 @@ node proj/fontparser/index.mjs --font truetypefonts/noto/NotoSans-Regular.ttf --
 - `--coverage` prints language coverage based on required character sets.
 - `--supported-languages` prints only languages that meet `--min-coverage` (default `100`).
 - `--supported-languages-json` emits the same filtered list in JSON.
+- `--missing-chars --lang <code>` prints only missing required chars for one language.
+- Add `--json` to emit missing-char output as JSON.
 - `--meta` prints a concise metadata summary (name/style/OS2/post fields).
 - `--meta-json` prints full metadata JSON.
 - `--list-languages` prints available language codes for `--localise` and `--subset-lang`.
