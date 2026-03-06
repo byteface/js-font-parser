@@ -46,6 +46,7 @@ import { CmapFormat10 } from '../dist/table/CmapFormat10.js';
 import { CffTable } from '../dist/table/CffTable.js';
 import { Cff2Table } from '../dist/table/Cff2Table.js';
 import { GlyfCompositeDescript } from '../dist/table/GlyfCompositeDescript.js';
+import { SvgTable } from '../dist/table/SvgTable.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -690,6 +691,112 @@ test('LayoutEngine soft hyphen with missing hyphenChar glyph preserves base lett
   });
   const rendered = layout.lines.flatMap((line) => line.glyphs.map((g) => g.char)).join('');
   assert.equal(rendered, 'hyphenation');
+});
+
+test('layoutStringAuto parity matches explicit layoutString for plain Latin text', () => {
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/noto/NotoSans-Regular.ttf')));
+  const text = 'Hello world AVATAR office';
+  const auto = font.layoutStringAuto(text, { gpos: true });
+  const explicit = font.layoutString(text, {
+    gsubFeatures: ['liga'],
+    scriptTags: ['latn', 'DFLT'],
+    gpos: true
+  });
+
+  assert.equal(auto.length, explicit.length);
+  assert.deepEqual(auto.map((g) => g.glyphIndex), explicit.map((g) => g.glyphIndex));
+});
+
+test('setVariationCoords tolerates fewer/more coords than axis count without NaN outlines', () => {
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/arimo/Arimo[wght].ttf')));
+  const axes = font.getVariationAxes();
+  if (!Array.isArray(axes) || axes.length === 0) return;
+
+  const gid = font.getGlyphIndexByChar('H');
+  assert.ok(gid != null);
+
+  assert.doesNotThrow(() => font.setVariationCoords([]));
+  assert.doesNotThrow(() => font.setVariationCoords([0, 0, 0, 0, 0]));
+
+  const glyph = font.getGlyph(gid);
+  assert.ok(glyph);
+  for (let i = 0; i < glyph.getPointCount(); i++) {
+    const p = glyph.getPoint(i);
+    assert.equal(Number.isFinite(p.x), true);
+    assert.equal(Number.isFinite(p.y), true);
+  }
+});
+
+test('variation reset restores baseline metrics after axis extremes', () => {
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/arimo/Arimo[wght].ttf')));
+  const axes = font.getVariationAxes();
+  if (!Array.isArray(axes) || axes.length === 0) return;
+
+  const gid = font.getGlyphIndexByChar('H');
+  assert.ok(gid != null);
+  const bbox = (glyph) => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (let i = 0; i < glyph.getPointCount(); i++) {
+      const p = glyph.getPoint(i);
+      if (!p) continue;
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+    return { minX, minY, maxX, maxY };
+  };
+
+  const defaults = Object.fromEntries(axes.map((a) => [a.name, a.defaultValue]));
+  const mins = Object.fromEntries(axes.map((a) => [a.name, a.minValue]));
+  const maxs = Object.fromEntries(axes.map((a) => [a.name, a.maxValue]));
+
+  font.setVariationByAxes(defaults);
+  const baseline = font.getGlyph(gid);
+  assert.ok(baseline);
+  const baselineAdvance = baseline.advanceWidth;
+  const baselineBbox = bbox(baseline);
+
+  font.setVariationByAxes(mins);
+  font.setVariationByAxes(maxs);
+  font.setVariationByAxes(defaults);
+
+  const reset = font.getGlyph(gid);
+  assert.ok(reset);
+  assert.equal(reset.advanceWidth, baselineAdvance);
+  assert.deepEqual(bbox(reset), baselineBbox);
+});
+
+test('getGlyphIndicesForStringWithGsub is stable with empty feature/script tag arrays', () => {
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/noto/NotoSans-Regular.ttf')));
+  const text = 'office';
+  let first = null;
+  let second = null;
+  assert.doesNotThrow(() => {
+    first = font.getGlyphIndicesForStringWithGsub(text, [], []);
+    second = font.getGlyphIndicesForStringWithGsub(text, [], []);
+  });
+  assert.ok(Array.isArray(first));
+  assert.deepEqual(first, second);
+});
+
+test('getKerningValue returns 0 for missing glyph pairs without noisy duplicate diagnostics', () => {
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/noto/NotoSans-Regular.ttf')));
+  const savedWarn = console.warn;
+  const warns = [];
+  console.warn = (...args) => warns.push(args.join(' '));
+  try {
+    const pair = ['\u{10348}', '\u{16A70}'];
+    for (let i = 0; i < 10; i++) {
+      assert.equal(font.getKerningValue(pair[0], pair[1]), 0);
+    }
+  } finally {
+    console.warn = savedWarn;
+  }
+  assert.ok(warns.length <= 1);
 });
 
 test('GPOS mark positioning attaches combining marks (if fixture present)', () => {
@@ -1373,6 +1480,30 @@ test('COLR v1 layer flattening tolerates unknown and nested paint formats', () =
   assert.equal(typeof nested[0].color, 'string');
 });
 
+test('COLRv1 layer flattening keeps stable fallback colors for invalid palette indexes', () => {
+  const parser = Object.create(FontParserTTF.prototype);
+  parser.cpal = {
+    getPalette: () => [{ red: 10, green: 20, blue: 30, alpha: 255 }]
+  };
+  parser.colr = {
+    version: 1,
+    getPaintForGlyph: () => ({
+      format: 1,
+      layers: [
+        { format: 10, glyphID: 11, paint: { format: 2, paletteIndex: 0, alpha: 1 } },
+        { format: 10, glyphID: 12, paint: { format: 2, paletteIndex: 9, alpha: 1 } },
+        { format: 10, glyphID: 13, paint: { format: 2, paletteIndex: 999, alpha: 1 } }
+      ]
+    })
+  };
+  const layers = parser.getColrV1LayersForGlyph(1, 0);
+  assert.deepEqual(layers, [
+    { glyphId: 11, color: 'rgba(10, 20, 30, 1)', paletteIndex: 0 },
+    { glyphId: 12, color: null, paletteIndex: 9 },
+    { glyphId: 13, color: null, paletteIndex: 999 }
+  ]);
+});
+
 test('SVG glyph document API remains stable on null and thrown provider responses', async () => {
   const font = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/noto/NotoSans-Regular.ttf')));
   font.svg = {
@@ -1385,6 +1516,24 @@ test('SVG glyph document API remains stable on null and thrown provider response
   const nullResult = await font.getSvgDocumentForGlyphAsync(10);
   assert.deepEqual(nullResult, { svgText: null, isCompressed: false });
   await assert.rejects(() => font.getSvgDocumentForGlyphAsync(11), /corrupt-svg/);
+});
+
+test('SVG table invalid gzip payload is handled as controlled failure', async () => {
+  const table = Object.create(SvgTable.prototype);
+  table.startOffset = 0;
+  table.svgDocIndexOffset = 0;
+  table.entries = [{ startGlyphId: 1, endGlyphId: 1, svgDocOffset: 0, svgDocLength: 8 }];
+  table.view = new DataView(Uint8Array.from([0x1f, 0x8b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]).buffer);
+
+  const savedDecompressionStream = globalThis.DecompressionStream;
+  globalThis.DecompressionStream = class {
+    constructor() {}
+  };
+  try {
+    await assert.rejects(() => table.getSvgDocumentForGlyphAsync(1), /invalid|gzip|stream|decompress|TypeError|Error/i);
+  } finally {
+    globalThis.DecompressionStream = savedDecompressionStream;
+  }
 });
 
 test('CFF2 variable outlines stay stable under multi-axis sweeps', () => {
@@ -2315,6 +2464,19 @@ test('FontParserWOFF convenience API covers variation, name scoring, and svg fal
   assert.deepEqual(hasSvg, { svgText: '<svg/>', isCompressed: true });
 });
 
+test('GlyfCompositeDescript resolve guards recursive component references', () => {
+  const desc = Object.create(GlyfCompositeDescript.prototype);
+  desc.components = [{ glyphIndex: 42, firstIndex: 0, firstContour: 0, pointCount: 0, contourCount: 0 }];
+  desc.beingResolved = false;
+  desc.resolved = false;
+  desc.pointCount = 0;
+  desc.contourCount = 0;
+  desc.parentTable = { getDescription: () => desc };
+
+  assert.doesNotThrow(() => desc.resolve());
+  assert.equal(desc.resolved, true);
+});
+
 test('FontParserWOFF applyGposPositioning executes single/pair and mark/cursive attachment branches', () => {
   const parser = Object.create(FontParserWOFF.prototype);
   const single = Object.create(SinglePosSubtable.prototype);
@@ -2366,6 +2528,47 @@ test('FontParserWOFF kerning and glyph index helpers cover warning and fallback 
   parser.getKerningValueByGlyphs = () => 0;
   parser.getGposKerningValueByGlyphs = () => 7;
   assert.equal(parser.getKerningValue('a', 'b'), 7);
+});
+
+test('getTableByType known tags are null-or-object across TTF/OTF/WOFF fixtures', () => {
+  const ttf = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/noto/NotoSans-Regular.ttf')));
+  const otf = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/curated/SourceSerif4-Regular.otf')));
+  const woff = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/ubuntu.woff')));
+  const tags = Object.values(Table).filter((v) => typeof v === 'number');
+
+  for (const font of [ttf, otf, woff]) {
+    for (const tag of tags) {
+      assert.doesNotThrow(() => {
+        const value = font.getTableByType(tag);
+        assert.ok(value === null || typeof value === 'object');
+      });
+    }
+  }
+});
+
+test('missing-table paths do not emit duplicate diagnostics across repeated calls', () => {
+  const parser = Object.create(FontParserTTF.prototype);
+  parser.gsub = null;
+  parser.gpos = null;
+  parser.kern = null;
+  parser.getGlyphIndicesForString = () => [1, 2, 3];
+  parser.getGlyph = () => ({ advanceWidth: 500 });
+  parser.getKerningValueByGlyphs = () => 0;
+  parser.getGposKerningValueByGlyphs = () => 0;
+  parser.getGlyphIndexByChar = (ch) => (ch ? 1 : null);
+
+  const savedWarn = console.warn;
+  const warns = [];
+  console.warn = (...args) => warns.push(args.join(' '));
+  try {
+    for (let i = 0; i < 20; i++) {
+      parser.getGlyphIndicesForStringWithGsub('abc', ['liga'], ['latn']);
+      parser.layoutString('abc', { gpos: true, gsubFeatures: ['liga'], scriptTags: ['latn'] });
+    }
+  } finally {
+    console.warn = savedWarn;
+  }
+  assert.ok(warns.length <= 1);
 });
 
 test('FontParserTTF.getGlyphIndexByChar handles astral code points without multi-char warning', () => {
@@ -3209,4 +3412,84 @@ test('FontParserTTF gvar is skipped when variation coords are empty', () => {
   assert.equal(called, false);
   assert.equal(glyph.leftSideBearing, 12);
   assert.equal(glyph.advanceWidth, 345);
+});
+
+test('FontParserTTF.getGlyphIndexByChar handles nullish codePointAt result', () => {
+  const parser = Object.create(FontParserTTF.prototype);
+  parser.cmap = { getFormat: () => null };
+  const savedError = console.error;
+  const errors = [];
+  try {
+    console.error = (...args) => errors.push(args.join(' '));
+    const weirdChar = { length: 1, codePointAt: () => undefined };
+    const gid = parser.getGlyphIndexByChar(weirdChar);
+    assert.equal(gid, null);
+    assert.ok(errors.some((m) => /Failed to get code point/i.test(m)));
+  } finally {
+    console.error = savedError;
+  }
+});
+
+test('FontParserTTF.getGlyphIndexByChar returns null with missing cmap or cmap format', () => {
+  const parser = Object.create(FontParserTTF.prototype);
+  const savedWarn = console.warn;
+  const warnings = [];
+  try {
+    console.warn = (...args) => warnings.push(args.join(' '));
+
+    parser.cmap = null;
+    assert.equal(parser.getGlyphIndexByChar('A'), null);
+
+    parser.cmap = { getFormat: () => null };
+    parser.getBestCmapFormatFor = () => null;
+    assert.equal(parser.getGlyphIndexByChar('A'), null);
+
+    assert.ok(warnings.some((m) => /No cmap table available/i.test(m)));
+    assert.ok(warnings.some((m) => /No cmap format available/i.test(m)));
+  } finally {
+    console.warn = savedWarn;
+  }
+});
+
+test('SvgTable async fallback returns compressed-null when DecompressionStream is unavailable', async () => {
+  const table = Object.create(SvgTable.prototype);
+  table.startOffset = 0;
+  table.svgDocIndexOffset = 0;
+  table.entries = [{ startGlyphId: 1, endGlyphId: 1, svgDocOffset: 0, svgDocLength: 6 }];
+  table.view = new DataView(Uint8Array.from([0x1f, 0x8b, 1, 2, 3, 4]).buffer);
+
+  const savedDecompressionStream = globalThis.DecompressionStream;
+  try {
+    globalThis.DecompressionStream = undefined;
+    const res = await table.getSvgDocumentForGlyphAsync(1);
+    assert.deepEqual(res, { svgText: null, isCompressed: true });
+  } finally {
+    globalThis.DecompressionStream = savedDecompressionStream;
+  }
+});
+
+test('SvgTable async fallback handles null response body without throwing', async () => {
+  const table = Object.create(SvgTable.prototype);
+  table.startOffset = 0;
+  table.svgDocIndexOffset = 0;
+  table.entries = [{ startGlyphId: 1, endGlyphId: 1, svgDocOffset: 0, svgDocLength: 6 }];
+  table.view = new DataView(Uint8Array.from([0x1f, 0x8b, 1, 2, 3, 4]).buffer);
+
+  const savedDecompressionStream = globalThis.DecompressionStream;
+  const savedResponse = globalThis.Response;
+  try {
+    globalThis.DecompressionStream = class {
+      constructor() {}
+    };
+    globalThis.Response = class {
+      constructor() {
+        this.body = null;
+      }
+    };
+    const res = await table.getSvgDocumentForGlyphAsync(1);
+    assert.deepEqual(res, { svgText: null, isCompressed: true });
+  } finally {
+    globalThis.DecompressionStream = savedDecompressionStream;
+    globalThis.Response = savedResponse;
+  }
 });
