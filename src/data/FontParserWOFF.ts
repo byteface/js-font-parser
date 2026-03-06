@@ -544,9 +544,9 @@ export class FontParserWOFF {
     public getMarkAnchorsForGlyph(
         glyphId: number,
         subtables?: Array<any>
-    ): Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number }> {
+    ): Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number; componentIndex?: number }> {
         if (!this.gpos) return [];
-        const anchors: Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number }> = [];
+        const anchors: Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number; componentIndex?: number }> = [];
         const activeSubtables = subtables ?? (() => {
             const lookups = this.gpos?.lookupList?.getLookups?.() ?? [];
             const all: any[] = [];
@@ -592,10 +592,10 @@ export class FontParserWOFF {
                     const ligIndex = st.ligatureCoverage?.findGlyph(glyphId) ?? -1;
                     if (ligIndex >= 0 && st.ligatureArray) {
                         const lig = st.ligatureArray.ligatures[ligIndex];
-                        lig?.components?.forEach(component => {
+                        lig?.components?.forEach((component, componentIndex) => {
                             component.forEach((anchor, classIndex) => {
                                 if (anchor) {
-                                    anchors.push({ type: 'ligature', classIndex, x: anchor.x, y: anchor.y });
+                                    anchors.push({ type: 'ligature', classIndex, x: anchor.x, y: anchor.y, componentIndex });
                                 }
                             });
                         });
@@ -933,7 +933,19 @@ export class FontParserWOFF {
         };
 
         const getBaseAnchor = (anchors: ReturnType<FontParserWOFF['getMarkAnchorsForGlyph']>, classIndex: number) => {
-            return anchors.find(a => (a.type === 'base' || a.type === 'ligature' || a.type === 'mark2') && a.classIndex === classIndex);
+            const candidates = anchors.filter(a =>
+                (a.type === 'base' || a.type === 'ligature' || a.type === 'mark2') && a.classIndex === classIndex
+            );
+            if (candidates.length === 0) return null;
+
+            // For marks after ligatures, default to the trailing ligature component anchor.
+            const ligatureCandidates = candidates.filter(a => a.type === 'ligature');
+            if (ligatureCandidates.length > 0) {
+                return ligatureCandidates.reduce((best, current) =>
+                    (current.componentIndex ?? -1) > (best.componentIndex ?? -1) ? current : best
+                );
+            }
+            return candidates[0];
         };
 
         const isMarkGlyph = (gid: number) => (this.gdef?.getGlyphClass?.(gid) ?? 0) === 3;
@@ -1288,15 +1300,6 @@ export class FontParserWOFF {
 
     public getTableByType(tableType: number): ITable | null {
         return this.getTable(tableType);
-    }
-
-    public getNameRecord(nameId: number): string {
-        return this.pName?.getRecord(nameId) ?? "";
-    }
-
-    public getAllNameRecords(): Array<{ nameId: number; record: string }> {
-        if (!this.pName) return [];
-        return this.pName.records.map(r => ({ nameId: r.nameId, record: r.record }));
     }
 
     public getNameInfo(): {

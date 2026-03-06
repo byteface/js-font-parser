@@ -34,6 +34,13 @@ var Os2Table = /** @class */ (function () {
         this.usWinDescent = 0;
         this.ulCodePageRange1 = 0;
         this.ulCodePageRange2 = 0;
+        this.sxHeight = 0;
+        this.sCapHeight = 0;
+        this.usDefaultChar = 0;
+        this.usBreakChar = 0;
+        this.usMaxContext = 0;
+        this.usLowerOpticalPointSize = 0;
+        this.usUpperOpticalPointSize = 0;
         byte_ar.offset = de.offset;
         this.version = byte_ar.readUnsignedShort();
         this.xAvgCharWidth = byte_ar.readShort();
@@ -51,7 +58,6 @@ var Os2Table = /** @class */ (function () {
         this.yStrikeoutSize = byte_ar.readShort();
         this.yStrikeoutPosition = byte_ar.readShort();
         this.sFamilyClass = byte_ar.readShort();
-        byte_ar.offset = de.offset;
         var buf = [];
         for (var i = 0; i < 10; i++) {
             buf.push(byte_ar.readUnsignedByte());
@@ -70,8 +76,21 @@ var Os2Table = /** @class */ (function () {
         this.sTypoLineGap = byte_ar.readShort();
         this.usWinAscent = byte_ar.readShort();
         this.usWinDescent = byte_ar.readShort();
-        this.ulCodePageRange1 = byte_ar.readInt();
-        this.ulCodePageRange2 = byte_ar.readInt();
+        if (this.version >= 1) {
+            this.ulCodePageRange1 = byte_ar.readInt();
+            this.ulCodePageRange2 = byte_ar.readInt();
+        }
+        if (this.version >= 2) {
+            this.sxHeight = byte_ar.readShort();
+            this.sCapHeight = byte_ar.readShort();
+            this.usDefaultChar = byte_ar.readUnsignedShort();
+            this.usBreakChar = byte_ar.readUnsignedShort();
+            this.usMaxContext = byte_ar.readUnsignedShort();
+        }
+        if (this.version >= 5) {
+            this.usLowerOpticalPointSize = byte_ar.readUnsignedShort();
+            this.usUpperOpticalPointSize = byte_ar.readUnsignedShort();
+        }
     }
     Os2Table.prototype.getType = function () {
         return Table.OS_2;

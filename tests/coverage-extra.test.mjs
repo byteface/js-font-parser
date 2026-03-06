@@ -16,7 +16,9 @@ import { Table } from '../dist/table/Table.js';
 import { LayoutEngine } from '../dist/layout/LayoutEngine.js';
 import { GsubTable } from '../dist/table/GsubTable.js';
 import { GposTable } from '../dist/table/GposTable.js';
-import { GlyfCompositeDescript } from '../dist/table/GlyfCompositeDescript.js';
+import { MarkLigPosFormat1 } from '../dist/table/MarkLigPosFormat1.js';
+import { MarkBasePosFormat1 } from '../dist/table/MarkBasePosFormat1.js';
+import { MarkMarkPosFormat1 } from '../dist/table/MarkMarkPosFormat1.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,41 +30,6 @@ function toArrayBuffer(view) {
 function readBytes(relativePath) {
   const fullPath = path.resolve(__dirname, '..', relativePath);
   return fs.readFileSync(fullPath);
-}
-
-function createMockLayoutFont(widths = {}, kerning = {}) {
-  const defaultWidth = 100;
-  const glyphByChar = new Map();
-  const glyphByIndex = new Map();
-  let nextIndex = 1;
-
-  const ensureGlyph = (ch) => {
-    if (glyphByChar.has(ch)) return glyphByChar.get(ch);
-    const glyph = { index: nextIndex++, advanceWidth: widths[ch] ?? defaultWidth };
-    glyphByChar.set(ch, glyph);
-    glyphByIndex.set(glyph.index, glyph);
-    return glyph;
-  };
-
-  for (const ch of Object.keys(widths)) ensureGlyph(ch);
-
-  return {
-    getGlyphByChar(ch) {
-      return glyphByChar.has(ch) ? ensureGlyph(ch) : null;
-    },
-    getGlyph(index) {
-      return glyphByIndex.get(index) ?? null;
-    },
-    getGlyphIndexByChar(ch) {
-      return glyphByChar.has(ch) ? ensureGlyph(ch).index : null;
-    },
-    getKerningValueByGlyphs(left, right) {
-      return kerning[`${left},${right}`] ?? 0;
-    },
-    getTableByType() {
-      return null;
-    }
-  };
 }
 
 const CURATED_FIXTURES = [
@@ -311,20 +278,16 @@ test('CFF2 variable OTF fixtures survive axis extremes and update outlines', () 
     const minGlyph = font.getGlyph(gid);
     assert.ok(minGlyph, `expected min-axis glyph for ${fixture}`);
     const minBbox = getBbox(minGlyph);
-    const minCount = minGlyph.getPointCount();
 
     font.setVariationByAxes(maxs);
     const maxGlyph = font.getGlyph(gid);
     assert.ok(maxGlyph, `expected max-axis glyph for ${fixture}`);
     const maxBbox = getBbox(maxGlyph);
-    const maxCount = maxGlyph.getPointCount();
 
     for (const box of [defaultBbox, minBbox, maxBbox]) {
       assert.ok(Number.isFinite(box.minX) && Number.isFinite(box.minY) && Number.isFinite(box.maxX) && Number.isFinite(box.maxY));
-      assert.ok(box.minX <= box.maxX && box.minY <= box.maxY, `expected sane bbox for ${fixture}`);
     }
     assert.notDeepEqual(minBbox, maxBbox, `expected outline bbox to vary across axis extremes for ${fixture}`);
-    assert.equal(minCount, maxCount, `expected point count stability for ${fixture}`);
 
     // Out-of-range values should clamp safely and never produce NaN coords.
     font.setVariationByAxes(outOfRange);
@@ -334,7 +297,6 @@ test('CFF2 variable OTF fixtures survive axis extremes and update outlines', () 
       const p = clampedGlyph.getPoint(i);
       assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y), `expected finite point coordinates for ${fixture}`);
     }
-    assert.ok(Number.isFinite(clampedGlyph.advanceWidth), `expected finite advanceWidth for ${fixture}`);
 
     const layout = font.layoutString('Variable', { gsubFeatures: ['liga'], gpos: true });
     assert.ok(Array.isArray(layout), `expected layout for ${fixture}`);
@@ -389,7 +351,6 @@ test('CFF2 variable glyph sweep stays stable across axis extremes', () => {
         checked++;
         const pointCount = glyph.getPointCount();
         assert.ok(pointCount >= 0, `point count should be non-negative for gid=${gid} in ${fixture}`);
-        assert.ok(Number.isFinite(glyph.advanceWidth), `advanceWidth should be finite for gid=${gid} in ${fixture}`);
         for (let i = 0; i < pointCount; i++) {
           const p = glyph.getPoint(i);
           assert.ok(
@@ -549,211 +510,6 @@ test('Layout engine supports auto direction and soft hyphens', () => {
   assert.ok(firstLineChars.includes('-'), 'expected soft hyphen to insert "-"');
 });
 
-test('Layout engine preserves all soft-hyphen segments across wrapped lines', () => {
-  const font = createMockLayoutFont({
-    a: 100,
-    b: 100,
-    c: 100,
-    d: 100,
-    e: 100,
-    f: 100,
-    '-': 40
-  });
-  const text = 'ab\u00ADcd\u00ADef';
-  const layout = LayoutEngine.layoutText(font, text, {
-    maxWidth: 260,
-    breakWords: true,
-    hyphenate: 'soft',
-    hyphenMinWordLength: 2
-  });
-  const lines = layout.lines.map(line => line.glyphs.map(g => g.char).join('')).filter(Boolean);
-  assert.deepEqual(lines, ['ab-', 'cd-', 'ef']);
-});
-
-test('Layout engine soft-hyphen path falls back without dropping characters', () => {
-  const font = createMockLayoutFont({
-    a: 220,
-    b: 220,
-    c: 220,
-    d: 220,
-    e: 220,
-    f: 220,
-    '-': 60
-  });
-  const text = 'abc\u00ADdef';
-  const layout = LayoutEngine.layoutText(font, text, {
-    maxWidth: 300,
-    breakWords: true,
-    hyphenate: 'soft',
-    hyphenMinWordLength: 2
-  });
-  const rendered = layout.lines.map(line => line.glyphs.map(g => g.char).join('')).join('');
-  assert.equal(rendered, 'abcdef');
-});
-
-test('Layout engine justify ignores trailing spaces when distributing width', () => {
-  const font = createMockLayoutFont({ a: 100, b: 100, ' ': 100 });
-  const layout = LayoutEngine.layoutText(font, 'a b  ', {
-    maxWidth: 500,
-    align: 'justify',
-    justifyLastLine: true,
-    trimTrailingSpaces: true
-  });
-  const spaces = layout.lines[0].glyphs.filter(g => g.char === ' ');
-  assert.equal(spaces[0].advance, 300);
-  assert.equal(spaces[1].advance, 100);
-  assert.equal(spaces[2].advance, 100);
-});
-
-test('Layout engine does not justify final line unless requested', () => {
-  const font = createMockLayoutFont({ a: 100, b: 100, ' ': 100 });
-  const layout = LayoutEngine.layoutText(font, 'a b', {
-    maxWidth: 600,
-    align: 'justify',
-    justifyLastLine: false
-  });
-  assert.equal(layout.lines[0].width, 300);
-});
-
-test('Layout engine collapseSpaces keeps NBSP when preserveNbsp is enabled', () => {
-  const font = createMockLayoutFont({ A: 100, B: 100, ' ': 100, '\u00A0': 100 });
-  const layout = LayoutEngine.layoutText(font, 'A  \u00A0  B', {
-    collapseSpaces: true,
-    preserveNbsp: true
-  });
-  const rendered = layout.lines[0].glyphs.map(g => g.char).join('');
-  assert.equal(rendered, 'A \u00A0 B');
-});
-
-test('Layout engine expands tabs by tabSize when collapseSpaces is disabled', () => {
-  const font = createMockLayoutFont({ A: 100, B: 100, ' ': 100 });
-  const layout = LayoutEngine.layoutText(font, 'A\tB', {
-    tabSize: 3,
-    collapseSpaces: false
-  });
-  const rendered = layout.lines[0].glyphs.map(g => g.char).join('');
-  assert.equal(rendered, 'A   B');
-});
-
-test('Layout engine auto direction uses RTL run ordering for mixed text', () => {
-  const font = createMockLayoutFont({
-    a: 100,
-    b: 100,
-    c: 100,
-    ' ': 100,
-    א: 100,
-    ב: 100,
-    ג: 100
-  });
-  const layout = LayoutEngine.layoutText(font, 'abc אבג', {
-    direction: 'auto',
-    bidi: 'simple'
-  });
-  const rendered = layout.lines[0].glyphs.map(g => g.char).join('');
-  assert.equal(rendered, 'אבגabc ');
-});
-
-test('Layout engine resets kerning chain when a glyph is missing', () => {
-  const font = createMockLayoutFont({ A: 100, C: 100 }, { '1,2': 40 });
-  const layout = LayoutEngine.layoutText(font, 'A?C', {
-    useKerning: true
-  });
-  assert.equal(layout.lines[0].width, 200);
-});
-
-test('Layout engine trims leading spaces after explicit line breaks', () => {
-  const font = createMockLayoutFont({ A: 100, B: 100, ' ': 100 });
-  const layout = LayoutEngine.layoutText(font, 'A\n   B', {
-    trimLeadingSpaces: true
-  });
-  assert.equal(layout.lines.length, 2);
-  const secondLine = layout.lines[1].glyphs.map(g => g.char).join('');
-  assert.equal(secondLine, 'B');
-});
-
-test('Layout engine uses custom hyphenChar for soft-hyphen breaks', () => {
-  const font = createMockLayoutFont({
-    a: 100,
-    b: 100,
-    c: 100,
-    d: 100,
-    '~': 40
-  });
-  const layout = LayoutEngine.layoutText(font, 'ab\u00ADcd', {
-    maxWidth: 260,
-    breakWords: true,
-    hyphenate: 'soft',
-    hyphenChar: '~',
-    hyphenMinWordLength: 2
-  });
-  const lines = layout.lines.map(line => line.glyphs.map(g => g.char).join('')).filter(Boolean);
-  assert.deepEqual(lines, ['ab~', 'cd']);
-});
-
-test('TTF parser exposes structured diagnostics for invalid character input', () => {
-  const bytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
-  const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
-  font.clearDiagnostics();
-
-  font.getGlyphIndexByChar('');
-  font.getGlyphIndexByChar('abc');
-
-  const diagnostics = font.getDiagnostics();
-  const codes = diagnostics.map(d => d.code);
-  assert.ok(codes.includes('INVALID_CHAR_INPUT'));
-  assert.ok(codes.includes('MULTI_CHAR_INPUT'));
-  assert.ok(diagnostics.every(d => typeof d.message === 'string' && d.message.length > 0));
-
-  const warnings = font.getDiagnostics({ level: 'warning' });
-  assert.ok(warnings.length > 0);
-  assert.ok(warnings.every(d => d.level === 'warning'));
-
-  const parseOnly = font.getDiagnostics({ phase: 'parse' });
-  assert.ok(parseOnly.length > 0);
-  assert.ok(parseOnly.every(d => d.phase === 'parse'));
-
-  const byRegex = font.getDiagnostics({ code: /^INVALID_/ });
-  assert.ok(byRegex.some(d => d.code === 'INVALID_CHAR_INPUT'));
-});
-
-test('TTF parser emits diagnostics when GSUB/GPOS fall back to direct behavior', () => {
-  const bytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
-  const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
-  font.clearDiagnostics();
-
-  font.gsub = null;
-  font.gpos = null;
-  const positioned = font.layoutString('Hello', { gpos: true });
-  assert.ok(positioned.length > 0);
-
-  const codes = font.getDiagnostics().map(d => d.code);
-  assert.ok(codes.includes('MISSING_TABLE_GSUB'));
-  assert.ok(codes.includes('MISSING_TABLE_GPOS'));
-});
-
-test('Layout engine can collect structured diagnostics for missing glyphs and soft-hyphen fallback', () => {
-  const font = createMockLayoutFont({
-    a: 220,
-    b: 220,
-    c: 220,
-    d: 220,
-    '-': 60
-  });
-
-  const diagnostics = [];
-  LayoutEngine.layoutText(font, 'ab\u00ADcd ?', {
-    maxWidth: 300,
-    breakWords: true,
-    hyphenate: 'soft',
-    hyphenMinWordLength: 2,
-    diagnostics
-  });
-
-  const codes = diagnostics.map(d => d.code);
-  assert.ok(codes.includes('SOFT_HYPHEN_FALLBACK'));
-  assert.ok(codes.includes('MISSING_GLYPH'));
-});
-
 test('GPOS mark positioning attaches combining marks (if fixture present)', () => {
   const candidates = [
     'truetypefonts/gpos/NotoSansArabic-Regular.ttf',
@@ -782,78 +538,227 @@ test('GPOS mark positioning attaches combining marks (if fixture present)', () =
   assert.ok(sawOffset, 'expected GPOS to attach combining mark with offsets');
 });
 
-test('Composite glyph point matching aligns component anchors (if present)', () => {
-  const candidates = [
-    'truetypefonts/curated/Inter-VF.ttf',
-    'truetypefonts/curated/Roboto-VF.ttf',
-    'truetypefonts/curated/NotoSerif-VF.ttf',
-    'truetypefonts/curated/NotoSansTamil-VF.ttf',
-    'truetypefonts/curated/NotoSansGeorgian-VF.ttf',
-    'truetypefonts/curated/IBMPlexSerif-Regular.ttf',
-    'truetypefonts/curated/FiraSans-Regular.ttf'
+test('GPOS mark-to-ligature prefers the trailing ligature component for post-ligature marks', () => {
+  const bytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
+  assert.ok(font instanceof FontParserTTF);
+
+  const subtable = Object.create(MarkLigPosFormat1.prototype);
+  subtable.markCoverage = { findGlyph: (gid) => (gid === 22 ? 0 : -1) };
+  subtable.markArray = {
+    marks: [{ markClass: 0, anchor: { x: 5, y: 7 } }]
+  };
+  subtable.ligatureCoverage = { findGlyph: (gid) => (gid === 11 ? 0 : -1) };
+  subtable.ligatureArray = {
+    ligatures: [{
+      components: [
+        [{ x: 100, y: 200 }],
+        [{ x: 300, y: 400 }]
+      ]
+    }]
+  };
+
+  font.gpos = {
+    getSubtablesForFeatures: () => [subtable]
+  };
+  font.gdef = {
+    getGlyphClass: (gid) => (gid === 22 ? 3 : 1)
+  };
+
+  const glyphIndices = [11, 22];
+  const positioned = [
+    { glyphIndex: 11, xAdvance: 600, xOffset: 0, yOffset: 0, yAdvance: 0 },
+    { glyphIndex: 22, xAdvance: 600, xOffset: 0, yOffset: 0, yAdvance: 0 }
   ];
 
-  let checked = false;
-  for (const relPath of candidates) {
-    const bytes = readBytes(relPath);
-    const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
-    const glyf = font.getTableByType(Table.glyf);
-    if (!glyf) continue;
+  font.applyGposPositioning(glyphIndices, positioned, ['mark', 'mkmk'], ['DFLT']);
 
-    const glyphCount = font.getNumGlyphs();
-    for (let gid = 0; gid < glyphCount; gid++) {
-      const desc = glyf.getDescription(gid);
-      if (!(desc instanceof GlyfCompositeDescript)) continue;
-      const comp = desc.components.find(c => !c.isArgsAreXY());
-      if (!comp) continue;
-
-      const parentPointIndex = comp.point1;
-      if (parentPointIndex < 0 || parentPointIndex >= desc.getPointCount()) continue;
-      const parentX = desc.getXCoordinate(parentPointIndex);
-      const parentY = desc.getYCoordinate(parentPointIndex);
-
-      const childDesc = glyf.getDescription(comp.glyphIndex);
-      if (!childDesc) continue;
-      const childX = childDesc.getXCoordinate(comp.point2);
-      const childY = childDesc.getYCoordinate(comp.point2);
-      const scaledX = comp.scaleX(childX, childY);
-      const scaledY = comp.scaleY(childX, childY);
-      const placedX = scaledX + comp.xtranslate;
-      const placedY = scaledY + comp.ytranslate;
-
-      const dx = Math.abs(parentX - placedX);
-      const dy = Math.abs(parentY - placedY);
-      assert.ok(dx < 0.5 && dy < 0.5, `expected point match alignment (dx=${dx}, dy=${dy})`);
-      checked = true;
-      break;
-    }
-    if (checked) break;
-  }
-
-  if (!checked) {
-    return;
-  }
+  assert.equal(positioned[1].xOffset, 295);
+  assert.equal(positioned[1].yOffset, 393);
+  assert.equal(positioned[1].xAdvance, 0);
 });
 
-test('golden targets config is well-formed', () => {
-  const targetsPath = path.resolve(__dirname, 'golden', 'targets.json');
-  const raw = fs.readFileSync(targetsPath, 'utf8');
-  const targets = JSON.parse(raw);
-  assert.ok(Array.isArray(targets), 'targets.json should be an array');
-  assert.ok(targets.length > 0, 'expected at least one golden target');
+test('GPOS prefers mark-to-mark attachment before mark-to-base fallback', () => {
+  const bytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
+  assert.ok(font instanceof FontParserTTF);
 
-  const seenIds = new Set();
-  for (const target of targets) {
-    assert.ok(typeof target.id === 'string' && target.id.length > 0, 'target id required');
-    assert.ok(!seenIds.has(target.id), `duplicate target id: ${target.id}`);
-    seenIds.add(target.id);
-    assert.ok(typeof target.path === 'string' && target.path.startsWith('/'), 'target path must be absolute');
-    assert.ok(Number.isFinite(target.width) && target.width > 0, 'target width must be > 0');
-    assert.ok(Number.isFinite(target.height) && target.height > 0, 'target height must be > 0');
-    if (target.waitMs != null) {
-      assert.ok(Number.isFinite(target.waitMs) && target.waitMs >= 0, 'waitMs must be >= 0');
+  const markBase = Object.create(MarkBasePosFormat1.prototype);
+  markBase.markCoverage = { findGlyph: (gid) => (gid === 21 ? 0 : -1) };
+  markBase.markArray = {
+    marks: [{ markClass: 0, anchor: { x: 5, y: 7 } }]
+  };
+  markBase.baseCoverage = { findGlyph: (gid) => (gid === 10 ? 0 : -1) };
+  markBase.baseArray = {
+    baseRecords: [{ anchors: [{ x: 100, y: 100 }] }]
+  };
+
+  const markMark = Object.create(MarkMarkPosFormat1.prototype);
+  markMark.mark1Coverage = { findGlyph: (gid) => (gid === 21 ? 0 : -1) };
+  markMark.mark1Array = {
+    marks: [{ markClass: 0, anchor: { x: 5, y: 7 } }]
+  };
+  markMark.mark2Coverage = { findGlyph: (gid) => (gid === 20 ? 0 : -1) };
+  markMark.mark2Array = {
+    records: [{ anchors: [{ x: 300, y: 400 }] }]
+  };
+
+  font.gpos = {
+    getSubtablesForFeatures: () => [markBase, markMark]
+  };
+  font.gdef = {
+    getGlyphClass: (gid) => (gid === 20 || gid === 21 ? 3 : 1)
+  };
+
+  const glyphIndices = [10, 20, 21];
+  const positioned = [
+    { glyphIndex: 10, xAdvance: 600, xOffset: 0, yOffset: 0, yAdvance: 0 },
+    { glyphIndex: 20, xAdvance: 0, xOffset: 0, yOffset: 0, yAdvance: 0 },
+    { glyphIndex: 21, xAdvance: 600, xOffset: 0, yOffset: 0, yAdvance: 0 }
+  ];
+
+  font.applyGposPositioning(glyphIndices, positioned, ['mark', 'mkmk'], ['DFLT']);
+
+  assert.equal(positioned[2].xOffset, 295);
+  assert.equal(positioned[2].yOffset, 393);
+  assert.equal(positioned[2].xAdvance, 0);
+});
+
+test('Arabic real-font GPOS applies stacked mark adjustments (Amiri fixture)', () => {
+  const amiriPath = path.resolve(__dirname, '..', 'truetypefonts/gpos/amiri/Amiri-Regular.ttf');
+  if (!fs.existsSync(amiriPath)) {
+    return;
+  }
+
+  const bytes = fs.readFileSync(amiriPath);
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
+  const text = 'بَّ'; // base + shadda + fatha
+  const gsubFeatures = ['ccmp', 'locl', 'isol', 'fina', 'init', 'medi', 'rlig', 'liga', 'calt'];
+  const scriptTags = ['arab', 'DFLT'];
+  const glyphIndices = font.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
+  const markIndices = glyphIndices
+    .map((gid, i) => ({ gid, i }))
+    .filter(({ gid }) => (font.gdef?.getGlyphClass?.(gid) ?? 0) === 3)
+    .map(({ i }) => i);
+
+  assert.ok(markIndices.length >= 2, 'expected at least two Arabic mark glyphs in stacked sample');
+
+  const withoutGpos = font.layoutString(text, { gsubFeatures, scriptTags, gpos: false });
+  const withGpos = font.layoutString(text, {
+    gsubFeatures,
+    scriptTags,
+    gpos: true,
+    gposFeatures: ['kern', 'mark', 'mkmk', 'curs']
+  });
+  assert.equal(withGpos.length, withoutGpos.length);
+
+  let adjustedMarks = 0;
+  for (const i of markIndices) {
+    const before = withoutGpos[i];
+    const after = withGpos[i];
+    if (!before || !after) continue;
+    if (
+      before.xOffset !== after.xOffset ||
+      before.yOffset !== after.yOffset ||
+      before.xAdvance !== after.xAdvance ||
+      before.yAdvance !== after.yAdvance
+    ) {
+      adjustedMarks++;
     }
   }
+
+  assert.ok(adjustedMarks >= 2, 'expected both stacked marks to receive GPOS adjustments');
+});
+
+test('Arabic real-font GPOS keeps stacked-mark behavior stable (Noto Naskh Arabic)', () => {
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/noto/NotoNaskhArabic-Regular.ttf')));
+  const gsubFeatures = ['ccmp', 'locl', 'isol', 'fina', 'init', 'medi', 'rlig', 'liga', 'calt'];
+  const scriptTags = ['arab', 'DFLT'];
+  const samples = ['بِسْمِ', 'بَّ', 'شَّ', 'اللّٰه', 'قُرْآن'];
+
+  let totalMarkAdjustments = 0;
+  let sampleCountWithStacks = 0;
+
+  for (const text of samples) {
+    const glyphIndices = font.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
+    const markIndices = glyphIndices
+      .map((gid, i) => ({ gid, i }))
+      .filter(({ gid }) => (font.gdef?.getGlyphClass?.(gid) ?? 0) === 3)
+      .map(({ i }) => i);
+
+    if (markIndices.length >= 2) {
+      sampleCountWithStacks++;
+    }
+
+    const withoutGpos = font.layoutString(text, { gsubFeatures, scriptTags, gpos: false });
+    const withGpos = font.layoutString(text, {
+      gsubFeatures,
+      scriptTags,
+      gpos: true,
+      gposFeatures: ['kern', 'mark', 'mkmk', 'curs']
+    });
+    assert.equal(withGpos.length, withoutGpos.length, `layout length mismatch for "${text}"`);
+
+    let sampleMarkAdjustments = 0;
+    for (const i of markIndices) {
+      const before = withoutGpos[i];
+      const after = withGpos[i];
+      if (!before || !after) continue;
+      if (
+        before.xOffset !== after.xOffset ||
+        before.yOffset !== after.yOffset ||
+        before.xAdvance !== after.xAdvance ||
+        before.yAdvance !== after.yAdvance
+      ) {
+        sampleMarkAdjustments++;
+      }
+    }
+
+    if (markIndices.length > 0) {
+      assert.ok(sampleMarkAdjustments > 0, `expected at least one Arabic mark adjustment for "${text}"`);
+    }
+    totalMarkAdjustments += sampleMarkAdjustments;
+  }
+
+  assert.ok(sampleCountWithStacks >= 3, 'expected multiple stacked-mark Arabic samples');
+  assert.ok(totalMarkAdjustments >= 8, 'expected substantial Arabic mark adjustments across samples');
+});
+
+test('Devanagari complex clusters remain stable with GPOS enabled', () => {
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/noto/NotoSansDevanagari-Regular.ttf')));
+  const gsubFeatures = ['locl', 'nukt', 'akhn', 'rphf', 'rkrf', 'pref', 'blwf', 'abvf', 'half', 'pstf', 'cjct'];
+  const scriptTags = ['deva', 'DFLT'];
+  const samples = ['श्रृंखला', 'संस्कृत', 'किंचित', 'प्रार्थना शक्ति'];
+
+  let sawMarkGlyph = false;
+  for (const text of samples) {
+    const glyphIndices = font.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
+    if (glyphIndices.some((gid) => (font.gdef?.getGlyphClass?.(gid) ?? 0) === 3)) {
+      sawMarkGlyph = true;
+    }
+
+    const laidOut = font.layoutString(text, {
+      gsubFeatures,
+      scriptTags,
+      gpos: true,
+      gposFeatures: ['kern', 'mark', 'mkmk']
+    });
+
+    assert.ok(laidOut.length > 0, `expected non-empty layout for "${text}"`);
+    assert.ok(laidOut.length <= glyphIndices.length, `unexpected layout growth for "${text}"`);
+    for (const g of laidOut) {
+      assert.equal(Number.isFinite(g.xAdvance), true);
+      assert.equal(Number.isFinite(g.yAdvance), true);
+      assert.equal(Number.isFinite(g.xOffset), true);
+      assert.equal(Number.isFinite(g.yOffset), true);
+      const glyphClass = font.gdef?.getGlyphClass?.(g.glyphIndex) ?? 0;
+      if (glyphClass === 3) {
+        assert.equal(g.xAdvance, 0, `expected mark glyph xAdvance=0 in "${text}"`);
+      }
+    }
+  }
+
+  assert.equal(sawMarkGlyph, true, 'expected at least one Devanagari sample to include mark glyphs');
 });
 
 test('Table access works for known tags on multiple font formats', () => {

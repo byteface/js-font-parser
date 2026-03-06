@@ -199,7 +199,7 @@ export class LayoutEngine {
             const lines = text.split('\n');
             lines.forEach((line, index) => {
                 const segs = Array.from(segmenter.segment(line));
-                for (const seg of segs) {
+                for (const seg of segs as Array<{ segment: string }>) {
                     const chunk = seg.segment as string;
                     if (chunk === '\t') {
                         const count = Math.max(1, tabSize);

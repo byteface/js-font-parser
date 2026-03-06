@@ -251,7 +251,7 @@ var GsubTable = /** @class */ (function () {
         return (flag & 0x0002) !== 0 || (flag & 0x0004) !== 0 || (flag & 0x0008) !== 0;
     };
     GsubTable.prototype.isGlyphIgnored = function (lookup, glyphId) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
         if (!this.gdef)
             return false;
         var flag = (_b = (_a = lookup === null || lookup === void 0 ? void 0 : lookup.getFlag) === null || _a === void 0 ? void 0 : _a.call(lookup)) !== null && _b !== void 0 ? _b : 0;
@@ -269,8 +269,8 @@ var GsubTable = /** @class */ (function () {
         }
         var markAttachType = (flag & 0xff00) >> 8;
         if (markAttachType && glyphClass === 3) {
-            var cls = (_l = (_k = this.gdef).getMarkAttachmentClass) === null || _l === void 0 ? void 0 : _l.call(_k, glyphId);
-            if ((cls !== null && cls !== void 0 ? cls : 0) !== markAttachType)
+            var cls = (_m = (_l = (_k = this.gdef).getMarkAttachmentClass) === null || _l === void 0 ? void 0 : _l.call(_k, glyphId)) !== null && _m !== void 0 ? _m : 0;
+            if (cls !== markAttachType)
                 return true;
         }
         return false;

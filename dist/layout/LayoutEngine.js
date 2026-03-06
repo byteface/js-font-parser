@@ -1,3 +1,14 @@
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
         if (ar || !(i in from)) {
@@ -37,11 +48,6 @@ var LayoutEngine = /** @class */ (function () {
         var head = (_t = font.getTableByType) === null || _t === void 0 ? void 0 : _t.call(font, 0x68656164); // head
         var unitsPerEm = (_u = head === null || head === void 0 ? void 0 : head.unitsPerEm) !== null && _u !== void 0 ? _u : 1000;
         var lineHeight = (_v = options.lineHeight) !== null && _v !== void 0 ? _v : (((_w = hhea === null || hhea === void 0 ? void 0 : hhea.ascender) !== null && _w !== void 0 ? _w : unitsPerEm * 0.8) - ((_x = hhea === null || hhea === void 0 ? void 0 : hhea.descender) !== null && _x !== void 0 ? _x : -unitsPerEm * 0.2) + ((_y = hhea === null || hhea === void 0 ? void 0 : hhea.lineGap) !== null && _y !== void 0 ? _y : 0));
-        var emitDiagnostic = function (diagnostic) {
-            var _a, _b;
-            (_a = options.diagnostics) === null || _a === void 0 ? void 0 : _a.push(diagnostic);
-            (_b = options.onDiagnostic) === null || _b === void 0 ? void 0 : _b.call(options, diagnostic);
-        };
         var lines = [];
         var current = [];
         var cursorX = 0;
@@ -61,7 +67,7 @@ var LayoutEngine = /** @class */ (function () {
             if (trimLeadingSpaces && cursorX === 0 && /^\s+$/.test(token)) {
                 continue;
             }
-            if (hyphenate === 'soft' && maxWidth > 0 && breakWords && token.length >= hyphenMinWordLength && token.indexOf('\u00AD') !== -1) {
+            if (hyphenate === 'soft' && maxWidth > 0 && breakWords && token.length >= hyphenMinWordLength && token.includes('\u00AD')) {
                 var parts = token.split('\u00AD').filter(function (p) { return p.length > 0; });
                 var resolved = this.layoutSoftHyphenWord(font, parts, letterSpacing, useKerning, maxWidth, function () { return cursorX; }, function (glyphs) {
                     for (var _i = 0, glyphs_1 = glyphs; _i < glyphs_1.length; _i++) {
@@ -71,21 +77,19 @@ var LayoutEngine = /** @class */ (function () {
                         cursorX += glyph.advance;
                         current.push(glyph);
                     }
-                }, function () {
-                    pushLine(false);
-                }, hyphenChar, emitDiagnostic);
+                }, hyphenChar);
                 if (resolved) {
                     continue;
                 }
             }
-            var tokenGlyphs = this.buildTokenGlyphs(font, token.replace(/\u00AD/g, ''), letterSpacing, useKerning, emitDiagnostic);
+            var tokenGlyphs = this.buildTokenGlyphs(font, token.replace(/\u00AD/g, ''), letterSpacing, useKerning);
             var tokenWidth = tokenGlyphs.reduce(function (sum, g) { return sum + g.advance; }, 0);
             if (maxWidth > 0 && cursorX > 0 && cursorX + tokenWidth > maxWidth) {
                 pushLine(false);
             }
             if (maxWidth > 0 && breakWords && tokenWidth > maxWidth) {
-                for (var _v = 0, tokenGlyphs_1 = tokenGlyphs; _v < tokenGlyphs_1.length; _v++) {
-                    var glyph = tokenGlyphs_1[_v];
+                for (var _z = 0, tokenGlyphs_1 = tokenGlyphs; _z < tokenGlyphs_1.length; _z++) {
+                    var glyph = tokenGlyphs_1[_z];
                     if (maxWidth > 0 && cursorX > 0 && cursorX + glyph.advance > maxWidth) {
                         pushLine(false);
                     }
@@ -96,8 +100,8 @@ var LayoutEngine = /** @class */ (function () {
                 }
                 continue;
             }
-            for (var _w = 0, tokenGlyphs_2 = tokenGlyphs; _w < tokenGlyphs_2.length; _w++) {
-                var glyph = tokenGlyphs_2[_w];
+            for (var _0 = 0, tokenGlyphs_2 = tokenGlyphs; _0 < tokenGlyphs_2.length; _0++) {
+                var glyph = tokenGlyphs_2[_0];
                 glyph.x = cursorX + glyph.x;
                 glyph.y = 0;
                 cursorX += glyph.advance;
@@ -143,49 +147,46 @@ var LayoutEngine = /** @class */ (function () {
     };
     LayoutEngine.tokenize = function (text, collapseSpaces, preserveNbsp, tabSize) {
         if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
-            var segments = [];
+            var segments_1 = [];
             var segmenter_1 = new Intl.Segmenter(undefined, { granularity: 'word' });
             var lines_1 = text.split('\n');
             lines_1.forEach(function (line, index) {
-                var _a;
                 var segs = Array.from(segmenter_1.segment(line));
-                for (var _i = 0, segs_1 = segs; _i < segs_1.length; _i++) {
-                    var seg = segs_1[_i];
+                for (var _i = 0, _a = segs; _i < _a.length; _i++) {
+                    var seg = _a[_i];
                     var chunk = seg.segment;
                     if (chunk === '\t') {
                         var count = Math.max(1, tabSize);
                         if (collapseSpaces) {
-                            if (!segments.length || segments[segments.length - 1] !== ' ')
-                                segments.push(' ');
+                            if (!segments_1.length || segments_1[segments_1.length - 1] !== ' ')
+                                segments_1.push(' ');
                         }
                         else {
                             for (var i = 0; i < count; i++)
-                                segments.push(' ');
+                                segments_1.push(' ');
                         }
                         continue;
                     }
                     if (preserveNbsp && chunk === '\u00A0') {
-                        segments.push(chunk);
+                        segments_1.push(chunk);
                         continue;
                     }
                     if (/^\s+$/.test(chunk)) {
                         if (collapseSpaces) {
-                            if (!segments.length || segments[segments.length - 1] !== ' ')
-                                segments.push(' ');
+                            if (!segments_1.length || segments_1[segments_1.length - 1] !== ' ')
+                                segments_1.push(' ');
                         }
                         else {
-                            segments.push(chunk);
+                            segments_1.push(chunk);
                         }
                         continue;
                     }
-                    segments.push(chunk);
+                    segments_1.push(chunk);
                 }
                 if (index < lines_1.length - 1)
-                    segments.push('\n');
-                _a = segments;
-                return _a;
+                    segments_1.push('\n');
             });
-            return segments;
+            return segments_1;
         }
         var tokens = [];
         var buffer = '';
@@ -243,7 +244,7 @@ var LayoutEngine = /** @class */ (function () {
             tokens.push(buffer);
         return tokens;
     };
-    LayoutEngine.buildTokenGlyphs = function (font, token, letterSpacing, useKerning, emitDiagnostic) {
+    LayoutEngine.buildTokenGlyphs = function (font, token, letterSpacing, useKerning) {
         var glyphs = [];
         var prevGlyph = null;
         for (var _i = 0, token_1 = token; _i < token_1.length; _i++) {
@@ -251,13 +252,6 @@ var LayoutEngine = /** @class */ (function () {
             var glyphIndex = font.getGlyphIndexByChar ? font.getGlyphIndexByChar(ch) : null;
             var glyph = glyphIndex != null ? font.getGlyph(glyphIndex) : font.getGlyphByChar(ch);
             if (!glyph) {
-                emitDiagnostic === null || emitDiagnostic === void 0 ? void 0 : emitDiagnostic({
-                    code: 'MISSING_GLYPH',
-                    level: 'warning',
-                    phase: 'layout',
-                    message: 'Glyph missing for character during layout.',
-                    context: { char: ch }
-                });
                 prevGlyph = null;
                 continue;
             }
@@ -268,6 +262,40 @@ var LayoutEngine = /** @class */ (function () {
             prevGlyph = glyphIndex !== null && glyphIndex !== void 0 ? glyphIndex : 0;
         }
         return glyphs;
+    };
+    LayoutEngine.layoutSoftHyphenWord = function (font, parts, letterSpacing, useKerning, maxWidth, cursorGetter, pushGlyphs, hyphenChar) {
+        if (parts.length <= 1)
+            return false;
+        var hyphenGlyphs = this.buildTokenGlyphs(font, hyphenChar, letterSpacing, useKerning);
+        var hyphenWidth = hyphenGlyphs.reduce(function (sum, g) { return sum + g.advance; }, 0);
+        var remaining = parts.slice();
+        while (remaining.length > 0) {
+            var consumed = 0;
+            var width = 0;
+            var glyphs = [];
+            while (consumed < remaining.length) {
+                var next = remaining[consumed];
+                var nextGlyphs = this.buildTokenGlyphs(font, next, letterSpacing, useKerning);
+                var nextWidth = nextGlyphs.reduce(function (sum, g) { return sum + g.advance; }, 0);
+                var fits = cursorGetter() + width + nextWidth + (consumed < remaining.length - 1 ? hyphenWidth : 0) <= maxWidth;
+                if (!fits && consumed > 0)
+                    break;
+                if (!fits)
+                    return false;
+                glyphs.push.apply(glyphs, nextGlyphs);
+                width += nextWidth;
+                consumed += 1;
+            }
+            if (consumed < remaining.length) {
+                glyphs.push.apply(glyphs, hyphenGlyphs.map(function (g) { return (__assign({}, g)); }));
+            }
+            pushGlyphs(glyphs);
+            remaining = remaining.slice(consumed);
+            if (remaining.length > 0) {
+                return true;
+            }
+        }
+        return true;
     };
     LayoutEngine.justifyLine = function (line, targetWidth) {
         if (!line.glyphs.length)
@@ -283,10 +311,10 @@ var LayoutEngine = /** @class */ (function () {
             return;
         var add = extra / spaces.length;
         var offset = 0;
-        for (var i = 0; i < line.glyphs.length; i++) {
-            var glyph = line.glyphs[i];
+        for (var _i = 0, _a = line.glyphs; _i < _a.length; _i++) {
+            var glyph = _a[_i];
             glyph.x += offset;
-            if (glyph.char === ' ' && i <= lastIndex) {
+            if (glyph.char === ' ') {
                 glyph.advance += add;
                 offset += add;
             }
@@ -309,61 +337,6 @@ var LayoutEngine = /** @class */ (function () {
         }
         return width;
     };
-    LayoutEngine.layoutSoftHyphenWord = function (font, parts, letterSpacing, useKerning, maxWidth, cursorGetter, pushGlyphs, pushLineBreak, hyphenChar, emitDiagnostic) {
-        if (parts.length <= 1)
-            return false;
-        var hyphenGlyphs = this.buildTokenGlyphs(font, hyphenChar, letterSpacing, useKerning, emitDiagnostic);
-        var hyphenWidth = hyphenGlyphs.reduce(function (sum, g) { return sum + g.advance; }, 0);
-        var remaining = parts.slice();
-        var emitted = false;
-        while (remaining.length > 0) {
-            var consumed = 0;
-            var width = 0;
-            var glyphs = [];
-            while (consumed < remaining.length) {
-                var next = remaining[consumed];
-                var nextGlyphs = this.buildTokenGlyphs(font, next, letterSpacing, useKerning, emitDiagnostic);
-                var nextWidth = nextGlyphs.reduce(function (sum, g) { return sum + g.advance; }, 0);
-                var fits = cursorGetter() + width + nextWidth + (consumed < remaining.length - 1 ? hyphenWidth : 0) <= maxWidth;
-                if (!fits && consumed > 0)
-                    break;
-                if (!fits) {
-                    if (!emitted) {
-                        emitDiagnostic === null || emitDiagnostic === void 0 ? void 0 : emitDiagnostic({
-                            code: 'SOFT_HYPHEN_FALLBACK',
-                            level: 'warning',
-                            phase: 'layout',
-                            message: 'Soft-hyphen segmentation did not fit; falling back to character wrapping.',
-                            context: { partCount: remaining.length, maxWidth: maxWidth }
-                        });
-                        return false;
-                    }
-                    var rest = this.buildTokenGlyphs(font, remaining.join(''), letterSpacing, useKerning, emitDiagnostic);
-                    for (var _i = 0, rest_1 = rest; _i < rest_1.length; _i++) {
-                        var restGlyph = rest_1[_i];
-                        if (maxWidth > 0 && cursorGetter() > 0 && cursorGetter() + restGlyph.advance > maxWidth) {
-                            pushLineBreak();
-                        }
-                        pushGlyphs([__assign({}, restGlyph)]);
-                    }
-                    return true;
-                }
-                glyphs.push.apply(glyphs, nextGlyphs);
-                width += nextWidth;
-                consumed += 1;
-            }
-            if (consumed < remaining.length) {
-                glyphs.push.apply(glyphs, hyphenGlyphs.map(function (g) { return ({ glyphIndex: g.glyphIndex, x: g.x, y: g.y, advance: g.advance, char: g.char }); }));
-            }
-            pushGlyphs(glyphs);
-            emitted = true;
-            remaining = remaining.slice(consumed);
-            if (remaining.length > 0) {
-                pushLineBreak();
-            }
-        }
-        return true;
-    };
     LayoutEngine.hasRtl = function (text) {
         return /[\u0590-\u08FF]/.test(text);
     };
@@ -374,8 +347,8 @@ var LayoutEngine = /** @class */ (function () {
         var runs = [];
         var current = [];
         var currentIsRtl = null;
-        for (var _i = 0, glyphs_3 = glyphs; _i < glyphs_3.length; _i++) {
-            var glyph = glyphs_3[_i];
+        for (var _i = 0, glyphs_2 = glyphs; _i < glyphs_2.length; _i++) {
+            var glyph = glyphs_2[_i];
             var isRtl = glyph.char ? this.isRtlChar(glyph.char) : false;
             if (currentIsRtl === null) {
                 currentIsRtl = isRtl;
