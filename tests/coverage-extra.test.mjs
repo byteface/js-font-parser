@@ -132,6 +132,16 @@ const CURATED_FIXTURES = [
   'truetypefonts/curated/NotoColorEmoji.ttf'
 ];
 
+test('curated fixture list stays in sync with curated folder fonts', () => {
+  const curatedDir = path.resolve(__dirname, '..', 'truetypefonts', 'curated');
+  const actual = fs.readdirSync(curatedDir)
+    .filter((name) => /\.(ttf|otf|woff)$/i.test(name))
+    .map((name) => `truetypefonts/curated/${name}`)
+    .sort();
+  const listed = [...CURATED_FIXTURES].sort();
+  assert.deepEqual(listed, actual);
+});
+
 test('ByteArray reads primitives and guards bounds', () => {
   const raw = new Uint8Array(24);
   const dv = new DataView(raw.buffer);
@@ -2466,7 +2476,16 @@ test('FontParserWOFF convenience API covers variation, name scoring, and svg fal
 
 test('GlyfCompositeDescript resolve guards recursive component references', () => {
   const desc = Object.create(GlyfCompositeDescript.prototype);
-  desc.components = [{ glyphIndex: 42, firstIndex: 0, firstContour: 0, pointCount: 0, contourCount: 0 }];
+  desc.components = [{
+    glyphIndex: 42,
+    firstIndex: 0,
+    firstContour: 0,
+    pointCount: 0,
+    contourCount: 0,
+    isArgsAreXY: () => true,
+    scaleX: (x) => x,
+    scaleY: (_x, y) => y
+  }];
   desc.beingResolved = false;
   desc.resolved = false;
   desc.pointCount = 0;
@@ -3260,9 +3279,11 @@ test('Cff2Table debug/trace hooks execute for vsindex/blend and unknown ops', ()
   const savedLog = console.log;
   const savedDebug = globalThis.__CFF2_DEBUG;
   const savedTrace = globalThis.__CFF2_TRACE;
+  const savedDebugEnabled = Debug.enabled;
   const logs = [];
   try {
     console.log = (...args) => logs.push(args.join(' '));
+    Debug.enabled = true;
     globalThis.__CFF2_DEBUG = true;
     globalThis.__CFF2_TRACE = [];
     const enc = (n) => n + 139;
@@ -3282,6 +3303,7 @@ test('Cff2Table debug/trace hooks execute for vsindex/blend and unknown ops', ()
     console.log = savedLog;
     globalThis.__CFF2_DEBUG = savedDebug;
     globalThis.__CFF2_TRACE = savedTrace;
+    Debug.enabled = savedDebugEnabled;
   }
 });
 
