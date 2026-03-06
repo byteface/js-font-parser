@@ -7,23 +7,11 @@ import { FontParserTTF } from "../../dist/data/FontParserTTF.js";
 import { SVGFont } from "../../dist/render/SVGFont.js";
 import { Table } from "../../dist/table/Table.js";
 import { getSupportedLanguages, listLanguages, supportsLanguage } from "../../dist/utils/LanguageSupport.js";
+import { parseArgs, parseBoolean, printUsage } from "./cli/args.mjs";
+import { runCli } from "./cli/runner.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-function parseArgs() {
-  const args = process.argv.slice(2);
-  const out = {};
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i];
-    if (a.startsWith("--")) {
-      const key = a.slice(2);
-      const val = args[i + 1] && !args[i + 1].startsWith("--") ? args[++i] : true;
-      out[key] = val;
-    }
-  }
-  return out;
-}
 
 function loadFont(pathLike) {
   const data = fs.readFileSync(pathLike);
@@ -80,15 +68,6 @@ function printMissingChars(font, langCode, asJson = false) {
     return;
   }
   console.log(`Missing chars (${info.missing.length}): ${info.missing.join(" ")}`);
-}
-
-function parseBoolean(value, defaultValue = false) {
-  if (value == null) return defaultValue;
-  if (typeof value === "boolean") return value;
-  const s = String(value).trim().toLowerCase();
-  if (s === "1" || s === "true" || s === "yes" || s === "on") return true;
-  if (s === "0" || s === "false" || s === "no" || s === "off") return false;
-  return defaultValue;
 }
 
 function escapeXml(value) {
@@ -1493,203 +1472,48 @@ function exportSvgText(font, text, options = {}) {
   );
 }
 
-function usage() {
-  console.log("fontparser --font path.ttf [--coverage] [--supported-languages] [--min-coverage 100] [--supported-languages-json] [--meta|--meta-json] [--list-languages]");
-  console.log("fontparser --font path.ttf --missing-chars --lang <code> [--json]");
-  console.log("fontparser --font path.ttf [--tables|--tables-json] [--glyph-stats|--glyph-stats-json]");
-  console.log("fontparser --font path.ttf [--kerning-stats|--kerning-stats-json] [--kerning-chars \"AVTo\"] [--kerning-limit 20]");
-  console.log("fontparser --font path.ttf --overview [--min-coverage 90] [--kerning-chars \"AVTo\"] [--kerning-limit 10]");
-  console.log("fontparser --font path.ttf --svg-text \"Hello\" [--svg-out out.svg] [--svg-font-size 96] [--svg-fill '#111'] [--svg-stroke none] [--svg-stroke-width 0] [--svg-padding 24] [--svg-line-height 1.2] [--svg-letter-spacing 0] [--svg-use-kerning true] [--svg-bg '#fff']");
-  console.log("fontparser --font path.ttf --localise <code> [--out output.ttf]");
-  console.log("fontparser --font path.ttf --subset [--subset-chars <text>] [--subset-file <txt>] [--subset-lang <code[,code]>] [--out output.ttf] [--subset-report report.json]");
-}
-
 async function main() {
   const args = parseArgs();
   const fontPath = args.font;
   if (!fontPath) {
-    usage();
+    printUsage();
     process.exit(1);
   }
   const resolved = path.resolve(process.cwd(), fontPath);
   const font = loadFont(resolved);
   const originalBuffer = Buffer.from(fs.readFileSync(resolved));
-
-  if (args["list-languages"]) {
-    printLanguages();
-  }
-
-  if (args.coverage) {
-    printCoverage(font);
-  }
-
-  if (args["supported-languages"] || args["supported-languages-json"]) {
-    const minCoveragePct = args["min-coverage"] != null ? Number(args["min-coverage"]) : 100;
-    if (!Number.isFinite(minCoveragePct) || minCoveragePct < 0 || minCoveragePct > 100) {
-      throw new Error("--min-coverage must be a number between 0 and 100.");
-    }
-    printSupportedLanguages(font, minCoveragePct / 100, Boolean(args["supported-languages-json"]));
-  }
-
-  if (args["missing-chars"]) {
-    const lang = args.lang != null ? String(args.lang) : null;
-    if (!lang) {
-      throw new Error("--missing-chars requires --lang <code>.");
-    }
-    printMissingChars(font, lang, Boolean(args.json));
-  }
-
-  if (args.tables || args["tables-json"]) {
-    printTables(originalBuffer, Boolean(args["tables-json"]));
-  }
-
-  if (args["glyph-stats"] || args["glyph-stats-json"]) {
-    printGlyphStats(originalBuffer, font, Boolean(args["glyph-stats-json"]));
-  }
-
-  if (args["kerning-stats"] || args["kerning-stats-json"]) {
-    const sample = args["kerning-chars"] != null
-      ? String(args["kerning-chars"])
-      : "AVWToY.,;:!?'-_abcdefghijklmnopqrstuvwxyz";
-    const limit = args["kerning-limit"] != null ? Number(args["kerning-limit"]) : 20;
-    if (!Number.isFinite(limit) || limit <= 0) {
-      throw new Error("--kerning-limit must be a positive number.");
-    }
-    printKerningStats(font, sample, Math.floor(limit), Boolean(args["kerning-stats-json"]));
-  }
-
-  if (args.overview) {
-    const minCoveragePct = args["min-coverage"] != null ? Number(args["min-coverage"]) : 90;
-    const sample = args["kerning-chars"] != null
-      ? String(args["kerning-chars"])
-      : "AVWToY.,;:!?'-_abcdefghijklmnopqrstuvwxyz";
-    const limit = args["kerning-limit"] != null ? Number(args["kerning-limit"]) : 10;
-    if (!Number.isFinite(minCoveragePct) || minCoveragePct < 0 || minCoveragePct > 100) {
-      throw new Error("--min-coverage must be a number between 0 and 100.");
-    }
-    if (!Number.isFinite(limit) || limit <= 0) {
-      throw new Error("--kerning-limit must be a positive number.");
-    }
-    printOverview(originalBuffer, font, {
-      minCoveragePct,
-      kerningChars: sample,
-      kerningLimit: Math.floor(limit)
-    });
-  }
-
-  if (args["svg-text"] != null) {
-    const text = String(args["svg-text"]);
-    if (!text.length) {
-      throw new Error("--svg-text must not be empty.");
-    }
-    const fontSize = args["svg-font-size"] != null ? Number(args["svg-font-size"]) : 96;
-    const padding = args["svg-padding"] != null ? Number(args["svg-padding"]) : 24;
-    const lineHeight = args["svg-line-height"] != null ? Number(args["svg-line-height"]) : 1.2;
-    const letterSpacing = args["svg-letter-spacing"] != null ? Number(args["svg-letter-spacing"]) : 0;
-    const strokeWidth = args["svg-stroke-width"] != null ? Number(args["svg-stroke-width"]) : 0;
-    if (!Number.isFinite(fontSize) || fontSize <= 0) throw new Error("--svg-font-size must be > 0.");
-    if (!Number.isFinite(padding) || padding < 0) throw new Error("--svg-padding must be >= 0.");
-    if (!Number.isFinite(lineHeight) || lineHeight <= 0) throw new Error("--svg-line-height must be > 0.");
-    if (!Number.isFinite(letterSpacing)) throw new Error("--svg-letter-spacing must be numeric.");
-    if (!Number.isFinite(strokeWidth) || strokeWidth < 0) throw new Error("--svg-stroke-width must be >= 0.");
-
-    const svg = exportSvgText(font, text, {
-      fontSize,
-      fill: args["svg-fill"] != null ? String(args["svg-fill"]) : "#111111",
-      stroke: args["svg-stroke"] != null ? String(args["svg-stroke"]) : "none",
-      strokeWidth,
-      padding,
-      lineHeight,
-      letterSpacing,
-      useKerning: parseBoolean(args["svg-use-kerning"], true),
-      background: args["svg-bg"] != null ? String(args["svg-bg"]) : null
-    });
-
-    if (args["svg-out"]) {
-      const outPath = path.resolve(process.cwd(), String(args["svg-out"]));
-      fs.writeFileSync(outPath, svg, "utf8");
-      console.log(`Wrote SVG: ${outPath}`);
-    } else {
-      console.log(svg);
-    }
-  }
-
-  if (args.meta) {
-    printMetadata(font, false);
-  }
-  if (args["meta-json"]) {
-    printMetadata(font, true);
-  }
-
-  if (args.localise && args.subset) {
-    throw new Error("Use either --localise or --subset in a single run.");
-  }
-
-  if (args.localise) {
-    const lang = String(args.localise);
-    const info = supportsLanguage(font, lang);
-    if (!info) {
-      console.error(`Unknown language code: ${lang}`);
-      process.exit(1);
-    }
-    const outPath = args.out ? path.resolve(process.cwd(), args.out) : path.resolve(__dirname, `${path.basename(resolved, ".ttf")}-${lang}.ttf`);
-    let buffer = Buffer.from(originalBuffer);
-    updateNameTableBuffer(buffer, lang.toUpperCase());
-    if (!info.supported) {
-      const report = [];
-      const { buffer: composed, composed: count } = composeFont(buffer, font, info.missing, report);
-      buffer = composed;
-      console.log(`Composed ${count} glyphs for missing characters.`);
-      if (report.length) {
-        const reportPath = `${outPath}.report.json`;
-        fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
-        console.log(`Composition report: ${reportPath}`);
-      }
-      const stillMissing = supportsLanguage(new FontParserTTF(new ByteArray(new Uint8Array(buffer))), lang);
-      if (stillMissing && !stillMissing.supported) {
-        console.log(`Still missing (${stillMissing.missing.length}): ${stillMissing.missing.slice(0, 30).join(" ")}`);
-      }
-    }
-    fs.writeFileSync(outPath, buffer);
-    console.log(`Wrote localized font: ${outPath}`);
-  }
-
-  if (args.subset) {
-    const fsTypeFlags = font.getFsTypeFlags?.() ?? [];
-    if (fsTypeFlags.includes("no-subsetting")) {
-      console.warn("Warning: OS/2 fsType indicates no-subsetting.");
-    }
-
-    const selectedChars = collectSubsetChars(args);
-    if (selectedChars.length === 0) {
-      throw new Error("No subset character sources provided. Use --subset-chars and/or --subset-file and/or --subset-lang.");
-    }
-
-    const outPath = args.out
-      ? path.resolve(process.cwd(), String(args.out))
-      : path.resolve(__dirname, `${path.basename(resolved, path.extname(resolved))}-subset.ttf`);
-    const reportPath = args["subset-report"]
-      ? path.resolve(process.cwd(), String(args["subset-report"]))
-      : `${outPath}.report.json`;
-
-    let buffer = Buffer.from(originalBuffer);
-    updateNameTableBuffer(buffer, "SUBSET");
-    const workingFont = new FontParserTTF(new ByteArray(new Uint8Array(buffer)));
-    const { buffer: subsetBuffer, report } = buildSubsetFont(buffer, workingFont, selectedChars);
-    fs.writeFileSync(outPath, subsetBuffer);
-    fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
-
-    console.log(`Wrote subset font: ${outPath}`);
-    console.log(`Subset report: ${reportPath}`);
-    console.log(`Subset chars mapped: ${report.mappedChars}/${report.requestedChars}`);
-    if (report.missingChars.length) {
-      console.log(`Missing chars (${report.missingChars.length}): ${report.missingChars.slice(0, 40).join(" ")}`);
-    }
-    if (report.nonBmpChars.length) {
-      console.log(`Skipped non-BMP chars (${report.nonBmpChars.length}): ${report.nonBmpChars.slice(0, 20).join(" ")}`);
-    }
-    console.log(`Glyph count: ${report.oldGlyphCount} -> ${report.newGlyphCount} (${report.reductionPct}% reduction)`);
-  }
+  await runCli(args, {
+    font,
+    originalBuffer,
+    resolved,
+    __dirname,
+    parseBoolean
+  }, {
+    printLanguages,
+    printCoverage,
+    printSupportedLanguages,
+    printMissingChars,
+    printTables,
+    printGlyphStats,
+    printKerningStats,
+    printOverview,
+    exportSvgText,
+    printMetadata,
+    supportsLanguage,
+    updateNameTableBuffer,
+    composeFont,
+    collectSubsetChars,
+    buildSubsetFont,
+    resolveCwdPath: (v) => path.resolve(process.cwd(), v),
+    resolveDirPath: (dir, p) => path.resolve(dir, p),
+    basenameNoExt: (p) => path.basename(p, path.extname(p)),
+    basenameWithExt: (p) => path.basename(p, path.extname(p)),
+    bufferFrom: (b) => Buffer.from(b),
+    loadFontFromBuffer: (buffer) => new FontParserTTF(new ByteArray(new Uint8Array(buffer))),
+    writeBuffer: (target, buffer) => fs.writeFileSync(target, buffer),
+    writeUtf8: (target, data) => fs.writeFileSync(target, data, "utf8"),
+    writeJson: (target, data) => fs.writeFileSync(target, JSON.stringify(data, null, 2))
+  });
 }
 
 main().catch(err => {
