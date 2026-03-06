@@ -222,8 +222,6 @@ export class Cff2Table implements ITable {
         let contourOpen = false;
         let stemCount = 0;
         let vsIndex = 0;
-        let widthUsed = false;
-        let widthLocked = false;
 
         const stack: number[] = [];
         const gsubrs = this.globalSubrs;
@@ -290,7 +288,8 @@ export class Cff2Table implements ITable {
                 const s = regionScalars[r] ?? 0;
                 if (!s) continue;
                 for (let i = 0; i < n; i++) {
-                    out[i] += deltas[r * n + i] * s;
+                    // CFF2 blend deltas are argument-major: [arg0 r0..rN, arg1 r0..rN, ...]
+                    out[i] += deltas[i * regionCount + r] * s;
                 }
             }
             stack.push(...out);
@@ -299,6 +298,9 @@ export class Cff2Table implements ITable {
                     type: 'blend',
                     vsIndex: vsIndexValue,
                     n,
+                    coords: coords.slice(),
+                    regionIndices: regionIndices.slice(),
+                    regionScalars: regionScalars.slice(),
                     base: base.slice(),
                     deltas: deltas.slice(),
                     out: out.slice()
@@ -322,35 +324,15 @@ export class Cff2Table implements ITable {
                     return;
                 }
                 const args = stack.splice(0, stack.length);
-                const tryConsumeWidthOdd = (lockAfter: boolean) => {
-                    if (!widthLocked && !widthUsed && args.length % 2 === 1) {
-                        args.shift();
-                        widthUsed = true;
-                    }
-                    if (lockAfter || widthUsed) {
-                        widthLocked = true;
-                    }
-                };
-                const tryConsumeWidthMoreThanOne = (lockAfter: boolean) => {
-                    if (!widthLocked && !widthUsed && args.length > 1) {
-                        args.shift();
-                        widthUsed = true;
-                    }
-                    if (lockAfter || widthUsed) {
-                        widthLocked = true;
-                    }
-                };
                 switch (b0) {
                     case 1:
                     case 3:
                     case 18:
                     case 23: {
-                        tryConsumeWidthOdd(false);
                         stemCount += Math.floor(args.length / 2);
                         break;
                     }
                     case 4: {
-                        tryConsumeWidthMoreThanOne(true);
                         closeContour();
                         const dy = args.pop() ?? 0;
                         y += dy;
@@ -407,14 +389,12 @@ export class Cff2Table implements ITable {
                     }
                     case 19:
                     case 20: {
-                        tryConsumeWidthOdd(false);
                         stemCount += Math.floor(args.length / 2);
                         const maskBytes = Math.ceil(stemCount / 8);
                         i += Math.min(maskBytes, bytes.length - i);
                         break;
                     }
                     case 21: {
-                        tryConsumeWidthOdd(true);
                         closeContour();
                         const dy = args.pop() ?? 0;
                         const dx = args.pop() ?? 0;
@@ -425,7 +405,6 @@ export class Cff2Table implements ITable {
                         break;
                     }
                     case 22: {
-                        tryConsumeWidthMoreThanOne(true);
                         closeContour();
                         const dx = args.pop() ?? 0;
                         x += dx;

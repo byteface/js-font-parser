@@ -505,9 +505,17 @@ export class FontParserTTF {
                 const componentCount = isComposite && description instanceof GlyfCompositeDescript
                     ? description.getComponentCount()
                     : 0;
-                const gvarPointCount = (isComposite ? componentCount : basePointCount) + 4; // phantom points
+                let transformSlotCount = 0;
+                if (isComposite && description instanceof GlyfCompositeDescript) {
+                    for (const comp of description.components) {
+                        transformSlotCount += comp.getTransformSlotCount();
+                    }
+                }
+                const compositePointCount = isComposite ? (componentCount + transformSlotCount) : basePointCount;
+                const gvarPointCount = compositePointCount + 4; // phantom points
                 const deltas = this.gvar.getDeltasForGlyph(i, this.variationCoords, gvarPointCount);
                 if (deltas) {
+                    const self = this;
                     const base = description;
                     const fullDx = deltas.dx;
                     const fullDy = deltas.dy;
@@ -515,6 +523,10 @@ export class FontParserTTF {
                     let dy: number[] = [];
                     let compDx: number[] | null = null;
                     let compDy: number[] | null = null;
+                    let compXScale: number[] | null = null;
+                    let compYScale: number[] | null = null;
+                    let compScale01: number[] | null = null;
+                    let compScale10: number[] | null = null;
 
                     if (!isComposite) {
                         dx = fullDx.slice(0, basePointCount);
@@ -527,15 +539,41 @@ export class FontParserTTF {
                     } else if (base instanceof GlyfCompositeDescript) {
                         compDx = new Array(componentCount).fill(0);
                         compDy = new Array(componentCount).fill(0);
+                        compXScale = new Array(componentCount).fill(0);
+                        compYScale = new Array(componentCount).fill(0);
+                        compScale01 = new Array(componentCount).fill(0);
+                        compScale10 = new Array(componentCount).fill(0);
                         for (let c = 0; c < componentCount; c++) {
                             const rawDx = fullDx[c] ?? 0;
                             const rawDy = fullDy[c] ?? 0;
                             compDx[c] = rawDx;
                             compDy[c] = rawDy;
                         }
+                        let tIndex = componentCount;
+                        for (let c = 0; c < componentCount; c++) {
+                            const comp = base.components[c];
+                            if (!comp) continue;
+                            if (comp.hasTwoByTwo()) {
+                                const idx1 = tIndex++;
+                                const idx2 = tIndex++;
+                                compXScale[c] = (fullDx[idx1] ?? 0) / 0x4000;
+                                compScale01[c] = (fullDy[idx1] ?? 0) / 0x4000;
+                                compScale10[c] = (fullDx[idx2] ?? 0) / 0x4000;
+                                compYScale[c] = (fullDy[idx2] ?? 0) / 0x4000;
+                            } else if (comp.hasXYScale()) {
+                                const idx = tIndex++;
+                                compXScale[c] = (fullDx[idx] ?? 0) / 0x4000;
+                                compYScale[c] = (fullDy[idx] ?? 0) / 0x4000;
+                            } else if (comp.hasScale()) {
+                                const idx = tIndex++;
+                                const delta = (fullDx[idx] ?? 0) / 0x4000;
+                                compXScale[c] = delta;
+                                compYScale[c] = delta;
+                            }
+                        }
                     }
 
-                    const phantomBase = isComposite ? componentCount : basePointCount;
+                    const phantomBase = isComposite ? compositePointCount : basePointCount;
                     const lsbDelta = fullDx[phantomBase] ?? 0;
                     const rsbDelta = fullDx[phantomBase + 1] ?? 0;
                     lsb += lsbDelta;
@@ -548,10 +586,29 @@ export class FontParserTTF {
                     for (let p = 0; p < basePointCount; p++) {
                         const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
                         const compIndex = comp ? base.components.indexOf(comp) : -1;
-                        const ox = compIndex >= 0 && compDx ? compDx[compIndex] ?? 0 : 0;
-                        const oy = compIndex >= 0 && compDy ? compDy[compIndex] ?? 0 : 0;
-                        const x = base.getXCoordinate(p) + (dx[p] ?? 0) + ox;
-                        const y = base.getYCoordinate(p) + (dy[p] ?? 0) + oy;
+                        let x = base.getXCoordinate(p);
+                        let y = base.getYCoordinate(p);
+                        if (comp && compIndex >= 0 && self.glyf) {
+                            const gd = self.glyf.getDescription(comp.glyphIndex);
+                            if (gd) {
+                                const localIndex = p - comp.firstIndex;
+                                const px = gd.getXCoordinate(localIndex);
+                                const py = gd.getYCoordinate(localIndex);
+                                const xscale = comp.xscale + (compXScale?.[compIndex] ?? 0);
+                                const yscale = comp.yscale + (compYScale?.[compIndex] ?? 0);
+                                const scale01 = comp.scale01 + (compScale01?.[compIndex] ?? 0);
+                                const scale10 = comp.scale10 + (compScale10?.[compIndex] ?? 0);
+                                const ox = comp.xtranslate + (compDx?.[compIndex] ?? 0);
+                                const oy = comp.ytranslate + (compDy?.[compIndex] ?? 0);
+                                x = (px * xscale) + (py * scale10) + ox;
+                                y = (px * scale01) + (py * yscale) + oy;
+                            }
+                        } else {
+                            const ox = compIndex >= 0 && compDx ? compDx[compIndex] ?? 0 : 0;
+                            const oy = compIndex >= 0 && compDy ? compDy[compIndex] ?? 0 : 0;
+                            x = base.getXCoordinate(p) + (dx[p] ?? 0) + ox;
+                            y = base.getYCoordinate(p) + (dy[p] ?? 0) + oy;
+                        }
                         if (x < minX) minX = x;
                         if (x > maxX) maxX = x;
                         if (y < minY) minY = y;
@@ -566,12 +623,40 @@ export class FontParserTTF {
                         getXCoordinate: (p: number) => {
                             const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
                             const compIndex = comp ? base.components.indexOf(comp) : -1;
+                            if (comp && compIndex >= 0 && self.glyf) {
+                                const gd = self.glyf.getDescription(comp.glyphIndex);
+                                if (gd) {
+                                    const localIndex = p - comp.firstIndex;
+                                    const px = gd.getXCoordinate(localIndex);
+                                    const py = gd.getYCoordinate(localIndex);
+                                    const xscale = comp.xscale + (compXScale?.[compIndex] ?? 0);
+                                    const yscale = comp.yscale + (compYScale?.[compIndex] ?? 0);
+                                    const scale01 = comp.scale01 + (compScale01?.[compIndex] ?? 0);
+                                    const scale10 = comp.scale10 + (compScale10?.[compIndex] ?? 0);
+                                    const ox = comp.xtranslate + (compDx?.[compIndex] ?? 0);
+                                    return (px * xscale) + (py * scale10) + ox;
+                                }
+                            }
                             const ox = compIndex >= 0 && compDx ? compDx[compIndex] ?? 0 : 0;
                             return base.getXCoordinate(p) + (dx[p] ?? 0) + ox;
                         },
                         getYCoordinate: (p: number) => {
                             const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
                             const compIndex = comp ? base.components.indexOf(comp) : -1;
+                            if (comp && compIndex >= 0 && self.glyf) {
+                                const gd = self.glyf.getDescription(comp.glyphIndex);
+                                if (gd) {
+                                    const localIndex = p - comp.firstIndex;
+                                    const px = gd.getXCoordinate(localIndex);
+                                    const py = gd.getYCoordinate(localIndex);
+                                    const xscale = comp.xscale + (compXScale?.[compIndex] ?? 0);
+                                    const yscale = comp.yscale + (compYScale?.[compIndex] ?? 0);
+                                    const scale01 = comp.scale01 + (compScale01?.[compIndex] ?? 0);
+                                    const scale10 = comp.scale10 + (compScale10?.[compIndex] ?? 0);
+                                    const oy = comp.ytranslate + (compDy?.[compIndex] ?? 0);
+                                    return (px * scale01) + (py * yscale) + oy;
+                                }
+                            }
                             const oy = compIndex >= 0 && compDy ? compDy[compIndex] ?? 0 : 0;
                             return base.getYCoordinate(p) + (dy[p] ?? 0) + oy;
                         },

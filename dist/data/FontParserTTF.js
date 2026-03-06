@@ -507,9 +507,18 @@ var FontParserTTF = /** @class */ (function () {
                 var componentCount = isComposite && description instanceof GlyfCompositeDescript
                     ? description.getComponentCount()
                     : 0;
-                var gvarPointCount = (isComposite ? componentCount : basePointCount) + 4; // phantom points
+                var transformSlotCount = 0;
+                if (isComposite && description instanceof GlyfCompositeDescript) {
+                    for (var _f = 0, _g = description.components; _f < _g.length; _f++) {
+                        var comp = _g[_f];
+                        transformSlotCount += comp.getTransformSlotCount();
+                    }
+                }
+                var compositePointCount = isComposite ? (componentCount + transformSlotCount) : basePointCount;
+                var gvarPointCount = compositePointCount + 4; // phantom points
                 var deltas = this.gvar.getDeltasForGlyph(i, this.variationCoords, gvarPointCount);
                 if (deltas) {
+                    var _this = this;
                     var base_1 = description;
                     var fullDx = deltas.dx;
                     var fullDy = deltas.dy;
@@ -517,6 +526,10 @@ var FontParserTTF = /** @class */ (function () {
                     var dy_1 = [];
                     var compDx = null;
                     var compDy = null;
+                    var compXScale = null;
+                    var compYScale = null;
+                    var compScale01 = null;
+                    var compScale10 = null;
                     if (!isComposite) {
                         dx_1 = fullDx.slice(0, basePointCount);
                         dy_1 = fullDy.slice(0, basePointCount);
@@ -532,16 +545,45 @@ var FontParserTTF = /** @class */ (function () {
                     else if (base_1 instanceof GlyfCompositeDescript) {
                         compDx = new Array(componentCount).fill(0);
                         compDy = new Array(componentCount).fill(0);
+                        compXScale = new Array(componentCount).fill(0);
+                        compYScale = new Array(componentCount).fill(0);
+                        compScale01 = new Array(componentCount).fill(0);
+                        compScale10 = new Array(componentCount).fill(0);
                         for (var c = 0; c < componentCount; c++) {
-                            var rawDx = (_f = fullDx[c]) !== null && _f !== void 0 ? _f : 0;
-                            var rawDy = (_g = fullDy[c]) !== null && _g !== void 0 ? _g : 0;
+                            var rawDx = (_h = fullDx[c]) !== null && _h !== void 0 ? _h : 0;
+                            var rawDy = (_j = fullDy[c]) !== null && _j !== void 0 ? _j : 0;
                             compDx[c] = rawDx;
                             compDy[c] = rawDy;
                         }
+                        var tIndex = componentCount;
+                        for (var c = 0; c < componentCount; c++) {
+                            var comp = base_1.components[c];
+                            if (!comp)
+                                continue;
+                            if (comp.hasTwoByTwo()) {
+                                var idx1 = tIndex++;
+                                var idx2 = tIndex++;
+                                compXScale[c] = ((_k = fullDx[idx1]) !== null && _k !== void 0 ? _k : 0) / 0x4000;
+                                compScale01[c] = ((_l = fullDy[idx1]) !== null && _l !== void 0 ? _l : 0) / 0x4000;
+                                compScale10[c] = ((_m = fullDx[idx2]) !== null && _m !== void 0 ? _m : 0) / 0x4000;
+                                compYScale[c] = ((_o = fullDy[idx2]) !== null && _o !== void 0 ? _o : 0) / 0x4000;
+                            }
+                            else if (comp.hasXYScale()) {
+                                var idx = tIndex++;
+                                compXScale[c] = ((_p = fullDx[idx]) !== null && _p !== void 0 ? _p : 0) / 0x4000;
+                                compYScale[c] = ((_q = fullDy[idx]) !== null && _q !== void 0 ? _q : 0) / 0x4000;
+                            }
+                            else if (comp.hasScale()) {
+                                var idx = tIndex++;
+                                var delta = ((_r = fullDx[idx]) !== null && _r !== void 0 ? _r : 0) / 0x4000;
+                                compXScale[c] = delta;
+                                compYScale[c] = delta;
+                            }
+                        }
                     }
-                    var phantomBase = isComposite ? componentCount : basePointCount;
-                    var lsbDelta = (_f = fullDx[phantomBase]) !== null && _f !== void 0 ? _f : 0;
-                    var rsbDelta = (_g = fullDx[phantomBase + 1]) !== null && _g !== void 0 ? _g : 0;
+                    var phantomBase = isComposite ? compositePointCount : basePointCount;
+                    var lsbDelta = (_h = fullDx[phantomBase]) !== null && _h !== void 0 ? _h : 0;
+                    var rsbDelta = (_j = fullDx[phantomBase + 1]) !== null && _j !== void 0 ? _j : 0;
                     lsb += lsbDelta;
                     advance += (rsbDelta - lsbDelta);
                     var minX = Infinity;
@@ -551,10 +593,30 @@ var FontParserTTF = /** @class */ (function () {
                     for (var p = 0; p < basePointCount; p++) {
                         var comp = isComposite && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
                         var compIndex = comp ? base_1.components.indexOf(comp) : -1;
-                        var ox = compIndex >= 0 && compDx ? (compDx[compIndex] !== undefined ? compDx[compIndex] : 0) : 0;
-                        var oy = compIndex >= 0 && compDy ? (compDy[compIndex] !== undefined ? compDy[compIndex] : 0) : 0;
-                        var x = base_1.getXCoordinate(p) + ((dx_1[p] !== undefined ? dx_1[p] : 0)) + ox;
-                        var y = base_1.getYCoordinate(p) + ((dy_1[p] !== undefined ? dy_1[p] : 0)) + oy;
+                        var x = base_1.getXCoordinate(p);
+                        var y = base_1.getYCoordinate(p);
+                        if (comp && compIndex >= 0 && _this.glyf) {
+                            var gd = _this.glyf.getDescription(comp.glyphIndex);
+                            if (gd) {
+                                var localIndex = p - comp.firstIndex;
+                                var px = gd.getXCoordinate(localIndex);
+                                var py = gd.getYCoordinate(localIndex);
+                                var xscale = comp.xscale + ((_h = compXScale === null || compXScale === void 0 ? void 0 : compXScale[compIndex]) !== null && _h !== void 0 ? _h : 0);
+                                var yscale = comp.yscale + ((_j = compYScale === null || compYScale === void 0 ? void 0 : compYScale[compIndex]) !== null && _j !== void 0 ? _j : 0);
+                                var scale01 = comp.scale01 + ((_k = compScale01 === null || compScale01 === void 0 ? void 0 : compScale01[compIndex]) !== null && _k !== void 0 ? _k : 0);
+                                var scale10 = comp.scale10 + ((_l = compScale10 === null || compScale10 === void 0 ? void 0 : compScale10[compIndex]) !== null && _l !== void 0 ? _l : 0);
+                                var ox = comp.xtranslate + ((_m = compDx === null || compDx === void 0 ? void 0 : compDx[compIndex]) !== null && _m !== void 0 ? _m : 0);
+                                var oy = comp.ytranslate + ((_o = compDy === null || compDy === void 0 ? void 0 : compDy[compIndex]) !== null && _o !== void 0 ? _o : 0);
+                                x = (px * xscale) + (py * scale10) + ox;
+                                y = (px * scale01) + (py * yscale) + oy;
+                            }
+                        }
+                        else {
+                            var ox = compIndex >= 0 && compDx ? (compDx[compIndex] !== undefined ? compDx[compIndex] : 0) : 0;
+                            var oy = compIndex >= 0 && compDy ? (compDy[compIndex] !== undefined ? compDy[compIndex] : 0) : 0;
+                            x = base_1.getXCoordinate(p) + ((dx_1[p] !== undefined ? dx_1[p] : 0)) + ox;
+                            y = base_1.getYCoordinate(p) + ((dy_1[p] !== undefined ? dy_1[p] : 0)) + oy;
+                        }
                         if (x < minX)
                             minX = x;
                         if (x > maxX)
@@ -572,12 +634,40 @@ var FontParserTTF = /** @class */ (function () {
                         getXCoordinate: function (p) {
                             var comp = isComposite && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
                             var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                            if (comp && compIndex >= 0 && _this.glyf) {
+                                var gd = _this.glyf.getDescription(comp.glyphIndex);
+                                if (gd) {
+                                    var localIndex = p - comp.firstIndex;
+                                    var px = gd.getXCoordinate(localIndex);
+                                    var py = gd.getYCoordinate(localIndex);
+                                    var xscale = comp.xscale + ((_h = compXScale === null || compXScale === void 0 ? void 0 : compXScale[compIndex]) !== null && _h !== void 0 ? _h : 0);
+                                    var yscale = comp.yscale + ((_j = compYScale === null || compYScale === void 0 ? void 0 : compYScale[compIndex]) !== null && _j !== void 0 ? _j : 0);
+                                    var scale01 = comp.scale01 + ((_k = compScale01 === null || compScale01 === void 0 ? void 0 : compScale01[compIndex]) !== null && _k !== void 0 ? _k : 0);
+                                    var scale10 = comp.scale10 + ((_l = compScale10 === null || compScale10 === void 0 ? void 0 : compScale10[compIndex]) !== null && _l !== void 0 ? _l : 0);
+                                    var ox = comp.xtranslate + ((_m = compDx === null || compDx === void 0 ? void 0 : compDx[compIndex]) !== null && _m !== void 0 ? _m : 0);
+                                    return (px * xscale) + (py * scale10) + ox;
+                                }
+                            }
                             var ox = compIndex >= 0 && compDx ? (compDx[compIndex] !== undefined ? compDx[compIndex] : 0) : 0;
                             return base_1.getXCoordinate(p) + ((dx_1[p] !== undefined ? dx_1[p] : 0)) + ox;
                         },
                         getYCoordinate: function (p) {
                             var comp = isComposite && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
                             var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                            if (comp && compIndex >= 0 && _this.glyf) {
+                                var gd = _this.glyf.getDescription(comp.glyphIndex);
+                                if (gd) {
+                                    var localIndex = p - comp.firstIndex;
+                                    var px = gd.getXCoordinate(localIndex);
+                                    var py = gd.getYCoordinate(localIndex);
+                                    var xscale = comp.xscale + ((_h = compXScale === null || compXScale === void 0 ? void 0 : compXScale[compIndex]) !== null && _h !== void 0 ? _h : 0);
+                                    var yscale = comp.yscale + ((_j = compYScale === null || compYScale === void 0 ? void 0 : compYScale[compIndex]) !== null && _j !== void 0 ? _j : 0);
+                                    var scale01 = comp.scale01 + ((_k = compScale01 === null || compScale01 === void 0 ? void 0 : compScale01[compIndex]) !== null && _k !== void 0 ? _k : 0);
+                                    var scale10 = comp.scale10 + ((_l = compScale10 === null || compScale10 === void 0 ? void 0 : compScale10[compIndex]) !== null && _l !== void 0 ? _l : 0);
+                                    var oy = comp.ytranslate + ((_m = compDy === null || compDy === void 0 ? void 0 : compDy[compIndex]) !== null && _m !== void 0 ? _m : 0);
+                                    return (px * scale01) + (py * yscale) + oy;
+                                }
+                            }
                             var oy = compIndex >= 0 && compDy ? (compDy[compIndex] !== undefined ? compDy[compIndex] : 0) : 0;
                             return base_1.getYCoordinate(p) + ((dy_1[p] !== undefined ? dy_1[p] : 0)) + oy;
                         },

@@ -108,6 +108,25 @@ export class GlyfCompositeComp {
         return this.xscale !== 1 || this.yscale !== 1 || this.scale01 !== 0 || this.scale10 !== 0;
     }
 
+    hasScale(): boolean {
+        return (this.flags & GlyfCompositeComp.WE_HAVE_A_SCALE) !== 0;
+    }
+
+    hasXYScale(): boolean {
+        return (this.flags & GlyfCompositeComp.WE_HAVE_AN_X_AND_Y_SCALE) !== 0;
+    }
+
+    hasTwoByTwo(): boolean {
+        return (this.flags & GlyfCompositeComp.WE_HAVE_A_TWO_BY_TWO) !== 0;
+    }
+
+    getTransformSlotCount(): number {
+        if (this.hasTwoByTwo()) return 2;
+        if (this.hasXYScale()) return 1;
+        if (this.hasScale()) return 1;
+        return 0;
+    }
+
     transformDelta(dx: number, dy: number): { dx: number; dy: number } {
         return {
             dx: (dx * this.xscale) + (dy * this.scale10),

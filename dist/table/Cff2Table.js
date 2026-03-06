@@ -202,8 +202,6 @@ var Cff2Table = /** @class */ (function () {
         var contourOpen = false;
         var stemCount = 0;
         var vsIndex = 0;
-        var widthUsed = false;
-        var widthLocked = false;
         var stack = [];
         var gsubrs = this.globalSubrs;
         var lsubrs = localSubrs;
@@ -281,7 +279,7 @@ var Cff2Table = /** @class */ (function () {
                 if (!s)
                     continue;
                 for (var i = 0; i < n; i++) {
-                    out[i] += deltas[r * n + i] * s;
+                    out[i] += deltas[i * regionCount + r] * s;
                 }
             }
             stack.push.apply(stack, out);
@@ -290,6 +288,9 @@ var Cff2Table = /** @class */ (function () {
                     type: 'blend',
                     vsIndex: vsIndexValue,
                     n: n,
+                    coords: coords.slice(),
+                    regionIndices: regionIndices.slice(),
+                    regionScalars: regionScalars.slice(),
                     base: base.slice(),
                     deltas: deltas.slice(),
                     out: out.slice()
@@ -312,35 +313,15 @@ var Cff2Table = /** @class */ (function () {
                     return { value: void 0 };
                 }
                 var args = stack.splice(0, stack.length);
-                var tryConsumeWidthOdd = function (lockAfter) {
-                    if (!widthLocked && !widthUsed && args.length % 2 === 1) {
-                        args.shift();
-                        widthUsed = true;
-                    }
-                    if (lockAfter || widthUsed) {
-                        widthLocked = true;
-                    }
-                };
-                var tryConsumeWidthMoreThanOne = function (lockAfter) {
-                    if (!widthLocked && !widthUsed && args.length > 1) {
-                        args.shift();
-                        widthUsed = true;
-                    }
-                    if (lockAfter || widthUsed) {
-                        widthLocked = true;
-                    }
-                };
                 switch (b0) {
                     case 1:
                     case 3:
                     case 18:
                     case 23: {
-                        tryConsumeWidthOdd(false);
                         stemCount += Math.floor(args.length / 2);
                         break;
                     }
                     case 4: {
-                        tryConsumeWidthMoreThanOne(true);
                         closeContour();
                         var dy = (_a = args.pop()) !== null && _a !== void 0 ? _a : 0;
                         y += dy;
@@ -403,14 +384,12 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 19:
                     case 20: {
-                        tryConsumeWidthOdd(false);
                         stemCount += Math.floor(args.length / 2);
                         var maskBytes = Math.ceil(stemCount / 8);
                         i += Math.min(maskBytes, bytes.length - i);
                         break;
                     }
                     case 21: {
-                        tryConsumeWidthOdd(true);
                         closeContour();
                         var dy = (_l = args.pop()) !== null && _l !== void 0 ? _l : 0;
                         var dx = (_m = args.pop()) !== null && _m !== void 0 ? _m : 0;
@@ -421,7 +400,6 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 22: {
-                        tryConsumeWidthMoreThanOne(true);
                         closeContour();
                         var dx = (_o = args.pop()) !== null && _o !== void 0 ? _o : 0;
                         x += dx;

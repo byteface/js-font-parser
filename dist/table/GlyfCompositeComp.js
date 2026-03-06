@@ -89,6 +89,24 @@ var GlyfCompositeComp = /** @class */ (function () {
     GlyfCompositeComp.prototype.hasTransform = function () {
         return this.xscale !== 1 || this.yscale !== 1 || this.scale01 !== 0 || this.scale10 !== 0;
     };
+    GlyfCompositeComp.prototype.hasScale = function () {
+        return (this.flags & GlyfCompositeComp.WE_HAVE_A_SCALE) !== 0;
+    };
+    GlyfCompositeComp.prototype.hasXYScale = function () {
+        return (this.flags & GlyfCompositeComp.WE_HAVE_AN_X_AND_Y_SCALE) !== 0;
+    };
+    GlyfCompositeComp.prototype.hasTwoByTwo = function () {
+        return (this.flags & GlyfCompositeComp.WE_HAVE_A_TWO_BY_TWO) !== 0;
+    };
+    GlyfCompositeComp.prototype.getTransformSlotCount = function () {
+        if (this.hasTwoByTwo())
+            return 2;
+        if (this.hasXYScale())
+            return 1;
+        if (this.hasScale())
+            return 1;
+        return 0;
+    };
     GlyfCompositeComp.prototype.transformDelta = function (dx, dy) {
         return {
             dx: (dx * this.xscale) + (dy * this.scale10),

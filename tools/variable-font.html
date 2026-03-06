@@ -101,6 +101,13 @@
             <input id="debugContours" type="checkbox" />
             Debug contours
         </label>
+        <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:normal;">
+            <input id="debugCff2" type="checkbox" />
+            CFF2 trace
+        </label>
+        <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:normal;">
+            <button id="dumpCff2" type="button">Dump CFF2 blends</button>
+        </label>
     </div>
 
     <div class="layout">
@@ -145,6 +152,8 @@
         const status = document.getElementById('status');
         const enableGvar = document.getElementById('enableGvar');
         const debugContours = document.getElementById('debugContours');
+        const debugCff2 = document.getElementById('debugCff2');
+        const dumpCff2 = document.getElementById('dumpCff2');
         const soloAxis = document.getElementById('soloAxis');
         const swapAxes = document.getElementById('swapAxes');
         const lockOrigin = document.getElementById('lockOrigin');
@@ -157,6 +166,35 @@
         const logDeltas = true;
         let loggedVstore = false;
         let baselinePoints = null;
+        let dumpCff2Trace = false;
+        let lastMainCff2Trace = [];
+
+        function summarizeCff2Event(evt) {
+            if (!evt || typeof evt !== 'object') return evt;
+            if (evt.type !== 'blend') {
+                return {
+                    type: evt.type,
+                    op: evt.op,
+                    argsLen: Array.isArray(evt.args) ? evt.args.length : 0,
+                    argsTail: Array.isArray(evt.args) ? evt.args.slice(-12) : []
+                };
+            }
+            const base = Array.isArray(evt.base) ? evt.base : [];
+            const out = Array.isArray(evt.out) ? evt.out : [];
+            const delta = out.map((v, i) => +(v - (base[i] ?? 0)).toFixed(4));
+            return {
+                type: 'blend',
+                vsIndex: evt.vsIndex,
+                n: evt.n,
+                regionCount: Array.isArray(evt.deltas) && evt.n ? Math.max(0, (evt.deltas.length / evt.n)) : null,
+                coords: Array.isArray(evt.coords) ? evt.coords.map(v => +Number(v).toFixed(4)) : [],
+                regionIndices: Array.isArray(evt.regionIndices) ? evt.regionIndices.slice(0, 12) : [],
+                regionScalars: Array.isArray(evt.regionScalars) ? evt.regionScalars.map(v => +Number(v).toFixed(6)) : [],
+                base: base.slice(0, 12),
+                out: out.slice(0, 12),
+                delta: delta.slice(0, 12)
+            };
+        }
 
         const fonts = [
             { name: 'Source Serif 4 Variable (CFF2)', url: '../truetypefonts/OTF/source-serif4/SourceSerif4Variable-Roman.otf' },
@@ -272,6 +310,30 @@
             const head = font.getTableByType(Table.head);
             const unitsPerEm = head?.unitsPerEm ?? 1000;
             const scale = 160 / unitsPerEm;
+            const hasCff2 = !!font.getTableByType(Table.CFF2);
+            const liveCoords = axes.map((axis, idx) => {
+                const value = (soloAxis.checked && idx > 0) ? axis.defaultValue : axis.value;
+                const norm = value === axis.defaultValue
+                    ? 0
+                    : value > axis.defaultValue
+                        ? (value - axis.defaultValue) / (axis.maxValue - axis.defaultValue)
+                        : (value - axis.defaultValue) / (axis.defaultValue - axis.minValue);
+                return Math.max(-1, Math.min(1, norm));
+            });
+            if (swapAxes.checked && liveCoords.length > 1) {
+                liveCoords.reverse();
+            }
+            // Keep CFF2 coords in sync even on re-renders triggered by debug buttons.
+            if (enableGvar.checked && hasCff2 && typeof font.setVariationCoords === 'function') {
+                font.setVariationCoords(liveCoords);
+            }
+            if (debugCff2.checked && font.getTableByType(Table.CFF2)) {
+                window.__CFF2_TRACE = [];
+                window.__CFF2_DEBUG = true;
+            } else {
+                window.__CFF2_DEBUG = false;
+                lastMainCff2Trace = [];
+            }
             if (debugContours.checked) {
                 const glyph = font.getGlyphByChar ? font.getGlyphByChar('A') : null;
                 let ox = 60;
@@ -327,6 +389,9 @@
                     styles: { fillStyle: '#2f4f7a', strokeStyle: '#2f4f7a', lineWidth: 1 }
                 });
             }
+            if (debugCff2.checked && Array.isArray(window.__CFF2_TRACE)) {
+                lastMainCff2Trace = window.__CFF2_TRACE.slice();
+            }
 
             const glyph = font.getGlyphByChar ? font.getGlyphByChar('H') : null;
             let maxDelta = 0;
@@ -343,16 +408,20 @@
                 }
             }
             const axisSummary = axes.map(axis => `${axis.name}=${axis.value}`).join(', ');
-            const coords = axes.map(axis => {
-                const norm = axis.value === axis.defaultValue
-                    ? 0
-                    : axis.value > axis.defaultValue
-                        ? (axis.value - axis.defaultValue) / (axis.maxValue - axis.defaultValue)
-                        : (axis.value - axis.defaultValue) / (axis.defaultValue - axis.minValue);
-                return Math.max(-1, Math.min(1, norm)).toFixed(2);
-            }).join(',');
+            const coords = liveCoords.map(v => v.toFixed(2)).join(',');
             const probeInfo = renderProbeGlyph();
             status.textContent = `fvar: ${font.getTableByType(Table.fvar) ? 'yes' : 'no'} | gvar: ${font.getTableByType(Table.gvar) ? 'yes' : 'no'} | cff2: ${font.getTableByType(Table.CFF2) ? 'yes' : 'no'} | max Δ: ${maxDelta.toFixed(2)} | coords: [${coords}]${axisSummary ? ' | ' + axisSummary : ''}${probeInfo ? ' | ' + probeInfo : ''}`;
+
+            if (dumpCff2Trace) {
+                dumpCff2Trace = false;
+                const trace = lastMainCff2Trace;
+                const last = trace.slice(-5);
+                console.log('CFF2 trace count:', trace.length);
+                console.log('CFF2 trace tail:', last);
+                console.log('CFF2 trace tail summary:', JSON.stringify(last.map(summarizeCff2Event), null, 2));
+                const blends = trace.filter(t => t?.type === 'blend').slice(-8);
+                console.log('CFF2 recent blends summary:', JSON.stringify(blends.map(summarizeCff2Event), null, 2));
+            }
         }
 
         function renderProbeGlyph() {
@@ -430,7 +499,7 @@
 
                 // draw baseline (default coords) in light gray for comparison
                 const restoreCoords = font.variationCoords ? font.variationCoords.slice() : [];
-                if (typeof font.setVariationCoords === 'function') {
+                if (typeof font.setVariationCoords === 'function' && !debugCff2.checked) {
                     font.setVariationCoords([]);
                     const baseGlyph = font.getGlyph(gid);
                     if (baseGlyph) {
@@ -617,11 +686,16 @@
         enableGvar.addEventListener('change', applyAxisValues);
         probeGlyphInput.addEventListener('input', renderText);
         debugContours.addEventListener('input', renderText);
+        debugCff2.addEventListener('input', renderText);
         soloAxis.addEventListener('input', applyAxisValues);
         swapAxes.addEventListener('input', applyAxisValues);
         lockOrigin.addEventListener('input', renderText);
         probeMaxBtn.addEventListener('click', findMaxDeltaGlyph);
         compareAxes.addEventListener('change', renderText);
+        dumpCff2.addEventListener('click', () => {
+            dumpCff2Trace = true;
+            renderText();
+        });
         axesMinBtn.addEventListener('click', () => setAllAxes('min'));
         axesMaxBtn.addEventListener('click', () => setAllAxes('max'));
         axesResetBtn.addEventListener('click', () => setAllAxes('default'));
