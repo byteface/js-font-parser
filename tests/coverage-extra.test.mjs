@@ -912,15 +912,46 @@ test('GPOS prefers mark-to-mark attachment before mark-to-base fallback', () => 
   const glyphIndices = [10, 20, 21];
   const positioned = [
     { glyphIndex: 10, xAdvance: 600, xOffset: 0, yOffset: 0, yAdvance: 0 },
-    { glyphIndex: 20, xAdvance: 0, xOffset: 0, yOffset: 0, yAdvance: 0 },
+    { glyphIndex: 20, xAdvance: 0, xOffset: 11, yOffset: 13, yAdvance: 0 },
     { glyphIndex: 21, xAdvance: 600, xOffset: 0, yOffset: 0, yAdvance: 0 }
   ];
 
   font.applyGposPositioning(glyphIndices, positioned, ['mark', 'mkmk'], ['DFLT']);
 
-  assert.equal(positioned[2].xOffset, 295);
-  assert.equal(positioned[2].yOffset, 393);
+  assert.equal(positioned[2].xOffset, 306);
+  assert.equal(positioned[2].yOffset, 406);
   assert.equal(positioned[2].xAdvance, 0);
+});
+
+test('GPOS mark attachment inherits base offsets before applying anchor deltas', () => {
+  const bytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
+  assert.ok(font instanceof FontParserTTF);
+
+  const markBase = Object.create(MarkBasePosFormat1.prototype);
+  markBase.markCoverage = { findGlyph: (gid) => (gid === 21 ? 0 : -1) };
+  markBase.markArray = {
+    marks: [{ markClass: 0, anchor: { x: 5, y: 7 } }]
+  };
+  markBase.baseCoverage = { findGlyph: (gid) => (gid === 10 ? 0 : -1) };
+  markBase.baseArray = {
+    baseRecords: [{ anchors: [{ x: 100, y: 100 }] }]
+  };
+
+  font.gpos = { getSubtablesForFeatures: () => [markBase] };
+  font.gdef = { getGlyphClass: (gid) => (gid === 21 ? 3 : 1) };
+
+  const glyphIndices = [10, 21];
+  const positioned = [
+    { glyphIndex: 10, xAdvance: 600, xOffset: 30, yOffset: -20, yAdvance: 0 },
+    { glyphIndex: 21, xAdvance: 600, xOffset: 0, yOffset: 0, yAdvance: 0 }
+  ];
+
+  font.applyGposPositioning(glyphIndices, positioned, ['mark'], ['DFLT']);
+
+  assert.equal(positioned[1].xOffset, 125);
+  assert.equal(positioned[1].yOffset, 73);
+  assert.equal(positioned[1].xAdvance, 0);
 });
 
 test('Arabic real-font GPOS applies stacked mark adjustments (Amiri fixture)', () => {

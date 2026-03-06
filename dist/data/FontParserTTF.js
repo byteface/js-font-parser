@@ -418,8 +418,9 @@ var FontParserTTF = /** @class */ (function () {
                 var prevAnchors = getAnchors(prevGid);
                 var mark2 = prevAnchors.find(function (a) { return a.type === 'mark2' && a.classIndex === markAnchor.classIndex; });
                 if (mark2) {
-                    positioned[i].xOffset += mark2.x - markAnchor.x;
-                    positioned[i].yOffset += mark2.y - markAnchor.y;
+                    // Inherit parent mark placement so stacked marks follow prior attachments.
+                    positioned[i].xOffset += ((positioned[prev] ? positioned[prev].xOffset : 0) || 0) + (mark2.x - markAnchor.x);
+                    positioned[i].yOffset += ((positioned[prev] ? positioned[prev].yOffset : 0) || 0) + (mark2.y - markAnchor.y);
                     positioned[i].xAdvance = 0;
                     attached = true;
                     break;
@@ -439,8 +440,9 @@ var FontParserTTF = /** @class */ (function () {
                 var baseAnchors = getAnchors(baseGid);
                 var baseAnchor = getBaseAnchor(baseAnchors, markAnchor.classIndex);
                 if (baseAnchor) {
-                    positioned[i].xOffset += baseAnchor.x - markAnchor.x;
-                    positioned[i].yOffset += baseAnchor.y - markAnchor.y;
+                    // Inherit base placement so mark anchors remain stable after prior GPOS shifts.
+                    positioned[i].xOffset += ((positioned[baseIndex] ? positioned[baseIndex].xOffset : 0) || 0) + (baseAnchor.x - markAnchor.x);
+                    positioned[i].yOffset += ((positioned[baseIndex] ? positioned[baseIndex].yOffset : 0) || 0) + (baseAnchor.y - markAnchor.y);
                     positioned[i].xAdvance = 0;
                     break;
                 }
