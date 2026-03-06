@@ -126,6 +126,11 @@ test('FontParser.fromArrayBuffer handles invalid and TTF buffers', () => {
   assert.ok(ttf.getGlyphIndexByChar('A') > 0);
 });
 
+test('FontParser.fromArrayBuffer rejects truncated WOFF buffers', () => {
+  const truncated = new Uint8Array([0x77, 0x4F, 0x46, 0x46, 0x00, 0x00, 0x00]); // "wOFF" + garbage
+  assert.throws(() => FontParser.fromArrayBuffer(truncated.buffer), /WOFF|RangeError|out of bounds/i);
+});
+
 test('FontParser.fromArrayBuffer detects WOFF and exposes metadata helpers', () => {
   const woffBytes = readBytes('truetypefonts/ubuntu.woff');
   const parsed = FontParser.fromArrayBuffer(toArrayBuffer(woffBytes));
@@ -396,6 +401,34 @@ test('Layout engine supports auto direction and soft hyphens', () => {
   assert.ok(layout.lines.length >= 1);
   const firstLineChars = layout.lines[0].glyphs.map(g => g.char).join('');
   assert.ok(firstLineChars.includes('-'), 'expected soft hyphen to insert "-"');
+});
+
+test('GPOS mark positioning attaches combining marks (if fixture present)', () => {
+  const candidates = [
+    'truetypefonts/gpos/NotoSansArabic-Regular.ttf',
+    'truetypefonts/gpos/NotoSansDevanagari-Regular.ttf',
+    'truetypefonts/gpos/Amiri-Regular.ttf'
+  ].map(p => path.resolve(__dirname, '..', p)).filter(p => fs.existsSync(p));
+
+  if (candidates.length === 0) {
+    // Fixture not present yet; skip without failing.
+    return;
+  }
+
+  const sample = 'a\u0301'; // Latin + combining acute
+  let sawOffset = false;
+
+  for (const file of candidates) {
+    const bytes = fs.readFileSync(file);
+    const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
+    const layout = font.layoutString(sample, { gsubFeatures: ['liga'], gpos: true });
+    if (layout.some(g => (g.xOffset ?? 0) !== 0 || (g.yOffset ?? 0) !== 0 || g.xAdvance === 0)) {
+      sawOffset = true;
+      break;
+    }
+  }
+
+  assert.ok(sawOffset, 'expected GPOS to attach combining mark with offsets');
 });
 
 test('Table access works for known tags on multiple font formats', () => {
