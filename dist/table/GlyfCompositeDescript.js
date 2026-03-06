@@ -47,6 +47,27 @@ var GlyfCompositeDescript = /** @class */ (function () {
         this.beingResolved = true;
         var firstIndex = 0;
         var firstContour = 0;
+        var getCompositePoint = (function (pointIndex, beforeComp) {
+            for (var _i = 0, _a = this.components; _i < _a.length; _i++) {
+                var c = _a[_i];
+                if (beforeComp && c === beforeComp)
+                    break;
+                if (pointIndex < c.firstIndex || pointIndex >= c.firstIndex + c.pointCount) {
+                    continue;
+                }
+                var desc = this.parentTable.getDescription(c.glyphIndex);
+                if (!desc)
+                    return null;
+                var localIndex = pointIndex - c.firstIndex;
+                var x = desc.getXCoordinate(localIndex);
+                var y = desc.getYCoordinate(localIndex);
+                return {
+                    x: c.scaleX(x, y) + c.xtranslate,
+                    y: c.scaleY(x, y) + c.ytranslate
+                };
+            }
+            return null;
+        }).bind(this);
         for (var _i = 0, _a = this.components; _i < _a.length; _i++) {
             var comp = _a[_i];
             comp.firstIndex = firstIndex;
@@ -56,6 +77,17 @@ var GlyfCompositeDescript = /** @class */ (function () {
                 desc.resolve();
                 comp.pointCount = desc.getPointCount();
                 comp.contourCount = desc.getContourCount();
+                if (!comp.isArgsAreXY()) {
+                    var parentPoint = getCompositePoint(comp.point1, comp);
+                    if (parentPoint) {
+                        var cx = desc.getXCoordinate(comp.point2);
+                        var cy = desc.getYCoordinate(comp.point2);
+                        var scaledX = comp.scaleX(cx, cy);
+                        var scaledY = comp.scaleY(cx, cy);
+                        comp.xtranslate = parentPoint.x - scaledX;
+                        comp.ytranslate = parentPoint.y - scaledY;
+                    }
+                }
                 firstIndex += comp.pointCount;
                 firstContour += comp.contourCount;
             }
