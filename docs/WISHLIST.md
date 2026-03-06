@@ -7,12 +7,13 @@
 4. **Full GPOS positioning across scripts** — mark‑to‑mark + base/ligature anchors improved; remaining: complex mark/ligature combos + script validation.
 5. **WOFF2 support** — decode Brotli‑compressed tables.
 
+## Done (recent)
+1. **Glyph SVG export batch** — implemented in `tools/svg-export.html` (chars/range/full-set batch + per-file download).
+2. **Metrics inspector** — expanded in `tools/metrics.html` (side-by-side font comparison + metric rulers).
+3. **Font table explorer** — expanded in `tools/tables.html` (table list with offsets/checksums + parsed/hex split view).
 
 ## New Wishlist (additional ideas)
 1. **Font diff tool** — compare two fonts and highlight glyph/metric/table differences.
-2. **Glyph SVG export batch** — export selected glyphs or full set as individual SVG files.
 5. **Glyph path simplifier** — reduce points while preserving shape (for optimization).
 6. **Auto‑hinting preview** — show hinted vs unhinted outlines (visual diff).
-7. **Metrics inspector** — visualize ascender/descender/x‑height/cap height on glyphs.
 8. **Baseline/grid overlay demo** — configurable typographic grid for layout debugging.
-9. **Font table explorer** — raw table viewer with offsets/hex + parsed summary side‑by‑side.

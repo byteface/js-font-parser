@@ -3,227 +3,223 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Font Metrics Demo</title>
+  <title>Font Metrics Inspector</title>
   <style>
-    :root {
-      --bg: #f2efe9;
-      --ink: #1e1b16;
-      --muted: #6a5f57;
-      --panel: #ffffff;
-      --border: #e5ded6;
-      --accent: #7b4d2a;
-    }
-    body {
-      margin: 0;
-      font-family: "Cormorant Garamond", "Georgia", serif;
-      background: var(--bg);
-      color: var(--ink);
-    }
-    header {
-      padding: 22px 20px 10px;
-    }
-    h1 { margin: 0 0 6px; font-size: 28px; }
-    p { margin: 0 0 14px; color: var(--muted); }
-    .wrap {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 16px;
-      padding: 16px 20px 32px;
-    }
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-    }
-    canvas {
-      width: 100%;
-      height: 260px;
-      border: 1px dashed var(--border);
-      border-radius: 10px;
-      background: #fffaf5;
-    }
-    label { font-size: 12px; color: var(--muted); display:block; margin: 6px 0 4px; }
-    select, input {
-      width: 100%;
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      font-size: 14px;
-      box-sizing: border-box;
-    }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .meta {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 12px;
-      color: var(--muted);
-      white-space: pre-wrap;
-      background: #fbf8f3;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px;
-    }
+    :root { --bg:#f2efe9; --ink:#1e1b16; --muted:#6a5f57; --panel:#fff; --border:#e5ded6; --accent:#7b4d2a; }
+    body { margin:0; font-family:"Cormorant Garamond", Georgia, serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:28px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    .wrap { display:grid; gap:16px; padding:16px 20px 32px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
+    label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
+    select, input { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); box-sizing:border-box; }
+    .compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    canvas { width:100%; height:240px; border:1px dashed var(--border); border-radius:10px; background:#fffaf5; }
+    .meta { font-family:ui-monospace, Menlo, monospace; font-size:12px; color:var(--muted); white-space:pre-wrap; background:#fbf8f3; border:1px solid var(--border); border-radius:10px; padding:10px; margin-top:8px; }
+    @media (max-width: 900px) { .compare-grid { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
 <div data-nav="main"></div>
-
   <header>
-    <h1>Font Metrics Demo</h1>
-    <p>Visualize ascender/descender, baseline, advance widths, and glyph bounds.</p>
+    <h1>Metrics Inspector</h1>
+    <p>Compare two fonts side-by-side for glyph and text metrics, baseline, ascender, descender, x-height, and cap-height.</p>
   </header>
-
   <div class="wrap">
-    <div class="panel">
-      <div class="row">
+    <section class="panel">
+      <div class="controls">
         <div>
-          <label for="fontSelect">Font</label>
-          <select id="fontSelect">
-            <option value="../truetypefonts/DiscoMo.ttf">DiscoMo.ttf</option>
-            <option value="../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf">DevilInside-G3xP.ttf</option>
-            <option value="../truetypefonts/noto/NotoSans-Regular.ttf">NotoSans-Regular.ttf</option>
-            <option value="../truetypefonts/noto/NotoSansHebrew-Regular.ttf">NotoSansHebrew-Regular.ttf</option>
-            <option value="../truetypefonts/noto/NotoSansDevanagari-Regular.ttf">NotoSansDevanagari-Regular.ttf</option>
-            <option value="../truetypefonts/noto/NotoSansThaiLooped-Regular.ttf">NotoSansThaiLooped-Regular.ttf</option>
-          </select>
+          <label for="fontA">Font A</label>
+          <select id="fontA"></select>
+        </div>
+        <div>
+          <label for="fontB">Font B</label>
+          <select id="fontB"></select>
         </div>
         <div>
           <label for="scaleInput">Scale</label>
-          <input id="scaleInput" type="number" min="0.02" max="0.5" step="0.01" value="0.12" />
+          <input id="scaleInput" type="number" min="0.02" max="0.6" step="0.01" value="0.12" />
+        </div>
+        <div>
+          <label for="charInput">Single Character</label>
+          <input id="charInput" value="A" maxlength="2" />
+        </div>
+        <div style="grid-column: span 2;">
+          <label for="textInput">Sentence</label>
+          <input id="textInput" value="The quick brown fox jumps over the lazy dog" />
         </div>
       </div>
+    </section>
 
-      <label for="charInput">Single Character</label>
-      <input id="charInput" value="A" maxlength="2" />
+    <section class="panel">
+      <div class="compare-grid">
+        <div>
+          <canvas id="charCanvasA" width="900" height="260"></canvas>
+          <div id="charMetaA" class="meta"></div>
+        </div>
+        <div>
+          <canvas id="charCanvasB" width="900" height="260"></canvas>
+          <div id="charMetaB" class="meta"></div>
+        </div>
+      </div>
+    </section>
 
-      <label for="textInput">Sentence</label>
-      <input id="textInput" value="The quick brown fox jumps over the lazy dog" />
-    </div>
-
-    <div class="panel">
-      <canvas id="charCanvas" width="900" height="260"></canvas>
-      <div id="charMeta" class="meta"></div>
-    </div>
-
-    <div class="panel">
-      <canvas id="textCanvas" width="900" height="260"></canvas>
-      <div id="textMeta" class="meta"></div>
-    </div>
+    <section class="panel">
+      <div class="compare-grid">
+        <div>
+          <canvas id="textCanvasA" width="900" height="260"></canvas>
+          <div id="textMetaA" class="meta"></div>
+        </div>
+        <div>
+          <canvas id="textCanvasB" width="900" height="260"></canvas>
+          <div id="textMetaB" class="meta"></div>
+        </div>
+      </div>
+    </section>
   </div>
 
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+    import { getFontList } from './shared/font-catalog.js';
 
-    const fontSelect = document.getElementById('fontSelect');
-    const scaleInput = document.getElementById('scaleInput');
-    const charInput = document.getElementById('charInput');
-    const textInput = document.getElementById('textInput');
+    const ui = {
+      fontA: document.getElementById('fontA'),
+      fontB: document.getElementById('fontB'),
+      scaleInput: document.getElementById('scaleInput'),
+      charInput: document.getElementById('charInput'),
+      textInput: document.getElementById('textInput'),
+      charCanvasA: document.getElementById('charCanvasA'),
+      charCanvasB: document.getElementById('charCanvasB'),
+      textCanvasA: document.getElementById('textCanvasA'),
+      textCanvasB: document.getElementById('textCanvasB'),
+      charMetaA: document.getElementById('charMetaA'),
+      charMetaB: document.getElementById('charMetaB'),
+      textMetaA: document.getElementById('textMetaA'),
+      textMetaB: document.getElementById('textMetaB')
+    };
 
-    const charCanvas = document.getElementById('charCanvas');
-    const textCanvas = document.getElementById('textCanvas');
-    const charMeta = document.getElementById('charMeta');
-    const textMeta = document.getElementById('textMeta');
+    const fonts = getFontList('featureMatrix');
+    const cache = new Map();
+    let fontA = null;
+    let fontB = null;
 
-    let font = null;
-
-    async function loadFont() {
-      font = await FontParser.load(fontSelect.value);
-      render();
+    function populate() {
+      [ui.fontA, ui.fontB].forEach((select, idx) => {
+        select.innerHTML = '';
+        fonts.forEach((f, i) => {
+          const opt = document.createElement('option');
+          opt.value = String(i);
+          opt.textContent = f.name;
+          select.appendChild(opt);
+        });
+        select.value = String(Math.min(idx, fonts.length - 1));
+      });
     }
 
-    function drawRulers(ctx, width, height, baselineY, ascenderY, descenderY) {
+    async function loadFont(url) {
+      if (cache.has(url)) return cache.get(url);
+      const parsed = await FontParser.load(url);
+      cache.set(url, parsed);
+      return parsed;
+    }
+
+    function drawRulers(ctx, width, baselineY, ascenderY, descenderY, xHeightY, capHeightY) {
       ctx.save();
-      ctx.strokeStyle = '#c7b9aa';
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
-
-      // baseline
-      ctx.beginPath();
-      ctx.moveTo(0, baselineY);
-      ctx.lineTo(width, baselineY);
-      ctx.stroke();
-
-      // ascender
-      ctx.beginPath();
-      ctx.moveTo(0, ascenderY);
-      ctx.lineTo(width, ascenderY);
-      ctx.stroke();
-
-      // descender
-      ctx.beginPath();
-      ctx.moveTo(0, descenderY);
-      ctx.lineTo(width, descenderY);
-      ctx.stroke();
-
+      ctx.strokeStyle = '#c7b9aa';
+      [[baselineY, '#af814f'], [ascenderY, '#4b8ba1'], [descenderY, '#9e5858'], [xHeightY, '#7895bf'], [capHeightY, '#89a064']]
+        .forEach(([y, color]) => {
+          if (typeof y !== 'number' || !Number.isFinite(y)) return;
+          ctx.strokeStyle = color;
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        });
       ctx.restore();
     }
 
-    function renderChar() {
-      const ctx = charCanvas.getContext('2d');
-      ctx.clearRect(0, 0, charCanvas.width, charCanvas.height);
-
-      const scale = parseFloat(scaleInput.value);
-      const ch = charInput.value || 'A';
+    function renderChar(font, canvas, metaEl, color) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const scale = parseFloat(ui.scaleInput.value);
+      const ch = ui.charInput.value || 'A';
       const glyph = font.getGlyphByChar(ch);
-      if (!glyph) return;
+      if (!glyph) {
+        metaEl.textContent = `Missing glyph for "${ch}"`;
+        return;
+      }
 
       const ascent = font.getAscent();
       const descent = font.getDescent();
+      const os2 = font.getOs2Metrics?.() || null;
       const baselineY = 180;
-      const ascenderY = baselineY - ascent * scale;
-      const descenderY = baselineY - descent * scale;
-
-      drawRulers(ctx, charCanvas.width, charCanvas.height, baselineY, ascenderY, descenderY);
+      const ascY = baselineY - ascent * scale;
+      const descY = baselineY - descent * scale;
+      const xHeightY = os2?.xHeight != null ? baselineY - os2.xHeight * scale : NaN;
+      const capHeightY = os2?.capHeight != null ? baselineY - os2.capHeight * scale : NaN;
+      drawRulers(ctx, canvas.width, baselineY, ascY, descY, xHeightY, capHeightY);
 
       CanvasRenderer.drawGlyphToContext(ctx, glyph, {
         x: 80,
         y: baselineY,
         scale,
-        styles: { fillStyle: '#1e1b16', strokeStyle: '#1e1b16', lineWidth: 1 }
+        styles: { fillStyle: color, strokeStyle: color, lineWidth: 1 }
       });
 
-      charMeta.textContent = `Glyph index: ${font.getGlyphIndexByChar(ch)}\nAdvance width: ${glyph.advanceWidth}\nLeft side bearing: ${glyph.leftSideBearing}\nAscent: ${ascent}\nDescent: ${descent}`;
+      metaEl.textContent = `Glyph index: ${font.getGlyphIndexByChar(ch)}\nAdvance width: ${glyph.advanceWidth}\nLeft side bearing: ${glyph.leftSideBearing}\nAscent: ${ascent}\nDescent: ${descent}\nxHeight: ${os2?.xHeight ?? 'n/a'}\nCapHeight: ${os2?.capHeight ?? 'n/a'}`;
     }
 
-    function renderText() {
-      const ctx = textCanvas.getContext('2d');
-      ctx.clearRect(0, 0, textCanvas.width, textCanvas.height);
-
-      const scale = parseFloat(scaleInput.value);
-      const text = textInput.value || '';
+    function renderText(font, canvas, metaEl, color) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const scale = parseFloat(ui.scaleInput.value);
+      const text = ui.textInput.value || '';
       const ascent = font.getAscent();
       const descent = font.getDescent();
+      const os2 = font.getOs2Metrics?.() || null;
       const baselineY = 180;
-      const ascenderY = baselineY - ascent * scale;
-      const descenderY = baselineY - descent * scale;
-
-      drawRulers(ctx, textCanvas.width, textCanvas.height, baselineY, ascenderY, descenderY);
+      const ascY = baselineY - ascent * scale;
+      const descY = baselineY - descent * scale;
+      const xHeightY = os2?.xHeight != null ? baselineY - os2.xHeight * scale : NaN;
+      const capHeightY = os2?.capHeight != null ? baselineY - os2.capHeight * scale : NaN;
+      drawRulers(ctx, canvas.width, baselineY, ascY, descY, xHeightY, capHeightY);
 
       const layout = font.layoutString(text, { gsubFeatures: ['liga'] });
-      CanvasRenderer.drawLayout(font, layout, textCanvas, {
+      CanvasRenderer.drawLayout(font, layout, canvas, {
         x: 40,
         y: baselineY,
         scale,
-        styles: { fillStyle: '#1e1b16', strokeStyle: '#1e1b16', lineWidth: 1 }
+        styles: { fillStyle: color, strokeStyle: color, lineWidth: 1 }
       });
 
       const advanceTotal = layout.reduce((sum, g) => sum + g.xAdvance, 0);
-      textMeta.textContent = `Glyphs: ${layout.length}\nAdvance sum: ${advanceTotal}\nAscent: ${ascent}\nDescent: ${descent}`;
+      metaEl.textContent = `Glyphs: ${layout.length}\nAdvance sum: ${advanceTotal}\nAscent: ${ascent}\nDescent: ${descent}\nxHeight: ${os2?.xHeight ?? 'n/a'}\nCapHeight: ${os2?.capHeight ?? 'n/a'}`;
     }
 
     function render() {
-      if (!font) return;
-      renderChar();
-      renderText();
+      if (!fontA || !fontB) return;
+      renderChar(fontA, ui.charCanvasA, ui.charMetaA, '#1e1b16');
+      renderChar(fontB, ui.charCanvasB, ui.charMetaB, '#5b2f1c');
+      renderText(fontA, ui.textCanvasA, ui.textMetaA, '#1e1b16');
+      renderText(fontB, ui.textCanvasB, ui.textMetaB, '#5b2f1c');
     }
 
-    fontSelect.addEventListener('change', loadFont);
-    scaleInput.addEventListener('input', render);
-    charInput.addEventListener('input', render);
-    textInput.addEventListener('input', render);
+    async function loadBoth() {
+      fontA = await loadFont(fonts[Number(ui.fontA.value)]?.url ?? fonts[0].url);
+      fontB = await loadFont(fonts[Number(ui.fontB.value)]?.url ?? fonts[0].url);
+      render();
+    }
 
-    loadFont();
+    populate();
+    loadBoth();
+
+    [ui.fontA, ui.fontB].forEach(el => el.addEventListener('change', loadBoth));
+    [ui.scaleInput, ui.charInput, ui.textInput].forEach(el => el.addEventListener('input', render));
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>

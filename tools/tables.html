@@ -3,120 +3,96 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Font Tables Overview</title>
+  <title>Font Table Explorer</title>
   <style>
-    :root {
-      color-scheme: light;
-      --bg: #f2f3f7;
-      --ink: #1e1f24;
-      --muted: #5b6170;
-      --panel: #ffffff;
-      --accent: #2f5e8a;
-      --border: #e3e6ee;
-    }
-    body {
-      margin: 0;
-      font-family: "Source Serif 4", "Georgia", serif;
-      background: radial-gradient(circle at 20% 10%, #ffffff, var(--bg));
-      color: var(--ink);
-    }
-    header {
-      padding: 24px 20px 6px 20px;
-    }
-    h1 {
-      margin: 0 0 6px 0;
-      font-size: 28px;
-      font-weight: 700;
-    }
-    p {
-      margin: 0 0 16px 0;
-      color: var(--muted);
-    }
-    .grid {
-      padding: 16px 20px 32px 20px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 16px;
-    }
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 14px 16px;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
-    }
-    .card h2 {
-      margin: 0 0 8px 0;
-      font-size: 18px;
-      color: var(--accent);
-    }
-    .desc {
-      color: var(--muted);
-      margin: 0 0 10px 0;
-    }
-    pre {
-      background: #f7f9fc;
-      border: 1px solid #e6ecf3;
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 12px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      max-height: 320px;
-      overflow: auto;
-    }
-    .missing {
-      color: #a14d4d;
-      font-style: italic;
+    :root { --bg:#f3f4f8; --ink:#1d2129; --muted:#5e6776; --panel:#fff; --border:#dfe4ee; --accent:#2e5f90; }
+    body { margin:0; font-family:"Source Serif 4", Georgia, serif; background:radial-gradient(circle at 15% 10%, #fff, var(--bg)); color:var(--ink); }
+    header { padding:20px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:28px; }
+    p { margin:0 0 12px; color:var(--muted); }
+    .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
+    select, input { padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    .layout { padding:12px 20px 32px; display:grid; grid-template-columns:minmax(220px,280px) 1fr; gap:14px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+    .panel h2 { margin:0; font-size:14px; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); padding:10px 12px; border-bottom:1px solid var(--border); }
+    .table-list { max-height:68vh; overflow:auto; }
+    .table-item { border:0; border-bottom:1px solid #edf1f7; width:100%; text-align:left; background:#fff; padding:10px 12px; cursor:pointer; }
+    .table-item strong { font-family:ui-monospace, Menlo, monospace; }
+    .table-item small { display:block; color:var(--muted); margin-top:3px; }
+    .table-item.active { background:#eef5ff; }
+    .detail { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:12px; }
+    .cell { border:1px solid var(--border); border-radius:10px; overflow:hidden; background:#fbfcff; min-height:420px; }
+    .cell-head { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); background:#f6f8fd; padding:8px 10px; font-size:12px; color:var(--muted); }
+    pre { margin:0; padding:10px; max-height:58vh; overflow:auto; font-size:12px; line-height:1.45; font-family:ui-monospace, Menlo, monospace; }
+    .meta { color:var(--muted); font-size:12px; padding:0 12px 12px; }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns:1fr; }
+      .detail { grid-template-columns:1fr; }
+      .table-list { max-height:240px; }
     }
   </style>
 </head>
 <body>
 <div data-nav="main"></div>
-
   <header>
-    <h1>Font Tables Overview</h1>
-    <p>Quick summaries of parsed tables for a selected font.</p>
-    <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
-      <label style="font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:#5b6170;">
-        Font
-        <select id="fontSelect" style="margin-left:8px; padding:6px 10px; border-radius:8px; border:1px solid var(--border); background:#fff;">
-        </select>
+    <h1>Font Table Explorer</h1>
+    <p>Inspect parsed table summaries alongside raw table bytes and offsets.</p>
+    <div class="controls">
+      <label>Font
+        <select id="fontSelect"></select>
+      </label>
+      <label>Hex bytes shown
+        <input id="byteLimit" type="number" min="64" max="16384" step="64" value="2048" />
       </label>
     </div>
   </header>
-  <div id="grid" class="grid"></div>
+  <div class="layout">
+    <section class="panel">
+      <h2>Tables</h2>
+      <div id="tableList" class="table-list"></div>
+    </section>
+    <section class="panel">
+      <h2 id="detailTitle">Details</h2>
+      <div id="detail" class="detail"></div>
+    </section>
+  </div>
 
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { getFontList } from './shared/font-catalog.js';
-    import { Table } from '../dist/table/Table.js';
 
-    const grid = document.getElementById('grid');
     const fontSelect = document.getElementById('fontSelect');
+    const byteLimit = document.getElementById('byteLimit');
+    const tableList = document.getElementById('tableList');
+    const detail = document.getElementById('detail');
+    const detailTitle = document.getElementById('detailTitle');
     const fonts = getFontList('featureMatrix');
 
-    const tableSpecs = [
-      { tag: Table.cmap, name: 'cmap', desc: 'Character to glyph mapping.' },
-      { tag: Table.head, name: 'head', desc: 'Font header and global metrics.' },
-      { tag: Table.hhea, name: 'hhea', desc: 'Horizontal header.' },
-      { tag: Table.hmtx, name: 'hmtx', desc: 'Horizontal metrics.' },
-      { tag: Table.maxp, name: 'maxp', desc: 'Maximum profile (glyph counts).'},
-      { tag: Table.pName, name: 'name', desc: 'Naming records.' },
-      { tag: Table.post, name: 'post', desc: 'PostScript information.' },
-      { tag: Table.OS_2, name: 'OS/2', desc: 'OS/2 and Windows metrics.' },
-      { tag: Table.loca, name: 'loca', desc: 'Glyph locations.' },
-      { tag: Table.glyf, name: 'glyf', desc: 'Glyph outlines (TrueType).' },
-      { tag: Table.kern, name: 'kern', desc: 'Kerning pairs.' },
-      { tag: Table.GSUB, name: 'GSUB', desc: 'Glyph substitution.' },
-      { tag: Table.GPOS, name: 'GPOS', desc: 'Glyph positioning.' },
-      { tag: Table.CPAL, name: 'CPAL', desc: 'Color palette table.' },
-      { tag: Table.COLR, name: 'COLR', desc: 'Color glyph layers.' },
-      { tag: Table.SVG, name: 'SVG ', desc: 'Embedded SVG glyphs.' },
-      { tag: Table.cvt, name: 'cvt ', desc: 'Control value table (hinting).'},
-      { tag: Table.fpgm, name: 'fpgm', desc: 'Font program (hinting).'},
-      { tag: Table.prep, name: 'prep', desc: 'Control value program.' },
-    ];
+    let parsedFont = null;
+    let records = [];
+    let rawBytes = null;
+    let selectedTag = null;
+
+    function tagToString(tag) {
+      return String.fromCharCode((tag >>> 24) & 255, (tag >>> 16) & 255, (tag >>> 8) & 255, tag & 255);
+    }
+
+    function parseTableRecords(buffer) {
+      const view = new DataView(buffer);
+      const numTables = view.getUint16(4);
+      const out = [];
+      let p = 12;
+      for (let i = 0; i < numTables; i++) {
+        const tag = view.getUint32(p);
+        const checkSum = view.getUint32(p + 4);
+        const offset = view.getUint32(p + 8);
+        const length = view.getUint32(p + 12);
+        out.push({ tag, tagText: tagToString(tag), checkSum, offset, length });
+        p += 16;
+      }
+      out.sort((a, b) => a.tagText.localeCompare(b.tagText));
+      return out;
+    }
 
     function summarizeValue(value) {
       if (value == null) return null;
@@ -127,32 +103,72 @@
 
     function summarizeTable(table) {
       if (!table) return null;
-      const output = {};
-      for (const key of Object.keys(table)) {
-        output[key] = summarizeValue(table[key]);
-      }
-      return output;
+      const out = {};
+      for (const key of Object.keys(table)) out[key] = summarizeValue(table[key]);
+      return out;
     }
 
-    function renderCard(spec, table) {
-      const card = document.createElement('div');
-      card.className = 'card';
-      const heading = `${spec.name}`;
-      card.innerHTML = `<h2>${heading}</h2><p class="desc">${spec.desc}</p>`;
+    function toHexDump(bytes, startOffset) {
+      const lines = [];
+      for (let i = 0; i < bytes.length; i += 16) {
+        const chunk = bytes.slice(i, i + 16);
+        const hex = Array.from(chunk).map(v => v.toString(16).padStart(2, '0')).join(' ');
+        const ascii = Array.from(chunk).map(v => (v >= 32 && v <= 126 ? String.fromCharCode(v) : '.')).join('');
+        lines.push(`${(startOffset + i).toString(16).padStart(8, '0')}  ${hex.padEnd(47, ' ')}  ${ascii}`);
+      }
+      return lines.join('\n');
+    }
 
-      if (!table) {
-        const missing = document.createElement('div');
-        missing.className = 'missing';
-        missing.textContent = 'Table not present in this font.';
-        card.appendChild(missing);
-        grid.appendChild(card);
+    function renderTableList() {
+      tableList.innerHTML = '';
+      records.forEach(r => {
+        const btn = document.createElement('button');
+        btn.className = `table-item${r.tag === selectedTag ? ' active' : ''}`;
+        btn.innerHTML = `<strong>${r.tagText}</strong> <small>offset: ${r.offset} • length: ${r.length} • checksum: 0x${r.checkSum.toString(16).padStart(8, '0')}</small>`;
+        btn.addEventListener('click', () => {
+          selectedTag = r.tag;
+          renderTableList();
+          renderDetail();
+        });
+        tableList.appendChild(btn);
+      });
+    }
+
+    function renderDetail() {
+      const rec = records.find(r => r.tag === selectedTag);
+      if (!rec) {
+        detail.innerHTML = '<div class="meta">No table selected.</div>';
         return;
       }
+      detailTitle.textContent = `Details — ${rec.tagText}`;
+      const table = parsedFont.getTableByType(rec.tag);
+      const parsed = table ? JSON.stringify(summarizeTable(table), null, 2) : 'Table not parsed by current pipeline.';
+      const limit = Math.max(64, Number(byteLimit.value) || 2048);
+      const sliceLen = Math.min(rec.length, limit);
+      const view = new Uint8Array(rawBytes, rec.offset, sliceLen);
+      const hex = toHexDump(view, rec.offset);
 
-      const pre = document.createElement('pre');
-      pre.textContent = JSON.stringify(summarizeTable(table), null, 2);
-      card.appendChild(pre);
-      grid.appendChild(card);
+      detail.innerHTML = `
+        <div class="cell">
+          <div class="cell-head"><span>Parsed Summary</span><span>${rec.tagText}</span></div>
+          <pre>${parsed.replace(/</g, '&lt;')}</pre>
+        </div>
+        <div class="cell">
+          <div class="cell-head"><span>Raw Hex</span><span>${sliceLen}/${rec.length} bytes</span></div>
+          <pre>${hex}</pre>
+        </div>
+      `;
+    }
+
+    async function loadFontSelection() {
+      const fontUrl = fonts[Number(fontSelect.value)]?.url ?? fonts[0].url;
+      const [font, response] = await Promise.all([FontParser.load(fontUrl), fetch(fontUrl)]);
+      parsedFont = font;
+      rawBytes = await response.arrayBuffer();
+      records = parseTableRecords(rawBytes);
+      selectedTag = records[0]?.tag ?? null;
+      renderTableList();
+      renderDetail();
     }
 
     function populateFonts() {
@@ -165,24 +181,17 @@
       });
     }
 
-    function loadAndRender() {
-      grid.innerHTML = '';
-      const fontUrl = fonts[Number(fontSelect.value)]?.url ?? fonts[0].url;
-      FontParser.load(fontUrl)
-        .then(font => {
-          tableSpecs.forEach(spec => {
-            const table = font.getTableByType(spec.tag);
-            renderCard(spec, table);
-          });
-        })
-        .catch(err => {
-          grid.textContent = `Failed to load font: ${err}`;
-        });
-    }
+    fontSelect.addEventListener('change', () => {
+      loadFontSelection().catch(err => {
+        detail.innerHTML = `<div class="meta">Failed to load font: ${err.message}</div>`;
+      });
+    });
+    byteLimit.addEventListener('input', renderDetail);
 
     populateFonts();
-    fontSelect.addEventListener('change', loadAndRender);
-    loadAndRender();
+    loadFontSelection().catch(err => {
+      detail.innerHTML = `<div class="meta">Failed to load font: ${err.message}</div>`;
+    });
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
