@@ -146,7 +146,7 @@ export async function runCli(args, ctx, actions) {
       console.warn("Warning: OS/2 fsType indicates no-subsetting.");
     }
 
-    const selectedChars = actions.collectSubsetChars(args);
+    const selectedChars = actions.collectSubsetChars({ ...args, resolveCwdPath: actions.resolveCwdPath });
     if (selectedChars.length === 0) {
       throw new Error("No subset character sources provided. Use --subset-chars and/or --subset-file and/or --subset-lang.");
     }

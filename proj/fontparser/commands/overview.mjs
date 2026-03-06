@@ -1,16 +1,20 @@
-export function printOverview(buffer, font, options = {}, deps) {
+import { printMetadata } from "./meta.mjs";
+import { printGlyphStats, printKerningStats, printTables } from "./tables.mjs";
+import { printSupportedLanguages } from "./languages.mjs";
+
+export function printOverview(buffer, font, options = {}) {
   const minCoveragePct = options.minCoveragePct ?? 90;
   const kerningChars = options.kerningChars ?? "AVWToY.,;:!?'-_abcdefghijklmnopqrstuvwxyz";
   const kerningLimit = options.kerningLimit ?? 10;
 
-  deps.printMetadata(font, false);
+  printMetadata(font, false);
   console.log("");
-  deps.printGlyphStats(buffer, font, false);
+  printGlyphStats(buffer, font, false);
   console.log("");
-  deps.printTables(buffer, false);
+  printTables(buffer, false);
   console.log("");
   console.log(`Supported languages (>= ${minCoveragePct}%):`);
-  deps.printSupportedLanguages(font, minCoveragePct / 100, false);
+  printSupportedLanguages(font, minCoveragePct / 100, false);
   console.log("");
-  deps.printKerningStats(font, kerningChars, kerningLimit, false);
+  printKerningStats(font, kerningChars, kerningLimit, false);
 }
