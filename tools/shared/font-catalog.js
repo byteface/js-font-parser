@@ -31,7 +31,17 @@ const PATHS = {
   robotoVar: '../truetypefonts/curated/Roboto-VF.ttf',
   playwriteVar: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-VariableFont_wght.ttf',
   playwriteVarItalic: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-Italic-VariableFont_wght.ttf',
-  arimoVar: '../truetypefonts/arimo/Arimo[wght].ttf'
+  arimoVar: '../truetypefonts/arimo/Arimo[wght].ttf',
+  notoArabicVar: '../truetypefonts/curated-extra/NotoSansArabic-VF.ttf',
+  notoDevanagariVar: '../truetypefonts/curated-extra/NotoSansDevanagari-VF.ttf',
+  notoThaiVar: '../truetypefonts/curated-extra/NotoSansThai-VF.ttf',
+  notoKhmerVar: '../truetypefonts/curated-extra/NotoSansKhmer-VF.ttf',
+  notoHebrewVar: '../truetypefonts/curated-extra/NotoSansHebrew-VF.ttf',
+  notoEthiopicVar: '../truetypefonts/curated-extra/NotoSansEthiopic-VF.ttf',
+  sourceCodeProRegularExtra: '../truetypefonts/curated-extra/SourceCodePro-Regular.otf',
+  sourceCodeProBoldExtra: '../truetypefonts/curated-extra/SourceCodePro-Bold.otf',
+  fontAwesome47Ttf: '../truetypefonts/curated-extra/FontAwesome-4.7.0.ttf',
+  fontAwesome47Woff: '../truetypefonts/curated-extra/FontAwesome-4.7.0.woff'
 };
 
 export const FONT_LISTS = {
@@ -48,7 +58,11 @@ export const FONT_LISTS = {
     { name: 'DevilInside-G3xP.ttf', url: PATHS.devilInside },
     { name: 'JoeJack.ttf', url: PATHS.joeJack },
     { name: 'NotoSans-Regular.ttf', url: PATHS.notoSans },
-    { name: 'NotoSansHebrew-Regular.ttf', url: PATHS.notoHebrew }
+    { name: 'NotoSansHebrew-Regular.ttf', url: PATHS.notoHebrew },
+    { name: 'NotoSansArabic-VF.ttf', url: PATHS.notoArabicVar },
+    { name: 'NotoSansEthiopic-VF.ttf', url: PATHS.notoEthiopicVar },
+    { name: 'NotoSansThai-VF.ttf', url: PATHS.notoThaiVar },
+    { name: 'SourceCodePro-Bold.otf', url: PATHS.sourceCodeProBoldExtra }
   ],
   shapingCore: [
     { name: 'Noto Sans', url: PATHS.notoSans },
@@ -63,6 +77,12 @@ export const FONT_LISTS = {
     { name: 'Noto Sans Thai', url: PATHS.notoThai },
     { name: 'Noto Sans Devanagari', url: PATHS.notoDevanagari },
     { name: 'Noto Naskh Arabic', url: PATHS.notoArabic },
+    { name: 'Noto Sans Arabic VF', url: PATHS.notoArabicVar },
+    { name: 'Noto Sans Devanagari VF', url: PATHS.notoDevanagariVar },
+    { name: 'Noto Sans Hebrew VF', url: PATHS.notoHebrewVar },
+    { name: 'Noto Sans Thai VF', url: PATHS.notoThaiVar },
+    { name: 'Noto Sans Khmer VF', url: PATHS.notoKhmerVar },
+    { name: 'Noto Sans Ethiopic VF', url: PATHS.notoEthiopicVar },
     { name: 'DiscoMo', url: PATHS.discomo },
     { name: 'DevilInside', url: PATHS.devilInside },
     { name: 'AUGIE', url: PATHS.augie },
@@ -81,7 +101,13 @@ export const FONT_LISTS = {
     { name: 'Noto Sans', url: PATHS.notoSans },
     { name: 'Noto Sans Hebrew', url: PATHS.notoHebrew },
     { name: 'Noto Sans Thai', url: PATHS.notoThai },
-    { name: 'Noto Sans Devanagari', url: PATHS.notoDevanagari }
+    { name: 'Noto Sans Devanagari', url: PATHS.notoDevanagari },
+    { name: 'Noto Sans Arabic VF', url: PATHS.notoArabicVar },
+    { name: 'Noto Sans Devanagari VF', url: PATHS.notoDevanagariVar },
+    { name: 'Noto Sans Hebrew VF', url: PATHS.notoHebrewVar },
+    { name: 'Noto Sans Thai VF', url: PATHS.notoThaiVar },
+    { name: 'Noto Sans Khmer VF', url: PATHS.notoKhmerVar },
+    { name: 'Noto Sans Ethiopic VF', url: PATHS.notoEthiopicVar }
   ],
   localizedReview: [
     { name: 'DiscoMo (base)', url: PATHS.discomo },
@@ -106,17 +132,37 @@ export const FONT_LISTS = {
     { name: 'Noto Sans Thai', url: PATHS.notoThai },
     { name: 'Noto Sans Devanagari', url: PATHS.notoDevanagari },
     { name: 'Noto Naskh Arabic', url: PATHS.notoArabic },
+    { name: 'Noto Sans Arabic VF', url: PATHS.notoArabicVar },
+    { name: 'Noto Sans Devanagari VF', url: PATHS.notoDevanagariVar },
+    { name: 'Noto Sans Hebrew VF', url: PATHS.notoHebrewVar },
+    { name: 'Noto Sans Thai VF', url: PATHS.notoThaiVar },
+    { name: 'Noto Sans Khmer VF', url: PATHS.notoKhmerVar },
+    { name: 'Noto Sans Ethiopic VF', url: PATHS.notoEthiopicVar },
     { name: 'Twemoji Mozilla (color)', url: PATHS.twemoji }
   ],
   variableFonts: [
     { name: 'Playwrite GB S Variable', url: PATHS.playwriteVar },
     { name: 'Playwrite GB S Italic Variable', url: PATHS.playwriteVarItalic },
-    { name: 'Arimo Variable', url: PATHS.arimoVar }
+    { name: 'Arimo Variable', url: PATHS.arimoVar },
+    { name: 'Noto Sans Arabic VF', url: PATHS.notoArabicVar },
+    { name: 'Noto Sans Devanagari VF', url: PATHS.notoDevanagariVar },
+    { name: 'Noto Sans Hebrew VF', url: PATHS.notoHebrewVar },
+    { name: 'Noto Sans Thai VF', url: PATHS.notoThaiVar },
+    { name: 'Noto Sans Khmer VF', url: PATHS.notoKhmerVar },
+    { name: 'Noto Sans Ethiopic VF', url: PATHS.notoEthiopicVar }
   ],
   layoutEngine: [
     { name: 'Noto Sans Regular', url: PATHS.notoSans },
     { name: 'Gotham Narrow Ultra (OTF)', url: PATHS.gothamNarrow },
     { name: 'Source Code Pro Regular (OTF)', url: PATHS.sourceCodeProRegular },
+    { name: 'Source Code Pro Bold (OTF)', url: PATHS.sourceCodeProBoldExtra },
+    { name: 'Noto Sans Arabic VF', url: PATHS.notoArabicVar },
+    { name: 'Noto Sans Devanagari VF', url: PATHS.notoDevanagariVar },
+    { name: 'Noto Sans Hebrew VF', url: PATHS.notoHebrewVar },
+    { name: 'Noto Sans Thai VF', url: PATHS.notoThaiVar },
+    { name: 'Noto Sans Khmer VF', url: PATHS.notoKhmerVar },
+    { name: 'Noto Sans Ethiopic VF', url: PATHS.notoEthiopicVar },
+    { name: 'Font Awesome 4.7 (TTF)', url: PATHS.fontAwesome47Ttf },
     { name: 'DevilInside', url: PATHS.devilInside }
   ],
   kerning: [
@@ -125,7 +171,11 @@ export const FONT_LISTS = {
     { name: 'Gotham Narrow Ultra (kern + GPOS)', url: PATHS.gothamNarrow },
     { name: 'Noto Serif VF (GPOS)', url: PATHS.notoSerifVar },
     { name: 'Arimo Variable (GPOS)', url: PATHS.arimoVar },
-    { name: 'Playwrite GB S Variable (GPOS)', url: PATHS.playwriteVar }
+    { name: 'Playwrite GB S Variable (GPOS)', url: PATHS.playwriteVar },
+    { name: 'Noto Sans Arabic VF (GPOS)', url: PATHS.notoArabicVar },
+    { name: 'Noto Sans Hebrew VF (GPOS)', url: PATHS.notoHebrewVar },
+    { name: 'Noto Sans Devanagari VF (GPOS)', url: PATHS.notoDevanagariVar },
+    { name: 'Source Code Pro Bold (OTF)', url: PATHS.sourceCodeProBoldExtra }
   ],
   allGlyphs: [
     { name: '2006 Team', url: PATHS.team2006 },
@@ -155,7 +205,15 @@ export const FONT_LISTS = {
     { name: 'Noto Sans Thai', url: PATHS.notoThai },
     { name: 'Noto Sans Devanagari', url: PATHS.notoDevanagari },
     { name: 'Noto Naskh Arabic', url: PATHS.notoArabic },
-    { name: 'Source Code Pro Regular (OTF)', url: PATHS.sourceCodeProRegular }
+    { name: 'Noto Sans Arabic VF', url: PATHS.notoArabicVar },
+    { name: 'Noto Sans Devanagari VF', url: PATHS.notoDevanagariVar },
+    { name: 'Noto Sans Hebrew VF', url: PATHS.notoHebrewVar },
+    { name: 'Noto Sans Thai VF', url: PATHS.notoThaiVar },
+    { name: 'Noto Sans Khmer VF', url: PATHS.notoKhmerVar },
+    { name: 'Noto Sans Ethiopic VF', url: PATHS.notoEthiopicVar },
+    { name: 'Font Awesome 4.7 (TTF)', url: PATHS.fontAwesome47Ttf },
+    { name: 'Source Code Pro Regular (OTF)', url: PATHS.sourceCodeProRegular },
+    { name: 'Source Code Pro Bold (OTF)', url: PATHS.sourceCodeProBoldExtra }
   ],
   stringExplorer: [
     '2006 Team.ttf',
