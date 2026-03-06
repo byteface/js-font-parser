@@ -50,9 +50,10 @@ var GposTable = /** @class */ (function () {
         return null;
     };
     GposTable.prototype.getDefaultLangSys = function (script) {
+        var _a;
         if (!script)
             return null;
-        return script.getDefaultLangSys();
+        return (_a = script.getDefaultLangSys()) !== null && _a !== void 0 ? _a : script.getFirstLangSys();
     };
     GposTable.prototype.getSubtablesForFeatures = function (featureTags, scriptTags) {
         if (scriptTags === void 0) { scriptTags = ["DFLT", "latn"]; }

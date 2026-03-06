@@ -44,4 +44,11 @@ export class Script {
     getDefaultLangSys(): LangSys | null {
         return this.defaultLangSys;
     }
+
+    getFirstLangSys(): LangSys | null {
+        if (this.langSys && this.langSys.length > 0) {
+            return this.langSys[0] ?? null;
+        }
+        return null;
+    }
 }

@@ -50,6 +50,8 @@
       <label>Sample
         <input id="sample" type="text" value="مرحبا بالعالم" style="min-width:420px" />
       </label>
+      <button id="presetArabic" type="button">Arabic Stress Sample</button>
+      <button id="presetDeva" type="button">Devanagari Stress Sample</button>
     </div>
   </div>
 
@@ -79,6 +81,8 @@
     const autoDetect = document.getElementById("autoDetect");
     const enableGpos = document.getElementById("enableGpos");
     const gposFeaturesInput = document.getElementById("gposFeatures");
+    const presetArabic = document.getElementById("presetArabic");
+    const presetDeva = document.getElementById("presetDeva");
     const rawCanvas = document.getElementById("raw");
     const shapedCanvas = document.getElementById("shaped");
     const status = document.getElementById("status");
@@ -166,14 +170,30 @@
     fontSelect.addEventListener("change", () => {
       const value = fontSelect.value;
       if (value.includes("Arabic")) {
-        sampleInput.value = "مرحبا بالعالم";
+        sampleInput.value = "بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيمِ";
         scriptTagsInput.value = "arab,DFLT";
         featuresInput.value = "ccmp,locl,init,medi,fina,isol,rlig,liga,calt";
       } else {
-        sampleInput.value = "नमस्ते दुनिया";
+        sampleInput.value = "प्रार्थना शक्ति कर्म";
         scriptTagsInput.value = "deva,DFLT";
-        featuresInput.value = "ccmp,locl,liga,clig,rlig,calt";
+        featuresInput.value = "locl,nukt,akhn,rphf,rkrf,pref,blwf,abvf,half,pstf,cjct";
       }
+      loadFont();
+    });
+    presetArabic.addEventListener("click", () => {
+      fontSelect.value = "../truetypefonts/noto/NotoNaskhArabic-Regular.ttf";
+      sampleInput.value = "بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيمِ";
+      scriptTagsInput.value = "arab,DFLT";
+      featuresInput.value = "ccmp,locl,init,medi,fina,isol,rlig,liga,calt";
+      autoDetect.checked = true;
+      loadFont();
+    });
+    presetDeva.addEventListener("click", () => {
+      fontSelect.value = "../truetypefonts/noto/NotoSansDevanagari-Regular.ttf";
+      sampleInput.value = "प्रार्थना शक्ति कर्म";
+      scriptTagsInput.value = "deva,DFLT";
+      featuresInput.value = "locl,nukt,akhn,rphf,rkrf,pref,blwf,abvf,half,pstf,cjct";
+      autoDetect.checked = true;
       loadFont();
     });
     scriptTagsInput.addEventListener("input", render);

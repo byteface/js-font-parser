@@ -32,6 +32,13 @@ var Script = /** @class */ (function () {
     Script.prototype.getDefaultLangSys = function () {
         return this.defaultLangSys;
     };
+    Script.prototype.getFirstLangSys = function () {
+        var _a;
+        if (this.langSys && this.langSys.length > 0) {
+            return (_a = this.langSys[0]) !== null && _a !== void 0 ? _a : null;
+        }
+        return null;
+    };
     return Script;
 }());
 export { Script };

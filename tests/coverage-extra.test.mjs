@@ -14,6 +14,8 @@ import { FontParserWOFF2 } from '../dist/data/FontParserWOFF2.js';
 import { decodeWoff2, setWoff2Decoder } from '../dist/utils/Woff2Decoder.js';
 import { Table } from '../dist/table/Table.js';
 import { LayoutEngine } from '../dist/layout/LayoutEngine.js';
+import { GsubTable } from '../dist/table/GsubTable.js';
+import { GposTable } from '../dist/table/GposTable.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -546,4 +548,42 @@ test('decodeWoff2 resolves via custom/global decoders and errors when unavailabl
     globalThis.WOFF2 = savedGlobalWoff2;
     globalThis.Woff2Decoder = savedGlobalWoff2Alt;
   }
+});
+
+test('Arabic and Devanagari GSUB shaping changes real-font glyph streams', () => {
+  const arabic = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/noto/NotoNaskhArabic-Regular.ttf')));
+  const devanagari = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/noto/NotoSansDevanagari-Regular.ttf')));
+
+  const arabicText = 'السلام عليكم';
+  const arabicPlain = arabic.getGlyphIndicesForString(arabicText);
+  const arabicShaped = arabic.getGlyphIndicesForStringWithGsub(
+    arabicText,
+    ['ccmp', 'locl', 'isol', 'fina', 'init', 'medi', 'rlig', 'liga', 'calt'],
+    ['arab', 'DFLT']
+  );
+  assert.notDeepEqual(arabicShaped, arabicPlain, 'expected Arabic GSUB shaping to alter glyph sequence');
+  assert.ok(arabicShaped.length > 0);
+
+  const devaText = 'प्रार्थना शक्ति';
+  const devaPlain = devanagari.getGlyphIndicesForString(devaText);
+  const devaShaped = devanagari.getGlyphIndicesForStringWithGsub(
+    devaText,
+    ['locl', 'nukt', 'akhn', 'rphf', 'rkrf', 'pref', 'blwf', 'abvf', 'half', 'pstf', 'cjct'],
+    ['deva', 'DFLT']
+  );
+  assert.notDeepEqual(devaShaped, devaPlain, 'expected Devanagari GSUB shaping to alter glyph sequence');
+  assert.ok(devaShaped.length > 0);
+});
+
+test('GSUB/GPOS fall back to first language system when default is absent', () => {
+  const langSysFallback = { id: 'fallback-langsys' };
+  const fakeScript = {
+    getDefaultLangSys: () => null,
+    getFirstLangSys: () => langSysFallback
+  };
+
+  const selectedGsub = GsubTable.prototype.getDefaultLangSys.call({}, fakeScript);
+  const selectedGpos = GposTable.prototype.getDefaultLangSys.call({}, fakeScript);
+  assert.equal(selectedGsub, langSysFallback);
+  assert.equal(selectedGpos, langSysFallback);
 });

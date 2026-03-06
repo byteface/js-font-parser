@@ -146,7 +146,7 @@ export class GsubTable implements ITable {
 
     getDefaultLangSys(script: Script | null): LangSys | null {
         if (!script) return null;
-        return script.getDefaultLangSys();
+        return script.getDefaultLangSys() ?? script.getFirstLangSys();
     }
 
     getSubtablesForFeatures(featureTags: string[], scriptTags: string[] = ["DFLT", "latn"]): LookupSubtable[] {
