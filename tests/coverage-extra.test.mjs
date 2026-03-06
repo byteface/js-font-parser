@@ -29,6 +29,41 @@ function readBytes(relativePath) {
   return fs.readFileSync(fullPath);
 }
 
+function createMockLayoutFont(widths = {}, kerning = {}) {
+  const defaultWidth = 100;
+  const glyphByChar = new Map();
+  const glyphByIndex = new Map();
+  let nextIndex = 1;
+
+  const ensureGlyph = (ch) => {
+    if (glyphByChar.has(ch)) return glyphByChar.get(ch);
+    const glyph = { index: nextIndex++, advanceWidth: widths[ch] ?? defaultWidth };
+    glyphByChar.set(ch, glyph);
+    glyphByIndex.set(glyph.index, glyph);
+    return glyph;
+  };
+
+  for (const ch of Object.keys(widths)) ensureGlyph(ch);
+
+  return {
+    getGlyphByChar(ch) {
+      return glyphByChar.has(ch) ? ensureGlyph(ch) : null;
+    },
+    getGlyph(index) {
+      return glyphByIndex.get(index) ?? null;
+    },
+    getGlyphIndexByChar(ch) {
+      return glyphByChar.has(ch) ? ensureGlyph(ch).index : null;
+    },
+    getKerningValueByGlyphs(left, right) {
+      return kerning[`${left},${right}`] ?? 0;
+    },
+    getTableByType() {
+      return null;
+    }
+  };
+}
+
 const CURATED_FIXTURES = [
   'truetypefonts/curated/IBMPlexSerif-Regular.ttf',
   'truetypefonts/curated/FiraSans-Regular.ttf',
@@ -511,6 +546,147 @@ test('Layout engine supports auto direction and soft hyphens', () => {
   assert.ok(layout.lines.length >= 1);
   const firstLineChars = layout.lines[0].glyphs.map(g => g.char).join('');
   assert.ok(firstLineChars.includes('-'), 'expected soft hyphen to insert "-"');
+});
+
+test('Layout engine preserves all soft-hyphen segments across wrapped lines', () => {
+  const font = createMockLayoutFont({
+    a: 100,
+    b: 100,
+    c: 100,
+    d: 100,
+    e: 100,
+    f: 100,
+    '-': 40
+  });
+  const text = 'ab\u00ADcd\u00ADef';
+  const layout = LayoutEngine.layoutText(font, text, {
+    maxWidth: 260,
+    breakWords: true,
+    hyphenate: 'soft',
+    hyphenMinWordLength: 2
+  });
+  const lines = layout.lines.map(line => line.glyphs.map(g => g.char).join('')).filter(Boolean);
+  assert.deepEqual(lines, ['ab-', 'cd-', 'ef']);
+});
+
+test('Layout engine soft-hyphen path falls back without dropping characters', () => {
+  const font = createMockLayoutFont({
+    a: 220,
+    b: 220,
+    c: 220,
+    d: 220,
+    e: 220,
+    f: 220,
+    '-': 60
+  });
+  const text = 'abc\u00ADdef';
+  const layout = LayoutEngine.layoutText(font, text, {
+    maxWidth: 300,
+    breakWords: true,
+    hyphenate: 'soft',
+    hyphenMinWordLength: 2
+  });
+  const rendered = layout.lines.map(line => line.glyphs.map(g => g.char).join('')).join('');
+  assert.equal(rendered, 'abcdef');
+});
+
+test('Layout engine justify ignores trailing spaces when distributing width', () => {
+  const font = createMockLayoutFont({ a: 100, b: 100, ' ': 100 });
+  const layout = LayoutEngine.layoutText(font, 'a b  ', {
+    maxWidth: 500,
+    align: 'justify',
+    justifyLastLine: true,
+    trimTrailingSpaces: true
+  });
+  const spaces = layout.lines[0].glyphs.filter(g => g.char === ' ');
+  assert.equal(spaces[0].advance, 300);
+  assert.equal(spaces[1].advance, 100);
+  assert.equal(spaces[2].advance, 100);
+});
+
+test('Layout engine does not justify final line unless requested', () => {
+  const font = createMockLayoutFont({ a: 100, b: 100, ' ': 100 });
+  const layout = LayoutEngine.layoutText(font, 'a b', {
+    maxWidth: 600,
+    align: 'justify',
+    justifyLastLine: false
+  });
+  assert.equal(layout.lines[0].width, 300);
+});
+
+test('Layout engine collapseSpaces keeps NBSP when preserveNbsp is enabled', () => {
+  const font = createMockLayoutFont({ A: 100, B: 100, ' ': 100, '\u00A0': 100 });
+  const layout = LayoutEngine.layoutText(font, 'A  \u00A0  B', {
+    collapseSpaces: true,
+    preserveNbsp: true
+  });
+  const rendered = layout.lines[0].glyphs.map(g => g.char).join('');
+  assert.equal(rendered, 'A \u00A0 B');
+});
+
+test('Layout engine expands tabs by tabSize when collapseSpaces is disabled', () => {
+  const font = createMockLayoutFont({ A: 100, B: 100, ' ': 100 });
+  const layout = LayoutEngine.layoutText(font, 'A\tB', {
+    tabSize: 3,
+    collapseSpaces: false
+  });
+  const rendered = layout.lines[0].glyphs.map(g => g.char).join('');
+  assert.equal(rendered, 'A   B');
+});
+
+test('Layout engine auto direction uses RTL run ordering for mixed text', () => {
+  const font = createMockLayoutFont({
+    a: 100,
+    b: 100,
+    c: 100,
+    ' ': 100,
+    א: 100,
+    ב: 100,
+    ג: 100
+  });
+  const layout = LayoutEngine.layoutText(font, 'abc אבג', {
+    direction: 'auto',
+    bidi: 'simple'
+  });
+  const rendered = layout.lines[0].glyphs.map(g => g.char).join('');
+  assert.equal(rendered, 'אבגabc ');
+});
+
+test('Layout engine resets kerning chain when a glyph is missing', () => {
+  const font = createMockLayoutFont({ A: 100, C: 100 }, { '1,2': 40 });
+  const layout = LayoutEngine.layoutText(font, 'A?C', {
+    useKerning: true
+  });
+  assert.equal(layout.lines[0].width, 200);
+});
+
+test('Layout engine trims leading spaces after explicit line breaks', () => {
+  const font = createMockLayoutFont({ A: 100, B: 100, ' ': 100 });
+  const layout = LayoutEngine.layoutText(font, 'A\n   B', {
+    trimLeadingSpaces: true
+  });
+  assert.equal(layout.lines.length, 2);
+  const secondLine = layout.lines[1].glyphs.map(g => g.char).join('');
+  assert.equal(secondLine, 'B');
+});
+
+test('Layout engine uses custom hyphenChar for soft-hyphen breaks', () => {
+  const font = createMockLayoutFont({
+    a: 100,
+    b: 100,
+    c: 100,
+    d: 100,
+    '~': 40
+  });
+  const layout = LayoutEngine.layoutText(font, 'ab\u00ADcd', {
+    maxWidth: 260,
+    breakWords: true,
+    hyphenate: 'soft',
+    hyphenChar: '~',
+    hyphenMinWordLength: 2
+  });
+  const lines = layout.lines.map(line => line.glyphs.map(g => g.char).join('')).filter(Boolean);
+  assert.deepEqual(lines, ['ab~', 'cd']);
 });
 
 test('GPOS mark positioning attaches combining marks (if fixture present)', () => {

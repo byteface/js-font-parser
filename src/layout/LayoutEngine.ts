@@ -105,6 +105,8 @@ export class LayoutEngine {
                         cursorX += glyph.advance;
                         current.push(glyph);
                     }
+                }, () => {
+                    pushLine(false);
                 }, hyphenChar);
                 if (resolved) {
                     continue;
@@ -286,12 +288,14 @@ export class LayoutEngine {
         maxWidth: number,
         cursorGetter: () => number,
         pushGlyphs: (glyphs: LayoutGlyph[]) => void,
+        pushLineBreak: () => void,
         hyphenChar: string
     ): boolean {
         if (parts.length <= 1) return false;
         const hyphenGlyphs = this.buildTokenGlyphs(font, hyphenChar, letterSpacing, useKerning);
         const hyphenWidth = hyphenGlyphs.reduce((sum, g) => sum + g.advance, 0);
         let remaining = parts.slice();
+        let emitted = false;
         while (remaining.length > 0) {
             let consumed = 0;
             let width = 0;
@@ -302,7 +306,19 @@ export class LayoutEngine {
                 const nextWidth = nextGlyphs.reduce((sum, g) => sum + g.advance, 0);
                 const fits = cursorGetter() + width + nextWidth + (consumed < remaining.length - 1 ? hyphenWidth : 0) <= maxWidth;
                 if (!fits && consumed > 0) break;
-                if (!fits) return false;
+                if (!fits) {
+                    if (!emitted) {
+                        return false;
+                    }
+                    const rest = this.buildTokenGlyphs(font, remaining.join(''), letterSpacing, useKerning);
+                    for (const restGlyph of rest) {
+                        if (maxWidth > 0 && cursorGetter() > 0 && cursorGetter() + restGlyph.advance > maxWidth) {
+                            pushLineBreak();
+                        }
+                        pushGlyphs([{ ...restGlyph }]);
+                    }
+                    return true;
+                }
                 glyphs.push(...nextGlyphs);
                 width += nextWidth;
                 consumed += 1;
@@ -312,9 +328,10 @@ export class LayoutEngine {
                 glyphs.push(...hyphenGlyphs.map(g => ({ ...g })));
             }
             pushGlyphs(glyphs);
+            emitted = true;
             remaining = remaining.slice(consumed);
             if (remaining.length > 0) {
-                return true;
+                pushLineBreak();
             }
         }
         return true;
@@ -330,9 +347,10 @@ export class LayoutEngine {
         if (extra <= 0) return;
         const add = extra / spaces.length;
         let offset = 0;
-        for (const glyph of line.glyphs) {
+        for (let i = 0; i < line.glyphs.length; i++) {
+            const glyph = line.glyphs[i];
             glyph.x += offset;
-            if (glyph.char === ' ') {
+            if (glyph.char === ' ' && i <= lastIndex) {
                 glyph.advance += add;
                 offset += add;
             }

@@ -66,6 +66,8 @@ var LayoutEngine = /** @class */ (function () {
                         cursorX += glyph.advance;
                         current.push(glyph);
                     }
+                }, function () {
+                    pushLine(false);
                 }, hyphenChar);
                 if (resolved) {
                     continue;
@@ -269,10 +271,10 @@ var LayoutEngine = /** @class */ (function () {
             return;
         var add = extra / spaces.length;
         var offset = 0;
-        for (var _i = 0, _a = line.glyphs; _i < _a.length; _i++) {
-            var glyph = _a[_i];
+        for (var i = 0; i < line.glyphs.length; i++) {
+            var glyph = line.glyphs[i];
             glyph.x += offset;
-            if (glyph.char === ' ') {
+            if (glyph.char === ' ' && i <= lastIndex) {
                 glyph.advance += add;
                 offset += add;
             }
@@ -295,12 +297,13 @@ var LayoutEngine = /** @class */ (function () {
         }
         return width;
     };
-    LayoutEngine.layoutSoftHyphenWord = function (font, parts, letterSpacing, useKerning, maxWidth, cursorGetter, pushGlyphs, hyphenChar) {
+    LayoutEngine.layoutSoftHyphenWord = function (font, parts, letterSpacing, useKerning, maxWidth, cursorGetter, pushGlyphs, pushLineBreak, hyphenChar) {
         if (parts.length <= 1)
             return false;
         var hyphenGlyphs = this.buildTokenGlyphs(font, hyphenChar, letterSpacing, useKerning);
         var hyphenWidth = hyphenGlyphs.reduce(function (sum, g) { return sum + g.advance; }, 0);
         var remaining = parts.slice();
+        var emitted = false;
         while (remaining.length > 0) {
             var consumed = 0;
             var width = 0;
@@ -312,8 +315,20 @@ var LayoutEngine = /** @class */ (function () {
                 var fits = cursorGetter() + width + nextWidth + (consumed < remaining.length - 1 ? hyphenWidth : 0) <= maxWidth;
                 if (!fits && consumed > 0)
                     break;
-                if (!fits)
-                    return false;
+                if (!fits) {
+                    if (!emitted) {
+                        return false;
+                    }
+                    var rest = this.buildTokenGlyphs(font, remaining.join(''), letterSpacing, useKerning);
+                    for (var _i = 0, rest_1 = rest; _i < rest_1.length; _i++) {
+                        var restGlyph = rest_1[_i];
+                        if (maxWidth > 0 && cursorGetter() > 0 && cursorGetter() + restGlyph.advance > maxWidth) {
+                            pushLineBreak();
+                        }
+                        pushGlyphs([__assign({}, restGlyph)]);
+                    }
+                    return true;
+                }
                 glyphs.push.apply(glyphs, nextGlyphs);
                 width += nextWidth;
                 consumed += 1;
@@ -322,9 +337,10 @@ var LayoutEngine = /** @class */ (function () {
                 glyphs.push.apply(glyphs, hyphenGlyphs.map(function (g) { return ({ glyphIndex: g.glyphIndex, x: g.x, y: g.y, advance: g.advance, char: g.char }); }));
             }
             pushGlyphs(glyphs);
+            emitted = true;
             remaining = remaining.slice(consumed);
             if (remaining.length > 0) {
-                return true;
+                pushLineBreak();
             }
         }
         return true;
