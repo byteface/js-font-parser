@@ -147,6 +147,10 @@ var CffTable = /** @class */ (function () {
         };
         var parse = function (bytes, depth) {
             var _a, _b;
+            if (depth > 48) {
+                ops.push({ op: 'MAX_SUBR_DEPTH', args: [depth] });
+                return;
+            }
             var i = 0;
             while (i < bytes.length) {
                 var b0 = bytes[i++];
@@ -307,8 +311,11 @@ var CffTable = /** @class */ (function () {
                 contourOpen = true;
             }
         };
-        var parse = function (bytes) {
+        var parse = function (bytes, depth) {
             var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17;
+            if (depth > 48) {
+                return;
+            }
             var i = 0;
             var _loop_1 = function () {
                 var b0 = bytes[i++];
@@ -403,7 +410,7 @@ var CffTable = /** @class */ (function () {
                             stack.push.apply(stack, args);
                         var subr = lsubrs[subrIndex];
                         if (subr)
-                            parse(subr);
+                            parse(subr, depth + 1);
                         break;
                     }
                     case 14: { // endchar
@@ -541,7 +548,7 @@ var CffTable = /** @class */ (function () {
                             stack.push.apply(stack, args);
                         var subr = gsubrs[subrIndex];
                         if (subr)
-                            parse(subr);
+                            parse(subr, depth + 1);
                         break;
                     }
                     case 30: // vhcurveto
@@ -645,7 +652,7 @@ var CffTable = /** @class */ (function () {
                     return state_1.value;
             }
         };
-        parse(charString);
+        parse(charString, 0);
         closeContour();
         return { points: points, endPts: endPts };
     };

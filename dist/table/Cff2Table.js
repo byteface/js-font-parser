@@ -297,8 +297,11 @@ var Cff2Table = /** @class */ (function () {
                 });
             }
         };
-        var parse = function (bytes) {
+        var parse = function (bytes, depth) {
             var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20;
+            if (depth > 48) {
+                return;
+            }
             var i = 0;
             var blendCount = 0;
             var _loop_1 = function () {
@@ -375,7 +378,7 @@ var Cff2Table = /** @class */ (function () {
                             stack.push.apply(stack, args);
                         var subr = lsubrs[subrIndex];
                         if (subr)
-                            parse(subr);
+                            parse(subr, depth + 1);
                         break;
                     }
                     case 14: {
@@ -496,7 +499,7 @@ var Cff2Table = /** @class */ (function () {
                             stack.push.apply(stack, args);
                         var subr = gsubrs[subrIndex];
                         if (subr)
-                            parse(subr);
+                            parse(subr, depth + 1);
                         break;
                     }
                     case 30:
@@ -627,7 +630,7 @@ var Cff2Table = /** @class */ (function () {
                 Debug.log('CFF2 blends', blendCount, 'vsindex', vsIndex, 'regions', regionIndices);
             }
         };
-        parse(charString);
+        parse(charString, 0);
         closeContour();
         return { points: points, endPts: endPts };
     };
