@@ -1091,6 +1091,119 @@ test('Devanagari complex clusters remain stable with GPOS enabled', () => {
   assert.equal(sawMarkGlyph, true, 'expected at least one Devanagari sample to include mark glyphs');
 });
 
+test('GPOS script validation sweep remains stable across available real-font fixtures', () => {
+  const cases = [
+    {
+      font: 'truetypefonts/noto/NotoSansHebrew-Regular.ttf',
+      gsubFeatures: ['locl', 'ccmp'],
+      scriptTags: ['hebr', 'DFLT'],
+      gposFeatures: ['kern', 'mark', 'mkmk'],
+      samples: ['שָׁלוֹם', 'בְּרָכָה', 'מִלָּה'],
+      requireAdjustedMarks: true
+    },
+    {
+      font: 'truetypefonts/noto/NotoSansThaiLooped-Regular.ttf',
+      gsubFeatures: ['locl', 'ccmp'],
+      scriptTags: ['thai', 'DFLT'],
+      gposFeatures: ['kern', 'mark', 'mkmk'],
+      samples: ['ภาษาไทย', 'กำลัง', 'ผู้ใหญ่'],
+      requireAdjustedMarks: false
+    },
+    {
+      font: 'truetypefonts/curated-extra/NotoSansKhmer-VF.ttf',
+      gsubFeatures: ['locl', 'ccmp'],
+      scriptTags: ['khmr', 'DFLT'],
+      gposFeatures: ['kern', 'mark', 'mkmk'],
+      samples: ['ភាសាខ្មែរ', 'អក្សរ', 'កម្ពុជា'],
+      requireAdjustedMarks: false
+    },
+    {
+      font: 'truetypefonts/curated-extra/NotoSansArabic-VF.ttf',
+      gsubFeatures: ['ccmp', 'locl', 'isol', 'fina', 'init', 'medi', 'rlig', 'liga', 'calt'],
+      scriptTags: ['arab', 'DFLT'],
+      gposFeatures: ['kern', 'mark', 'mkmk', 'curs'],
+      samples: ['بِسْمِ', 'السَّلَامُ', 'اللّٰه'],
+      requireAdjustedMarks: true
+    },
+    {
+      font: 'truetypefonts/curated-extra/NotoSansDevanagari-VF.ttf',
+      gsubFeatures: ['locl', 'nukt', 'akhn', 'rphf', 'rkrf', 'pref', 'blwf', 'abvf', 'half', 'pstf', 'cjct'],
+      scriptTags: ['deva', 'DFLT'],
+      gposFeatures: ['kern', 'mark', 'mkmk'],
+      samples: ['श्रृंखला', 'संस्कृत', 'प्रार्थना'],
+      requireAdjustedMarks: false
+    }
+  ];
+
+  let exercisedCases = 0;
+  let exercisedSamples = 0;
+
+  for (const cfg of cases) {
+    const fullPath = path.resolve(__dirname, '..', cfg.font);
+    if (!fs.existsSync(fullPath)) continue;
+    exercisedCases++;
+    let caseSawMarks = 0;
+    let caseAdjustedMarkSamples = 0;
+
+    const font = FontParser.fromArrayBuffer(toArrayBuffer(fs.readFileSync(fullPath)));
+    for (const text of cfg.samples) {
+      const glyphIndices = font.getGlyphIndicesForStringWithGsub(text, cfg.gsubFeatures, cfg.scriptTags);
+      const withGpos = font.layoutString(text, {
+        gsubFeatures: cfg.gsubFeatures,
+        scriptTags: cfg.scriptTags,
+        gpos: true,
+        gposFeatures: cfg.gposFeatures
+      });
+      const withoutGpos = font.layoutString(text, {
+        gsubFeatures: cfg.gsubFeatures,
+        scriptTags: cfg.scriptTags,
+        gpos: false
+      });
+
+      assert.ok(withGpos.length > 0, `expected non-empty layout for "${text}" in ${cfg.font}`);
+      assert.equal(withGpos.length, withoutGpos.length, `layout length mismatch for "${text}" in ${cfg.font}`);
+      assert.ok(withGpos.length <= glyphIndices.length, `unexpected layout growth for "${text}" in ${cfg.font}`);
+
+      let sawMark = false;
+      let adjustedMark = false;
+      for (let i = 0; i < withGpos.length; i++) {
+        const g = withGpos[i];
+        const before = withoutGpos[i];
+        assert.equal(Number.isFinite(g.xAdvance), true);
+        assert.equal(Number.isFinite(g.yAdvance), true);
+        assert.equal(Number.isFinite(g.xOffset), true);
+        assert.equal(Number.isFinite(g.yOffset), true);
+
+        const glyphClass = font.gdef?.getGlyphClass?.(g.glyphIndex) ?? 0;
+        if (glyphClass === 3) {
+          sawMark = true;
+          assert.equal(g.xAdvance, 0, `expected mark glyph xAdvance=0 for "${text}" in ${cfg.font}`);
+          if (
+            g.xOffset !== before.xOffset ||
+            g.yOffset !== before.yOffset ||
+            g.yAdvance !== before.yAdvance
+          ) {
+            adjustedMark = true;
+          }
+        }
+      }
+
+      if (sawMark) {
+        caseSawMarks++;
+        if (adjustedMark) caseAdjustedMarkSamples++;
+      }
+      exercisedSamples++;
+    }
+
+    if (cfg.requireAdjustedMarks && caseSawMarks > 0) {
+      assert.ok(caseAdjustedMarkSamples > 0, `expected adjusted marks in ${cfg.font}`);
+    }
+  }
+
+  assert.ok(exercisedCases >= 2, 'expected at least two script fixtures for validation sweep');
+  assert.ok(exercisedSamples >= 6, 'expected multiple script samples in validation sweep');
+});
+
 test('Table access works for known tags on multiple font formats', () => {
   const ttfBytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
   const woffBytes = readBytes('truetypefonts/ubuntu.woff');
