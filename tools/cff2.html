@@ -28,7 +28,11 @@
     <div class="row">
       <input id="fileInput" type="file" accept=".otf,.ttf" />
       <label>Sample <input id="sample" value="CFF2 test" style="padding:6px;border-radius:6px;border:1px solid #ccc" /></label>
+      <button id="setDefault" type="button">Default Axes</button>
+      <button id="setMin" type="button">Min Axes</button>
+      <button id="setMax" type="button">Max Axes</button>
     </div>
+    <div id="axisControls" style="margin-top:10px"></div>
     <div id="info" style="margin-top:8px;color:var(--muted);font-size:12px"></div>
   </div>
 
@@ -47,8 +51,69 @@
     const info = document.getElementById("info");
     const preview = document.getElementById("preview");
     const sample = document.getElementById("sample");
+    const axisControls = document.getElementById("axisControls");
+    const setDefault = document.getElementById("setDefault");
+    const setMin = document.getElementById("setMin");
+    const setMax = document.getElementById("setMax");
 
     let font = null;
+    let axisValues = {};
+
+    function applyAxes(values) {
+      if (!font || typeof font.setVariationByAxes !== "function") return;
+      axisValues = { ...axisValues, ...values };
+      font.setVariationByAxes(axisValues);
+      renderSample();
+      renderAxisControls();
+    }
+
+    function getAxisExtremes(kind) {
+      const axes = font?.getVariationAxes?.() ?? [];
+      if (!axes.length) return {};
+      if (kind === "min") return Object.fromEntries(axes.map(a => [a.name, a.minValue]));
+      if (kind === "max") return Object.fromEntries(axes.map(a => [a.name, a.maxValue]));
+      return Object.fromEntries(axes.map(a => [a.name, a.defaultValue]));
+    }
+
+    function renderAxisControls() {
+      const axes = font?.getVariationAxes?.() ?? [];
+      axisControls.innerHTML = "";
+      if (!axes.length) {
+        axisControls.textContent = "No variation axes detected.";
+        return;
+      }
+      const title = document.createElement("div");
+      title.style.fontSize = "12px";
+      title.style.color = "var(--muted)";
+      title.style.marginBottom = "8px";
+      title.textContent = "Variation axes";
+      axisControls.appendChild(title);
+
+      for (const axis of axes) {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.style.marginBottom = "6px";
+        const label = document.createElement("label");
+        label.style.minWidth = "80px";
+        label.textContent = `${axis.name} (${axis.minValue}-${axis.maxValue})`;
+        const slider = document.createElement("input");
+        slider.type = "range";
+        slider.min = String(axis.minValue);
+        slider.max = String(axis.maxValue);
+        slider.step = String(Math.max(0.1, (axis.maxValue - axis.minValue) / 400));
+        slider.value = String(axisValues[axis.name] ?? axis.defaultValue);
+        const valueOut = document.createElement("code");
+        valueOut.textContent = String(Number(slider.value).toFixed(2));
+        slider.addEventListener("input", () => {
+          valueOut.textContent = String(Number(slider.value).toFixed(2));
+          applyAxes({ [axis.name]: Number(slider.value) });
+        });
+        row.appendChild(label);
+        row.appendChild(slider);
+        row.appendChild(valueOut);
+        axisControls.appendChild(row);
+      }
+    }
 
     function renderSample() {
       if (!font) return;
@@ -75,11 +140,16 @@
       }
       const hasCFF2 = tags.includes(Table.CFF2);
       font = FontParser.fromArrayBuffer(buf);
-      info.innerHTML = `Tables: ${tags.length} | CFF2: <code>${hasCFF2 ? "yes" : "no"}</code>`;
+      axisValues = getAxisExtremes("default");
+      applyAxes(axisValues);
+      info.innerHTML = `Tables: ${tags.length} | CFF2: <code>${hasCFF2 ? "yes" : "no"}</code> | Axes: <code>${(font.getVariationAxes?.() ?? []).length}</code>`;
       renderSample();
     });
 
     sample.addEventListener("input", renderSample);
+    setDefault.addEventListener("click", () => applyAxes(getAxisExtremes("default")));
+    setMin.addEventListener("click", () => applyAxes(getAxisExtremes("min")));
+    setMax.addEventListener("click", () => applyAxes(getAxisExtremes("max")));
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>

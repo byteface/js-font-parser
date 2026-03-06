@@ -228,11 +228,26 @@ test('curated variable fonts expose variation axes and survive axis updates', ()
   }
 });
 
-test('CFF2 variable OTF fixtures expose axes and glyphs', () => {
+test('CFF2 variable OTF fixtures survive axis extremes and update outlines', () => {
   const cff2Fixtures = [
     'truetypefonts/curated/SourceSerif4Variable-Roman.otf',
     'truetypefonts/curated/SourceSerif4Variable-Italic.otf'
   ];
+
+  const getBbox = (glyph) => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (let i = 0; i < glyph.getPointCount(); i++) {
+      const p = glyph.getPoint(i);
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+    return { minX, minY, maxX, maxY };
+  };
 
   for (const fixture of cff2Fixtures) {
     const bytes = readBytes(fixture);
@@ -241,22 +256,66 @@ test('CFF2 variable OTF fixtures expose axes and glyphs', () => {
 
     const axes = font.getVariationAxes();
     assert.ok(Array.isArray(axes), `expected axes array for ${fixture}`);
-    if (axes.length > 0) {
-      const defaults = Object.fromEntries(axes.map(a => [a.name, a.defaultValue]));
-      font.setVariationByAxes(defaults);
-    }
+    assert.ok(axes.length > 0, `expected variable axes for ${fixture}`);
 
-    const glyph = font.getGlyphByChar('A');
-    if (glyph) {
-      assert.ok(glyph.getPointCount() >= 0, `expected point access for ${fixture}`);
-    } else {
-      // Current CFF2 path can parse axes while still missing glyph extraction for some fonts.
-      assert.equal(glyph, null, `missing glyph should be represented as null for ${fixture}`);
+    const defaults = Object.fromEntries(axes.map(a => [a.name, a.defaultValue]));
+    const mins = Object.fromEntries(axes.map(a => [a.name, a.minValue]));
+    const maxs = Object.fromEntries(axes.map(a => [a.name, a.maxValue]));
+    const outOfRange = Object.fromEntries(axes.map(a => [a.name, a.maxValue + (a.maxValue - a.minValue + 1)]));
+
+    const gid = font.getGlyphIndexByChar('H');
+    assert.ok(gid != null, `expected test glyph id for ${fixture}`);
+
+    font.setVariationByAxes(defaults);
+    const defaultGlyph = font.getGlyph(gid);
+    assert.ok(defaultGlyph, `expected default glyph for ${fixture}`);
+    const defaultBbox = getBbox(defaultGlyph);
+
+    font.setVariationByAxes(mins);
+    const minGlyph = font.getGlyph(gid);
+    assert.ok(minGlyph, `expected min-axis glyph for ${fixture}`);
+    const minBbox = getBbox(minGlyph);
+
+    font.setVariationByAxes(maxs);
+    const maxGlyph = font.getGlyph(gid);
+    assert.ok(maxGlyph, `expected max-axis glyph for ${fixture}`);
+    const maxBbox = getBbox(maxGlyph);
+
+    for (const box of [defaultBbox, minBbox, maxBbox]) {
+      assert.ok(Number.isFinite(box.minX) && Number.isFinite(box.minY) && Number.isFinite(box.maxX) && Number.isFinite(box.maxY));
+    }
+    assert.notDeepEqual(minBbox, maxBbox, `expected outline bbox to vary across axis extremes for ${fixture}`);
+
+    // Out-of-range values should clamp safely and never produce NaN coords.
+    font.setVariationByAxes(outOfRange);
+    const clampedGlyph = font.getGlyph(gid);
+    assert.ok(clampedGlyph, `expected clamped glyph for ${fixture}`);
+    for (let i = 0; i < clampedGlyph.getPointCount(); i++) {
+      const p = clampedGlyph.getPoint(i);
+      assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y), `expected finite point coordinates for ${fixture}`);
     }
 
     const layout = font.layoutString('Variable', { gsubFeatures: ['liga'], gpos: true });
     assert.ok(Array.isArray(layout), `expected layout for ${fixture}`);
   }
+});
+
+test('variation normalization guards zero-span axes', () => {
+  let ttfCoords = null;
+  const fakeTtf = {
+    fvar: { axes: [{ name: 'wght', minValue: 400, defaultValue: 400, maxValue: 400 }] },
+    setVariationCoords: (coords) => { ttfCoords = coords; }
+  };
+  FontParserTTF.prototype.setVariationByAxes.call(fakeTtf, { wght: 9999 });
+  assert.deepEqual(ttfCoords, [0], 'expected zero-span axis normalization to stay finite for TTF');
+
+  let woffCoords = null;
+  const fakeWoff = {
+    fvar: { axes: [{ name: 'wght', minValue: 400, defaultValue: 400, maxValue: 400 }] },
+    setVariationCoords: (coords) => { woffCoords = coords; }
+  };
+  FontParserWOFF.prototype.setVariationByAxes.call(fakeWoff, { wght: -9999 });
+  assert.deepEqual(woffCoords, [0], 'expected zero-span axis normalization to stay finite for WOFF');
 });
 
 test('Color and variable font APIs return structured data', () => {

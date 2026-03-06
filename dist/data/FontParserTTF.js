@@ -247,12 +247,18 @@ var FontParserTTF = /** @class */ (function () {
             var axis = _b[_i];
             var tag = axis.name;
             var value = (_a = values[tag]) !== null && _a !== void 0 ? _a : axis.defaultValue;
-            var norm = value === axis.defaultValue
-                ? 0
-                : value > axis.defaultValue
-                    ? (value - axis.defaultValue) / (axis.maxValue - axis.defaultValue)
-                    : (value - axis.defaultValue) / (axis.defaultValue - axis.minValue);
-            coords.push(Math.max(-1, Math.min(1, norm)));
+            var norm = 0;
+            if (value !== axis.defaultValue) {
+                if (value > axis.defaultValue) {
+                    var span = axis.maxValue - axis.defaultValue;
+                    norm = span !== 0 ? (value - axis.defaultValue) / span : 0;
+                }
+                else {
+                    var span = axis.defaultValue - axis.minValue;
+                    norm = span !== 0 ? (value - axis.defaultValue) / span : 0;
+                }
+            }
+            coords.push(Number.isFinite(norm) ? Math.max(-1, Math.min(1, norm)) : 0);
         }
         this.setVariationCoords(coords);
     };
