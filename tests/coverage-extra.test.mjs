@@ -59,6 +59,23 @@ function readBytes(relativePath) {
   return fs.readFileSync(fullPath);
 }
 
+function listLocalFontFixtures() {
+  const root = path.resolve(__dirname, '..', 'truetypefonts');
+  const out = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (/\.(ttf|otf|woff)$/i.test(entry.name)) {
+        out.push(path.relative(path.resolve(__dirname, '..'), full));
+      }
+    }
+  };
+  walk(root);
+  return out.sort();
+}
+
 const CURATED_FIXTURES = [
   'truetypefonts/curated/IBMPlexSerif-Regular.ttf',
   'truetypefonts/curated/FiraSans-Regular.ttf',
@@ -228,6 +245,26 @@ test('curated fixture fonts parse and expose stable core metadata', () => {
     const cmap = font.getTableByType(Table.cmap);
     assert.ok(cmap, `cmap should exist for ${fixture}`);
     assert.ok(font.getNumGlyphs() >= 0, `glyph count should be non-negative for ${fixture}`);
+  }
+});
+
+test('all local truetypefonts fixtures are wired into parse smoke coverage', () => {
+  const fixtures = listLocalFontFixtures();
+  assert.ok(fixtures.length > 0, 'expected local font fixtures under truetypefonts');
+
+  for (const fixture of fixtures) {
+    const bytes = readBytes(fixture);
+    let font = null;
+    assert.doesNotThrow(() => {
+      font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
+    }, `expected parser to accept fixture ${fixture}`);
+    assert.ok(font, `expected font object for ${fixture}`);
+
+    // Smoke-touch core APIs so fixture wiring guards against broad regressions.
+    const glyphCount = font.getNumGlyphs?.() ?? 0;
+    assert.ok(Number.isInteger(glyphCount) && glyphCount >= 0, `expected non-negative glyph count for ${fixture}`);
+    assert.equal(typeof font.getAscent?.(), 'number', `expected ascent for ${fixture}`);
+    assert.equal(typeof font.getDescent?.(), 'number', `expected descent for ${fixture}`);
   }
 });
 
