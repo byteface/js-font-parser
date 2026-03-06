@@ -587,3 +587,42 @@ test('GSUB/GPOS fall back to first language system when default is absent', () =
   assert.equal(selectedGsub, langSysFallback);
   assert.equal(selectedGpos, langSysFallback);
 });
+
+test('GSUB ignore flags respect mark filtering set and mark attachment type', () => {
+  const lookup = {
+    getFlag: () => 0x0010,
+    getMarkFilteringSet: () => 2
+  };
+  const tableCtx = {
+    gdef: {
+      getGlyphClass: () => 3,
+      isGlyphInMarkSet: (setIndex, glyphId) => setIndex === 2 && glyphId === 77,
+      getMarkAttachmentClass: () => 0
+    }
+  };
+
+  const inSet = GsubTable.prototype.isGlyphIgnored.call(tableCtx, lookup, 77);
+  const outOfSet = GsubTable.prototype.isGlyphIgnored.call(tableCtx, lookup, 88);
+  assert.equal(inSet, false, 'mark inside filtering set should not be ignored');
+  assert.equal(outOfSet, true, 'mark outside filtering set should be ignored');
+
+  const lookupAttach = {
+    getFlag: () => 0x0200 // mark attachment type = 2
+  };
+  const attachCtx = {
+    gdef: {
+      getGlyphClass: () => 3,
+      getMarkAttachmentClass: (glyphId) => (glyphId === 10 ? 2 : 1)
+    }
+  };
+  assert.equal(
+    GsubTable.prototype.isGlyphIgnored.call(attachCtx, lookupAttach, 10),
+    false,
+    'matching mark attachment class should not be ignored'
+  );
+  assert.equal(
+    GsubTable.prototype.isGlyphIgnored.call(attachCtx, lookupAttach, 11),
+    true,
+    'non-matching mark attachment class should be ignored'
+  );
+});

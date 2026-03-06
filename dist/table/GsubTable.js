@@ -251,7 +251,7 @@ var GsubTable = /** @class */ (function () {
         return (flag & 0x0002) !== 0 || (flag & 0x0004) !== 0 || (flag & 0x0008) !== 0;
     };
     GsubTable.prototype.isGlyphIgnored = function (lookup, glyphId) {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
         if (!this.gdef)
             return false;
         var flag = (_b = (_a = lookup === null || lookup === void 0 ? void 0 : lookup.getFlag) === null || _a === void 0 ? void 0 : _a.call(lookup)) !== null && _b !== void 0 ? _b : 0;
@@ -262,6 +262,17 @@ var GsubTable = /** @class */ (function () {
             return true;
         if ((flag & 0x0008) && glyphClass === 3)
             return true;
+        if ((flag & 0x0010) && glyphClass === 3) {
+            var setIndex = (_g = (_f = lookup === null || lookup === void 0 ? void 0 : lookup.getMarkFilteringSet) === null || _f === void 0 ? void 0 : _f.call(lookup)) !== null && _g !== void 0 ? _g : 0;
+            if (!((_j = (_h = this.gdef).isGlyphInMarkSet) === null || _j === void 0 ? void 0 : _j.call(_h, setIndex, glyphId)))
+                return true;
+        }
+        var markAttachType = (flag & 0xff00) >> 8;
+        if (markAttachType && glyphClass === 3) {
+            var cls = (_l = (_k = this.gdef).getMarkAttachmentClass) === null || _l === void 0 ? void 0 : _l.call(_k, glyphId);
+            if ((cls !== null && cls !== void 0 ? cls : 0) !== markAttachType)
+                return true;
+        }
         return false;
     };
     GsubTable.prototype.tagToString = function (tag) {

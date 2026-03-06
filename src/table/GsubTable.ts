@@ -264,6 +264,15 @@ export class GsubTable implements ITable {
         if ((flag & 0x0002) && glyphClass === 1) return true;
         if ((flag & 0x0004) && glyphClass === 2) return true;
         if ((flag & 0x0008) && glyphClass === 3) return true;
+        if ((flag & 0x0010) && glyphClass === 3) {
+            const setIndex = lookup?.getMarkFilteringSet?.() ?? 0;
+            if (!this.gdef.isGlyphInMarkSet?.(setIndex, glyphId)) return true;
+        }
+        const markAttachType = (flag & 0xff00) >> 8;
+        if (markAttachType && glyphClass === 3) {
+            const cls = this.gdef.getMarkAttachmentClass?.(glyphId) ?? 0;
+            if (cls !== markAttachType) return true;
+        }
         return false;
     }
 
