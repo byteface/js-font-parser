@@ -83,6 +83,8 @@ var FontParserWOFF = /** @class */ (function () {
         this.fvar = null;
         this.gvar = null;
         this.variationCoords = [];
+        this.diagnostics = [];
+        this.diagnosticKeys = new Set();
         // Table directory and tables
         this.tableDir = null;
         this.tables = [];
@@ -93,6 +95,21 @@ var FontParserWOFF = /** @class */ (function () {
             this.init(byteData);
         }
     }
+    FontParserWOFF.prototype.emitDiagnostic = function (code, level, phase, message, context, onceKey) {
+        if (onceKey) {
+            if (this.diagnosticKeys.has(onceKey))
+                return;
+            this.diagnosticKeys.add(onceKey);
+        }
+        this.diagnostics.push({ code: code, level: level, phase: phase, message: message, context: context });
+    };
+    FontParserWOFF.prototype.getDiagnostics = function () {
+        return this.diagnostics.slice();
+    };
+    FontParserWOFF.prototype.clearDiagnostics = function () {
+        this.diagnostics = [];
+        this.diagnosticKeys.clear();
+    };
     FontParserWOFF.load = function (url) {
         return __awaiter(this, void 0, void 0, function () {
             var response, buffer, sfnt;
@@ -663,20 +680,26 @@ var FontParserWOFF = /** @class */ (function () {
     };
     FontParserWOFF.prototype.getGlyphIndexByChar = function (char) {
         if (!char || char.length === 0) {
-            console.error("getGlyphIndexByChar expects a character");
+            this.emitDiagnostic("INVALID_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar expects a character.");
             return null;
         }
         if (char.length > 2) {
-            console.warn("getGlyphIndexByChar received multiple characters; using the first code point");
+            this.emitDiagnostic("MULTI_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar received multiple characters; using the first code point.", undefined, "MULTI_CHAR_INPUT");
         }
         var codePoint = char.codePointAt(0);
-        if (codePoint == null)
+        if (codePoint == null) {
+            this.emitDiagnostic("CODE_POINT_RESOLVE_FAILED", "warning", "parse", "Failed to resolve code point for character.");
             return null;
-        if (!this.cmap)
+        }
+        if (!this.cmap) {
+            this.emitDiagnostic("MISSING_TABLE_CMAP", "warning", "parse", "No cmap table available.", undefined, "MISSING_TABLE_CMAP");
             return null;
+        }
         var cmapFormat = this.getBestCmapFormatFor(codePoint);
-        if (!cmapFormat)
+        if (!cmapFormat) {
+            this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint: codePoint });
             return null;
+        }
         var glyphIndex = typeof cmapFormat.getGlyphIndex === "function"
             ? cmapFormat.getGlyphIndex(codePoint)
             : cmapFormat.mapCharCode(codePoint);
@@ -700,8 +723,12 @@ var FontParserWOFF = /** @class */ (function () {
             if (idx != null)
                 glyphs.push(idx);
         }
-        if (!this.gsub || glyphs.length === 0)
+        if (!this.gsub || glyphs.length === 0) {
+            if (!this.gsub && glyphs.length > 0) {
+                this.emitDiagnostic("MISSING_TABLE_GSUB", "info", "layout", "GSUB table not present; using direct glyph mapping.", undefined, "MISSING_TABLE_GSUB");
+            }
             return glyphs;
+        }
         return this.gsub.applyFeatures(glyphs, featureTags, scriptTags);
     };
     FontParserWOFF.prototype.getKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
@@ -715,8 +742,10 @@ var FontParserWOFF = /** @class */ (function () {
     };
     FontParserWOFF.prototype.getGposKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
         var _a, _b, _c;
-        if (!this.gpos)
+        if (!this.gpos) {
+            this.emitDiagnostic("MISSING_TABLE_GPOS", "info", "layout", "GPOS table not present; kerning defaults to 0.", undefined, "MISSING_TABLE_GPOS");
             return 0;
+        }
         var lookups = (_c = (_b = (_a = this.gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : [];
         var value = 0;
         for (var _i = 0, lookups_2 = lookups; _i < lookups_2.length; _i++) {
@@ -805,6 +834,9 @@ var FontParserWOFF = /** @class */ (function () {
             });
         }
         if (options.gpos) {
+            if (!this.gpos) {
+                this.emitDiagnostic("MISSING_TABLE_GPOS", "info", "layout", "Requested GPOS positioning, but GPOS table is unavailable.", undefined, "MISSING_TABLE_GPOS");
+            }
             this.applyGposPositioning(glyphIndices, positioned, gposFeatures, scriptTags);
         }
         return positioned;
@@ -844,7 +876,9 @@ var FontParserWOFF = /** @class */ (function () {
                     positioned[i + 1].xAdvance += (_q = v2.xAdvance) !== null && _q !== void 0 ? _q : 0;
                     positioned[i + 1].yAdvance += (_r = v2.yAdvance) !== null && _r !== void 0 ? _r : 0;
                 }
+                continue;
             }
+            this.emitDiagnostic("UNSUPPORTED_GPOS_SUBTABLE", "info", "layout", "Encountered GPOS subtable type not handled by pair/single adjustment path.", { constructorName: (st === null || st === void 0 ? void 0 : st.constructor) ? st.constructor.name : "unknown" }, "UNSUPPORTED_GPOS_SUBTABLE:".concat((st === null || st === void 0 ? void 0 : st.constructor) ? st.constructor.name : "unknown"));
         }
         var markSubtables = subtables.filter(function (st) {
             return st instanceof MarkBasePosFormat1 ||

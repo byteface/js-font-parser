@@ -16,6 +16,8 @@ export type LayoutOptions = {
     hyphenate?: 'none' | 'soft';
     hyphenChar?: string;
     hyphenMinWordLength?: number;
+    diagnostics?: LayoutDiagnostic[];
+    onDiagnostic?: (diagnostic: LayoutDiagnostic) => void;
 };
 
 export type LayoutGlyph = {
@@ -37,6 +39,14 @@ export type LayoutResult = {
     width: number;
     height: number;
     lineHeight: number;
+};
+
+export type LayoutDiagnostic = {
+    code: string;
+    level: 'warning' | 'info';
+    phase: 'layout';
+    message: string;
+    context?: Record<string, unknown>;
 };
 
 type FontLike = {
@@ -73,6 +83,10 @@ export class LayoutEngine {
         const head = font.getTableByType?.(0x68656164); // head
         const unitsPerEm = head?.unitsPerEm ?? 1000;
         const lineHeight = options.lineHeight ?? ((hhea?.ascender ?? unitsPerEm * 0.8) - (hhea?.descender ?? -unitsPerEm * 0.2) + (hhea?.lineGap ?? 0));
+        const emitDiagnostic = (diagnostic: LayoutDiagnostic) => {
+            options.diagnostics?.push(diagnostic);
+            options.onDiagnostic?.(diagnostic);
+        };
 
         const lines: LayoutLine[] = [];
         let current: LayoutGlyph[] = [];
@@ -107,13 +121,13 @@ export class LayoutEngine {
                     }
                 }, () => {
                     pushLine(false);
-                }, hyphenChar);
+                }, hyphenChar, emitDiagnostic);
                 if (resolved) {
                     continue;
                 }
             }
 
-            const tokenGlyphs = this.buildTokenGlyphs(font, token.replace(/\u00AD/g, ''), letterSpacing, useKerning);
+            const tokenGlyphs = this.buildTokenGlyphs(font, token.replace(/\u00AD/g, ''), letterSpacing, useKerning, emitDiagnostic);
             const tokenWidth = tokenGlyphs.reduce((sum, g) => sum + g.advance, 0);
 
             if (maxWidth > 0 && cursorX > 0 && cursorX + tokenWidth > maxWidth) {
@@ -261,13 +275,26 @@ export class LayoutEngine {
         return tokens;
     }
 
-    private static buildTokenGlyphs(font: FontLike, token: string, letterSpacing: number, useKerning: boolean): LayoutGlyph[] {
+    private static buildTokenGlyphs(
+        font: FontLike,
+        token: string,
+        letterSpacing: number,
+        useKerning: boolean,
+        emitDiagnostic?: (diagnostic: LayoutDiagnostic) => void
+    ): LayoutGlyph[] {
         const glyphs: LayoutGlyph[] = [];
         let prevGlyph: number | null = null;
         for (const ch of token) {
             const glyphIndex = font.getGlyphIndexByChar ? font.getGlyphIndexByChar(ch) : null;
             const glyph = glyphIndex != null ? font.getGlyph(glyphIndex) : font.getGlyphByChar(ch);
             if (!glyph) {
+                emitDiagnostic?.({
+                    code: 'MISSING_GLYPH',
+                    level: 'warning',
+                    phase: 'layout',
+                    message: 'Glyph missing for character during layout.',
+                    context: { char: ch }
+                });
                 prevGlyph = null;
                 continue;
             }
@@ -289,10 +316,11 @@ export class LayoutEngine {
         cursorGetter: () => number,
         pushGlyphs: (glyphs: LayoutGlyph[]) => void,
         pushLineBreak: () => void,
-        hyphenChar: string
+        hyphenChar: string,
+        emitDiagnostic?: (diagnostic: LayoutDiagnostic) => void
     ): boolean {
         if (parts.length <= 1) return false;
-        const hyphenGlyphs = this.buildTokenGlyphs(font, hyphenChar, letterSpacing, useKerning);
+        const hyphenGlyphs = this.buildTokenGlyphs(font, hyphenChar, letterSpacing, useKerning, emitDiagnostic);
         const hyphenWidth = hyphenGlyphs.reduce((sum, g) => sum + g.advance, 0);
         let remaining = parts.slice();
         let emitted = false;
@@ -302,15 +330,22 @@ export class LayoutEngine {
             const glyphs: LayoutGlyph[] = [];
             while (consumed < remaining.length) {
                 const next = remaining[consumed];
-                const nextGlyphs = this.buildTokenGlyphs(font, next, letterSpacing, useKerning);
+                const nextGlyphs = this.buildTokenGlyphs(font, next, letterSpacing, useKerning, emitDiagnostic);
                 const nextWidth = nextGlyphs.reduce((sum, g) => sum + g.advance, 0);
                 const fits = cursorGetter() + width + nextWidth + (consumed < remaining.length - 1 ? hyphenWidth : 0) <= maxWidth;
                 if (!fits && consumed > 0) break;
                 if (!fits) {
                     if (!emitted) {
+                        emitDiagnostic?.({
+                            code: 'SOFT_HYPHEN_FALLBACK',
+                            level: 'warning',
+                            phase: 'layout',
+                            message: 'Soft-hyphen segmentation did not fit; falling back to character wrapping.',
+                            context: { partCount: remaining.length, maxWidth }
+                        });
                         return false;
                     }
-                    const rest = this.buildTokenGlyphs(font, remaining.join(''), letterSpacing, useKerning);
+                    const rest = this.buildTokenGlyphs(font, remaining.join(''), letterSpacing, useKerning, emitDiagnostic);
                     for (const restGlyph of rest) {
                         if (maxWidth > 0 && cursorGetter() > 0 && cursorGetter() + restGlyph.advance > maxWidth) {
                             pushLineBreak();

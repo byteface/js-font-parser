@@ -689,6 +689,59 @@ test('Layout engine uses custom hyphenChar for soft-hyphen breaks', () => {
   assert.deepEqual(lines, ['ab~', 'cd']);
 });
 
+test('TTF parser exposes structured diagnostics for invalid character input', () => {
+  const bytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
+  font.clearDiagnostics();
+
+  font.getGlyphIndexByChar('');
+  font.getGlyphIndexByChar('abc');
+
+  const diagnostics = font.getDiagnostics();
+  const codes = diagnostics.map(d => d.code);
+  assert.ok(codes.includes('INVALID_CHAR_INPUT'));
+  assert.ok(codes.includes('MULTI_CHAR_INPUT'));
+  assert.ok(diagnostics.every(d => typeof d.message === 'string' && d.message.length > 0));
+});
+
+test('TTF parser emits diagnostics when GSUB/GPOS fall back to direct behavior', () => {
+  const bytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
+  font.clearDiagnostics();
+
+  font.gsub = null;
+  font.gpos = null;
+  const positioned = font.layoutString('Hello', { gpos: true });
+  assert.ok(positioned.length > 0);
+
+  const codes = font.getDiagnostics().map(d => d.code);
+  assert.ok(codes.includes('MISSING_TABLE_GSUB'));
+  assert.ok(codes.includes('MISSING_TABLE_GPOS'));
+});
+
+test('Layout engine can collect structured diagnostics for missing glyphs and soft-hyphen fallback', () => {
+  const font = createMockLayoutFont({
+    a: 220,
+    b: 220,
+    c: 220,
+    d: 220,
+    '-': 60
+  });
+
+  const diagnostics = [];
+  LayoutEngine.layoutText(font, 'ab\u00ADcd ?', {
+    maxWidth: 300,
+    breakWords: true,
+    hyphenate: 'soft',
+    hyphenMinWordLength: 2,
+    diagnostics
+  });
+
+  const codes = diagnostics.map(d => d.code);
+  assert.ok(codes.includes('SOFT_HYPHEN_FALLBACK'));
+  assert.ok(codes.includes('MISSING_GLYPH'));
+});
+
 test('GPOS mark positioning attaches combining marks (if fixture present)', () => {
   const candidates = [
     'truetypefonts/gpos/NotoSansArabic-Regular.ttf',

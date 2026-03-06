@@ -36,6 +36,14 @@ import { detectScriptTags } from '../utils/ScriptDetector.js';
 import { SvgTable } from '../table/SvgTable.js';
 import { GvarTable } from '../table/GvarTable.js';
 
+export type FontDiagnostic = {
+    code: string;
+    level: 'warning' | 'info';
+    phase: 'parse' | 'layout';
+    message: string;
+    context?: Record<string, unknown>;
+};
+
 export class FontParserTTF {
     // Define properties
     private os2: Os2Table | null = null;
@@ -60,6 +68,8 @@ export class FontParserTTF {
     private svg: SvgTable | null = null;
     private gvar: GvarTable | null = null;
     private variationCoords: number[] = [];
+    private diagnostics: FontDiagnostic[] = [];
+    private diagnosticKeys = new Set<string>();
 
     // Table directory and tables
     private tableDir: TableDirectory | null = null;
@@ -82,6 +92,30 @@ export class FontParserTTF {
 
     constructor(byteData: ByteArray) {
         this.init(byteData);
+    }
+
+    private emitDiagnostic(
+        code: string,
+        level: 'warning' | 'info',
+        phase: 'parse' | 'layout',
+        message: string,
+        context?: Record<string, unknown>,
+        onceKey?: string
+    ): void {
+        if (onceKey) {
+            if (this.diagnosticKeys.has(onceKey)) return;
+            this.diagnosticKeys.add(onceKey);
+        }
+        this.diagnostics.push({ code, level, phase, message, context });
+    }
+
+    public getDiagnostics(): FontDiagnostic[] {
+        return this.diagnostics.slice();
+    }
+
+    public clearDiagnostics(): void {
+        this.diagnostics = [];
+        this.diagnosticKeys.clear();
     }
 
     // Initialize the FontParserTTF instance
@@ -145,27 +179,34 @@ export class FontParserTTF {
 
     public getGlyphIndexByChar(char: string): number | null {
         if (!char || char.length === 0) {
-            console.error("getGlyphIndexByChar expects a character");
+            this.emitDiagnostic("INVALID_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar expects a character.");
             return null;
         }
         if (char.length > 2) {
-            console.warn("getGlyphIndexByChar received multiple characters; using the first code point");
+            this.emitDiagnostic(
+                "MULTI_CHAR_INPUT",
+                "warning",
+                "parse",
+                "getGlyphIndexByChar received multiple characters; using the first code point.",
+                undefined,
+                "MULTI_CHAR_INPUT"
+            );
         }
 
         const codePoint = char.codePointAt(0); // Convert character to Unicode code point
         if (codePoint == null) {
-            console.error("Failed to get code point for character");
+            this.emitDiagnostic("CODE_POINT_RESOLVE_FAILED", "warning", "parse", "Failed to resolve code point for character.");
             return null;
         }
 
         if (!this.cmap) {
-            console.warn("No cmap table available");
+            this.emitDiagnostic("MISSING_TABLE_CMAP", "warning", "parse", "No cmap table available.", undefined, "MISSING_TABLE_CMAP");
             return null;
         }
 
         const cmapFormat = this.getBestCmapFormatFor(codePoint);
         if (!cmapFormat) {
-            console.warn("No cmap format available");
+            this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint });
             return null;
         }
 
@@ -197,7 +238,12 @@ export class FontParserTTF {
 
     public getGlyphIndicesForStringWithGsub(text: string, featureTags: string[] = ["liga"], scriptTags: string[] = ["DFLT", "latn"]): number[] {
         const glyphs = this.getGlyphIndicesForString(text);
-        if (!this.gsub || glyphs.length === 0) return glyphs;
+        if (!this.gsub || glyphs.length === 0) {
+            if (!this.gsub && glyphs.length > 0) {
+                this.emitDiagnostic("MISSING_TABLE_GSUB", "info", "layout", "GSUB table not present; using direct glyph mapping.", undefined, "MISSING_TABLE_GSUB");
+            }
+            return glyphs;
+        }
         return this.gsub.applyFeatures(glyphs, featureTags, scriptTags);
     }
 
@@ -243,7 +289,10 @@ export class FontParserTTF {
     }
 
     public getGposKerningValueByGlyphs(leftGlyph: number, rightGlyph: number): number {
-        if (!this.gpos) return 0;
+        if (!this.gpos) {
+            this.emitDiagnostic("MISSING_TABLE_GPOS", "info", "layout", "GPOS table not present; kerning defaults to 0.", undefined, "MISSING_TABLE_GPOS");
+            return 0;
+        }
         const lookups = this.gpos.lookupList?.getLookups?.() ?? [];
         let value = 0;
         for (const lookup of lookups) {
@@ -299,6 +348,9 @@ export class FontParserTTF {
             });
         }
         if (options.gpos) {
+            if (!this.gpos) {
+                this.emitDiagnostic("MISSING_TABLE_GPOS", "info", "layout", "Requested GPOS positioning, but GPOS table is unavailable.", undefined, "MISSING_TABLE_GPOS");
+            }
             this.applyGposPositioning(glyphIndices, positioned, gposFeatures, scriptTags);
         }
         return positioned;
@@ -352,7 +404,16 @@ export class FontParserTTF {
                     positioned[i + 1].xAdvance += v2.xAdvance ?? 0;
                     positioned[i + 1].yAdvance += v2.yAdvance ?? 0;
                 }
+                continue;
             }
+            this.emitDiagnostic(
+                "UNSUPPORTED_GPOS_SUBTABLE",
+                "info",
+                "layout",
+                "Encountered GPOS subtable type not handled by pair/single adjustment path.",
+                { constructorName: (st as any)?.constructor?.name ?? "unknown" },
+                `UNSUPPORTED_GPOS_SUBTABLE:${(st as any)?.constructor?.name ?? "unknown"}`
+            );
         }
 
         const markSubtables = subtables.filter(st =>
