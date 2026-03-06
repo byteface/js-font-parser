@@ -318,6 +318,49 @@ test('variation normalization guards zero-span axes', () => {
   assert.deepEqual(woffCoords, [0], 'expected zero-span axis normalization to stay finite for WOFF');
 });
 
+test('CFF2 variable glyph sweep stays stable across axis extremes', () => {
+  const fixtures = [
+    'truetypefonts/curated/SourceSerif4Variable-Roman.otf',
+    'truetypefonts/curated/SourceSerif4Variable-Italic.otf'
+  ];
+
+  for (const fixture of fixtures) {
+    const bytes = readBytes(fixture);
+    const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
+    const axes = font.getVariationAxes();
+    assert.ok(axes.length > 0, `expected axes in ${fixture}`);
+
+    const extremes = [
+      Object.fromEntries(axes.map(a => [a.name, a.minValue])),
+      Object.fromEntries(axes.map(a => [a.name, a.maxValue]))
+    ];
+
+    const glyphLimit = Math.min(font.getNumGlyphs(), 600);
+    for (const values of extremes) {
+      font.setVariationByAxes(values);
+      let checked = 0;
+      for (let gid = 0; gid < glyphLimit; gid++) {
+        let glyph = null;
+        assert.doesNotThrow(() => {
+          glyph = font.getGlyph(gid);
+        }, `getGlyph should not throw for gid=${gid} in ${fixture}`);
+        if (!glyph) continue;
+        checked++;
+        const pointCount = glyph.getPointCount();
+        assert.ok(pointCount >= 0, `point count should be non-negative for gid=${gid} in ${fixture}`);
+        for (let i = 0; i < pointCount; i++) {
+          const p = glyph.getPoint(i);
+          assert.ok(
+            Number.isFinite(p.x) && Number.isFinite(p.y),
+            `expected finite coordinates for gid=${gid}, point=${i} in ${fixture}`
+          );
+        }
+      }
+      assert.ok(checked > 100, `expected substantial parsed glyph coverage for ${fixture}`);
+    }
+  }
+});
+
 test('Color and variable font APIs return structured data', () => {
   const colorBytes = readBytes('truetypefonts/color/TwemojiMozilla.ttf');
   const colorFont = FontParser.fromArrayBuffer(toArrayBuffer(colorBytes));
