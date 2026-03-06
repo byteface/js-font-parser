@@ -1,9 +1,10 @@
 # Wishlist
 
 ## Prioritized (easiest -> hardest)
-1. **gvar interpolation** — solid for simple glyph deltas; remaining: component-transform and remaining composite edge cases.
-2. **Full GPOS positioning across scripts** — mark-to-mark + base/ligature anchors improved; remaining: complex mark/ligature combos + script validation.
-3. **WOFF2 support** — decode Brotli-compressed tables (decoder packaging/runtime strategy still open).
+1. **Golden-image tests** — add rendering regression tests for key demos.
+2. **gvar interpolation** — solid for simple glyph deltas; remaining: component-transform deltas (risky) + remaining composite edge cases.
+3. **Full GPOS positioning across scripts** — mark-to-mark + base/ligature anchors improved; remaining: complex mark/ligature combos + script validation.
+4. **WOFF2 support** — decode Brotli-compressed tables (decoder packaging/runtime strategy still open).
 
 
 ## Done (recent)

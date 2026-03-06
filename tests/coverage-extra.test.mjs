@@ -717,6 +717,27 @@ test('GPOS mark positioning attaches combining marks (if fixture present)', () =
   assert.ok(sawOffset, 'expected GPOS to attach combining mark with offsets');
 });
 
+test('golden targets config is well-formed', () => {
+  const targetsPath = path.resolve(__dirname, 'golden', 'targets.json');
+  const raw = fs.readFileSync(targetsPath, 'utf8');
+  const targets = JSON.parse(raw);
+  assert.ok(Array.isArray(targets), 'targets.json should be an array');
+  assert.ok(targets.length > 0, 'expected at least one golden target');
+
+  const seenIds = new Set();
+  for (const target of targets) {
+    assert.ok(typeof target.id === 'string' && target.id.length > 0, 'target id required');
+    assert.ok(!seenIds.has(target.id), `duplicate target id: ${target.id}`);
+    seenIds.add(target.id);
+    assert.ok(typeof target.path === 'string' && target.path.startsWith('/'), 'target path must be absolute');
+    assert.ok(Number.isFinite(target.width) && target.width > 0, 'target width must be > 0');
+    assert.ok(Number.isFinite(target.height) && target.height > 0, 'target height must be > 0');
+    if (target.waitMs != null) {
+      assert.ok(Number.isFinite(target.waitMs) && target.waitMs >= 0, 'waitMs must be >= 0');
+    }
+  }
+});
+
 test('Table access works for known tags on multiple font formats', () => {
   const ttfBytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
   const woffBytes = readBytes('truetypefonts/ubuntu.woff');
