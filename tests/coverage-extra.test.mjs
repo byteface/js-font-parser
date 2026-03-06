@@ -16,6 +16,7 @@ import { Table } from '../dist/table/Table.js';
 import { LayoutEngine } from '../dist/layout/LayoutEngine.js';
 import { GsubTable } from '../dist/table/GsubTable.js';
 import { GposTable } from '../dist/table/GposTable.js';
+import { GlyfCompositeDescript } from '../dist/table/GlyfCompositeDescript.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -702,6 +703,17 @@ test('TTF parser exposes structured diagnostics for invalid character input', ()
   assert.ok(codes.includes('INVALID_CHAR_INPUT'));
   assert.ok(codes.includes('MULTI_CHAR_INPUT'));
   assert.ok(diagnostics.every(d => typeof d.message === 'string' && d.message.length > 0));
+
+  const warnings = font.getDiagnostics({ level: 'warning' });
+  assert.ok(warnings.length > 0);
+  assert.ok(warnings.every(d => d.level === 'warning'));
+
+  const parseOnly = font.getDiagnostics({ phase: 'parse' });
+  assert.ok(parseOnly.length > 0);
+  assert.ok(parseOnly.every(d => d.phase === 'parse'));
+
+  const byRegex = font.getDiagnostics({ code: /^INVALID_/ });
+  assert.ok(byRegex.some(d => d.code === 'INVALID_CHAR_INPUT'));
 });
 
 test('TTF parser emits diagnostics when GSUB/GPOS fall back to direct behavior', () => {
@@ -768,6 +780,59 @@ test('GPOS mark positioning attaches combining marks (if fixture present)', () =
   }
 
   assert.ok(sawOffset, 'expected GPOS to attach combining mark with offsets');
+});
+
+test('Composite glyph point matching aligns component anchors (if present)', () => {
+  const candidates = [
+    'truetypefonts/curated/Inter-VF.ttf',
+    'truetypefonts/curated/Roboto-VF.ttf',
+    'truetypefonts/curated/NotoSerif-VF.ttf',
+    'truetypefonts/curated/NotoSansTamil-VF.ttf',
+    'truetypefonts/curated/NotoSansGeorgian-VF.ttf',
+    'truetypefonts/curated/IBMPlexSerif-Regular.ttf',
+    'truetypefonts/curated/FiraSans-Regular.ttf'
+  ];
+
+  let checked = false;
+  for (const relPath of candidates) {
+    const bytes = readBytes(relPath);
+    const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
+    const glyf = font.getTableByType(Table.glyf);
+    if (!glyf) continue;
+
+    const glyphCount = font.getNumGlyphs();
+    for (let gid = 0; gid < glyphCount; gid++) {
+      const desc = glyf.getDescription(gid);
+      if (!(desc instanceof GlyfCompositeDescript)) continue;
+      const comp = desc.components.find(c => !c.isArgsAreXY());
+      if (!comp) continue;
+
+      const parentPointIndex = comp.point1;
+      if (parentPointIndex < 0 || parentPointIndex >= desc.getPointCount()) continue;
+      const parentX = desc.getXCoordinate(parentPointIndex);
+      const parentY = desc.getYCoordinate(parentPointIndex);
+
+      const childDesc = glyf.getDescription(comp.glyphIndex);
+      if (!childDesc) continue;
+      const childX = childDesc.getXCoordinate(comp.point2);
+      const childY = childDesc.getYCoordinate(comp.point2);
+      const scaledX = comp.scaleX(childX, childY);
+      const scaledY = comp.scaleY(childX, childY);
+      const placedX = scaledX + comp.xtranslate;
+      const placedY = scaledY + comp.ytranslate;
+
+      const dx = Math.abs(parentX - placedX);
+      const dy = Math.abs(parentY - placedY);
+      assert.ok(dx < 0.5 && dy < 0.5, `expected point match alignment (dx=${dx}, dy=${dy})`);
+      checked = true;
+      break;
+    }
+    if (checked) break;
+  }
+
+  if (!checked) {
+    return;
+  }
 });
 
 test('golden targets config is well-formed', () => {

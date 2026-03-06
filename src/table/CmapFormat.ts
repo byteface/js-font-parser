@@ -7,6 +7,7 @@ import { CmapFormat8 } from "./CmapFormat8.js";
 import { CmapFormat10 } from "./CmapFormat10.js";
 import { CmapFormat12 } from "./CmapFormat12.js";
 import { ICmapFormat } from "./ICmapFormat.js";
+import { Debug } from "../utils/Debug.js";
 
 export class CmapFormat {
     format: number = 0;
@@ -20,7 +21,7 @@ export class CmapFormat {
 
     static create(format: number, byte_ar: ByteArray): ICmapFormat | null {
 
-        console.log("cmap create", format);
+        Debug.log("cmap create", format);
 
         switch (format) {
             case 0:

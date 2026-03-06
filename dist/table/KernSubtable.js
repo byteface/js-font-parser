@@ -1,4 +1,5 @@
 // UNTESTED
+import { Debug } from "../utils/Debug.js";
 var KernSubtable = /** @class */ (function () {
     function KernSubtable() {
     }
@@ -6,7 +7,7 @@ var KernSubtable = /** @class */ (function () {
         return -1;
     };
     KernSubtable.prototype.getKerningPair = function (i) {
-        console.warn("Attempting to retrieve kerning pair, but method is unimplemented.");
+        Debug.warn("Attempting to retrieve kerning pair, but method is unimplemented.");
         return null;
     };
     return KernSubtable;

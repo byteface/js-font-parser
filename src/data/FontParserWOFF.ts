@@ -33,14 +33,8 @@ import { PairPosSubtable } from '../table/PairPosSubtable.js';
 import { SvgTable } from '../table/SvgTable.js';
 import { FvarTable } from '../table/FvarTable.js';
 import { GvarTable } from '../table/GvarTable.js';
-
-export type FontDiagnostic = {
-    code: string;
-    level: 'warning' | 'info';
-    phase: 'parse' | 'layout';
-    message: string;
-    context?: Record<string, unknown>;
-};
+import type { Diagnostic as FontDiagnostic, DiagnosticFilter } from '../types/Diagnostics.js';
+import { matchesDiagnosticFilter } from '../types/Diagnostics.js';
 
 export class FontParserWOFF {
     // Define properties
@@ -95,8 +89,8 @@ export class FontParserWOFF {
         this.diagnostics.push({ code, level, phase, message, context });
     }
 
-    public getDiagnostics(): FontDiagnostic[] {
-        return this.diagnostics.slice();
+    public getDiagnostics(filter?: DiagnosticFilter): FontDiagnostic[] {
+        return this.diagnostics.filter(d => matchesDiagnosticFilter(d, filter)).slice();
     }
 
     public clearDiagnostics(): void {
@@ -330,11 +324,8 @@ export class FontParserWOFF {
                         for (let c = 0; c < componentCount; c++) {
                             const rawDx = fullDx[c] ?? 0;
                             const rawDy = fullDy[c] ?? 0;
-                            const comp = base.components[c];
-                            if (comp && comp.isArgsAreXY()) {
-                                compDx[c] = rawDx;
-                                compDy[c] = rawDy;
-                            }
+                            compDx[c] = rawDx;
+                            compDy[c] = rawDy;
                         }
                     }
 

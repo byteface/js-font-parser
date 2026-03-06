@@ -100,8 +100,22 @@ var FontParserTTF = /** @class */ (function () {
         }
         this.diagnostics.push({ code: code, level: level, phase: phase, message: message, context: context });
     };
-    FontParserTTF.prototype.getDiagnostics = function () {
-        return this.diagnostics.slice();
+    FontParserTTF.prototype.getDiagnostics = function (filter) {
+        return this.diagnostics.filter(function (d) {
+            var _a;
+            if (!filter)
+                return true;
+            if (filter.level && d.level !== filter.level)
+                return false;
+            if (filter.phase && d.phase !== filter.phase)
+                return false;
+            if (filter.code != null) {
+                if (typeof filter.code === 'string')
+                    return d.code === filter.code;
+                return ((_a = filter.code) === null || _a === void 0 ? void 0 : _a.test(d.code)) === true;
+            }
+            return true;
+        }).slice();
     };
     FontParserTTF.prototype.clearDiagnostics = function () {
         this.diagnostics = [];
@@ -521,11 +535,8 @@ var FontParserTTF = /** @class */ (function () {
                         for (var c = 0; c < componentCount; c++) {
                             var rawDx = (_f = fullDx[c]) !== null && _f !== void 0 ? _f : 0;
                             var rawDy = (_g = fullDy[c]) !== null && _g !== void 0 ? _g : 0;
-                            var comp = base_1.components[c];
-                            if (comp && comp.isArgsAreXY()) {
-                                compDx[c] = rawDx;
-                                compDy[c] = rawDy;
-                            }
+                            compDx[c] = rawDx;
+                            compDy[c] = rawDy;
                         }
                     }
                     var phantomBase = isComposite ? componentCount : basePointCount;

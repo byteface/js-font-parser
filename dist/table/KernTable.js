@@ -1,6 +1,7 @@
 import { KernSubtableFormat0 } from "./KernSubtableFormat0.js";
 import { KernSubtableFormat2 } from "./KernSubtableFormat2.js";
 import { Table } from "./Table.js";
+import { Debug } from "../utils/Debug.js";
 var KernTable = /** @class */ (function () {
     function KernTable(de, byte_ar) {
         byte_ar.offset = de.offset;
@@ -23,7 +24,7 @@ var KernTable = /** @class */ (function () {
                     table = new KernSubtableFormat2(byte_ar);
                     break;
                 default:
-                    console.warn("Unsupported KernSubtable format: ".concat(format));
+                    Debug.warn("Unsupported KernSubtable format: ".concat(format));
                     break;
             }
             // Ensure we move to the end of the subtable

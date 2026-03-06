@@ -5,6 +5,7 @@ import { CmapFormat6 } from "./CmapFormat6.js";
 import { CmapFormat8 } from "./CmapFormat8.js";
 import { CmapFormat10 } from "./CmapFormat10.js";
 import { CmapFormat12 } from "./CmapFormat12.js";
+import { Debug } from "../utils/Debug.js";
 var CmapFormat = /** @class */ (function () {
     function CmapFormat() {
         this.format = 0;
@@ -16,7 +17,7 @@ var CmapFormat = /** @class */ (function () {
     // this.version = byte_ar.readUnsignedShort();
     // }
     CmapFormat.create = function (format, byte_ar) {
-        console.log("cmap create", format);
+        Debug.log("cmap create", format);
         switch (format) {
             case 0:
                 return new CmapFormat0(byte_ar);

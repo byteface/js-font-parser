@@ -231,6 +231,46 @@ Color.blend({ r: 255, g: 0, b: 0, a: 0.5 }, { r: 0, g: 0, b: 0, a: 1 });
 Color.paletteToCss([{ red: 255, green: 0, blue: 0, alpha: 255 }]);
 ```
 
+## Diagnostics
+
+`FontParserTTF` and `FontParserWOFF` expose structured diagnostics:
+
+```js
+font.clearDiagnostics();
+font.layoutString("Hello", { gpos: true });
+
+const all = font.getDiagnostics();
+const parseOnly = font.getDiagnostics({ phase: "parse" });
+const warnings = font.getDiagnostics({ level: "warning" });
+const missingGpos = font.getDiagnostics({ code: "MISSING_TABLE_GPOS" });
+const allMissing = font.getDiagnostics({ code: /^MISSING_/ });
+```
+
+Layout diagnostics can be captured via `LayoutEngine`:
+
+```js
+const diagnostics = [];
+LayoutEngine.layoutText(font, "hy\u00ADphen ?", {
+  maxWidth: 300,
+  diagnostics,
+  onDiagnostic: (d) => {
+    // optional callback
+  }
+});
+```
+
+Current diagnostic codes:
+- `INVALID_CHAR_INPUT`
+- `MULTI_CHAR_INPUT`
+- `CODE_POINT_RESOLVE_FAILED`
+- `MISSING_TABLE_CMAP`
+- `MISSING_CMAP_FORMAT`
+- `MISSING_TABLE_GSUB`
+- `MISSING_TABLE_GPOS`
+- `UNSUPPORTED_GPOS_SUBTABLE`
+- `MISSING_GLYPH` (layout)
+- `SOFT_HYPHEN_FALLBACK` (layout)
+
 ## Notes
 
 - `FontParser.load(...)` returns a parser instance for the detected format.

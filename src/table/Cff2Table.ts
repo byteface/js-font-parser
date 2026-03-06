@@ -6,6 +6,7 @@ import { CffIndex } from './CffIndex.js';
 import { CffDict } from './CffDict.js';
 import { CffGlyphDescription } from './CffGlyphDescription.js';
 import { IGlyphDescription } from './IGlyphDescription.js';
+import { Debug } from '../utils/Debug.js';
 
 type CffPoint = { x: number; y: number; onCurve: boolean; endOfContour: boolean };
 
@@ -503,7 +504,7 @@ export class Cff2Table implements ITable {
                         if (args.length) stack.push(...args);
                         // debug
                         if ((globalThis as any)?.__CFF2_DEBUG) {
-                            console.log('CFF2 vsindex', vsIndex);
+                            Debug.log('CFF2 vsindex', vsIndex);
                         }
                         break;
                     }
@@ -561,7 +562,7 @@ export class Cff2Table implements ITable {
                             vsIndex = args.pop() ?? 0;
                             if (args.length) stack.push(...args);
                             if ((globalThis as any)?.__CFF2_DEBUG) {
-                                console.log('CFF2 vsindex (esc)', vsIndex);
+                                Debug.log('CFF2 vsindex (esc)', vsIndex);
                             }
                             break;
                         }
@@ -633,7 +634,7 @@ export class Cff2Table implements ITable {
             }
             if ((globalThis as any)?.__CFF2_DEBUG && blendCount) {
                 const regionIndices = this.vstoreRegionIndices[vsIndex] ?? [];
-                console.log('CFF2 blends', blendCount, 'vsindex', vsIndex, 'regions', regionIndices);
+                Debug.log('CFF2 blends', blendCount, 'vsindex', vsIndex, 'regions', regionIndices);
             }
         };
 

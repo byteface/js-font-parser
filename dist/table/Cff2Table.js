@@ -2,6 +2,7 @@ import { Table } from './Table.js';
 import { CffIndex } from './CffIndex.js';
 import { CffDict } from './CffDict.js';
 import { CffGlyphDescription } from './CffGlyphDescription.js';
+import { Debug } from '../utils/Debug.js';
 var Cff2Table = /** @class */ (function () {
     function Cff2Table(de, byte_ar) {
         var _this = this;
@@ -500,7 +501,7 @@ var Cff2Table = /** @class */ (function () {
                             stack.push.apply(stack, args);
                         // debug
                         if (globalThis === null || globalThis === void 0 ? void 0 : globalThis.__CFF2_DEBUG) {
-                            console.log('CFF2 vsindex', vsIndex);
+                            Debug.log('CFF2 vsindex', vsIndex);
                         }
                         break;
                     }
@@ -563,7 +564,7 @@ var Cff2Table = /** @class */ (function () {
                             if (args.length)
                                 stack.push.apply(stack, args);
                             if (globalThis === null || globalThis === void 0 ? void 0 : globalThis.__CFF2_DEBUG) {
-                                console.log('CFF2 vsindex (esc)', vsIndex);
+                                Debug.log('CFF2 vsindex (esc)', vsIndex);
                             }
                             break;
                         }
@@ -645,7 +646,7 @@ var Cff2Table = /** @class */ (function () {
             }
             if ((globalThis === null || globalThis === void 0 ? void 0 : globalThis.__CFF2_DEBUG) && blendCount) {
                 var regionIndices = (_20 = _this.vstoreRegionIndices[vsIndex]) !== null && _20 !== void 0 ? _20 : [];
-                console.log('CFF2 blends', blendCount, 'vsindex', vsIndex, 'regions', regionIndices);
+                Debug.log('CFF2 blends', blendCount, 'vsindex', vsIndex, 'regions', regionIndices);
             }
         };
         parse(charString);

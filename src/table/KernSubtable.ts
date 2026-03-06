@@ -2,6 +2,7 @@
 
 import { ByteArray } from '../utils/ByteArray.js';
 import { KerningPair } from './KerningPair.js';
+import { Debug } from '../utils/Debug.js';
 
 export class KernSubtable {
 
@@ -12,7 +13,7 @@ export class KernSubtable {
     }
 
     getKerningPair(i: number): KerningPair | null {
-        console.warn("Attempting to retrieve kerning pair, but method is unimplemented.");
+        Debug.warn("Attempting to retrieve kerning pair, but method is unimplemented.");
         return null;
     }
 

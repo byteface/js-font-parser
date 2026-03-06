@@ -4,6 +4,7 @@ import { KernSubtable } from "./KernSubtable.js";
 import { KernSubtableFormat0 } from "./KernSubtableFormat0.js";
 import { KernSubtableFormat2 } from "./KernSubtableFormat2.js";
 import { Table } from "./Table.js";
+import { Debug } from "../utils/Debug.js";
 
 
 export class KernTable implements ITable {
@@ -34,7 +35,7 @@ export class KernTable implements ITable {
                     table = new KernSubtableFormat2(byte_ar);
                     break;
                 default:
-                    console.warn(`Unsupported KernSubtable format: ${format}`);
+                    Debug.warn(`Unsupported KernSubtable format: ${format}`);
                     break;
             }
 
