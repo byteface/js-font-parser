@@ -24,6 +24,8 @@ Open:
   Capture visual snapshots for key demo/tool pages.
 - `npm run test:golden:compare`  
   Diff baseline vs current snapshots (fails on changes).
+- `npm run test:golden:approve`  
+  Replace baseline snapshots with reviewed current captures.
 - `npm run test:golden:between -- --base <sha> --head <sha>`  
   Compare screenshots produced from two commits.
 - `npm run build:dist`  

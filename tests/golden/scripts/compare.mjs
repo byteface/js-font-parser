@@ -92,8 +92,10 @@ async function main() {
   }
   await fs.writeFile(path.join(outDir, 'summary.md'), `${lines.join('\n')}\n`);
 
-  if (summary.changed > 0) {
-    process.stderr.write(`Detected ${summary.changed} changed screenshot(s).\n`);
+  if (summary.changed > 0 || summary.missingInBase.length > 0 || summary.missingInHead.length > 0) {
+    process.stderr.write(
+      `Golden comparison failed (changed=${summary.changed}, missingInBase=${summary.missingInBase.length}, missingInHead=${summary.missingInHead.length}).\n`
+    );
     process.exit(1);
   }
 }

@@ -74,15 +74,31 @@ function makeServer(rootDir) {
   });
 }
 
+async function clearPngFiles(dir) {
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.endsWith('.png')) {
+        await fs.rm(path.join(dir, entry.name), { force: true });
+      }
+    }
+  } catch (err) {
+    if (err && err.code === 'ENOENT') return;
+    throw err;
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   const rootDir = path.resolve(args.root || process.cwd());
   const outDir = path.resolve(args.out || path.join(process.cwd(), 'tests/golden/current'));
   const targetsPath = path.resolve(args.targets || path.join(process.cwd(), 'tests/golden/targets.json'));
   const port = Number(args.port || '4173');
+  const timeoutMs = Number(args.timeoutMs || '15000');
 
   const targets = JSON.parse(await fs.readFile(targetsPath, 'utf8'));
   await fs.mkdir(outDir, { recursive: true });
+  await clearPngFiles(outDir);
 
   const server = makeServer(rootDir);
   await new Promise((resolve, reject) => {
@@ -99,10 +115,27 @@ async function main() {
           height: Number(target.height || 900)
         }
       });
+      page.setDefaultTimeout(timeoutMs);
       const url = `http://127.0.0.1:${port}${target.path}`;
       await page.goto(url, { waitUntil: 'networkidle' });
+      await page.addStyleTag({
+        content: `
+          *,
+          *::before,
+          *::after {
+            animation: none !important;
+            transition: none !important;
+            caret-color: transparent !important;
+          }
+        `
+      });
+      await page.evaluate(async () => {
+        if (document.fonts && document.fonts.ready) {
+          await document.fonts.ready;
+        }
+      });
       if (target.waitSelector) {
-        await page.waitForSelector(target.waitSelector, { timeout: 10_000 });
+        await page.waitForSelector(target.waitSelector, { timeout: timeoutMs });
       }
       if (target.waitMs) {
         await page.waitForTimeout(Number(target.waitMs));
