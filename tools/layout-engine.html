@@ -57,6 +57,19 @@
             font-size: 12px;
             color: #5a6474;
         }
+        .diag {
+            margin-top: 10px;
+            border: 1px solid #dbe2e7;
+            border-radius: 10px;
+            background: #fff;
+            padding: 8px 10px;
+            font-size: 12px;
+            color: #4e5a6b;
+            max-height: 180px;
+            overflow: auto;
+            white-space: pre-wrap;
+            font-family: ui-monospace, Menlo, monospace;
+        }
     </style>
 </head>
 <body>
@@ -156,6 +169,7 @@
     </div>
     <textarea id="textInput">The library can now break lines and align text. Use this to inspect glyph advances, kerning, and spacing across fonts.</textarea>
     <div class="hint">Layout uses font metrics + kerning. Adjust width, direction, and alignment to see line breaking.</div>
+    <div id="diagnostics" class="diag">No diagnostics.</div>
     <canvas id="canvas" width="980" height="520"></canvas>
 
     <script type="module">
@@ -179,6 +193,7 @@
         const bidiSelect = document.getElementById('bidiSelect');
         const hyphenSelect = document.getElementById('hyphenSelect');
         const textInput = document.getElementById('textInput');
+        const diagnosticsEl = document.getElementById('diagnostics');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
@@ -226,15 +241,31 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
+        function renderDiagnostics(fontDiagnostics, layoutDiagnostics) {
+            const all = [...fontDiagnostics, ...layoutDiagnostics];
+            if (!all.length) {
+                diagnosticsEl.textContent = 'No diagnostics.';
+                return;
+            }
+            diagnosticsEl.textContent = all.slice(0, 24).map(d => {
+                const ctxText = d.context ? ` ${JSON.stringify(d.context)}` : '';
+                return `[${d.phase}/${d.level}] ${d.code}: ${d.message}${ctxText}`;
+            }).join('\n');
+        }
+
         function render() {
             if (!font) return;
             clear();
+            if (typeof font.clearDiagnostics === 'function') {
+                font.clearDiagnostics();
+            }
             const head = font.getTableByType(Table.head);
             const unitsPerEm = head?.unitsPerEm ?? 1000;
             const scale = 48 / unitsPerEm;
             const lineHeight = Number(lineInput.value);
             const width = Number(widthInput.value);
             const align = alignSelect.value;
+            const layoutDiagnostics = [];
 
             const layout = LayoutEngine.layoutText(font, textInput.value, {
                 maxWidth: width / scale,
@@ -250,7 +281,8 @@
                 tabSize: Number(tabSize.value) || 4,
                 justifyLastLine: justifyLast.value === 'true',
                 bidi: bidiSelect.value,
-                hyphenate: hyphenSelect.value
+                hyphenate: hyphenSelect.value,
+                diagnostics: layoutDiagnostics
             });
 
             ctx.strokeStyle = '#dbe2e7';
@@ -269,6 +301,9 @@
                     });
                 }
             }
+
+            const fontDiagnostics = typeof font.getDiagnostics === 'function' ? font.getDiagnostics() : [];
+            renderDiagnostics(fontDiagnostics, layoutDiagnostics);
         }
 
         async function loadAndRender() {

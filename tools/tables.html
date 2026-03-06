@@ -25,6 +25,7 @@
     .cell-head { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); background:#f6f8fd; padding:8px 10px; font-size:12px; color:var(--muted); }
     pre { margin:0; padding:10px; max-height:58vh; overflow:auto; font-size:12px; line-height:1.45; font-family:ui-monospace, Menlo, monospace; }
     .meta { color:var(--muted); font-size:12px; padding:0 12px 12px; }
+    .diag { margin:0 20px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; padding:8px 10px; font-size:11px; color:var(--muted); white-space:pre-wrap; font-family:ui-monospace, Menlo, monospace; max-height:160px; overflow:auto; }
     @media (max-width: 980px) {
       .layout { grid-template-columns:1fr; }
       .detail { grid-template-columns:1fr; }
@@ -46,6 +47,7 @@
       </label>
     </div>
   </header>
+  <div id="diagnostics" class="diag">No diagnostics.</div>
   <div class="layout">
     <section class="panel">
       <h2>Tables</h2>
@@ -66,12 +68,14 @@
     const tableList = document.getElementById('tableList');
     const detail = document.getElementById('detail');
     const detailTitle = document.getElementById('detailTitle');
+    const diagnosticsEl = document.getElementById('diagnostics');
     const fonts = getFontList('featureMatrix');
 
     let parsedFont = null;
     let records = [];
     let rawBytes = null;
     let selectedTag = null;
+    let toolDiagnostics = [];
 
     function tagToString(tag) {
       return String.fromCharCode((tag >>> 24) & 255, (tag >>> 16) & 255, (tag >>> 8) & 255, tag & 255);
@@ -108,6 +112,27 @@
       return out;
     }
 
+    function pushToolDiagnostic(code, message, context) {
+      toolDiagnostics.push({
+        code,
+        level: 'info',
+        phase: 'parse',
+        message,
+        context
+      });
+    }
+
+    function renderDiagnostics() {
+      const fontDiagnostics = typeof parsedFont?.getDiagnostics === 'function' ? parsedFont.getDiagnostics() : [];
+      const merged = [...fontDiagnostics, ...toolDiagnostics];
+      diagnosticsEl.textContent = merged.length
+        ? merged.slice(0, 24).map(d => {
+            const ctx = d.context ? ` ${JSON.stringify(d.context)}` : '';
+            return `[${d.phase}/${d.level}] ${d.code}: ${d.message}${ctx}`;
+          }).join('\n')
+        : 'No diagnostics.';
+    }
+
     function toHexDump(bytes, startOffset) {
       const lines = [];
       for (let i = 0; i < bytes.length; i += 16) {
@@ -142,6 +167,9 @@
       }
       detailTitle.textContent = `Details — ${rec.tagText}`;
       const table = parsedFont.getTableByType(rec.tag);
+      if (table?.constructor?.name === 'RawTable') {
+        pushToolDiagnostic('RAW_TABLE_FALLBACK', 'Table is present but only available as raw bytes.', { tag: rec.tagText, length: rec.length });
+      }
       const parsed = table ? JSON.stringify(summarizeTable(table), null, 2) : 'Table not parsed by current pipeline.';
       const limit = Math.max(64, Number(byteLimit.value) || 2048);
       const sliceLen = Math.min(rec.length, limit);
@@ -158,12 +186,17 @@
           <pre>${hex}</pre>
         </div>
       `;
+      renderDiagnostics();
     }
 
     async function loadFontSelection() {
       const fontUrl = fonts[Number(fontSelect.value)]?.url ?? fonts[0].url;
       const [font, response] = await Promise.all([FontParser.load(fontUrl), fetch(fontUrl)]);
       parsedFont = font;
+      if (typeof parsedFont.clearDiagnostics === 'function') {
+        parsedFont.clearDiagnostics();
+      }
+      toolDiagnostics = [];
       rawBytes = await response.arrayBuffer();
       records = parseTableRecords(rawBytes);
       selectedTag = records[0]?.tag ?? null;

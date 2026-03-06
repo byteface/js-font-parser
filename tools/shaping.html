@@ -17,6 +17,7 @@
     canvas { width:100%; height:200px; border:1px dashed #ddd; background:#fff; }
     .grid { display:grid; grid-template-columns:1fr; gap:12px; }
     @media (min-width: 900px) { .grid { grid-template-columns:1fr 1fr; } }
+    .diag { margin:10px 20px 14px; border:1px solid var(--border); border-radius:10px; background:#fff; padding:8px; white-space:pre-wrap; font-family:ui-monospace, Menlo, monospace; font-size:11px; color:var(--muted); max-height:180px; overflow:auto; }
   </style>
 </head>
 <body>
@@ -67,6 +68,7 @@
   </div>
   <div id="status" style="margin:10px 20px;color:#a33a2a;font-size:12px"></div>
   <div id="summary" style="margin:0 20px 14px;color:#5e6574;font-size:12px"></div>
+  <div id="diagnostics" class="diag">No diagnostics.</div>
 
   <script type="module">
     import { FontParser } from "../dist/data/FontParser.js";
@@ -87,6 +89,7 @@
     const shapedCanvas = document.getElementById("shaped");
     const status = document.getElementById("status");
     const summary = document.getElementById("summary");
+    const diagnosticsEl = document.getElementById("diagnostics");
 
     let font = null;
 
@@ -114,6 +117,9 @@
 
     function render() {
       if (!font) return;
+      if (typeof font.clearDiagnostics === 'function') {
+        font.clearDiagnostics();
+      }
       const text = sampleInput.value;
       const raw = font.getGlyphIndicesForString(text);
       const rawPositioned = raw.map(gid => {
@@ -165,6 +171,11 @@
         const contextLookups = lookups.filter(l => l.getType && (l.getType() === 5 || l.getType() === 6)).length;
         summary.textContent = `Raw glyphs: ${raw.length} | GSUB glyphs: ${gsubIndices.length} | Shaped glyphs: ${shaped.length} | GDEF: ${gdef ? 'yes' : 'no'} | GSUB lookups: ${lookups.length} (contextual ${contextLookups}) | GPOS: ${gpos ? 'yes' : 'no'}`;
       }
+
+      const diagnostics = typeof font.getDiagnostics === 'function' ? font.getDiagnostics() : [];
+      diagnosticsEl.textContent = diagnostics.length
+        ? diagnostics.slice(0, 24).map(d => `[${d.phase}/${d.level}] ${d.code}: ${d.message}`).join('\n')
+        : 'No diagnostics.';
     }
 
     fontSelect.addEventListener("change", () => {
