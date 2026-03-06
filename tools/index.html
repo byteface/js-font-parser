@@ -11,9 +11,9 @@
     h1 { margin:0 0 6px; font-size:26px; }
     p { margin:0 0 14px; color:var(--muted); }
     ul { list-style:none; padding:0; margin:12px 20px 30px; }
-    li { background:var(--panel); border:1px solid var(--border); border-radius:12px; margin:10px 0; padding:10px 12px; }
+    li { background:var(--panel); border:1px solid var(--border); border-radius:10px; margin:6px 0; padding:8px 10px; display:flex; align-items:baseline; gap:8px; }
     a { color:#2c3e50; text-decoration:none; font-weight:600; }
-    .desc { display:block; color:var(--muted); font-size:12px; margin-top:4px; }
+    .desc { color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   </style>
 </head>
 <body>
@@ -26,29 +26,29 @@
 
   <ul>
     <li><a href="all-glyphs.html">All glyphs</a><span class="desc">Render every glyph in the font.</span></li>
-    <li><a href="unicode-coverage.html">Unicode coverage</a><span class="desc">Block coverage heatmap and summary.</span></li>
-    <li><a href="language-support.html">Language support</a><span class="desc">Required character sets per language.</span></li>
-    <li><a href="localized-review.html">Localized glyph review</a><span class="desc">Visual review of generated glyphs.</span></li>
-    <li><a href="multilang.html">Multilingual sample</a><span class="desc">Render multiple scripts in one view.</span></li>
-    <li><a href="glyph-inspector.html">Glyph inspector</a><span class="desc">Contours, points, bearings, bbox.</span></li>
-    <li><a href="layout-engine.html">Layout engine</a><span class="desc">Line breaking and alignment preview.</span></li>
-    <li><a href="shaping.html">GSUB/GPOS shaping</a><span class="desc">Raw vs shaped rendering for complex scripts.</span></li>
-    <li><a href="tables.html">Font tables</a><span class="desc">Parsed table data and descriptions.</span></li>
-    <li><a href="metadata.html">Metadata</a><span class="desc">Name, OS/2, head, etc.</span></li>
-    <li><a href="metrics.html">Metrics</a><span class="desc">Ascender/descender/advance metrics.</span></li>
-    <li><a href="features.html">Features</a><span class="desc">GSUB/GPOS feature list.</span></li>
-    <li><a href="gsub.html">GSUB ligatures</a><span class="desc">Substitution output explorer.</span></li>
-    <li><a href="kerning.html">Kerning</a><span class="desc">Interactive pair heatmap + rendering preview.</span></li>
-    <li><a href="marks.html">Marks</a><span class="desc">Mark tables and anchors.</span></li>
-    <li><a href="variable-font.html">Variable font</a><span class="desc">Axes and interpolation preview.</span></li>
     <li><a href="cff2.html">CFF2 inspector</a><span class="desc">Load local CFF2 fonts and render outlines.</span></li>
     <li><a href="colrv1.html">COLRv1 paints</a><span class="desc">Paint tree explorer and renderer.</span></li>
-    <li><a href="woff.html">WOFF loader</a><span class="desc">WOFF parsing smoke test.</span></li>
-    <li><a href="woff2.html">WOFF2 loader</a><span class="desc">WOFF2 loader (requires decoder).</span></li>
+    <li><a href="features.html">Features</a><span class="desc">GSUB/GPOS feature list.</span></li>
+    <li><a href="font-library.html">Font library</a><span class="desc">Pick fonts and test rendering.</span></li>
+    <li><a href="glyph-inspector.html">Glyph inspector</a><span class="desc">Contours, points, bearings, bbox.</span></li>
+    <li><a href="gsub.html">GSUB ligatures</a><span class="desc">Substitution output explorer.</span></li>
+    <li><a href="kerning.html">Kerning</a><span class="desc">Interactive pair heatmap + rendering preview.</span></li>
+    <li><a href="language-support.html">Language support</a><span class="desc">Required character sets per language.</span></li>
+    <li><a href="layout-engine.html">Layout engine</a><span class="desc">Line breaking and alignment preview.</span></li>
+    <li><a href="localized-review.html">Localized glyph review</a><span class="desc">Visual review of generated glyphs.</span></li>
+    <li><a href="marks.html">Marks</a><span class="desc">Mark tables and anchors.</span></li>
+    <li><a href="metadata.html">Metadata</a><span class="desc">Name, OS/2, head, etc.</span></li>
+    <li><a href="metrics.html">Metrics</a><span class="desc">Ascender/descender/advance metrics.</span></li>
+    <li><a href="multilang.html">Multilingual sample</a><span class="desc">Render multiple scripts in one view.</span></li>
+    <li><a href="otf-ttf-smoke.html">OTF/TTF smoke test</a><span class="desc">Loads all local fonts and renders a sample.</span></li>
+    <li><a href="shaping.html">GSUB/GPOS shaping</a><span class="desc">Raw vs shaped rendering for complex scripts.</span></li>
     <li><a href="svg-export.html">SVG export</a><span class="desc">Export glyphs to SVG paths.</span></li>
     <li><a href="svg-glyphs.html">SVG glyphs</a><span class="desc">Render glyphs from the SVG table.</span></li>
-    <li><a href="font-library.html">Font library</a><span class="desc">Pick fonts and test rendering.</span></li>
-    <li><a href="otf-ttf-smoke.html">OTF/TTF smoke test</a><span class="desc">Loads all local fonts and renders a sample.</span></li>
+    <li><a href="tables.html">Font tables</a><span class="desc">Parsed table data and descriptions.</span></li>
+    <li><a href="unicode-coverage.html">Unicode coverage</a><span class="desc">Block coverage heatmap and summary.</span></li>
+    <li><a href="variable-font.html">Variable font</a><span class="desc">Axes and interpolation preview.</span></li>
+    <li><a href="woff.html">WOFF loader</a><span class="desc">WOFF parsing smoke test.</span></li>
+    <li><a href="woff2.html">WOFF2 loader</a><span class="desc">WOFF2 loader (requires decoder).</span></li>
   </ul>
   <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>

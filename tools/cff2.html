@@ -12,7 +12,7 @@
     p { margin:0 0 14px; color:var(--muted); }
     .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 20px; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-    input[type="file"] { padding:6px; }
+    select, input { padding:6px; border-radius:6px; border:1px solid #ccc; }
     canvas { width:100%; height:220px; border:1px dashed #ddd; background:#fff; }
     code { background:#f3f3f3; padding:2px 4px; border-radius:4px; }
   </style>
@@ -21,13 +21,20 @@
 <div data-nav="main"></div>
   <header>
     <h1>CFF2 Inspector</h1>
-    <p>Load a font file to detect CFF2 and render sample text.</p>
+    <p>Select a built-in font to detect CFF2 and render sample text.</p>
   </header>
 
   <div class="panel">
     <div class="row">
-      <input id="fileInput" type="file" accept=".otf,.ttf" />
-      <label>Sample <input id="sample" value="CFF2 test" style="padding:6px;border-radius:6px;border:1px solid #ccc" /></label>
+      <label>Font
+        <select id="fontSelect">
+          <option value="../truetypefonts/OTF/source-serif4/SourceSerif4Variable-Roman.otf">SourceSerif4Variable-Roman.otf</option>
+          <option value="../truetypefonts/GothamNarrow-Ultra.otf">GothamNarrow-Ultra.otf</option>
+          <option value="../truetypefonts/curated/SourceSans3-Regular.otf">SourceSans3-Regular.otf</option>
+          <option value="../truetypefonts/noto/NotoSans-Regular.ttf">NotoSans-Regular.ttf</option>
+        </select>
+      </label>
+      <label>Sample <input id="sample" value="CFF2 test" /></label>
       <button id="setDefault" type="button">Default Axes</button>
       <button id="setMin" type="button">Min Axes</button>
       <button id="setMax" type="button">Max Axes</button>
@@ -41,13 +48,11 @@
   </div>
 
   <script type="module">
-    import { ByteArray } from "../dist/utils/ByteArray.js";
     import { FontParser } from "../dist/data/FontParser.js";
-    import { TableDirectory } from "../dist/table/TableDirectory.js";
     import { Table } from "../dist/table/Table.js";
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
 
-    const input = document.getElementById("fileInput");
+    const fontSelect = document.getElementById("fontSelect");
     const info = document.getElementById("info");
     const preview = document.getElementById("preview");
     const sample = document.getElementById("sample");
@@ -127,29 +132,27 @@
       });
     }
 
-    input.addEventListener("change", async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const buf = await file.arrayBuffer();
-      const byteArray = new ByteArray(new Uint8Array(buf));
-      const dir = new TableDirectory(byteArray);
-      const tags = [];
-      for (let i = 0; i < dir.numTables; i++) {
-        const entry = dir.getEntry(i);
-        tags.push(entry.tag);
-      }
-      const hasCFF2 = tags.includes(Table.CFF2);
-      font = FontParser.fromArrayBuffer(buf);
+    async function loadSelectedFont() {
+      font = await FontParser.load(fontSelect.value);
+      const hasCFF2 = !!font.getTableByType?.(Table.CFF2);
       axisValues = getAxisExtremes("default");
       applyAxes(axisValues);
-      info.innerHTML = `Tables: ${tags.length} | CFF2: <code>${hasCFF2 ? "yes" : "no"}</code> | Axes: <code>${(font.getVariationAxes?.() ?? []).length}</code>`;
+      info.innerHTML = `CFF2: <code>${hasCFF2 ? "yes" : "no"}</code> | Axes: <code>${(font.getVariationAxes?.() ?? []).length}</code>`;
       renderSample();
-    });
+    }
 
     sample.addEventListener("input", renderSample);
     setDefault.addEventListener("click", () => applyAxes(getAxisExtremes("default")));
     setMin.addEventListener("click", () => applyAxes(getAxisExtremes("min")));
     setMax.addEventListener("click", () => applyAxes(getAxisExtremes("max")));
+    fontSelect.addEventListener("change", () => {
+      loadSelectedFont().catch(err => {
+        info.textContent = `Failed to load font: ${err.message}`;
+      });
+    });
+    loadSelectedFont().catch(err => {
+      info.textContent = `Failed to load font: ${err.message}`;
+    });
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
