@@ -173,17 +173,31 @@ export class FontParserWOFF {
         const numTables = this.readUint16(view, 12);
         const totalSfntSize = this.readUint32(view, 16);
 
+        if (length > buffer.byteLength) {
+            throw new Error('Invalid WOFF header: declared length exceeds available bytes.');
+        }
+        if (numTables <= 0) {
+            throw new Error('Invalid WOFF header: numTables must be greater than zero.');
+        }
+
         const tableDirOffset = 44;
+        if (tableDirOffset + numTables * 20 > buffer.byteLength) {
+            throw new Error('Invalid WOFF header: table directory exceeds available bytes.');
+        }
         const entries = [];
         for (let i = 0; i < numTables; i++) {
             const offset = tableDirOffset + i * 20;
-            entries.push({
+            const entry = {
                 tag: this.readUint32(view, offset),
                 offset: this.readUint32(view, offset + 4),
                 compLength: this.readUint32(view, offset + 8),
                 origLength: this.readUint32(view, offset + 12),
                 checksum: this.readUint32(view, offset + 16)
-            });
+            };
+            if (entry.offset > buffer.byteLength || entry.compLength > buffer.byteLength - entry.offset) {
+                throw new Error('Invalid WOFF table entry: table offset/length out of bounds.');
+            }
+            entries.push(entry);
         }
 
         entries.sort((a, b) => a.tag - b.tag);
@@ -193,6 +207,9 @@ export class FontParserWOFF {
         const entrySelector = Math.log2(maxPower);
         const rangeShift = numTables * 16 - searchRange;
 
+        if (totalSfntSize < 12 + numTables * 16) {
+            throw new Error('Invalid WOFF header: totalSfntSize is too small for sfnt directory.');
+        }
         const sfntBuffer = new ArrayBuffer(totalSfntSize);
         const sfntView = new DataView(sfntBuffer);
         sfntView.setUint32(0, flavor, false);
@@ -213,6 +230,12 @@ export class FontParserWOFF {
             let decoded = tableData;
             if (entry.compLength < entry.origLength) {
                 decoded = await this.inflate(tableData);
+            }
+            if (decoded.length < entry.origLength) {
+                throw new Error('Invalid WOFF table entry: decompressed data shorter than origLength.');
+            }
+            if (dataOffset + entry.origLength > sfntBuffer.byteLength) {
+                throw new Error('Invalid WOFF header: table data exceeds totalSfntSize.');
             }
             const target = new Uint8Array(sfntBuffer, dataOffset, entry.origLength);
             target.set(decoded.subarray(0, entry.origLength));

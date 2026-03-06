@@ -297,9 +297,11 @@ var Cff2Table = /** @class */ (function () {
                 });
             }
         };
+        var MAX_SUBR_DEPTH = 64;
         var parse = function (bytes, depth) {
             var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20;
-            if (depth > 48) {
+            if (depth === void 0) { depth = 0; }
+            if (depth > MAX_SUBR_DEPTH) {
                 return;
             }
             var i = 0;

@@ -59,6 +59,45 @@ function readBytes(relativePath) {
   return fs.readFileSync(fullPath);
 }
 
+function buildMinimalWoff({
+  numTables = 1,
+  totalSfntSize = 64,
+  length = 64,
+  entryOffset = 60,
+  compLength = 4,
+  origLength = 4
+} = {}) {
+  const minSize = numTables > 0 ? Math.max(length, entryOffset + compLength) : Math.max(length, 44);
+  const buffer = new ArrayBuffer(minSize);
+  const view = new DataView(buffer);
+  view.setUint32(0, 0x774f4646, false); // wOFF
+  view.setUint32(4, 0x00010000, false); // sfnt flavor
+  view.setUint32(8, length, false);
+  view.setUint16(12, numTables, false);
+  view.setUint16(14, 0, false);
+  view.setUint32(16, totalSfntSize, false);
+  view.setUint16(20, 1, false);
+  view.setUint16(22, 0, false);
+  view.setUint32(24, 0, false);
+  view.setUint32(28, 0, false);
+  view.setUint32(32, 0, false);
+  view.setUint32(36, 0, false);
+  view.setUint32(40, 0, false);
+
+  if (numTables > 0) {
+    view.setUint32(44, 0x68656164, false); // 'head'
+    view.setUint32(48, entryOffset, false);
+    view.setUint32(52, compLength, false);
+    view.setUint32(56, origLength, false);
+    view.setUint32(60, 0, false);
+    const bytes = new Uint8Array(buffer);
+    for (let i = entryOffset; i < Math.min(bytes.length, entryOffset + compLength); i++) {
+      bytes[i] = 0xAA;
+    }
+  }
+  return buffer;
+}
+
 function listLocalFontFixtures() {
   const root = path.resolve(__dirname, '..', 'truetypefonts');
   const out = [];
@@ -572,6 +611,85 @@ test('Layout engine supports auto direction and soft hyphens', () => {
   assert.ok(layout.lines.length >= 1);
   const firstLineChars = layout.lines[0].glyphs.map(g => g.char).join('');
   assert.ok(firstLineChars.includes('-'), 'expected soft hyphen to insert "-"');
+});
+
+test('LayoutEngine fallback glyph path uses getGlyphByChar with stable ids and kerning calls', () => {
+  const kerningCalls = [];
+  const fakeFont = {
+    getGlyphIndexByChar: () => null,
+    getGlyphByChar: (ch) => (ch === 'A' || ch === 'V' ? { advanceWidth: 500 } : null),
+    getGlyph: () => null,
+    getKerningValueByGlyphs: (left, right) => {
+      kerningCalls.push([left, right]);
+      return -50;
+    }
+  };
+  const layout = LayoutEngine.layoutText(fakeFont, 'AV', {
+    maxWidth: 2000,
+    useKerning: true
+  });
+  assert.equal(layout.lines.length, 1);
+  assert.deepEqual(layout.lines[0].glyphs.map((g) => g.char), ['A', 'V']);
+  assert.deepEqual(layout.lines[0].glyphs.map((g) => g.glyphIndex), [0, 0]);
+  assert.deepEqual(kerningCalls, [[0, 0]]);
+  assert.equal(layout.lines[0].glyphs[1].advance, 450);
+});
+
+test('LayoutEngine explicitly preserves trailing newline as a final empty line', () => {
+  const fakeFont = {
+    getGlyphIndexByChar: (ch) => ch.charCodeAt(0),
+    getGlyph: () => ({ advanceWidth: 500 }),
+    getGlyphByChar: () => ({ advanceWidth: 500 })
+  };
+  const layout = LayoutEngine.layoutText(fakeFont, 'AB\n', { maxWidth: 2000 });
+  assert.equal(layout.lines.length, 2);
+  assert.deepEqual(layout.lines[0].glyphs.map((g) => g.char).join(''), 'AB');
+  assert.equal(layout.lines[1].glyphs.length, 0);
+});
+
+test('LayoutEngine breakWords:false keeps an overwide token on a single overflowing line', () => {
+  const fakeFont = {
+    getGlyphIndexByChar: (ch) => ch.charCodeAt(0),
+    getGlyph: () => ({ advanceWidth: 120 }),
+    getGlyphByChar: () => ({ advanceWidth: 120 })
+  };
+  const layout = LayoutEngine.layoutText(fakeFont, 'OVERWIDE', {
+    maxWidth: 200,
+    breakWords: false
+  });
+  assert.equal(layout.lines.length, 1);
+  assert.ok(layout.lines[0].width > 200);
+});
+
+test('LayoutEngine direction:rtl with bidi:none is deterministic for mixed runs', () => {
+  const fakeFont = {
+    getGlyphIndexByChar: (ch) => ch.codePointAt(0),
+    getGlyph: () => ({ advanceWidth: 300 }),
+    getGlyphByChar: () => ({ advanceWidth: 300 })
+  };
+  const text = 'ab אב 12';
+  const a = LayoutEngine.layoutText(fakeFont, text, { direction: 'rtl', bidi: 'none', maxWidth: 3000 });
+  const b = LayoutEngine.layoutText(fakeFont, text, { direction: 'rtl', bidi: 'none', maxWidth: 3000 });
+  const charsA = a.lines[0].glyphs.map((g) => g.char).join('');
+  const charsB = b.lines[0].glyphs.map((g) => g.char).join('');
+  assert.equal(charsA, charsB);
+  assert.equal(charsA, Array.from(text).reverse().join(''));
+});
+
+test('LayoutEngine soft hyphen with missing hyphenChar glyph preserves base letters', () => {
+  const fakeFont = {
+    getGlyphIndexByChar: (ch) => (/[A-Za-z]/.test(ch) ? ch.charCodeAt(0) : null),
+    getGlyph: () => ({ advanceWidth: 180 }),
+    getGlyphByChar: (ch) => (/[A-Za-z]/.test(ch) ? { advanceWidth: 180 } : null)
+  };
+  const layout = LayoutEngine.layoutText(fakeFont, 'hyphen\u00ADation', {
+    maxWidth: 1000,
+    breakWords: true,
+    hyphenate: 'soft',
+    hyphenChar: '*'
+  });
+  const rendered = layout.lines.flatMap((line) => line.glyphs.map((g) => g.char)).join('');
+  assert.equal(rendered, 'hyphenation');
 });
 
 test('GPOS mark positioning attaches combining marks (if fixture present)', () => {
@@ -1169,6 +1287,53 @@ test('WOFF parser handles malformed table directory/header combinations safely',
       assert.match(String(err), /offset|range|bounds|invalid|WOFF/i);
     }
   });
+});
+
+test('FontParserWOFF.decodeWoffToSfnt rejects out-of-bounds table offset + compLength', async () => {
+  const decodeWoffToSfnt = FontParserWOFF.decodeWoffToSfnt.bind(FontParserWOFF);
+  const malformed = new ArrayBuffer(64);
+  const view = new DataView(malformed);
+  view.setUint32(0, 0x774f4646, false); // wOFF
+  view.setUint32(4, 0x00010000, false);
+  view.setUint32(8, 64, false);
+  view.setUint16(12, 1, false);
+  view.setUint32(16, 64, false);
+  view.setUint32(44, 0x68656164, false); // head
+  view.setUint32(48, 60, false); // offset
+  view.setUint32(52, 20, false); // compLength (overruns 64-byte buffer)
+  view.setUint32(56, 20, false); // origLength
+  view.setUint32(60, 0, false); // checksum
+  await assert.rejects(() => decodeWoffToSfnt(malformed), /offset|bounds|length|range|invalid/i);
+});
+
+test('FontParserWOFF.decodeWoffToSfnt throws when decompressed bytes are shorter than origLength', async () => {
+  const decodeWoffToSfnt = FontParserWOFF.decodeWoffToSfnt.bind(FontParserWOFF);
+  const malformed = buildMinimalWoff({
+    numTables: 1,
+    totalSfntSize: 64,
+    length: 64,
+    entryOffset: 60,
+    compLength: 2,
+    origLength: 12
+  });
+
+  const savedInflate = FontParserWOFF.inflate;
+  FontParserWOFF.inflate = async () => new Uint8Array([1, 2, 3]);
+  try {
+    await assert.rejects(() => decodeWoffToSfnt(malformed), /short|origLength|decompress|length|invalid/i);
+  } finally {
+    FontParserWOFF.inflate = savedInflate;
+  }
+});
+
+test('FontParserWOFF.decodeWoffToSfnt rejects numTables=0 malformed header', async () => {
+  const decodeWoffToSfnt = FontParserWOFF.decodeWoffToSfnt.bind(FontParserWOFF);
+  const malformed = buildMinimalWoff({
+    numTables: 0,
+    totalSfntSize: 12,
+    length: 44
+  });
+  await assert.rejects(() => decodeWoffToSfnt(malformed), /numTables|invalid|header/i);
 });
 
 test('FontParserWOFF.load rejects fetch body and decode failures consistently', async () => {
@@ -2201,6 +2366,31 @@ test('FontParserWOFF kerning and glyph index helpers cover warning and fallback 
   parser.getKerningValueByGlyphs = () => 0;
   parser.getGposKerningValueByGlyphs = () => 7;
   assert.equal(parser.getKerningValue('a', 'b'), 7);
+});
+
+test('FontParserTTF.getGlyphIndexByChar handles astral code points without multi-char warning', () => {
+  const parser = Object.create(FontParserTTF.prototype);
+  parser.cmap = { formats: [], getCmapFormats: () => [] };
+  parser.getBestCmapFormatFor = (cp) => ({
+    mapCharCode: (x) => (x === cp ? 321 : 0)
+  });
+
+  const savedWarn = console.warn;
+  const warns = [];
+  console.warn = (msg) => warns.push(String(msg));
+  try {
+    const idx = parser.getGlyphIndexByChar('😀');
+    assert.equal(idx, 321);
+    assert.equal(warns.some((w) => /multiple characters/i.test(w)), false);
+  } finally {
+    console.warn = savedWarn;
+  }
+});
+
+test('ByteArray.seek exact EOF behavior is explicit (position === byteLength throws)', () => {
+  const ba = new ByteArray(Uint8Array.from([1, 2, 3]));
+  assert.doesNotThrow(() => ba.seek(2));
+  assert.throws(() => ba.seek(3), /out of bounds/i);
 });
 
 test('GsubTable read and script/subtable discovery fallback branches execute', () => {

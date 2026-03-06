@@ -308,7 +308,11 @@ export class Cff2Table implements ITable {
             }
         };
 
-        const parse = (bytes: Uint8Array) => {
+        const MAX_SUBR_DEPTH = 64;
+        const parse = (bytes: Uint8Array, depth = 0) => {
+            if (depth > MAX_SUBR_DEPTH) {
+                return;
+            }
             let i = 0;
             let blendCount = 0;
             while (i < bytes.length) {
@@ -380,7 +384,7 @@ export class Cff2Table implements ITable {
                         const subrIndex = (args.pop() ?? 0) + lBias;
                         if (args.length) stack.push(...args);
                         const subr = lsubrs[subrIndex];
-                        if (subr) parse(subr);
+                        if (subr) parse(subr, depth + 1);
                         break;
                     }
                     case 14: {
@@ -497,7 +501,7 @@ export class Cff2Table implements ITable {
                         const subrIndex = (args.pop() ?? 0) + gBias;
                         if (args.length) stack.push(...args);
                         const subr = gsubrs[subrIndex];
-                        if (subr) parse(subr);
+                        if (subr) parse(subr, depth + 1);
                         break;
                     }
                     case 30:
@@ -617,7 +621,7 @@ export class Cff2Table implements ITable {
             }
         };
 
-        parse(charString);
+        parse(charString, 0);
         closeContour();
         return { points, endPts };
     }

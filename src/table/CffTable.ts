@@ -150,6 +150,10 @@ export class CffTable implements ITable {
         };
 
         const parse = (bytes: Uint8Array, depth: number) => {
+            if (depth > 64) {
+                ops.push({ op: 'MAX_SUBR_DEPTH', args: [depth] });
+                return;
+            }
             let i = 0;
             while (i < bytes.length) {
                 const b0 = bytes[i++];
@@ -309,7 +313,11 @@ export class CffTable implements ITable {
             }
         };
 
-        const parse = (bytes: Uint8Array) => {
+        const MAX_SUBR_DEPTH = 64;
+        const parse = (bytes: Uint8Array, depth = 0) => {
+            if (depth > MAX_SUBR_DEPTH) {
+                return;
+            }
             let i = 0;
             while (i < bytes.length) {
                 const b0 = bytes[i++];
@@ -399,7 +407,7 @@ export class CffTable implements ITable {
                         const subrIndex = (args.pop() ?? 0) + lBias;
                         if (args.length) stack.push(...args);
                         const subr = lsubrs[subrIndex];
-                        if (subr) parse(subr);
+                        if (subr) parse(subr, depth + 1);
                         break;
                     }
                     case 14: { // endchar
@@ -533,7 +541,7 @@ export class CffTable implements ITable {
                         const subrIndex = (args.pop() ?? 0) + gBias;
                         if (args.length) stack.push(...args);
                         const subr = gsubrs[subrIndex];
-                        if (subr) parse(subr);
+                        if (subr) parse(subr, depth + 1);
                         break;
                     }
                     case 30: // vhcurveto
@@ -628,7 +636,7 @@ export class CffTable implements ITable {
             }
         };
 
-        parse(charString);
+        parse(charString, 0);
         closeContour();
         return { points, endPts };
     }
