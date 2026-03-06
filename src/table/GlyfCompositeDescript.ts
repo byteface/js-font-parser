@@ -132,6 +132,10 @@ export class GlyfCompositeDescript implements IGlyphDescription {
         return 0;
     }
 
+    public getComponentForPointIndex(i: number): GlyfCompositeComp | null {
+        return this.getCompositeComp(i);
+    }
+
     private getCompositeComp(i: number): GlyfCompositeComp | null {
         return this.components.find(comp => i >= comp.firstIndex && i < comp.firstIndex + comp.pointCount) || null;
     }

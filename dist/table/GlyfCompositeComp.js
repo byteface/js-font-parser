@@ -83,6 +83,12 @@ var GlyfCompositeComp = /** @class */ (function () {
     GlyfCompositeComp.prototype.scaleY = function (x, y) {
         return Math.round((x * this.scale01) + (y * this.yscale));
     };
+    GlyfCompositeComp.prototype.transformDelta = function (dx, dy) {
+        return {
+            dx: Math.round((dx * this.xscale) + (dy * this.scale10)),
+            dy: Math.round((dx * this.scale01) + (dy * this.yscale))
+        };
+    };
     // Constants
     GlyfCompositeComp.ARG_1_AND_2_ARE_WORDS = 0x0001;
     GlyfCompositeComp.ARGS_ARE_XY_VALUES = 0x0002;

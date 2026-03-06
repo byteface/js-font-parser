@@ -105,6 +105,9 @@ var GlyfCompositeDescript = /** @class */ (function () {
         }
         return 0;
     };
+    GlyfCompositeDescript.prototype.getComponentForPointIndex = function (i) {
+        return this.getCompositeComp(i);
+    };
     GlyfCompositeDescript.prototype.getCompositeComp = function (i) {
         return this.components.find(function (comp) { return i >= comp.firstIndex && i < comp.firstIndex + comp.pointCount; }) || null;
     };

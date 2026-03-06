@@ -27,6 +27,8 @@ const PATHS = {
   notoDevanagari: '../truetypefonts/noto/NotoSansDevanagari-Regular.ttf',
   notoArabic: '../truetypefonts/noto/NotoNaskhArabic-Regular.ttf',
   sourceCodeProRegular: '../truetypefonts/source-code-pro/SourceCodePro-Regular.otf',
+  notoSerifVar: '../truetypefonts/curated/NotoSerif-VF.ttf',
+  robotoVar: '../truetypefonts/curated/Roboto-VF.ttf',
   playwriteVar: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-VariableFont_wght.ttf',
   playwriteVarItalic: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-Italic-VariableFont_wght.ttf',
   arimoVar: '../truetypefonts/arimo/Arimo[wght].ttf'
@@ -113,11 +115,12 @@ export const FONT_LISTS = {
     { name: 'DevilInside', url: PATHS.devilInside }
   ],
   kerning: [
-    { name: 'DiscoMo (kern table)', url: PATHS.discomo },
-    { name: 'DevilInside', url: PATHS.devilInside },
-    { name: 'CARDS (kern table)', url: PATHS.cards },
     { name: 'Noto Sans (GPOS)', url: PATHS.notoSans },
-    { name: 'AUGIE', url: PATHS.augie }
+    { name: 'Roboto VF (GPOS)', url: PATHS.robotoVar },
+    { name: 'Gotham Narrow Ultra (kern + GPOS)', url: PATHS.gothamNarrow },
+    { name: 'Noto Serif VF (GPOS)', url: PATHS.notoSerifVar },
+    { name: 'Arimo Variable (GPOS)', url: PATHS.arimoVar },
+    { name: 'Playwrite GB S Variable (GPOS)', url: PATHS.playwriteVar }
   ],
   allGlyphs: [
     { name: '2006 Team', url: PATHS.team2006 },

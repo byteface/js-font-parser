@@ -37,6 +37,13 @@ export class Os2Table implements ITable {
     usWinDescent: number = 0;
     ulCodePageRange1: number = 0;
     ulCodePageRange2: number = 0;
+    sxHeight: number = 0;
+    sCapHeight: number = 0;
+    usDefaultChar: number = 0;
+    usBreakChar: number = 0;
+    usMaxContext: number = 0;
+    usLowerOpticalPointSize: number = 0;
+    usUpperOpticalPointSize: number = 0;
 
     constructor(de: DirectoryEntry, byte_ar: ByteArray) {
         byte_ar.offset = de.offset;
@@ -58,8 +65,6 @@ export class Os2Table implements ITable {
         this.yStrikeoutPosition = byte_ar.readShort();
         this.sFamilyClass = byte_ar.readShort();
 
-        byte_ar.offset = de.offset;
-
         const buf: number[] = [];
         for (let i = 0; i < 10; i++) {
             buf.push(byte_ar.readUnsignedByte());
@@ -79,8 +84,23 @@ export class Os2Table implements ITable {
         this.sTypoLineGap = byte_ar.readShort();
         this.usWinAscent = byte_ar.readShort();
         this.usWinDescent = byte_ar.readShort();
-        this.ulCodePageRange1 = byte_ar.readInt();
-        this.ulCodePageRange2 = byte_ar.readInt();
+        if (this.version >= 1) {
+            this.ulCodePageRange1 = byte_ar.readInt();
+            this.ulCodePageRange2 = byte_ar.readInt();
+        }
+
+        if (this.version >= 2) {
+            this.sxHeight = byte_ar.readShort();
+            this.sCapHeight = byte_ar.readShort();
+            this.usDefaultChar = byte_ar.readUnsignedShort();
+            this.usBreakChar = byte_ar.readUnsignedShort();
+            this.usMaxContext = byte_ar.readUnsignedShort();
+        }
+
+        if (this.version >= 5) {
+            this.usLowerOpticalPointSize = byte_ar.readUnsignedShort();
+            this.usUpperOpticalPointSize = byte_ar.readUnsignedShort();
+        }
     }
 
     getType(): number {

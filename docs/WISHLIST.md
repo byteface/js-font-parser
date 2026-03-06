@@ -13,10 +13,11 @@
 ## Done (recent)
 - **COLRv1 paint tables** — varStore deltas + ClipList masks (incl. ClipBoxVar).
 - **SVG glyph rendering** — transforms normalized; demo stable across samples.
+- **Kerning visualizer** — upgraded `tools/kerning.html` to an interactive pair heatmap + rendering comparison demo.
 
 ## New Wishlist (additional ideas)
 1. **Font diff tool** — compare two fonts and highlight glyph/metric/table differences.
-2. **Kerning visualizer** — interactive grid showing kerning pairs with heatmap.
+2. **Kerning visualizer** — implemented in `tools/kerning.html` (interactive grid heatmap + stronger kerning font set).
 3. **Glyph SVG export batch** — export selected glyphs or full set as individual SVG files.
 4. **Font subset builder** — generate a new font containing only specified characters.
 5. **Unicode coverage map** — show coverage by Unicode block with missing glyphs highlighted.

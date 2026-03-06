@@ -79,6 +79,9 @@
             <input id="textInput" value="VARIABLE" />
         </label>
         <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:normal;">
+            <button id="compositeSample" type="button">Composite sample</button>
+        </label>
+        <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:normal;">
             <input id="enableGvar" type="checkbox" checked />
             Enable gvar
         </label>
@@ -133,6 +136,7 @@
 
         const fontSelect = document.getElementById('fontSelect');
         const textInput = document.getElementById('textInput');
+        const compositeSample = document.getElementById('compositeSample');
         const axesContainer = document.getElementById('axes');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -606,6 +610,10 @@
 
         fontSelect.addEventListener('change', loadAndRender);
         textInput.addEventListener('input', renderText);
+        compositeSample.addEventListener('click', () => {
+            textInput.value = 'ÅÁÉÖÑæœ';
+            renderText();
+        });
         enableGvar.addEventListener('change', applyAxisValues);
         probeGlyphInput.addEventListener('input', renderText);
         debugContours.addEventListener('input', renderText);

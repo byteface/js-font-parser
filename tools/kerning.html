@@ -3,38 +3,81 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kerning Demo</title>
+  <title>Kerning Visualizer</title>
   <style>
-    :root { --bg:#f7f3ef; --ink:#1f1a16; --muted:#6a5f57; --panel:#fff; --border:#e5ded6; }
-    body { margin:0; font-family:"Crimson Text", serif; background:var(--bg); color:var(--ink); }
+    :root { --bg:#f5efe7; --ink:#211c18; --muted:#6a6058; --panel:#fff; --border:#ddd2c6; --accent:#264b6f; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Baskervville", serif; background:var(--bg); color:var(--ink); }
     header { padding:22px 20px 10px; }
-    h1 { margin:0 0 6px; font-size:26px; }
+    h1 { margin:0 0 6px; font-size:28px; }
     p { margin:0 0 14px; color:var(--muted); }
-    .wrap { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; padding:16px 20px 32px; }
-    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; }
-    canvas { width:100%; height:200px; border:1px dashed var(--border); border-radius:10px; background:#fff; }
-    input { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); margin-bottom:10px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px; padding:16px 20px 28px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:12px; }
+    .controls { display:grid; gap:8px; margin-bottom:10px; }
+    label { display:block; font-size:12px; color:var(--muted); }
+    input[type="text"], select { width:100%; padding:8px 10px; border-radius:9px; border:1px solid var(--border); font:inherit; }
+    input[type="range"] { width:100%; margin:2px 0 8px; }
+    .row { display:grid; grid-template-columns:1fr auto; align-items:center; gap:8px; }
+    .chip { border:1px solid var(--border); border-radius:999px; padding:2px 8px; font-size:12px; color:var(--muted); }
+    canvas { width:100%; height:196px; border:1px dashed var(--border); border-radius:10px; background:#fff; }
+    .stack { display:grid; gap:10px; }
+    .legend { display:flex; gap:8px; align-items:center; font-size:12px; color:var(--muted); }
+    .swatch { width:160px; height:10px; border-radius:999px; border:1px solid var(--border); background:linear-gradient(90deg, #c74a48 0%, #f2f2f2 50%, #3f6dbf 100%); }
+    .scroll { overflow:auto; max-height:460px; border:1px solid var(--border); border-radius:10px; background:#fff; }
+    table { border-collapse:collapse; width:max-content; min-width:100%; font-family:ui-monospace, Menlo, monospace; font-size:11px; }
+    th, td { border:1px solid #e8dfd4; text-align:center; min-width:36px; height:30px; padding:2px; }
+    th { background:#f7f2ec; position:sticky; z-index:2; }
+    th.top { top:0; }
+    th.left { left:0; z-index:1; }
+    th.corner { top:0; left:0; z-index:3; }
+    td { cursor:pointer; user-select:none; }
+    td:hover { outline:2px solid var(--accent); outline-offset:-2px; }
+    .muted { color:var(--muted); font-size:12px; }
   </style>
 </head>
 <body>
 <div data-nav="main"></div>
 
   <header>
-    <h1>Kerning Demo</h1>
-    <p>Shows text rendered with default spacing vs kern table adjustments (exaggerated).</p>
+    <h1>Kerning Visualizer</h1>
+    <p>Interactive pair heatmap + side-by-side rendering (plain vs kerning).</p>
   </header>
-  <div class="wrap">
-    <div class="panel">
-      <select id="fontSelect" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); margin-bottom:10px;"></select>
-      <input id="textInput" value="AVATAR WA To VA" />
-      <label style="display:block; font-size:12px; color:var(--muted); margin-bottom:8px;">Kerning strength</label>
-      <input id="kernInput" type="range" min="1" max="6" value="3" />
-      <canvas id="plain" width="900" height="200"></canvas>
-    </div>
-    <div class="panel">
-      <canvas id="kerned" width="900" height="200"></canvas>
-      <div id="kernInfo" style="margin-top:10px; font-size:12px; color:var(--muted);"></div>
-    </div>
+
+  <div class="grid">
+    <section class="panel">
+      <div class="controls">
+        <label for="fontSelect">Font</label>
+        <select id="fontSelect"></select>
+        <label for="textInput">Preview text</label>
+        <input id="textInput" type="text" value="AVATAR WA To VA Type Wow, Yay." />
+        <label for="charsInput">Heatmap character set (unique chars used in grid)</label>
+        <input id="charsInput" type="text" value="AVWToY.,tafy" />
+        <div class="row">
+          <label for="kernInput">Kerning strength</label>
+          <span id="kernStrength" class="chip">x3</span>
+        </div>
+        <input id="kernInput" type="range" min="1" max="8" value="3" />
+      </div>
+
+      <div class="stack">
+        <canvas id="plain" width="900" height="200"></canvas>
+        <canvas id="kerned" width="900" height="200"></canvas>
+      </div>
+      <p id="kernInfo" class="muted" style="margin-top:10px;"></p>
+    </section>
+
+    <section class="panel">
+      <div class="legend">
+        <span>Negative</span>
+        <span class="swatch"></span>
+        <span>Positive</span>
+      </div>
+      <p class="muted">Click any heatmap cell to drop that pair into the preview text.</p>
+      <div class="scroll">
+        <table id="heatmap"></table>
+      </div>
+      <p id="pairSummary" class="muted" style="margin-top:10px;"></p>
+    </section>
   </div>
 
   <script type="module">
@@ -43,11 +86,15 @@
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const input = document.getElementById('textInput');
+    const charsInput = document.getElementById('charsInput');
     const fontSelect = document.getElementById('fontSelect');
     const kernInput = document.getElementById('kernInput');
+    const kernStrength = document.getElementById('kernStrength');
     const plainCanvas = document.getElementById('plain');
     const kernCanvas = document.getElementById('kerned');
     const kernInfo = document.getElementById('kernInfo');
+    const heatmap = document.getElementById('heatmap');
+    const pairSummary = document.getElementById('pairSummary');
 
     const fonts = getFontList('kerning');
     const cache = new Map();
@@ -65,45 +112,165 @@
 
     async function loadFont(url) {
       if (cache.has(url)) return cache.get(url);
-      const f = await FontParser.load(url);
-      cache.set(url, f);
-      return f;
+      const loaded = await FontParser.load(url);
+      cache.set(url, loaded);
+      return loaded;
+    }
+
+    function uniqueChars(value) {
+      const chars = [];
+      const seen = new Set();
+      for (const ch of value) {
+        if (ch === ' ' || seen.has(ch)) continue;
+        seen.add(ch);
+        chars.push(ch);
+      }
+      return chars.slice(0, 14);
+    }
+
+    function sampleChars() {
+      const fromInput = uniqueChars(charsInput.value);
+      if (fromInput.length >= 2) return fromInput;
+      const fromText = uniqueChars(input.value);
+      if (fromText.length >= 2) return fromText;
+      return uniqueChars('AVWToY.,tafy');
+    }
+
+    function colorFor(value, maxAbs) {
+      if (!maxAbs || value === 0) return 'rgb(247, 242, 236)';
+      const strength = Math.min(1, Math.abs(value) / maxAbs);
+      if (value < 0) {
+        const light = 92 - Math.round(strength * 44);
+        return `hsl(2 58% ${light}%)`;
+      }
+      const light = 92 - Math.round(strength * 44);
+      return `hsl(219 54% ${light}%)`;
+    }
+
+    function drawPairHeatmap(chars) {
+      const matrix = [];
+      let maxAbs = 0;
+      for (const left of chars) {
+        const row = [];
+        for (const right of chars) {
+          const value = font.getKerningValue(left, right) || 0;
+          row.push(value);
+          maxAbs = Math.max(maxAbs, Math.abs(value));
+        }
+        matrix.push(row);
+      }
+
+      heatmap.innerHTML = '';
+      const head = document.createElement('tr');
+      const corner = document.createElement('th');
+      corner.textContent = 'L/R';
+      corner.className = 'corner';
+      head.appendChild(corner);
+      for (const right of chars) {
+        const th = document.createElement('th');
+        th.className = 'top';
+        th.textContent = right;
+        head.appendChild(th);
+      }
+      heatmap.appendChild(head);
+
+      for (let i = 0; i < chars.length; i++) {
+        const tr = document.createElement('tr');
+        const left = document.createElement('th');
+        left.className = 'left';
+        left.textContent = chars[i];
+        tr.appendChild(left);
+
+        for (let j = 0; j < chars.length; j++) {
+          const value = matrix[i][j];
+          const td = document.createElement('td');
+          td.textContent = value === 0 ? '' : String(value);
+          td.style.background = colorFor(value, maxAbs);
+          td.title = `${chars[i]}${chars[j]} = ${value}`;
+          td.addEventListener('click', () => {
+            const pair = `${chars[i]}${chars[j]}`;
+            input.value = `${pair} ${pair} ${pair}`;
+            render();
+          });
+          tr.appendChild(td);
+        }
+        heatmap.appendChild(tr);
+      }
+
+      const nonZero = [];
+      for (let i = 0; i < chars.length; i++) {
+        for (let j = 0; j < chars.length; j++) {
+          const value = matrix[i][j];
+          if (value !== 0) nonZero.push({ pair: `${chars[i]}${chars[j]}`, value });
+        }
+      }
+      nonZero.sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+      const top = nonZero.slice(0, 10).map(p => `${p.pair}:${p.value}`).join(' | ');
+      pairSummary.textContent = nonZero.length > 0
+        ? `Strongest pairs in grid: ${top}`
+        : 'No non-zero kerning pairs for this character set.';
+    }
+
+    function drawPreviews(text, scale) {
+      const plainCtx = plainCanvas.getContext('2d');
+      const kernCtx = kernCanvas.getContext('2d');
+      plainCtx.clearRect(0, 0, plainCanvas.width, plainCanvas.height);
+      kernCtx.clearRect(0, 0, kernCanvas.width, kernCanvas.height);
+
+      CanvasRenderer.drawString(font, text, plainCanvas, {
+        x: 20, y: 138, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' }
+      });
+      CanvasRenderer.drawStringWithKerning(font, text, kernCanvas, {
+        x: 20, y: 138, scale: 0.12, spacing: 2, kerningScale: scale, styles: { fillStyle: '#111', strokeStyle: '#111' }
+      });
+
+      plainCtx.fillStyle = '#6a6058';
+      plainCtx.font = '14px Baskervville, serif';
+      plainCtx.fillText('Raw spacing', 20, 24);
+      kernCtx.fillStyle = '#6a6058';
+      kernCtx.font = '14px Baskervville, serif';
+      kernCtx.fillText('With kerning', 20, 24);
+    }
+
+    function render() {
+      if (!font) return;
+      const text = input.value || 'AV';
+      const scale = Number(kernInput.value);
+      kernStrength.textContent = `x${scale}`;
+      drawPreviews(text, scale);
+
+      const chars = sampleChars();
+      drawPairHeatmap(chars);
+
+      const seen = [];
+      for (let i = 0; i < text.length - 1; i++) {
+        const pair = `${text[i]}${text[i + 1]}`;
+        const value = font.getKerningValue(text[i], text[i + 1]) || 0;
+        if (value !== 0) seen.push(`${pair}:${value}`);
+      }
+      const kernTable = font.getTableByType?.(0x6b65726e);
+      const gposTable = font.getTableByType?.(0x47504f53);
+      const tables = `kern:${kernTable ? 'yes' : 'no'} gpos:${gposTable ? 'yes' : 'no'}`;
+      kernInfo.textContent = seen.length > 0
+        ? `Pairs in preview text: ${seen.join(' | ')} | ${tables}`
+        : `No kerning pairs detected in preview text. | ${tables}`;
     }
 
     input.addEventListener('input', render);
+    charsInput.addEventListener('input', render);
     kernInput.addEventListener('input', render);
     fontSelect.addEventListener('change', async () => {
       font = await loadFont(fonts[Number(fontSelect.value)]?.url ?? fonts[0].url);
       render();
     });
 
-    function render() {
-      if (!font) return;
-      const text = input.value;
-      const ctxPlain = plainCanvas.getContext('2d');
-      const ctxKern = kernCanvas.getContext('2d');
-      ctxPlain.clearRect(0,0,plainCanvas.width,plainCanvas.height);
-      ctxKern.clearRect(0,0,kernCanvas.width,kernCanvas.height);
-
-      const kernScale = Number(kernInput.value);
-      CanvasRenderer.drawString(font, text, plainCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, styles: { fillStyle: '#111', strokeStyle: '#111' } });
-      CanvasRenderer.drawStringWithKerning(font, text, kernCanvas, { x: 20, y: 140, scale: 0.12, spacing: 2, kerningScale: kernScale, styles: { fillStyle: '#111', strokeStyle: '#111' } });
-
-      const pairs = [];
-      for (let i = 0; i < text.length - 1; i++) {
-        const a = text[i];
-        const b = text[i + 1];
-        const v = font.getKerningValue(a, b);
-        if (v) pairs.push(`${a}${b}: ${v}`);
-      }
-      const kernTable = font.getTableByType?.(0x6b65726e);
-      const gposTable = font.getTableByType?.(0x47504f53);
-      const tables = `kern: ${kernTable ? 'yes' : 'no'}, gpos: ${gposTable ? 'yes' : 'no'}`;
-      kernInfo.textContent = pairs.length > 0 ? `Kerning pairs: ${pairs.join(' | ')} | ${tables}` : `No kerning pairs found in this string. | ${tables}`;
-    }
-
     populateFonts();
-    loadFont(fonts[0].url).then(f => { font = f; render(); });
+    loadFont(fonts[0].url).then(loaded => {
+      font = loaded;
+      render();
+    }).catch(err => {
+      kernInfo.textContent = `Failed to load font: ${err.message}`;
+    });
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>

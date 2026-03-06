@@ -99,4 +99,11 @@ export class GlyfCompositeComp {
     scaleY(x: number, y: number): number {
         return Math.round((x * this.scale01) + (y * this.yscale));
     }
+
+    transformDelta(dx: number, dy: number): { dx: number; dy: number } {
+        return {
+            dx: Math.round((dx * this.xscale) + (dy * this.scale10)),
+            dy: Math.round((dx * this.scale01) + (dy * this.yscale))
+        };
+    }
 }

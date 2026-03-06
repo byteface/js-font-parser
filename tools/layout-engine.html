@@ -86,6 +86,7 @@
             <select id="directionSelect">
                 <option value="ltr" selected>LTR</option>
                 <option value="rtl">RTL</option>
+                <option value="auto">Auto</option>
             </select>
         </label>
         <label>
@@ -138,6 +139,20 @@
                 <option value="true">On</option>
             </select>
         </label>
+        <label>
+            Bidi (simple)
+            <select id="bidiSelect">
+                <option value="simple" selected>On</option>
+                <option value="none">Off</option>
+            </select>
+        </label>
+        <label>
+            Soft Hyphen
+            <select id="hyphenSelect">
+                <option value="soft" selected>On</option>
+                <option value="none">Off</option>
+            </select>
+        </label>
     </div>
     <textarea id="textInput">The library can now break lines and align text. Use this to inspect glyph advances, kerning, and spacing across fonts.</textarea>
     <div class="hint">Layout uses font metrics + kerning. Adjust width, direction, and alignment to see line breaking.</div>
@@ -161,6 +176,8 @@
         const preserveNbsp = document.getElementById('preserveNbsp');
         const tabSize = document.getElementById('tabSize');
         const justifyLast = document.getElementById('justifyLast');
+        const bidiSelect = document.getElementById('bidiSelect');
+        const hyphenSelect = document.getElementById('hyphenSelect');
         const textInput = document.getElementById('textInput');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -223,7 +240,9 @@
                 collapseSpaces: collapseSpaces.value === 'true',
                 preserveNbsp: preserveNbsp.value === 'true',
                 tabSize: Number(tabSize.value) || 4,
-                justifyLastLine: justifyLast.value === 'true'
+                justifyLastLine: justifyLast.value === 'true',
+                bidi: bidiSelect.value,
+                hyphenate: hyphenSelect.value
             });
 
             ctx.strokeStyle = '#dbe2e7';
@@ -262,6 +281,8 @@
         preserveNbsp.addEventListener('change', render);
         tabSize.addEventListener('input', render);
         justifyLast.addEventListener('change', render);
+        bidiSelect.addEventListener('change', render);
+        hyphenSelect.addEventListener('change', render);
         textInput.addEventListener('input', render);
 
         populateFonts();

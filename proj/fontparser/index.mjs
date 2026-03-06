@@ -4,8 +4,9 @@ import { fileURLToPath } from "node:url";
 
 import { ByteArray } from "../../dist/utils/ByteArray.js";
 import { FontParserTTF } from "../../dist/data/FontParserTTF.js";
+import { SVGFont } from "../../dist/render/SVGFont.js";
 import { Table } from "../../dist/table/Table.js";
-import { getSupportedLanguages, supportsLanguage } from "../../dist/utils/LanguageSupport.js";
+import { getSupportedLanguages, listLanguages, supportsLanguage } from "../../dist/utils/LanguageSupport.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,6 +38,95 @@ function printCoverage(font) {
     const missing = r.missing.slice(0, 12).join("");
     console.log(`${r.code.padEnd(4)} ${r.name.padEnd(24)} ${status.padEnd(4)} ${String(pct).padStart(3)}%  ${missing}`);
   });
+}
+
+function printSupportedLanguages(font, minCoverage = 1, asJson = false) {
+  const rows = getSupportedLanguages(font).filter(r => r.coverage >= minCoverage);
+  if (asJson) {
+    console.log(JSON.stringify(rows, null, 2));
+    return;
+  }
+  if (rows.length === 0) {
+    console.log("No languages met the requested coverage threshold.");
+    return;
+  }
+  rows.forEach(r => {
+    const pct = Math.round(r.coverage * 100);
+    const missingCount = r.missing.length;
+    console.log(`${r.code.padEnd(4)} ${r.name.padEnd(24)} ${String(pct).padStart(3)}%  missing:${String(missingCount).padStart(3)}${r.notes ? `  ${r.notes}` : ""}`);
+  });
+}
+
+function parseBoolean(value, defaultValue = false) {
+  if (value == null) return defaultValue;
+  if (typeof value === "boolean") return value;
+  const s = String(value).trim().toLowerCase();
+  if (s === "1" || s === "true" || s === "yes" || s === "on") return true;
+  if (s === "0" || s === "false" || s === "no" || s === "off") return false;
+  return defaultValue;
+}
+
+function escapeXml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function printLanguages() {
+  const rows = listLanguages();
+  rows.forEach(r => {
+    console.log(`${r.code.padEnd(4)} ${r.name}${r.notes ? ` (${r.notes})` : ""}`);
+  });
+}
+
+function printMetadata(font, asJson = false) {
+  const meta = font.getMetadata?.() ?? null;
+  if (!meta) {
+    console.log("No metadata available.");
+    return;
+  }
+  if (asJson) {
+    console.log(JSON.stringify(meta, null, 2));
+    return;
+  }
+
+  const names = meta.names ?? {};
+  const os2 = meta.os2 ?? {};
+  const post = meta.post ?? {};
+  const style = meta.style ?? {};
+
+  console.log("Font metadata");
+  console.log(`  family: ${names.family ?? ""}`);
+  console.log(`  subfamily: ${names.subfamily ?? ""}`);
+  console.log(`  fullName: ${names.fullName ?? ""}`);
+  console.log(`  postScriptName: ${names.postScriptName ?? ""}`);
+  console.log(`  version: ${names.version ?? ""}`);
+  console.log(`  vendorId: ${os2.vendorId ?? ""}`);
+  console.log(`  unitsPerEm: ${font.getTableByType(Table.head)?.unitsPerEm ?? ""}`);
+  console.log(`  glyphs: ${font.getTableByType(Table.maxp)?.numGlyphs ?? ""}`);
+  console.log(`  weightClass: ${style.weightClass ?? ""}`);
+  console.log(`  widthClass: ${style.widthClass ?? ""}`);
+  console.log(`  italicAngle: ${post.italicAngle ?? ""}`);
+  console.log(`  isBold/isItalic/isMonospace: ${!!style.isBold}/${!!style.isItalic}/${!!style.isMonospace}`);
+  console.log(`  fsTypeFlags: ${(style.fsTypeFlags ?? []).join(", ") || "(none)"}`);
+  console.log(`  fsSelectionFlags: ${(style.fsSelectionFlags ?? []).join(", ") || "(none)"}`);
+}
+
+function uniqueChars(str) {
+  return Array.from(new Set(Array.from(str || "")));
+}
+
+function readCharsFromFile(filePath) {
+  const data = fs.readFileSync(filePath, "utf8");
+  return uniqueChars(data.replace(/\s+/g, ""));
+}
+
+function charsFromLanguage(code) {
+  const lang = listLanguages().find(l => l.code === code);
+  if (!lang) return null;
+  return uniqueChars(lang.required);
 }
 
 function updateNameTableBuffer(fontBuffer, newSuffix) {
@@ -161,6 +251,37 @@ function getTableData(buffer, tag) {
   const rec = records.find(r => r.tag === tag);
   if (!rec) return null;
   return buffer.slice(rec.tableOffset, rec.tableOffset + rec.tableLength);
+}
+
+function tagToString(tag) {
+  return String.fromCharCode(
+    (tag >>> 24) & 0xff,
+    (tag >>> 16) & 0xff,
+    (tag >>> 8) & 0xff,
+    tag & 0xff
+  );
+}
+
+function printTables(buffer, asJson = false) {
+  const { records } = getTableRecords(buffer);
+  const rows = records
+    .map(r => ({
+      tag: tagToString(r.tag),
+      checksum: `0x${r.checkSum.toString(16).padStart(8, "0")}`,
+      offset: r.tableOffset,
+      length: r.tableLength
+    }))
+    .sort((a, b) => a.tag.localeCompare(b.tag));
+
+  if (asJson) {
+    console.log(JSON.stringify(rows, null, 2));
+    return;
+  }
+  const totalLength = rows.reduce((acc, r) => acc + r.length, 0);
+  console.log(`Tables (${rows.length}) total length: ${totalLength} bytes`);
+  rows.forEach(r => {
+    console.log(`${r.tag.padEnd(6)} off:${String(r.offset).padStart(8)}  len:${String(r.length).padStart(8)}  sum:${r.checksum}`);
+  });
 }
 
 function setUint16(view, offset, value) {
@@ -937,8 +1058,424 @@ function composeFont(buffer, font, targetChars, report) {
   return { buffer: rebuildFontWithTables(buffer, updates), composed: Object.keys(newMapping).length };
 }
 
+function getLocaOffsets(locaBuffer, indexToLocFormat, numGlyphs) {
+  const offsets = [];
+  const view = new DataView(locaBuffer.buffer, locaBuffer.byteOffset, locaBuffer.byteLength);
+  if (indexToLocFormat === 0) {
+    for (let i = 0; i <= numGlyphs; i++) offsets.push(view.getUint16(i * 2) * 2);
+  } else {
+    for (let i = 0; i <= numGlyphs; i++) offsets.push(view.getUint32(i * 4));
+  }
+  return offsets;
+}
+
+function getGlyphMetric(hmtxBuf, numberOfHMetrics, glyphId) {
+  const safeNhm = Math.max(1, numberOfHMetrics);
+  if (glyphId < safeNhm) {
+    const p = glyphId * 4;
+    return { advance: hmtxBuf.readUInt16BE(p), lsb: hmtxBuf.readInt16BE(p + 2) };
+  }
+  const advP = (safeNhm - 1) * 4;
+  const lsbP = safeNhm * 4 + (glyphId - safeNhm) * 2;
+  return { advance: hmtxBuf.readUInt16BE(advP), lsb: hmtxBuf.readInt16BE(lsbP) };
+}
+
+function remapCompositeGlyphData(rawGlyph, glyphMap) {
+  if (!rawGlyph || rawGlyph.length < 10) return rawGlyph;
+  const numberOfContours = rawGlyph.readInt16BE(0);
+  if (numberOfContours >= 0) return rawGlyph;
+
+  const ARG_1_AND_2_ARE_WORDS = 0x0001;
+  const MORE_COMPONENTS = 0x0020;
+  const WE_HAVE_A_SCALE = 0x0008;
+  const WE_HAVE_AN_X_AND_Y_SCALE = 0x0040;
+  const WE_HAVE_A_2X2 = 0x0080;
+
+  const out = Buffer.from(rawGlyph);
+  let p = 10;
+  while (p + 4 <= out.length) {
+    const flags = out.readUInt16BE(p);
+    const oldGlyphId = out.readUInt16BE(p + 2);
+    const newGlyphId = glyphMap.get(oldGlyphId);
+    if (newGlyphId == null) {
+      throw new Error(`Composite glyph references dropped component glyph ${oldGlyphId}`);
+    }
+    out.writeUInt16BE(newGlyphId, p + 2);
+    p += 4;
+
+    p += (flags & ARG_1_AND_2_ARE_WORDS) ? 4 : 2;
+    if (flags & WE_HAVE_A_SCALE) p += 2;
+    else if (flags & WE_HAVE_AN_X_AND_Y_SCALE) p += 4;
+    else if (flags & WE_HAVE_A_2X2) p += 8;
+
+    if (!(flags & MORE_COMPONENTS)) break;
+  }
+
+  return out;
+}
+
+function collectSubsetChars(args) {
+  const chars = [];
+  const pushUnique = (arr) => {
+    for (const ch of arr) {
+      if (!chars.includes(ch)) chars.push(ch);
+    }
+  };
+
+  if (args["subset-chars"]) {
+    pushUnique(uniqueChars(String(args["subset-chars"])));
+  }
+  if (args["subset-file"]) {
+    const filePath = path.resolve(process.cwd(), String(args["subset-file"]));
+    pushUnique(readCharsFromFile(filePath));
+  }
+  if (args["subset-lang"]) {
+    const codes = String(args["subset-lang"]).split(",").map(s => s.trim()).filter(Boolean);
+    for (const code of codes) {
+      const langChars = charsFromLanguage(code);
+      if (!langChars) {
+        throw new Error(`Unknown language code in --subset-lang: ${code}`);
+      }
+      pushUnique(langChars);
+    }
+  }
+  return chars;
+}
+
+function buildSubsetFont(buffer, font, subsetChars) {
+  const head = font.getTableByType(Table.head);
+  const hhea = font.getTableByType(Table.hhea);
+  const maxp = font.getTableByType(Table.maxp);
+  const glyf = getTableData(buffer, Table.glyf);
+  const loca = getTableData(buffer, Table.loca);
+  const hmtx = getTableData(buffer, Table.hmtx);
+  if (!head || !hhea || !maxp || !glyf || !loca || !hmtx) {
+    throw new Error("Subset currently supports TTF glyf/loca/hmtx fonts only.");
+  }
+
+  const requestedChars = uniqueChars(subsetChars.join(""));
+  const selectedCharMap = new Map();
+  const missingChars = [];
+  const nonBmpChars = [];
+  for (const ch of requestedChars) {
+    const cp = ch.codePointAt(0);
+    if (cp == null) continue;
+    if (cp > 0xffff) {
+      nonBmpChars.push(ch);
+      continue;
+    }
+    const gid = font.getGlyphIndexByChar(ch);
+    if (gid == null) {
+      missingChars.push(ch);
+      continue;
+    }
+    selectedCharMap.set(ch, gid);
+  }
+
+  const keep = new Set([0, ...selectedCharMap.values()]);
+  const glyfTable = font.getTableByType(Table.glyf);
+  const queue = Array.from(keep);
+  while (queue.length > 0) {
+    const gid = queue.pop();
+    if (gid == null) continue;
+    const desc = glyfTable?.getDescription?.(gid);
+    if (!desc?.isComposite?.() || !Array.isArray(desc.components)) continue;
+    for (const comp of desc.components) {
+      const cgid = comp?.glyphIndex;
+      if (typeof cgid !== "number") continue;
+      if (keep.has(cgid)) continue;
+      keep.add(cgid);
+      queue.push(cgid);
+    }
+  }
+
+  const oldGlyphIds = Array.from(keep).sort((a, b) => a - b);
+  const glyphMap = new Map(oldGlyphIds.map((oldId, i) => [oldId, i]));
+
+  const offsets = getLocaOffsets(loca, head.indexToLocFormat, maxp.numGlyphs);
+  const glyfChunks = [];
+  const newOffsets = [0];
+  let cursor = 0;
+  for (const oldId of oldGlyphIds) {
+    const start = offsets[oldId];
+    const end = offsets[oldId + 1];
+    const raw = Buffer.from(glyf.slice(start, end));
+    const remapped = remapCompositeGlyphData(raw, glyphMap);
+    glyfChunks.push(remapped);
+    cursor += remapped.length;
+    const pad = (4 - (cursor % 4)) % 4;
+    if (pad) {
+      glyfChunks.push(Buffer.alloc(pad));
+      cursor += pad;
+    }
+    newOffsets.push(cursor);
+  }
+  const newGlyf = Buffer.concat(glyfChunks);
+
+  const indexToLocFormat = head.indexToLocFormat;
+  const newLoca = Buffer.alloc(indexToLocFormat === 0 ? newOffsets.length * 2 : newOffsets.length * 4);
+  const locaView = new DataView(newLoca.buffer, newLoca.byteOffset, newLoca.byteLength);
+  for (let i = 0; i < newOffsets.length; i++) {
+    if (indexToLocFormat === 0) locaView.setUint16(i * 2, newOffsets[i] / 2);
+    else locaView.setUint32(i * 4, newOffsets[i]);
+  }
+
+  const newGlyphCount = oldGlyphIds.length;
+  const newHmtx = Buffer.alloc(newGlyphCount * 4);
+  for (let i = 0; i < oldGlyphIds.length; i++) {
+    const metric = getGlyphMetric(hmtx, hhea.numberOfHMetrics, oldGlyphIds[i]);
+    newHmtx.writeUInt16BE(metric.advance, i * 4);
+    newHmtx.writeInt16BE(metric.lsb, i * 4 + 2);
+  }
+
+  const newHhea = Buffer.from(getTableData(buffer, Table.hhea));
+  newHhea.writeUInt16BE(newGlyphCount, 34);
+  const newMaxp = Buffer.from(getTableData(buffer, Table.maxp));
+  newMaxp.writeUInt16BE(newGlyphCount, 4);
+
+  const cmapMap = {};
+  for (const [ch, oldGid] of selectedCharMap.entries()) {
+    const cp = ch.codePointAt(0);
+    if (cp == null || cp > 0xffff) continue;
+    cmapMap[cp] = glyphMap.get(oldGid) ?? 0;
+  }
+  const format4 = buildFormat4(cmapMap);
+  const cmapHeader = Buffer.alloc(12);
+  cmapHeader.writeUInt16BE(0, 0);
+  cmapHeader.writeUInt16BE(1, 2);
+  cmapHeader.writeUInt16BE(3, 4);
+  cmapHeader.writeUInt16BE(1, 6);
+  cmapHeader.writeUInt32BE(12, 8);
+  const newCmap = Buffer.concat([cmapHeader, format4]);
+
+  const updates = new Map();
+  updates.set(Table.glyf, newGlyf);
+  updates.set(Table.loca, newLoca);
+  updates.set(Table.hmtx, newHmtx);
+  updates.set(Table.hhea, newHhea);
+  updates.set(Table.maxp, newMaxp);
+  updates.set(Table.cmap, newCmap);
+
+  return {
+    buffer: rebuildFontWithTables(buffer, updates),
+    report: {
+      requestedChars: requestedChars.length,
+      mappedChars: selectedCharMap.size,
+      missingChars,
+      nonBmpChars,
+      oldGlyphCount: maxp.numGlyphs,
+      newGlyphCount,
+      reductionPct: Math.round((1 - (newGlyphCount / Math.max(1, maxp.numGlyphs))) * 100),
+      keptGlyphIds: oldGlyphIds
+    }
+  };
+}
+
+function printGlyphStats(buffer, font, asJson = false) {
+  const head = font.getTableByType(Table.head);
+  const hhea = font.getTableByType(Table.hhea);
+  const maxp = font.getTableByType(Table.maxp);
+  const loca = getTableData(buffer, Table.loca);
+  if (!head || !hhea || !maxp || !loca) {
+    throw new Error("Missing required tables for glyph stats.");
+  }
+
+  const offsets = getLocaOffsets(loca, head.indexToLocFormat, maxp.numGlyphs);
+  const glyfTable = font.getTableByType(Table.glyf);
+  let empty = 0;
+  let simple = 0;
+  let composite = 0;
+  let unknown = 0;
+  for (let gid = 0; gid < maxp.numGlyphs; gid++) {
+    const start = offsets[gid];
+    const end = offsets[gid + 1];
+    if (end <= start) {
+      empty++;
+      continue;
+    }
+    const desc = glyfTable?.getDescription?.(gid);
+    if (!desc) {
+      unknown++;
+      continue;
+    }
+    if (desc.isComposite?.()) composite++;
+    else simple++;
+  }
+
+  const stats = {
+    glyphCount: maxp.numGlyphs,
+    numberOfHMetrics: hhea.numberOfHMetrics,
+    indexToLocFormat: head.indexToLocFormat,
+    simpleGlyphs: simple,
+    compositeGlyphs: composite,
+    emptyGlyphs: empty,
+    unknownGlyphs: unknown
+  };
+
+  if (asJson) {
+    console.log(JSON.stringify(stats, null, 2));
+    return;
+  }
+  console.log("Glyph stats");
+  console.log(`  glyphCount: ${stats.glyphCount}`);
+  console.log(`  simpleGlyphs: ${stats.simpleGlyphs}`);
+  console.log(`  compositeGlyphs: ${stats.compositeGlyphs}`);
+  console.log(`  emptyGlyphs: ${stats.emptyGlyphs}`);
+  console.log(`  unknownGlyphs: ${stats.unknownGlyphs}`);
+  console.log(`  numberOfHMetrics: ${stats.numberOfHMetrics}`);
+  console.log(`  indexToLocFormat: ${stats.indexToLocFormat}`);
+}
+
+function printKerningStats(font, chars, limit = 20, asJson = false) {
+  const charList = uniqueChars(chars).filter(ch => ch !== " ");
+  if (charList.length < 2) {
+    throw new Error("Kerning stats requires at least 2 unique non-space characters.");
+  }
+
+  const rows = [];
+  let nonZeroPairs = 0;
+  let negativePairs = 0;
+  let positivePairs = 0;
+  for (const left of charList) {
+    for (const right of charList) {
+      const value = font.getKerningValue(left, right) || 0;
+      if (value === 0) continue;
+      nonZeroPairs++;
+      if (value < 0) negativePairs++;
+      if (value > 0) positivePairs++;
+      rows.push({ pair: `${left}${right}`, value });
+    }
+  }
+
+  const byMagnitude = rows.slice().sort((a, b) => Math.abs(b.value) - Math.abs(a.value)).slice(0, limit);
+  const topNegative = rows.slice().sort((a, b) => a.value - b.value).slice(0, limit);
+  const topPositive = rows.slice().sort((a, b) => b.value - a.value).slice(0, limit);
+  const kernTable = font.getTableByType?.(Table.kern);
+  const gposTable = font.getTableByType?.(Table.GPOS);
+
+  const stats = {
+    sampleChars: charList.join(""),
+    sampleCharCount: charList.length,
+    testedPairs: charList.length * charList.length,
+    nonZeroPairs,
+    negativePairs,
+    positivePairs,
+    hasKernTable: Boolean(kernTable),
+    hasGposTable: Boolean(gposTable),
+    topByMagnitude: byMagnitude,
+    topNegative,
+    topPositive
+  };
+
+  if (asJson) {
+    console.log(JSON.stringify(stats, null, 2));
+    return;
+  }
+
+  console.log("Kerning stats");
+  console.log(`  sampleCharCount: ${stats.sampleCharCount}`);
+  console.log(`  testedPairs: ${stats.testedPairs}`);
+  console.log(`  nonZeroPairs: ${stats.nonZeroPairs} (negative:${stats.negativePairs} positive:${stats.positivePairs})`);
+  console.log(`  tables: kern:${stats.hasKernTable ? "yes" : "no"} gpos:${stats.hasGposTable ? "yes" : "no"}`);
+  if (stats.topByMagnitude.length > 0) {
+    console.log(`  strongest pairs: ${stats.topByMagnitude.map(r => `${r.pair}:${r.value}`).join(" | ")}`);
+  } else {
+    console.log("  strongest pairs: (none in sampled characters)");
+  }
+}
+
+function printOverview(buffer, font, options = {}) {
+  const minCoveragePct = options.minCoveragePct ?? 90;
+  const kerningChars = options.kerningChars ?? "AVWToY.,;:!?'-_abcdefghijklmnopqrstuvwxyz";
+  const kerningLimit = options.kerningLimit ?? 10;
+
+  printMetadata(font, false);
+  console.log("");
+  printGlyphStats(buffer, font, false);
+  console.log("");
+  printTables(buffer, false);
+  console.log("");
+  console.log(`Supported languages (>= ${minCoveragePct}%):`);
+  printSupportedLanguages(font, minCoveragePct / 100, false);
+  console.log("");
+  printKerningStats(font, kerningChars, kerningLimit, false);
+}
+
+function exportSvgText(font, text, options = {}) {
+  const lines = String(text).replace(/\\n/g, "\n").split("\n");
+  const head = font.getTableByType(Table.head);
+  const unitsPerEm = head?.unitsPerEm ?? 1000;
+  const ascent = font.getAscent();
+  const descent = font.getDescent();
+
+  const fontSize = options.fontSize ?? 96;
+  const scale = fontSize / unitsPerEm;
+  const lineHeightFactor = options.lineHeight ?? 1.2;
+  const letterSpacing = options.letterSpacing ?? 0;
+  const useKerning = options.useKerning ?? true;
+  const padding = options.padding ?? 24;
+  const fill = options.fill ?? "#111111";
+  const stroke = options.stroke ?? "none";
+  const strokeWidth = options.strokeWidth ?? 0;
+  const background = options.background ?? null;
+
+  const fontHeightPx = (ascent - descent) * scale;
+  const lineHeightPx = Math.max(fontHeightPx, fontHeightPx * lineHeightFactor);
+
+  const lineAdvances = [];
+  const linePaths = [];
+  for (const line of lines) {
+    let penX = 0;
+    let pathD = "";
+    let prev = null;
+    for (const ch of line) {
+      const glyph = font.getGlyphByChar(ch);
+      if (!glyph) {
+        penX += letterSpacing + (fontSize * 0.33);
+        prev = null;
+        continue;
+      }
+      if (useKerning && prev != null) {
+        const kern = font.getKerningValue(prev, ch) || 0;
+        penX += kern * scale;
+      }
+      pathD += SVGFont.glyphToPath(glyph, scale, penX, 0);
+      penX += glyph.advanceWidth * scale + letterSpacing;
+      prev = ch;
+    }
+    lineAdvances.push(Math.max(1, penX));
+    linePaths.push(pathD);
+  }
+
+  const width = Math.ceil(Math.max(1, ...lineAdvances) + padding * 2);
+  const height = Math.ceil(Math.max(1, lines.length * lineHeightPx) + padding * 2);
+  const viewBox = `0 0 ${width} ${height}`;
+
+  const pathEls = [];
+  for (let i = 0; i < linePaths.length; i++) {
+    const baselineY = padding + (ascent * scale) + (i * lineHeightPx);
+    pathEls.push(`<path d="${linePaths[i]}" transform="translate(${padding}, ${baselineY})" fill="${escapeXml(fill)}" stroke="${escapeXml(stroke)}" stroke-width="${strokeWidth}"/>`);
+  }
+
+  const bgRect = background
+    ? `<rect x="0" y="0" width="${width}" height="${height}" fill="${escapeXml(background)}"/>`
+    : "";
+
+  return (
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}">` +
+    `${bgRect}${pathEls.join("")}</svg>`
+  );
+}
+
 function usage() {
-  console.log("fontparser --font path.ttf [--coverage] [--localise es] [--out output.ttf]");
+  console.log("fontparser --font path.ttf [--coverage] [--supported-languages] [--min-coverage 100] [--supported-languages-json] [--meta|--meta-json] [--list-languages]");
+  console.log("fontparser --font path.ttf [--tables|--tables-json] [--glyph-stats|--glyph-stats-json]");
+  console.log("fontparser --font path.ttf [--kerning-stats|--kerning-stats-json] [--kerning-chars \"AVTo\"] [--kerning-limit 20]");
+  console.log("fontparser --font path.ttf --overview [--min-coverage 90] [--kerning-chars \"AVTo\"] [--kerning-limit 10]");
+  console.log("fontparser --font path.ttf --svg-text \"Hello\" [--svg-out out.svg] [--svg-font-size 96] [--svg-fill '#111'] [--svg-stroke none] [--svg-stroke-width 0] [--svg-padding 24] [--svg-line-height 1.2] [--svg-letter-spacing 0] [--svg-use-kerning true] [--svg-bg '#fff']");
+  console.log("fontparser --font path.ttf --localise <code> [--out output.ttf]");
+  console.log("fontparser --font path.ttf --subset [--subset-chars <text>] [--subset-file <txt>] [--subset-lang <code[,code]>] [--out output.ttf] [--subset-report report.json]");
 }
 
 async function main() {
@@ -950,9 +1487,108 @@ async function main() {
   }
   const resolved = path.resolve(process.cwd(), fontPath);
   const font = loadFont(resolved);
+  const originalBuffer = Buffer.from(fs.readFileSync(resolved));
+
+  if (args["list-languages"]) {
+    printLanguages();
+  }
 
   if (args.coverage) {
     printCoverage(font);
+  }
+
+  if (args["supported-languages"] || args["supported-languages-json"]) {
+    const minCoveragePct = args["min-coverage"] != null ? Number(args["min-coverage"]) : 100;
+    if (!Number.isFinite(minCoveragePct) || minCoveragePct < 0 || minCoveragePct > 100) {
+      throw new Error("--min-coverage must be a number between 0 and 100.");
+    }
+    printSupportedLanguages(font, minCoveragePct / 100, Boolean(args["supported-languages-json"]));
+  }
+
+  if (args.tables || args["tables-json"]) {
+    printTables(originalBuffer, Boolean(args["tables-json"]));
+  }
+
+  if (args["glyph-stats"] || args["glyph-stats-json"]) {
+    printGlyphStats(originalBuffer, font, Boolean(args["glyph-stats-json"]));
+  }
+
+  if (args["kerning-stats"] || args["kerning-stats-json"]) {
+    const sample = args["kerning-chars"] != null
+      ? String(args["kerning-chars"])
+      : "AVWToY.,;:!?'-_abcdefghijklmnopqrstuvwxyz";
+    const limit = args["kerning-limit"] != null ? Number(args["kerning-limit"]) : 20;
+    if (!Number.isFinite(limit) || limit <= 0) {
+      throw new Error("--kerning-limit must be a positive number.");
+    }
+    printKerningStats(font, sample, Math.floor(limit), Boolean(args["kerning-stats-json"]));
+  }
+
+  if (args.overview) {
+    const minCoveragePct = args["min-coverage"] != null ? Number(args["min-coverage"]) : 90;
+    const sample = args["kerning-chars"] != null
+      ? String(args["kerning-chars"])
+      : "AVWToY.,;:!?'-_abcdefghijklmnopqrstuvwxyz";
+    const limit = args["kerning-limit"] != null ? Number(args["kerning-limit"]) : 10;
+    if (!Number.isFinite(minCoveragePct) || minCoveragePct < 0 || minCoveragePct > 100) {
+      throw new Error("--min-coverage must be a number between 0 and 100.");
+    }
+    if (!Number.isFinite(limit) || limit <= 0) {
+      throw new Error("--kerning-limit must be a positive number.");
+    }
+    printOverview(originalBuffer, font, {
+      minCoveragePct,
+      kerningChars: sample,
+      kerningLimit: Math.floor(limit)
+    });
+  }
+
+  if (args["svg-text"] != null) {
+    const text = String(args["svg-text"]);
+    if (!text.length) {
+      throw new Error("--svg-text must not be empty.");
+    }
+    const fontSize = args["svg-font-size"] != null ? Number(args["svg-font-size"]) : 96;
+    const padding = args["svg-padding"] != null ? Number(args["svg-padding"]) : 24;
+    const lineHeight = args["svg-line-height"] != null ? Number(args["svg-line-height"]) : 1.2;
+    const letterSpacing = args["svg-letter-spacing"] != null ? Number(args["svg-letter-spacing"]) : 0;
+    const strokeWidth = args["svg-stroke-width"] != null ? Number(args["svg-stroke-width"]) : 0;
+    if (!Number.isFinite(fontSize) || fontSize <= 0) throw new Error("--svg-font-size must be > 0.");
+    if (!Number.isFinite(padding) || padding < 0) throw new Error("--svg-padding must be >= 0.");
+    if (!Number.isFinite(lineHeight) || lineHeight <= 0) throw new Error("--svg-line-height must be > 0.");
+    if (!Number.isFinite(letterSpacing)) throw new Error("--svg-letter-spacing must be numeric.");
+    if (!Number.isFinite(strokeWidth) || strokeWidth < 0) throw new Error("--svg-stroke-width must be >= 0.");
+
+    const svg = exportSvgText(font, text, {
+      fontSize,
+      fill: args["svg-fill"] != null ? String(args["svg-fill"]) : "#111111",
+      stroke: args["svg-stroke"] != null ? String(args["svg-stroke"]) : "none",
+      strokeWidth,
+      padding,
+      lineHeight,
+      letterSpacing,
+      useKerning: parseBoolean(args["svg-use-kerning"], true),
+      background: args["svg-bg"] != null ? String(args["svg-bg"]) : null
+    });
+
+    if (args["svg-out"]) {
+      const outPath = path.resolve(process.cwd(), String(args["svg-out"]));
+      fs.writeFileSync(outPath, svg, "utf8");
+      console.log(`Wrote SVG: ${outPath}`);
+    } else {
+      console.log(svg);
+    }
+  }
+
+  if (args.meta) {
+    printMetadata(font, false);
+  }
+  if (args["meta-json"]) {
+    printMetadata(font, true);
+  }
+
+  if (args.localise && args.subset) {
+    throw new Error("Use either --localise or --subset in a single run.");
   }
 
   if (args.localise) {
@@ -963,7 +1599,7 @@ async function main() {
       process.exit(1);
     }
     const outPath = args.out ? path.resolve(process.cwd(), args.out) : path.resolve(__dirname, `${path.basename(resolved, ".ttf")}-${lang}.ttf`);
-    let buffer = Buffer.from(fs.readFileSync(resolved));
+    let buffer = Buffer.from(originalBuffer);
     updateNameTableBuffer(buffer, lang.toUpperCase());
     if (!info.supported) {
       const report = [];
@@ -982,6 +1618,43 @@ async function main() {
     }
     fs.writeFileSync(outPath, buffer);
     console.log(`Wrote localized font: ${outPath}`);
+  }
+
+  if (args.subset) {
+    const fsTypeFlags = font.getFsTypeFlags?.() ?? [];
+    if (fsTypeFlags.includes("no-subsetting")) {
+      console.warn("Warning: OS/2 fsType indicates no-subsetting.");
+    }
+
+    const selectedChars = collectSubsetChars(args);
+    if (selectedChars.length === 0) {
+      throw new Error("No subset character sources provided. Use --subset-chars and/or --subset-file and/or --subset-lang.");
+    }
+
+    const outPath = args.out
+      ? path.resolve(process.cwd(), String(args.out))
+      : path.resolve(__dirname, `${path.basename(resolved, path.extname(resolved))}-subset.ttf`);
+    const reportPath = args["subset-report"]
+      ? path.resolve(process.cwd(), String(args["subset-report"]))
+      : `${outPath}.report.json`;
+
+    let buffer = Buffer.from(originalBuffer);
+    updateNameTableBuffer(buffer, "SUBSET");
+    const workingFont = new FontParserTTF(new ByteArray(new Uint8Array(buffer)));
+    const { buffer: subsetBuffer, report } = buildSubsetFont(buffer, workingFont, selectedChars);
+    fs.writeFileSync(outPath, subsetBuffer);
+    fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+
+    console.log(`Wrote subset font: ${outPath}`);
+    console.log(`Subset report: ${reportPath}`);
+    console.log(`Subset chars mapped: ${report.mappedChars}/${report.requestedChars}`);
+    if (report.missingChars.length) {
+      console.log(`Missing chars (${report.missingChars.length}): ${report.missingChars.slice(0, 40).join(" ")}`);
+    }
+    if (report.nonBmpChars.length) {
+      console.log(`Skipped non-BMP chars (${report.nonBmpChars.length}): ${report.nonBmpChars.slice(0, 20).join(" ")}`);
+    }
+    console.log(`Glyph count: ${report.oldGlyphCount} -> ${report.newGlyphCount} (${report.reductionPct}% reduction)`);
   }
 }
 

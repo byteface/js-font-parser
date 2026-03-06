@@ -15,7 +15,7 @@ All demos in `demos/` now use the TS/ESM pipeline (`dist/` outputs).
 - `tools/metadata.html` uses metadata convenience methods for name + OS/2 + post fields.
 - `demos/svg-export.html` exports strings to SVG paths.
 - `demos/gsub.html` previews GSUB ligature substitutions (when available).
-- `demos/kerning.html` previews kerning adjustments from kern + GPOS pair positioning.
+- `tools/kerning.html` is an interactive kerning visualizer with pair heatmap and side-by-side rendering from kern + GPOS pair positioning.
 - `demos/metrics.html` shows rulers + measurements for a single glyph and a sentence.
 - `demos/path-tracing.html` uses SVG paths to trace strokes over time.
 - `demos/morphing.html` morphs glyph point clouds between letters/words.

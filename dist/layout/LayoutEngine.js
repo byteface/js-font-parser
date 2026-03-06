@@ -25,11 +25,18 @@ var LayoutEngine = /** @class */ (function () {
         var preserveNbsp = (_j = options.preserveNbsp) !== null && _j !== void 0 ? _j : true;
         var tabSize = (_k = options.tabSize) !== null && _k !== void 0 ? _k : 4;
         var justifyLastLine = (_l = options.justifyLastLine) !== null && _l !== void 0 ? _l : false;
-        var direction = (_m = options.direction) !== null && _m !== void 0 ? _m : 'ltr';
-        var hhea = (_o = font.getTableByType) === null || _o === void 0 ? void 0 : _o.call(font, 0x68686561); // hhea
-        var head = (_p = font.getTableByType) === null || _p === void 0 ? void 0 : _p.call(font, 0x68656164); // head
-        var unitsPerEm = (_q = head === null || head === void 0 ? void 0 : head.unitsPerEm) !== null && _q !== void 0 ? _q : 1000;
-        var lineHeight = (_r = options.lineHeight) !== null && _r !== void 0 ? _r : (((_s = hhea === null || hhea === void 0 ? void 0 : hhea.ascender) !== null && _s !== void 0 ? _s : unitsPerEm * 0.8) - ((_t = hhea === null || hhea === void 0 ? void 0 : hhea.descender) !== null && _t !== void 0 ? _t : -unitsPerEm * 0.2) + ((_u = hhea === null || hhea === void 0 ? void 0 : hhea.lineGap) !== null && _u !== void 0 ? _u : 0));
+        var bidi = (_m = options.bidi) !== null && _m !== void 0 ? _m : 'simple';
+        var hyphenate = (_o = options.hyphenate) !== null && _o !== void 0 ? _o : 'soft';
+        var hyphenChar = (_p = options.hyphenChar) !== null && _p !== void 0 ? _p : '-';
+        var hyphenMinWordLength = (_q = options.hyphenMinWordLength) !== null && _q !== void 0 ? _q : 6;
+        var resolvedDirection = (_r = options.direction) !== null && _r !== void 0 ? _r : 'ltr';
+        var direction = resolvedDirection === 'auto'
+            ? (this.hasRtl(text) ? 'rtl' : 'ltr')
+            : resolvedDirection;
+        var hhea = (_s = font.getTableByType) === null || _s === void 0 ? void 0 : _s.call(font, 0x68686561); // hhea
+        var head = (_t = font.getTableByType) === null || _t === void 0 ? void 0 : _t.call(font, 0x68656164); // head
+        var unitsPerEm = (_u = head === null || head === void 0 ? void 0 : head.unitsPerEm) !== null && _u !== void 0 ? _u : 1000;
+        var lineHeight = (_v = options.lineHeight) !== null && _v !== void 0 ? _v : (((_w = hhea === null || hhea === void 0 ? void 0 : hhea.ascender) !== null && _w !== void 0 ? _w : unitsPerEm * 0.8) - ((_x = hhea === null || hhea === void 0 ? void 0 : hhea.descender) !== null && _x !== void 0 ? _x : -unitsPerEm * 0.2) + ((_y = hhea === null || hhea === void 0 ? void 0 : hhea.lineGap) !== null && _y !== void 0 ? _y : 0));
         var lines = [];
         var current = [];
         var cursorX = 0;
@@ -49,7 +56,22 @@ var LayoutEngine = /** @class */ (function () {
             if (trimLeadingSpaces && cursorX === 0 && /^\s+$/.test(token)) {
                 continue;
             }
-            var tokenGlyphs = this.buildTokenGlyphs(font, token, letterSpacing, useKerning);
+            if (hyphenate === 'soft' && maxWidth > 0 && breakWords && token.length >= hyphenMinWordLength && token.indexOf('\u00AD') !== -1) {
+                var parts = token.split('\u00AD').filter(function (p) { return p.length > 0; });
+                var resolved = this.layoutSoftHyphenWord(font, parts, letterSpacing, useKerning, maxWidth, function () { return cursorX; }, function (glyphs) {
+                    for (var _i = 0, glyphs_1 = glyphs; _i < glyphs_1.length; _i++) {
+                        var glyph = glyphs_1[_i];
+                        glyph.x = cursorX + glyph.x;
+                        glyph.y = 0;
+                        cursorX += glyph.advance;
+                        current.push(glyph);
+                    }
+                }, hyphenChar);
+                if (resolved) {
+                    continue;
+                }
+            }
+            var tokenGlyphs = this.buildTokenGlyphs(font, token.replace(/\u00AD/g, ''), letterSpacing, useKerning);
             var tokenWidth = tokenGlyphs.reduce(function (sum, g) { return sum + g.advance; }, 0);
             if (maxWidth > 0 && cursorX > 0 && cursorX + tokenWidth > maxWidth) {
                 pushLine(false);
@@ -80,7 +102,9 @@ var LayoutEngine = /** @class */ (function () {
         lines.forEach(function (line, index) {
             var y = index * lineHeight;
             if (direction === 'rtl') {
-                var reordered = line.glyphs.slice().reverse();
+                var reordered = bidi === 'simple'
+                    ? _this.reorderBidiRuns(line.glyphs)
+                    : line.glyphs.slice().reverse();
                 var cursor = 0;
                 for (var _i = 0, reordered_1 = reordered; _i < reordered_1.length; _i++) {
                     var g = reordered_1[_i];
@@ -111,6 +135,51 @@ var LayoutEngine = /** @class */ (function () {
         };
     };
     LayoutEngine.tokenize = function (text, collapseSpaces, preserveNbsp, tabSize) {
+        if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+            var segments = [];
+            var segmenter_1 = new Intl.Segmenter(undefined, { granularity: 'word' });
+            var lines_1 = text.split('\n');
+            lines_1.forEach(function (line, index) {
+                var _a;
+                var segs = Array.from(segmenter_1.segment(line));
+                for (var _i = 0, segs_1 = segs; _i < segs_1.length; _i++) {
+                    var seg = segs_1[_i];
+                    var chunk = seg.segment;
+                    if (chunk === '\t') {
+                        var count = Math.max(1, tabSize);
+                        if (collapseSpaces) {
+                            if (!segments.length || segments[segments.length - 1] !== ' ')
+                                segments.push(' ');
+                        }
+                        else {
+                            for (var i = 0; i < count; i++)
+                                segments.push(' ');
+                        }
+                        continue;
+                    }
+                    if (preserveNbsp && chunk === '\u00A0') {
+                        segments.push(chunk);
+                        continue;
+                    }
+                    if (/^\s+$/.test(chunk)) {
+                        if (collapseSpaces) {
+                            if (!segments.length || segments[segments.length - 1] !== ' ')
+                                segments.push(' ');
+                        }
+                        else {
+                            segments.push(chunk);
+                        }
+                        continue;
+                    }
+                    segments.push(chunk);
+                }
+                if (index < lines_1.length - 1)
+                    segments.push('\n');
+                _a = segments;
+                return _a;
+            });
+            return segments;
+        }
         var tokens = [];
         var buffer = '';
         var lastWasSpace = false;
@@ -225,6 +294,70 @@ var LayoutEngine = /** @class */ (function () {
             width += glyphs[i].advance;
         }
         return width;
+    };
+    LayoutEngine.layoutSoftHyphenWord = function (font, parts, letterSpacing, useKerning, maxWidth, cursorGetter, pushGlyphs, hyphenChar) {
+        if (parts.length <= 1)
+            return false;
+        var hyphenGlyphs = this.buildTokenGlyphs(font, hyphenChar, letterSpacing, useKerning);
+        var hyphenWidth = hyphenGlyphs.reduce(function (sum, g) { return sum + g.advance; }, 0);
+        var remaining = parts.slice();
+        while (remaining.length > 0) {
+            var consumed = 0;
+            var width = 0;
+            var glyphs = [];
+            while (consumed < remaining.length) {
+                var next = remaining[consumed];
+                var nextGlyphs = this.buildTokenGlyphs(font, next, letterSpacing, useKerning);
+                var nextWidth = nextGlyphs.reduce(function (sum, g) { return sum + g.advance; }, 0);
+                var fits = cursorGetter() + width + nextWidth + (consumed < remaining.length - 1 ? hyphenWidth : 0) <= maxWidth;
+                if (!fits && consumed > 0)
+                    break;
+                if (!fits)
+                    return false;
+                glyphs.push.apply(glyphs, nextGlyphs);
+                width += nextWidth;
+                consumed += 1;
+            }
+            if (consumed < remaining.length) {
+                glyphs.push.apply(glyphs, hyphenGlyphs.map(function (g) { return ({ glyphIndex: g.glyphIndex, x: g.x, y: g.y, advance: g.advance, char: g.char }); }));
+            }
+            pushGlyphs(glyphs);
+            remaining = remaining.slice(consumed);
+            if (remaining.length > 0) {
+                return true;
+            }
+        }
+        return true;
+    };
+    LayoutEngine.hasRtl = function (text) {
+        return /[\u0590-\u08FF]/.test(text);
+    };
+    LayoutEngine.isRtlChar = function (ch) {
+        return /[\u0590-\u08FF]/.test(ch);
+    };
+    LayoutEngine.reorderBidiRuns = function (glyphs) {
+        var runs = [];
+        var current = [];
+        var currentIsRtl = null;
+        for (var _i = 0, glyphs_3 = glyphs; _i < glyphs_3.length; _i++) {
+            var glyph = glyphs_3[_i];
+            var isRtl = glyph.char ? this.isRtlChar(glyph.char) : false;
+            if (currentIsRtl === null) {
+                currentIsRtl = isRtl;
+                current.push(glyph);
+                continue;
+            }
+            if (isRtl === currentIsRtl) {
+                current.push(glyph);
+                continue;
+            }
+            runs.push(current);
+            current = [glyph];
+            currentIsRtl = isRtl;
+        }
+        if (current.length)
+            runs.push(current);
+        return runs.reverse().flat();
     };
     return LayoutEngine;
 }());

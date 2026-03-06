@@ -58,6 +58,7 @@ import { PairPosFormat1 } from '../table/PairPosFormat1.js';
 import { PairPosFormat2 } from '../table/PairPosFormat2.js';
 import { SinglePosSubtable } from '../table/SinglePosSubtable.js';
 import { PairPosSubtable } from '../table/PairPosSubtable.js';
+import { GlyfCompositeDescript } from '../table/GlyfCompositeDescript.js';
 var FontParserWOFF = /** @class */ (function () {
     function FontParserWOFF(byteData, options) {
         // Define properties
@@ -329,12 +330,30 @@ var FontParserWOFF = /** @class */ (function () {
                         dy_1.push(0);
                     while (touched.length < basePointCount)
                         touched.push(false);
-                    // Apply IUP to fill missing deltas (works for composites too).
-                    this.applyIupDeltas(base_1, dx_1, dy_1, touched);
+                    // Apply IUP only to simple glyphs.
+                    if (!base_1.isComposite()) {
+                        this.applyIupDeltas(base_1, dx_1, dy_1, touched);
+                    }
                     var lsbDelta = (_f = fullDx[basePointCount]) !== null && _f !== void 0 ? _f : 0;
                     var rsbDelta = (_g = fullDx[basePointCount + 1]) !== null && _g !== void 0 ? _g : 0;
                     lsb += lsbDelta;
                     advance += (rsbDelta - lsbDelta);
+                    var minX = Infinity;
+                    var maxX = -Infinity;
+                    var minY = Infinity;
+                    var maxY = -Infinity;
+                    for (var p = 0; p < basePointCount; p++) {
+                        var x = base_1.getXCoordinate(p) + ((_h = dx_1[p]) !== null && _h !== void 0 ? _h : 0);
+                        var y = base_1.getYCoordinate(p) + ((_j = dy_1[p]) !== null && _j !== void 0 ? _j : 0);
+                        if (x < minX)
+                            minX = x;
+                        if (x > maxX)
+                            maxX = x;
+                        if (y < minY)
+                            minY = y;
+                        if (y > maxY)
+                            maxY = y;
+                    }
                     desc = {
                         getPointCount: function () { return base_1.getPointCount(); },
                         getContourCount: function () { return base_1.getContourCount(); },
@@ -342,10 +361,10 @@ var FontParserWOFF = /** @class */ (function () {
                         getFlags: function (p) { return base_1.getFlags(p); },
                         getXCoordinate: function (p) { var _a; return base_1.getXCoordinate(p) + ((_a = dx_1[p]) !== null && _a !== void 0 ? _a : 0); },
                         getYCoordinate: function (p) { var _a; return base_1.getYCoordinate(p) + ((_a = dy_1[p]) !== null && _a !== void 0 ? _a : 0); },
-                        getXMaximum: function () { return base_1.getXMaximum(); },
-                        getXMinimum: function () { return base_1.getXMinimum(); },
-                        getYMaximum: function () { return base_1.getYMaximum(); },
-                        getYMinimum: function () { return base_1.getYMinimum(); },
+                        getXMaximum: function () { return maxX !== -Infinity ? maxX : base_1.getXMaximum(); },
+                        getXMinimum: function () { return minX !== Infinity ? minX : base_1.getXMinimum(); },
+                        getYMaximum: function () { return maxY !== -Infinity ? maxY : base_1.getYMaximum(); },
+                        getYMinimum: function () { return minY !== Infinity ? minY : base_1.getYMinimum(); },
                         isComposite: function () { return base_1.isComposite(); },
                         resolve: function () { return base_1.resolve(); }
                     };

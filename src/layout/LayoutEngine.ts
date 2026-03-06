@@ -1,7 +1,7 @@
 export type LayoutOptions = {
     maxWidth?: number;
     align?: 'left' | 'center' | 'right' | 'justify';
-    direction?: 'ltr' | 'rtl';
+    direction?: 'ltr' | 'rtl' | 'auto';
     lineHeight?: number;
     letterSpacing?: number;
     useKerning?: boolean;
@@ -12,6 +12,10 @@ export type LayoutOptions = {
     preserveNbsp?: boolean;
     tabSize?: number;
     justifyLastLine?: boolean;
+    bidi?: 'none' | 'simple';
+    hyphenate?: 'none' | 'soft';
+    hyphenChar?: string;
+    hyphenMinWordLength?: number;
 };
 
 export type LayoutGlyph = {
@@ -56,7 +60,14 @@ export class LayoutEngine {
         const preserveNbsp = options.preserveNbsp ?? true;
         const tabSize = options.tabSize ?? 4;
         const justifyLastLine = options.justifyLastLine ?? false;
-        const direction = options.direction ?? 'ltr';
+        const bidi = options.bidi ?? 'simple';
+        const hyphenate = options.hyphenate ?? 'soft';
+        const hyphenChar = options.hyphenChar ?? '-';
+        const hyphenMinWordLength = options.hyphenMinWordLength ?? 6;
+        const resolvedDirection = options.direction ?? 'ltr';
+        const direction = resolvedDirection === 'auto'
+            ? (this.hasRtl(text) ? 'rtl' : 'ltr')
+            : resolvedDirection;
 
         const hhea = font.getTableByType?.(0x68686561); // hhea
         const head = font.getTableByType?.(0x68656164); // head
@@ -85,7 +96,22 @@ export class LayoutEngine {
                 continue;
             }
 
-            const tokenGlyphs = this.buildTokenGlyphs(font, token, letterSpacing, useKerning);
+            if (hyphenate === 'soft' && maxWidth > 0 && breakWords && token.length >= hyphenMinWordLength && token.includes('\u00AD')) {
+                const parts = token.split('\u00AD').filter(p => p.length > 0);
+                const resolved = this.layoutSoftHyphenWord(font, parts, letterSpacing, useKerning, maxWidth, () => cursorX, glyphs => {
+                    for (const glyph of glyphs) {
+                        glyph.x = cursorX + glyph.x;
+                        glyph.y = 0;
+                        cursorX += glyph.advance;
+                        current.push(glyph);
+                    }
+                }, hyphenChar);
+                if (resolved) {
+                    continue;
+                }
+            }
+
+            const tokenGlyphs = this.buildTokenGlyphs(font, token.replace(/\u00AD/g, ''), letterSpacing, useKerning);
             const tokenWidth = tokenGlyphs.reduce((sum, g) => sum + g.advance, 0);
 
             if (maxWidth > 0 && cursorX > 0 && cursorX + tokenWidth > maxWidth) {
@@ -119,7 +145,9 @@ export class LayoutEngine {
         lines.forEach((line, index) => {
             const y = index * lineHeight;
             if (direction === 'rtl') {
-                const reordered = line.glyphs.slice().reverse();
+                const reordered = bidi === 'simple'
+                    ? this.reorderBidiRuns(line.glyphs)
+                    : line.glyphs.slice().reverse();
                 let cursor = 0;
                 for (const g of reordered) {
                     g.x = cursor;
@@ -149,6 +177,41 @@ export class LayoutEngine {
     }
 
     private static tokenize(text: string, collapseSpaces: boolean, preserveNbsp: boolean, tabSize: number): string[] {
+        if (typeof Intl !== 'undefined' && typeof (Intl as any).Segmenter === 'function') {
+            const segments: string[] = [];
+            const segmenter = new (Intl as any).Segmenter(undefined, { granularity: 'word' });
+            const lines = text.split('\n');
+            lines.forEach((line, index) => {
+                const segs = Array.from(segmenter.segment(line));
+                for (const seg of segs) {
+                    const chunk = seg.segment as string;
+                    if (chunk === '\t') {
+                        const count = Math.max(1, tabSize);
+                        if (collapseSpaces) {
+                            if (!segments.length || segments[segments.length - 1] !== ' ') segments.push(' ');
+                        } else {
+                            for (let i = 0; i < count; i++) segments.push(' ');
+                        }
+                        continue;
+                    }
+                    if (preserveNbsp && chunk === '\u00A0') {
+                        segments.push(chunk);
+                        continue;
+                    }
+                    if (/^\s+$/.test(chunk)) {
+                        if (collapseSpaces) {
+                            if (!segments.length || segments[segments.length - 1] !== ' ') segments.push(' ');
+                        } else {
+                            segments.push(chunk);
+                        }
+                        continue;
+                    }
+                    segments.push(chunk);
+                }
+                if (index < lines.length - 1) segments.push('\n');
+            });
+            return segments;
+        }
         const tokens: string[] = [];
         let buffer = '';
         let lastWasSpace = false;
@@ -215,6 +278,48 @@ export class LayoutEngine {
         return glyphs;
     }
 
+    private static layoutSoftHyphenWord(
+        font: FontLike,
+        parts: string[],
+        letterSpacing: number,
+        useKerning: boolean,
+        maxWidth: number,
+        cursorGetter: () => number,
+        pushGlyphs: (glyphs: LayoutGlyph[]) => void,
+        hyphenChar: string
+    ): boolean {
+        if (parts.length <= 1) return false;
+        const hyphenGlyphs = this.buildTokenGlyphs(font, hyphenChar, letterSpacing, useKerning);
+        const hyphenWidth = hyphenGlyphs.reduce((sum, g) => sum + g.advance, 0);
+        let remaining = parts.slice();
+        while (remaining.length > 0) {
+            let consumed = 0;
+            let width = 0;
+            const glyphs: LayoutGlyph[] = [];
+            while (consumed < remaining.length) {
+                const next = remaining[consumed];
+                const nextGlyphs = this.buildTokenGlyphs(font, next, letterSpacing, useKerning);
+                const nextWidth = nextGlyphs.reduce((sum, g) => sum + g.advance, 0);
+                const fits = cursorGetter() + width + nextWidth + (consumed < remaining.length - 1 ? hyphenWidth : 0) <= maxWidth;
+                if (!fits && consumed > 0) break;
+                if (!fits) return false;
+                glyphs.push(...nextGlyphs);
+                width += nextWidth;
+                consumed += 1;
+            }
+
+            if (consumed < remaining.length) {
+                glyphs.push(...hyphenGlyphs.map(g => ({ ...g })));
+            }
+            pushGlyphs(glyphs);
+            remaining = remaining.slice(consumed);
+            if (remaining.length > 0) {
+                return true;
+            }
+        }
+        return true;
+    }
+
     private static justifyLine(line: LayoutLine, targetWidth: number): void {
         if (!line.glyphs.length) return;
         let lastIndex = line.glyphs.length - 1;
@@ -247,5 +352,36 @@ export class LayoutEngine {
             width += glyphs[i].advance;
         }
         return width;
+    }
+
+    private static hasRtl(text: string): boolean {
+        return /[\u0590-\u08FF]/.test(text);
+    }
+
+    private static isRtlChar(ch: string): boolean {
+        return /[\u0590-\u08FF]/.test(ch);
+    }
+
+    private static reorderBidiRuns(glyphs: LayoutGlyph[]): LayoutGlyph[] {
+        const runs: LayoutGlyph[][] = [];
+        let current: LayoutGlyph[] = [];
+        let currentIsRtl: boolean | null = null;
+        for (const glyph of glyphs) {
+            const isRtl = glyph.char ? this.isRtlChar(glyph.char) : false;
+            if (currentIsRtl === null) {
+                currentIsRtl = isRtl;
+                current.push(glyph);
+                continue;
+            }
+            if (isRtl === currentIsRtl) {
+                current.push(glyph);
+                continue;
+            }
+            runs.push(current);
+            current = [glyph];
+            currentIsRtl = isRtl;
+        }
+        if (current.length) runs.push(current);
+        return runs.reverse().flat();
     }
 }

@@ -2,6 +2,7 @@ import { ByteArray } from '../utils/ByteArray.js';
 import { Os2Table } from '../table/Os2Table.js';
 import { CmapTable } from '../table/CmapTable.js';
 import { GlyfTable } from '../table/GlyfTable.js';
+import { GlyfCompositeDescript } from '../table/GlyfCompositeDescript.js';
 import { CffTable } from '../table/CffTable.js';
 import { HeadTable } from '../table/HeadTable.js';
 import { HheaTable } from '../table/HheaTable.js';
@@ -278,13 +279,28 @@ export class FontParserWOFF {
                     while (dx.length < basePointCount) dx.push(0);
                     while (dy.length < basePointCount) dy.push(0);
                     while (touched.length < basePointCount) touched.push(false);
-                    // Apply IUP to fill missing deltas (works for composites too).
-                    this.applyIupDeltas(base, dx, dy, touched);
+                    // Apply IUP only to simple glyphs.
+                    if (!base.isComposite()) {
+                        this.applyIupDeltas(base, dx, dy, touched);
+                    }
 
                     const lsbDelta = fullDx[basePointCount] ?? 0;
                     const rsbDelta = fullDx[basePointCount + 1] ?? 0;
                     lsb += lsbDelta;
                     advance += (rsbDelta - lsbDelta);
+
+                    let minX = Infinity;
+                    let maxX = -Infinity;
+                    let minY = Infinity;
+                    let maxY = -Infinity;
+                    for (let p = 0; p < basePointCount; p++) {
+                        const x = base.getXCoordinate(p) + (dx[p] ?? 0);
+                        const y = base.getYCoordinate(p) + (dy[p] ?? 0);
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
 
                     desc = {
                         getPointCount: () => base.getPointCount(),
@@ -293,10 +309,10 @@ export class FontParserWOFF {
                         getFlags: (p: number) => base.getFlags(p),
                         getXCoordinate: (p: number) => base.getXCoordinate(p) + (dx[p] ?? 0),
                         getYCoordinate: (p: number) => base.getYCoordinate(p) + (dy[p] ?? 0),
-                        getXMaximum: () => base.getXMaximum(),
-                        getXMinimum: () => base.getXMinimum(),
-                        getYMaximum: () => base.getYMaximum(),
-                        getYMinimum: () => base.getYMinimum(),
+                        getXMaximum: () => (maxX !== -Infinity ? maxX : base.getXMaximum()),
+                        getXMinimum: () => (minX !== Infinity ? minX : base.getXMinimum()),
+                        getYMaximum: () => (maxY !== -Infinity ? maxY : base.getYMaximum()),
+                        getYMinimum: () => (minY !== Infinity ? minY : base.getYMinimum()),
                         isComposite: () => base.isComposite(),
                         resolve: () => base.resolve()
                     };
@@ -866,6 +882,15 @@ export class FontParserWOFF {
         firstCharIndex: number;
         lastCharIndex: number;
         vendorId: string;
+        unicodeRanges: [number, number, number, number];
+        codePageRanges: [number, number];
+        xHeight: number | null;
+        capHeight: number | null;
+        defaultChar: number | null;
+        breakChar: number | null;
+        maxContext: number | null;
+        lowerOpticalPointSize: number | null;
+        upperOpticalPointSize: number | null;
         panose: {
             familyType: number;
             serifStyle: number;
@@ -894,6 +919,23 @@ export class FontParserWOFF {
             firstCharIndex: this.os2.usFirstCharIndex,
             lastCharIndex: this.os2.usLastCharIndex,
             vendorId: this.decodeOs2VendorId(this.os2.achVendorID),
+            unicodeRanges: [
+                this.os2.ulUnicodeRange1,
+                this.os2.ulUnicodeRange2,
+                this.os2.ulUnicodeRange3,
+                this.os2.ulUnicodeRange4
+            ],
+            codePageRanges: [
+                this.os2.ulCodePageRange1,
+                this.os2.ulCodePageRange2
+            ],
+            xHeight: this.os2.version >= 2 ? this.os2.sxHeight : null,
+            capHeight: this.os2.version >= 2 ? this.os2.sCapHeight : null,
+            defaultChar: this.os2.version >= 2 ? this.os2.usDefaultChar : null,
+            breakChar: this.os2.version >= 2 ? this.os2.usBreakChar : null,
+            maxContext: this.os2.version >= 2 ? this.os2.usMaxContext : null,
+            lowerOpticalPointSize: this.os2.version >= 5 ? this.os2.usLowerOpticalPointSize : null,
+            upperOpticalPointSize: this.os2.version >= 5 ? this.os2.usUpperOpticalPointSize : null,
             panose: this.os2.panose
                 ? {
                     familyType: this.os2.panose.bFamilyType,
