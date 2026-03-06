@@ -6,9 +6,12 @@ import { ByteArray } from "../../dist/utils/ByteArray.js";
 import { FontParserTTF } from "../../dist/data/FontParserTTF.js";
 import { SVGFont } from "../../dist/render/SVGFont.js";
 import { Table } from "../../dist/table/Table.js";
-import { getSupportedLanguages, listLanguages, supportsLanguage } from "../../dist/utils/LanguageSupport.js";
+import { supportsLanguage } from "../../dist/utils/LanguageSupport.js";
 import { parseArgs, parseBoolean, printUsage } from "./cli/args.mjs";
 import { runCli } from "./cli/runner.mjs";
+import { printCoverage, printSupportedLanguages, printMissingChars, printLanguages } from "./commands/languages.mjs";
+import { printMetadata } from "./commands/meta.mjs";
+import { printOverview as printOverviewCommand } from "./commands/overview.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,104 +21,12 @@ function loadFont(pathLike) {
   return new FontParserTTF(new ByteArray(new Uint8Array(data)));
 }
 
-function printCoverage(font) {
-  const rows = getSupportedLanguages(font);
-  rows.forEach(r => {
-    const pct = Math.round(r.coverage * 100);
-    const status = r.supported ? "yes" : "no";
-    const missing = r.missing.slice(0, 12).join("");
-    console.log(`${r.code.padEnd(4)} ${r.name.padEnd(24)} ${status.padEnd(4)} ${String(pct).padStart(3)}%  ${missing}`);
-  });
-}
-
-function printSupportedLanguages(font, minCoverage = 1, asJson = false) {
-  const rows = getSupportedLanguages(font).filter(r => r.coverage >= minCoverage);
-  if (asJson) {
-    console.log(JSON.stringify(rows, null, 2));
-    return;
-  }
-  if (rows.length === 0) {
-    console.log("No languages met the requested coverage threshold.");
-    return;
-  }
-  rows.forEach(r => {
-    const pct = Math.round(r.coverage * 100);
-    const missingCount = r.missing.length;
-    console.log(`${r.code.padEnd(4)} ${r.name.padEnd(24)} ${String(pct).padStart(3)}%  missing:${String(missingCount).padStart(3)}${r.notes ? `  ${r.notes}` : ""}`);
-  });
-}
-
-function printMissingChars(font, langCode, asJson = false) {
-  const info = supportsLanguage(font, langCode);
-  if (!info) {
-    throw new Error(`Unknown language code: ${langCode}`);
-  }
-  const payload = {
-    code: info.code,
-    name: info.name,
-    coverage: info.coverage,
-    missingCount: info.missing.length,
-    missing: info.missing
-  };
-  if (asJson) {
-    console.log(JSON.stringify(payload, null, 2));
-    return;
-  }
-  const pct = Math.round(info.coverage * 100);
-  console.log(`${info.code} ${info.name} coverage: ${pct}%`);
-  if (info.missing.length === 0) {
-    console.log("Missing chars: (none)");
-    return;
-  }
-  console.log(`Missing chars (${info.missing.length}): ${info.missing.join(" ")}`);
-}
-
 function escapeXml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-}
-
-function printLanguages() {
-  const rows = listLanguages();
-  rows.forEach(r => {
-    console.log(`${r.code.padEnd(4)} ${r.name}${r.notes ? ` (${r.notes})` : ""}`);
-  });
-}
-
-function printMetadata(font, asJson = false) {
-  const meta = font.getMetadata?.() ?? null;
-  if (!meta) {
-    console.log("No metadata available.");
-    return;
-  }
-  if (asJson) {
-    console.log(JSON.stringify(meta, null, 2));
-    return;
-  }
-
-  const names = meta.names ?? {};
-  const os2 = meta.os2 ?? {};
-  const post = meta.post ?? {};
-  const style = meta.style ?? {};
-
-  console.log("Font metadata");
-  console.log(`  family: ${names.family ?? ""}`);
-  console.log(`  subfamily: ${names.subfamily ?? ""}`);
-  console.log(`  fullName: ${names.fullName ?? ""}`);
-  console.log(`  postScriptName: ${names.postScriptName ?? ""}`);
-  console.log(`  version: ${names.version ?? ""}`);
-  console.log(`  vendorId: ${os2.vendorId ?? ""}`);
-  console.log(`  unitsPerEm: ${font.getTableByType(Table.head)?.unitsPerEm ?? ""}`);
-  console.log(`  glyphs: ${font.getTableByType(Table.maxp)?.numGlyphs ?? ""}`);
-  console.log(`  weightClass: ${style.weightClass ?? ""}`);
-  console.log(`  widthClass: ${style.widthClass ?? ""}`);
-  console.log(`  italicAngle: ${post.italicAngle ?? ""}`);
-  console.log(`  isBold/isItalic/isMonospace: ${!!style.isBold}/${!!style.isItalic}/${!!style.isMonospace}`);
-  console.log(`  fsTypeFlags: ${(style.fsTypeFlags ?? []).join(", ") || "(none)"}`);
-  console.log(`  fsSelectionFlags: ${(style.fsSelectionFlags ?? []).join(", ") || "(none)"}`);
 }
 
 function uniqueChars(str) {
@@ -1389,20 +1300,13 @@ function printKerningStats(font, chars, limit = 20, asJson = false) {
 }
 
 function printOverview(buffer, font, options = {}) {
-  const minCoveragePct = options.minCoveragePct ?? 90;
-  const kerningChars = options.kerningChars ?? "AVWToY.,;:!?'-_abcdefghijklmnopqrstuvwxyz";
-  const kerningLimit = options.kerningLimit ?? 10;
-
-  printMetadata(font, false);
-  console.log("");
-  printGlyphStats(buffer, font, false);
-  console.log("");
-  printTables(buffer, false);
-  console.log("");
-  console.log(`Supported languages (>= ${minCoveragePct}%):`);
-  printSupportedLanguages(font, minCoveragePct / 100, false);
-  console.log("");
-  printKerningStats(font, kerningChars, kerningLimit, false);
+  return printOverviewCommand(buffer, font, options, {
+    printMetadata,
+    printGlyphStats,
+    printTables,
+    printSupportedLanguages,
+    printKerningStats
+  });
 }
 
 function exportSvgText(font, text, options = {}) {
