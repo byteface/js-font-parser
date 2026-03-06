@@ -275,16 +275,20 @@ test('CFF2 variable OTF fixtures survive axis extremes and update outlines', () 
     const minGlyph = font.getGlyph(gid);
     assert.ok(minGlyph, `expected min-axis glyph for ${fixture}`);
     const minBbox = getBbox(minGlyph);
+    const minCount = minGlyph.getPointCount();
 
     font.setVariationByAxes(maxs);
     const maxGlyph = font.getGlyph(gid);
     assert.ok(maxGlyph, `expected max-axis glyph for ${fixture}`);
     const maxBbox = getBbox(maxGlyph);
+    const maxCount = maxGlyph.getPointCount();
 
     for (const box of [defaultBbox, minBbox, maxBbox]) {
       assert.ok(Number.isFinite(box.minX) && Number.isFinite(box.minY) && Number.isFinite(box.maxX) && Number.isFinite(box.maxY));
+      assert.ok(box.minX <= box.maxX && box.minY <= box.maxY, `expected sane bbox for ${fixture}`);
     }
     assert.notDeepEqual(minBbox, maxBbox, `expected outline bbox to vary across axis extremes for ${fixture}`);
+    assert.equal(minCount, maxCount, `expected point count stability for ${fixture}`);
 
     // Out-of-range values should clamp safely and never produce NaN coords.
     font.setVariationByAxes(outOfRange);
@@ -294,6 +298,7 @@ test('CFF2 variable OTF fixtures survive axis extremes and update outlines', () 
       const p = clampedGlyph.getPoint(i);
       assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y), `expected finite point coordinates for ${fixture}`);
     }
+    assert.ok(Number.isFinite(clampedGlyph.advanceWidth), `expected finite advanceWidth for ${fixture}`);
 
     const layout = font.layoutString('Variable', { gsubFeatures: ['liga'], gpos: true });
     assert.ok(Array.isArray(layout), `expected layout for ${fixture}`);
@@ -348,6 +353,7 @@ test('CFF2 variable glyph sweep stays stable across axis extremes', () => {
         checked++;
         const pointCount = glyph.getPointCount();
         assert.ok(pointCount >= 0, `point count should be non-negative for gid=${gid} in ${fixture}`);
+        assert.ok(Number.isFinite(glyph.advanceWidth), `advanceWidth should be finite for gid=${gid} in ${fixture}`);
         for (let i = 0; i < pointCount; i++) {
           const p = glyph.getPoint(i);
           assert.ok(
