@@ -45,6 +45,15 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
+    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+        if (ar || !(i in from)) {
+            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+            ar[i] = from[i];
+        }
+    }
+    return to.concat(ar || Array.prototype.slice.call(from));
+};
 import { ByteArray } from '../utils/ByteArray.js';
 import { GlyfCompositeDescript } from '../table/GlyfCompositeDescript.js';
 import { Table } from '../table/Table.js';
@@ -165,6 +174,17 @@ var FontParserWOFF = /** @class */ (function () {
     FontParserWOFF.readUint16 = function (view, offset) {
         return view.getUint16(offset, false);
     };
+    FontParserWOFF.assertNonOverlappingTableRanges = function (entries) {
+        var byOffset = __spreadArray([], entries, true).sort(function (a, b) { return a.offset - b.offset; });
+        for (var i = 1; i < byOffset.length; i++) {
+            var prev = byOffset[i - 1];
+            var curr = byOffset[i];
+            var prevEnd = prev.offset + prev.compLength;
+            if (curr.offset < prevEnd) {
+                throw new Error('Invalid WOFF table entry: overlapping table data ranges.');
+            }
+        }
+    };
     FontParserWOFF.decodeWoffToSfntSync = function (buffer) {
         var view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
         if (view.byteLength < 44) {
@@ -206,6 +226,7 @@ var FontParserWOFF = /** @class */ (function () {
             }
             entries.push(entry);
         }
+        this.assertNonOverlappingTableRanges(entries);
         entries.sort(function (a, b) { return a.tag - b.tag; });
         var maxPower = Math.pow(2, Math.floor(Math.log2(numTables)));
         var searchRange = maxPower * 16;
@@ -307,6 +328,7 @@ var FontParserWOFF = /** @class */ (function () {
                             }
                             entries.push(entry);
                         }
+                        this.assertNonOverlappingTableRanges(entries);
                         entries.sort(function (a, b) { return a.tag - b.tag; });
                         maxPower = Math.pow(2, Math.floor(Math.log2(numTables)));
                         searchRange = maxPower * 16;
@@ -988,8 +1010,8 @@ var FontParserWOFF = /** @class */ (function () {
         if (featureTags === void 0) { featureTags = ["liga"]; }
         if (scriptTags === void 0) { scriptTags = ["DFLT", "latn"]; }
         var glyphs = [];
-        for (var _i = 0, text_1 = text; _i < text_1.length; _i++) {
-            var ch = text_1[_i];
+        for (var _i = 0, _a = Array.from(text); _i < _a.length; _i++) {
+            var ch = _a[_i];
             var idx = this.getGlyphIndexByChar(ch);
             if (idx != null)
                 glyphs.push(idx);

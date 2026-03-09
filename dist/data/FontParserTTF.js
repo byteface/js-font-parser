@@ -227,8 +227,8 @@ var FontParserTTF = /** @class */ (function () {
     };
     FontParserTTF.prototype.getGlyphIndicesForString = function (text) {
         var indices = [];
-        for (var _i = 0, text_1 = text; _i < text_1.length; _i++) {
-            var ch = text_1[_i];
+        for (var _i = 0, _a = Array.from(text); _i < _a.length; _i++) {
+            var ch = _a[_i];
             var idx = this.getGlyphIndexByChar(ch);
             if (idx != null)
                 indices.push(idx);

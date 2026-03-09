@@ -14,10 +14,10 @@ export function clearDiagnostics(state) {
     state.diagnostics = [];
     state.diagnosticKeys.clear();
 }
-export function pickBestCmapFormat(formats) {
+export function pickBestCmapFormat(formats, order) {
+    if (order === void 0) { order = [4, 12, 10, 8, 6, 2, 0]; }
     if (formats.length === 0)
         return null;
-    var order = [4, 12, 10, 8, 6, 2, 0];
     var _loop_1 = function (fmt) {
         var found = formats.find(function (f) { return (typeof f.getFormatType === 'function' ? f.getFormatType() : f.format) === fmt; });
         if (found)
@@ -56,8 +56,10 @@ export function getBestCmapFormatFor(cmap, codePoint) {
         var pref = preferred_1[_i];
         var formats = cmap.getCmapFormats(pref.platformId, pref.encodingId);
         if (formats.length > 0) {
-            return pickBestCmapFormat(formats);
+            return pickBestCmapFormat(formats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0]);
         }
     }
-    return cmap.formats.length > 0 ? pickBestCmapFormat(cmap.formats) : null;
+    return cmap.formats.length > 0
+        ? pickBestCmapFormat(cmap.formats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0])
+        : null;
 }

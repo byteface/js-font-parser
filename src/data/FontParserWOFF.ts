@@ -149,6 +149,18 @@ export class FontParserWOFF {
         return view.getUint16(offset, false);
     }
 
+    private static assertNonOverlappingTableRanges(entries: Array<{ offset: number; compLength: number }>): void {
+        const byOffset = [...entries].sort((a, b) => a.offset - b.offset);
+        for (let i = 1; i < byOffset.length; i++) {
+            const prev = byOffset[i - 1];
+            const curr = byOffset[i];
+            const prevEnd = prev.offset + prev.compLength;
+            if (curr.offset < prevEnd) {
+                throw new Error('Invalid WOFF table entry: overlapping table data ranges.');
+            }
+        }
+    }
+
     private static decodeWoffToSfntSync(buffer: Uint8Array): Uint8Array {
         const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
         if (view.byteLength < 44) {
@@ -192,6 +204,7 @@ export class FontParserWOFF {
             }
             entries.push(entry);
         }
+        this.assertNonOverlappingTableRanges(entries);
 
         entries.sort((a, b) => a.tag - b.tag);
         const maxPower = 2 ** Math.floor(Math.log2(numTables));
@@ -286,6 +299,7 @@ export class FontParserWOFF {
             }
             entries.push(entry);
         }
+        this.assertNonOverlappingTableRanges(entries);
 
         entries.sort((a, b) => a.tag - b.tag);
 
@@ -957,7 +971,7 @@ export class FontParserWOFF {
 
     public getGlyphIndicesForStringWithGsub(text: string, featureTags: string[] = ["liga"], scriptTags: string[] = ["DFLT", "latn"]): number[] {
         const glyphs = [];
-        for (const ch of text) {
+        for (const ch of Array.from(text)) {
             const idx = this.getGlyphIndexByChar(ch);
             if (idx != null) glyphs.push(idx);
         }

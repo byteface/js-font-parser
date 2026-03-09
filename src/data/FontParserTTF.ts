@@ -235,7 +235,7 @@ export class FontParserTTF {
 
     public getGlyphIndicesForString(text: string): number[] {
         const indices: number[] = [];
-        for (const ch of text) {
+        for (const ch of Array.from(text)) {
             const idx = this.getGlyphIndexByChar(ch);
             if (idx != null) indices.push(idx);
         }
