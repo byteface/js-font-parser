@@ -140,8 +140,7 @@
     disposeGroup();
     if (!font) return;
 
-    const head = font.getTableByType(Table.head);
-    const unitsPerEm = head?.unitsPerEm ?? 1000;
+    const unitsPerEm = typeof font.getUnitsPerEm === "function" ? font.getUnitsPerEm() : 1000;
     const scale = Number(sizeInput.value) / unitsPerEm;
     const depth = Number(depthInput.value);
     const density = Number(densityInput.value);

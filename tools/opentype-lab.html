@@ -21,6 +21,7 @@
     .chip { background:#eef3f8; color:#234; border:1px solid #d7e3ef; padding:4px 8px; border-radius:999px; font-size:12px; }
     .small { color:var(--muted); font-size:12px; }
     .diag { border:1px solid var(--border); border-radius:10px; background:#fff; padding:8px; white-space:pre-wrap; font-family:ui-monospace, Menlo, monospace; font-size:11px; color:var(--muted); max-height:170px; overflow:auto; }
+    .mono { border:1px solid var(--border); border-radius:10px; background:#fff; padding:8px; white-space:pre-wrap; font-family:ui-monospace, Menlo, monospace; font-size:11px; color:#344059; max-height:140px; overflow:auto; }
     h2 { margin:0 0 10px; font-size:18px; color:var(--accent); }
   </style>
 </head>
@@ -76,6 +77,16 @@
     </div>
   </div>
   <div id="lookupSummary" class="small" style="margin-top:10px"></div>
+  <div class="grid-2" style="margin-top:10px">
+    <div>
+      <div class="small">GSUB lookup types</div>
+      <div id="gsubLookupTypes" class="mono">none</div>
+    </div>
+    <div>
+      <div class="small">GPOS lookup types</div>
+      <div id="gposLookupTypes" class="mono">none</div>
+    </div>
+  </div>
 </div>
 
 <div class="panel">
@@ -121,10 +132,39 @@
     </div>
   </div>
   <div id="shapeSummary" class="small" style="margin-top:10px"></div>
+  <div class="grid-2" style="margin-top:10px">
+    <div>
+      <div class="small">Glyph IDs (raw cmap)</div>
+      <div id="rawGlyphIds" class="mono">[]</div>
+    </div>
+    <div>
+      <div class="small">Glyph IDs (GSUB / final shaped)</div>
+      <div id="shapedGlyphIds" class="mono">[]</div>
+    </div>
+  </div>
 </div>
 
 <div class="panel">
   <h2>Diagnostics</h2>
+  <div class="row" style="margin-bottom:8px">
+    <label>Level
+      <select id="diagLevel">
+        <option value="">all</option>
+        <option value="warning">warning</option>
+        <option value="info">info</option>
+      </select>
+    </label>
+    <label>Phase
+      <select id="diagPhase">
+        <option value="">all</option>
+        <option value="parse">parse</option>
+        <option value="layout">layout</option>
+      </select>
+    </label>
+    <label>Code contains
+      <input id="diagCode" placeholder="MISSING_TABLE..." />
+    </label>
+  </div>
   <div id="diagnostics" class="diag">No diagnostics.</div>
 </div>
 
@@ -134,9 +174,10 @@
   import { detectScriptTags } from '../dist/utils/ScriptDetector.js';
   import { getFontList } from './shared/font-catalog.js';
   import { Table } from '../dist/table/Table.js';
+  import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
 
   const fonts = getFontList('featureMatrix');
-  const cache = new Map();
+  const loadFont = createFontLoader(FontParser.load);
   let font = null;
 
   const ui = {
@@ -152,10 +193,17 @@
     gsubFeatures: document.getElementById('gsubFeatures'),
     gposScripts: document.getElementById('gposScripts'),
     gposFeaturesList: document.getElementById('gposFeaturesList'),
+    gsubLookupTypes: document.getElementById('gsubLookupTypes'),
+    gposLookupTypes: document.getElementById('gposLookupTypes'),
     lookupSummary: document.getElementById('lookupSummary'),
     gsubSummary: document.getElementById('gsubSummary'),
     marksSummary: document.getElementById('marksSummary'),
     shapeSummary: document.getElementById('shapeSummary'),
+    rawGlyphIds: document.getElementById('rawGlyphIds'),
+    shapedGlyphIds: document.getElementById('shapedGlyphIds'),
+    diagLevel: document.getElementById('diagLevel'),
+    diagPhase: document.getElementById('diagPhase'),
+    diagCode: document.getElementById('diagCode'),
     diagnostics: document.getElementById('diagnostics')
   };
 
@@ -215,13 +263,6 @@
     return value.split(',').map((s) => s.trim()).filter(Boolean);
   }
 
-  async function loadFont(url) {
-    if (cache.has(url)) return cache.get(url);
-    const f = await FontParser.load(url);
-    cache.set(url, f);
-    return f;
-  }
-
   function renderInventory() {
     const gsub = font.getTableByType(Table.GSUB);
     const gpos = font.getTableByType(Table.GPOS);
@@ -236,9 +277,24 @@
     asChips(ui.gposScripts, gposScripts);
     asChips(ui.gposFeaturesList, gposFeatures);
 
-    const gsubLookups = gsub?.lookupList?.lookups?.length ?? 0;
-    const gposLookups = gpos?.lookupList?.lookups?.length ?? 0;
+    const gsubLookupsArr = gsub?.lookupList?.getLookups?.() ?? gsub?.lookupList?.lookups ?? [];
+    const gposLookupsArr = gpos?.lookupList?.getLookups?.() ?? gpos?.lookupList?.lookups ?? [];
+    const summarizeTypes = (lookups) => {
+      const acc = {};
+      for (const l of lookups) {
+        if (!l || typeof l.getType !== 'function') continue;
+        const t = String(l.getType());
+        acc[t] = (acc[t] ?? 0) + 1;
+      }
+      return acc;
+    };
+    const gsubTypeSummary = summarizeTypes(gsubLookupsArr);
+    const gposTypeSummary = summarizeTypes(gposLookupsArr);
+    const gsubLookups = gsubLookupsArr.length;
+    const gposLookups = gposLookupsArr.length;
     ui.lookupSummary.textContent = `GSUB lookups: ${gsubLookups} | GPOS lookups: ${gposLookups}`;
+    ui.gsubLookupTypes.textContent = Object.keys(gsubTypeSummary).length ? JSON.stringify(gsubTypeSummary, null, 2) : 'none';
+    ui.gposLookupTypes.textContent = Object.keys(gposTypeSummary).length ? JSON.stringify(gposTypeSummary, null, 2) : 'none';
   }
 
   function renderAll() {
@@ -286,6 +342,11 @@
       : font.layoutString(text, { gsubFeatures: features, scriptTags, gpos: ui.enableGpos.checked, gposFeatures });
     drawPositioned(canvases.shapeRaw, rawRun, 0.12, 150, '#1b1b1b');
     drawPositioned(canvases.shapeShaped, shaped.length ? shaped : gsubRun, 0.12, 150, '#2f4f7a');
+    ui.rawGlyphIds.textContent = JSON.stringify(rawRun.map((g) => g.glyphIndex));
+    ui.shapedGlyphIds.textContent = JSON.stringify({
+      gsub: gsubRun.map((g) => g.glyphIndex),
+      shaped: shaped.map((g) => g.glyphIndex)
+    }, null, 2);
 
     const gdef = font.getTableByType(Table.GDEF);
     const gsub = font.getTableByType(Table.GSUB);
@@ -293,24 +354,24 @@
     const contextLookups = (gsub?.lookupList?.getLookups?.() ?? []).filter((l) => l.getType && (l.getType() === 5 || l.getType() === 6)).length;
     ui.shapeSummary.textContent = `Raw: ${rawRun.length} | GSUB: ${gsubRun.length} | Shaped: ${shaped.length} | GDEF: ${gdef ? 'yes' : 'no'} | GSUB contextual lookups: ${contextLookups} | GPOS: ${gpos ? 'yes' : 'no'}`;
 
+    const codeNeedle = String(ui.diagCode.value || '').trim().toUpperCase();
     const diagnostics = typeof font.getDiagnostics === 'function' ? font.getDiagnostics() : [];
-    ui.diagnostics.textContent = diagnostics.length
-      ? diagnostics.slice(0, 36).map((d) => `[${d.phase}/${d.level}] ${d.code}: ${d.message}`).join('\n')
-      : 'No diagnostics.';
-  }
-
-  function populateFonts() {
-    ui.fontSelect.innerHTML = '';
-    fonts.forEach((f, i) => {
-      const opt = document.createElement('option');
-      opt.value = String(i);
-      opt.textContent = f.name;
-      ui.fontSelect.appendChild(opt);
+    const filtered = diagnostics.filter((d) => {
+      if (ui.diagLevel.value && d.level !== ui.diagLevel.value) return false;
+      if (ui.diagPhase.value && d.phase !== ui.diagPhase.value) return false;
+      if (codeNeedle && !String(d.code || '').toUpperCase().includes(codeNeedle)) return false;
+      return true;
     });
+    ui.diagnostics.textContent = diagnostics.length
+      ? filtered.slice(0, 80).map((d) => `[${d.phase}/${d.level}] ${d.code}: ${d.message}`).join('\n')
+      : 'No diagnostics.';
+    if (diagnostics.length && filtered.length === 0) {
+      ui.diagnostics.textContent = 'No diagnostics match current filters.';
+    }
   }
 
   async function boot() {
-    const f = fonts[Number(ui.fontSelect.value)] ?? fonts[0];
+    const f = getSelectedFont(ui.fontSelect, fonts);
     font = await loadFont(f.url);
     renderAll();
   }
@@ -323,8 +384,11 @@
   ui.gposFeatures.addEventListener('input', renderAll);
   ui.autoDetect.addEventListener('change', renderAll);
   ui.enableGpos.addEventListener('change', renderAll);
+  ui.diagLevel.addEventListener('change', renderAll);
+  ui.diagPhase.addEventListener('change', renderAll);
+  ui.diagCode.addEventListener('input', renderAll);
 
-  populateFonts();
+  populateFontSelect(ui.fontSelect, fonts);
   boot();
 </script>
 <script type="module" src="../tools/shared/main-nav.js"></script>

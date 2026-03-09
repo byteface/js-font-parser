@@ -55,6 +55,8 @@ import { FontParserWOFF2 } from "./dist/data/FontParserWOFF2.js";
 ```js
 font.getGlyphIndexByChar("H");               // number | null
 font.getGlyphByChar("H");                    // GlyphData | null
+font.getGlyphPointsByChar("H", { sampleStep: 2 });
+// -> [{ x, y, onCurve, endOfContour }, ...]
 font.getGlyphIndicesForString("hello");      // number[] (TTF)
 font.getGlyphIndicesForStringWithGsub("office", ["liga"], ["DFLT", "latn"]);
 ```
@@ -72,6 +74,21 @@ font.layoutString("Hello", {
   gpos: true,
   gposFeatures: ["kern", "mark", "mkmk", "curs"]
 });
+
+font.measureText("Hello", {
+  gpos: true,
+  letterSpacing: 8
+});
+// -> { advanceWidth, glyphCount }
+
+font.layoutToPoints("Hello", {
+  x: 80,
+  y: 300,
+  fontSize: 160,
+  sampleStep: 1,
+  gpos: true
+});
+// -> { points, advanceWidth, scale }
 ```
 
 `layoutString(...)` returns a single positioned glyph run (no line wrapping).
@@ -120,6 +137,7 @@ font.setVariationByAxes({ wght: 700, wdth: 95 });
 
 ```js
 font.getNumGlyphs();
+font.getUnitsPerEm();
 font.getAscent();
 font.getDescent();
 ```

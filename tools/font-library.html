@@ -113,7 +113,7 @@
         import { FontParser } from "../dist/data/FontParser.js";
         import { FontParserWOFF } from "../dist/data/FontParserWOFF.js";
         import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
-        import { Table } from "../dist/table/Table.js";
+        import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
 
         const fontSelect = document.getElementById("fontSelect");
         const urlInput = document.getElementById("urlInput");
@@ -219,32 +219,15 @@
             }
         ];
 
-        const cache = new Map();
-
-        function populateCatalog() {
-            fontSelect.innerHTML = "";
-            catalog.forEach((item, i) => {
-                const option = document.createElement("option");
-                option.value = String(i);
-                option.textContent = item.name;
-                fontSelect.appendChild(option);
-            });
-        }
+        const loadFont = createFontLoader(async (url) => {
+            if (isWoff(url)) {
+                return FontParserWOFF.load(url);
+            }
+            return FontParser.load(url);
+        });
 
         function isWoff(url) {
             return url.toLowerCase().endsWith(".woff");
-        }
-
-        async function loadFont(url) {
-            if (cache.has(url)) return cache.get(url);
-            let font;
-            if (isWoff(url)) {
-                font = await FontParserWOFF.load(url);
-            } else {
-                font = await FontParser.load(url);
-            }
-            cache.set(url, font);
-            return font;
         }
 
         function clearCanvas() {
@@ -258,8 +241,7 @@
             if (!ctx) return;
             clearCanvas();
 
-            const head = font.getTableByType(Table.head);
-            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const unitsPerEm = typeof font.getUnitsPerEm === "function" ? font.getUnitsPerEm() : 1000;
             const sizePx = Number(sizeInput.value);
             const scale = sizePx / unitsPerEm;
             const baseline = canvas.height * 0.7;
@@ -289,7 +271,7 @@
 
         async function loadAndRender() {
             const customUrl = urlInput.value.trim();
-            const selected = catalog[Number(fontSelect.value)] ?? catalog[0];
+            const selected = getSelectedFont(fontSelect, catalog);
             const url = customUrl || selected.url;
 
             status.textContent = `Loading font: ${url}`;
@@ -319,7 +301,7 @@
         sizeInput.addEventListener("input", loadAndRender);
         modeSelect.addEventListener("change", loadAndRender);
 
-        populateCatalog();
+        populateFontSelect(fontSelect, catalog);
         loadAndRender();
     </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>

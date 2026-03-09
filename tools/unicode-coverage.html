@@ -105,6 +105,7 @@
   <script type="module">
     import { FontParser } from "../dist/data/FontParser.js";
     import { getFontList } from "./shared/font-catalog.js";
+    import { createFontLoader, populateFontSelect } from "./shared/font-ui.js";
 
     const fonts = getFontList("unicodeCoverage");
 
@@ -154,7 +155,8 @@
     const blockStats = document.getElementById("blockStats");
     const missingList = document.getElementById("missingList");
 
-    const fontCache = new Map();
+    const loadFont = createFontLoader(FontParser.load);
+    const coverageCache = new Map();
 
     function codePointLabel(cp) {
       return `U+${cp.toString(16).toUpperCase().padStart(cp > 0xFFFF ? 6 : 4, "0")}`;
@@ -192,12 +194,12 @@
     async function loadFontAndCoverage(fontIndex) {
       const fontConfig = fonts[fontIndex] ?? fonts[0];
       const cacheKey = `${fontConfig.name}::${fontConfig.url}`;
-      if (fontCache.has(cacheKey)) return fontCache.get(cacheKey);
+      if (coverageCache.has(cacheKey)) return coverageCache.get(cacheKey);
 
-      const font = await FontParser.load(fontConfig.url);
+      const font = await loadFont(fontConfig.url);
       const coverageByBlock = blocks.map((block) => ({ block, ...getCoverageDataForBlock(font, block) }));
       const payload = { font, coverageByBlock };
-      fontCache.set(cacheKey, payload);
+      coverageCache.set(cacheKey, payload);
       return payload;
     }
 
@@ -311,12 +313,7 @@
     }
 
     function populate() {
-      fonts.forEach((f, i) => {
-        const opt = document.createElement("option");
-        opt.value = String(i);
-        opt.textContent = f.name;
-        fontSelect.appendChild(opt);
-      });
+      populateFontSelect(fontSelect, fonts);
 
       blocks.forEach((b, i) => {
         const opt = document.createElement("option");

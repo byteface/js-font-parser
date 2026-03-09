@@ -62,6 +62,7 @@
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { getFontList } from './shared/font-catalog.js';
+    import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
 
     const fontSelect = document.getElementById('fontSelect');
     const byteLimit = document.getElementById('byteLimit');
@@ -70,6 +71,7 @@
     const detailTitle = document.getElementById('detailTitle');
     const diagnosticsEl = document.getElementById('diagnostics');
     const fonts = getFontList('featureMatrix');
+    const loadFont = createFontLoader(FontParser.load);
 
     let parsedFont = null;
     let records = [];
@@ -190,8 +192,8 @@
     }
 
     async function loadFontSelection() {
-      const fontUrl = fonts[Number(fontSelect.value)]?.url ?? fonts[0].url;
-      const [font, response] = await Promise.all([FontParser.load(fontUrl), fetch(fontUrl)]);
+      const fontUrl = getSelectedFont(fontSelect, fonts).url;
+      const [font, response] = await Promise.all([loadFont(fontUrl), fetch(fontUrl)]);
       parsedFont = font;
       if (typeof parsedFont.clearDiagnostics === 'function') {
         parsedFont.clearDiagnostics();
@@ -204,16 +206,6 @@
       renderDetail();
     }
 
-    function populateFonts() {
-      fontSelect.innerHTML = '';
-      fonts.forEach((f, i) => {
-        const opt = document.createElement('option');
-        opt.value = String(i);
-        opt.textContent = f.name;
-        fontSelect.appendChild(opt);
-      });
-    }
-
     fontSelect.addEventListener('change', () => {
       loadFontSelection().catch(err => {
         detail.innerHTML = `<div class="meta">Failed to load font: ${err.message}</div>`;
@@ -221,7 +213,7 @@
     });
     byteLimit.addEventListener('input', renderDetail);
 
-    populateFonts();
+    populateFontSelect(fontSelect, fonts);
     loadFontSelection().catch(err => {
       detail.innerHTML = `<div class="meta">Failed to load font: ${err.message}</div>`;
     });

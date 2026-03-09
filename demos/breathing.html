@@ -112,6 +112,8 @@
     <script type="module">
         import { FontParser } from "../dist/data/FontParser.js";
         import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
+        import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/demo-scaffold.js";
+        import { getFontList } from "../tools/shared/font-catalog.js";
 
         const fontSelect = document.getElementById("fontSelect");
         const textInput = document.getElementById("textInput");
@@ -122,12 +124,13 @@
         const canvas = document.getElementById("canvas");
         const ctx = canvas.getContext("2d");
 
-        const fontCache = new Map();
+        const fonts = getFontList("demoCore");
+        const loadFont = createFontLoader(FontParser.load);
         let font = null;
         let animId = null;
 
         function getScale(font, sizePx) {
-            const unitsPerEm = font.getTableByType(0)?.unitsPerEm ?? 1000;
+            const unitsPerEm = typeof font.getUnitsPerEm === "function" ? font.getUnitsPerEm() : 1000;
             return sizePx / unitsPerEm;
         }
 
@@ -143,13 +146,6 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = "#fbfffd";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-
-        async function loadFont(url) {
-            if (fontCache.has(url)) return fontCache.get(url);
-            const f = await FontParser.load(url);
-            fontCache.set(url, f);
-            return f;
         }
 
         function deformPoints(points, amp, time) {
@@ -223,7 +219,7 @@
         }
 
         async function boot() {
-            font = await loadFont(fontSelect.value);
+            font = await loadFont(getSelectedFont(fontSelect, fonts).url);
             render();
         }
 
@@ -234,6 +230,7 @@
         ampInput.addEventListener("input", render);
         speedInput.addEventListener("input", render);
 
+        populateFontSelect(fontSelect, fonts);
         boot();
     </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>

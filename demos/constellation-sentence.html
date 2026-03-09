@@ -46,7 +46,7 @@
 
 <script type="module">
 import { FontParser } from "../dist/data/FontParser.js";
-import { Table } from "../dist/table/Table.js";
+import { DEFAULT_DEMO_FONTS, createFontLoader, getSelectedFont, populateFontSelect } from "./shared/demo-scaffold.js";
 
 const sentences = [
   "We're on the same type.",
@@ -55,12 +55,7 @@ const sentences = [
   "Kerning is caring."
 ];
 
-const fontOptions = [
-  { name: "Noto Sans", url: "../truetypefonts/noto/NotoSans-Regular.ttf" },
-  { name: "Roboto VF", url: "../truetypefonts/curated/Roboto-VF.ttf" },
-  { name: "Source Code Pro", url: "../truetypefonts/curated-extra/SourceCodePro-Regular.otf" },
-  { name: "Font Awesome 4.7", url: "../truetypefonts/curated-extra/FontAwesome-4.7.0.ttf" }
-];
+const fontOptions = DEFAULT_DEMO_FONTS;
 
 const fontSelect = document.getElementById("fontSelect");
 const sentenceInput = document.getElementById("sentenceInput");
@@ -71,7 +66,7 @@ const status = document.getElementById("status");
 const canvas = document.getElementById("stage");
 const ctx = canvas.getContext("2d");
 
-const fontCache = new Map();
+const loadFont = createFontLoader(FontParser.load);
 let font = null;
 let sentenceIndex = 2;
 let targetPoints = [];
@@ -87,23 +82,6 @@ const stars = Array.from({ length: 220 }, () => ({
   drift: Math.random() * 0.015 + 0.005
 }));
 
-function populateFonts() {
-  fontSelect.innerHTML = "";
-  fontOptions.forEach((opt, i) => {
-    const o = document.createElement("option");
-    o.value = String(i);
-    o.textContent = opt.name;
-    fontSelect.appendChild(o);
-  });
-}
-
-async function loadFont(url) {
-  if (fontCache.has(url)) return fontCache.get(url);
-  const loaded = await FontParser.load(url);
-  fontCache.set(url, loaded);
-  return loaded;
-}
-
 function normalizeSentenceForFont(text) {
   if (fontOptions[Number(fontSelect.value)]?.name.startsWith("Font Awesome")) {
     return "\uf2b9 \uf0c0 \uf005 \uf0e7";
@@ -111,42 +89,16 @@ function normalizeSentenceForFont(text) {
   return text;
 }
 
-function collectGlyphPoints(glyph, sampleStep) {
-  const pts = [];
-  for (let i = 0; i < glyph.getPointCount(); i += sampleStep) {
-    const p = glyph.getPoint(i);
-    if (!p) continue;
-    pts.push({ x: p.x, y: p.y });
-  }
-  return pts;
-}
-
 function buildTargetPoints(text) {
-  const head = font.getTableByType?.(Table.head);
-  const upem = head?.unitsPerEm ?? 1000;
-  const pxSize = 180;
-  const scale = pxSize / upem;
-  const layout = font.layoutString(text, { gsubFeatures: ["liga"], gpos: true });
-
-  let penX = 0;
-  const points = [];
-  const baselineX = 90;
-  const baselineY = canvas.height * 0.57;
-  for (const item of layout) {
-    const glyph = font.getGlyph(item.glyphIndex);
-    if (!glyph) {
-      penX += item.xAdvance;
-      continue;
-    }
-    const raw = collectGlyphPoints(glyph, 1);
-    for (const p of raw) {
-      points.push({
-        x: baselineX + (penX + (item.xOffset ?? 0) + p.x) * scale,
-        y: baselineY - (p.y + (item.yOffset ?? 0)) * scale
-      });
-    }
-    penX += item.xAdvance;
-  }
+  const mapped = font.layoutToPoints(text, {
+    x: 90,
+    y: canvas.height * 0.57,
+    fontSize: 180,
+    sampleStep: 1,
+    gsubFeatures: ["liga"],
+    gpos: true
+  });
+  const points = mapped.points.map(p => ({ x: p.x, y: p.y }));
 
   const maxPoints = 1200;
   if (points.length > maxPoints) {
@@ -260,7 +212,7 @@ function animate(time) {
 }
 
 async function boot() {
-  const selected = fontOptions[Number(fontSelect.value)] ?? fontOptions[0];
+  const selected = getSelectedFont(fontSelect, fontOptions);
   font = await loadFont(selected.url);
   setSentence(sentences[sentenceIndex]);
 }
@@ -276,7 +228,7 @@ sentenceInput.addEventListener("change", () => {
   lastSwitch = performance.now();
 });
 
-populateFonts();
+populateFontSelect(fontSelect, fontOptions);
 boot().then(() => requestAnimationFrame(animate)).catch(err => {
   status.textContent = `Failed to load font: ${err.message}`;
 });

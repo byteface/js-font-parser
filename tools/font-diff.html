@@ -147,6 +147,7 @@
   import { FontParser } from '../dist/data/FontParser.js';
   import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
   import { getFontList } from './shared/font-catalog.js';
+  import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
 
   const fontASelect = document.getElementById('fontA');
   const fontBSelect = document.getElementById('fontB');
@@ -163,28 +164,13 @@
   const ctxB = canvasB.getContext('2d');
   const ctxD = canvasDiff.getContext('2d');
   const catalog = getFontList('allGlyphs');
-  const cache = new Map();
+  const loadFont = createFontLoader(FontParser.load);
 
   function fillSelects() {
-    for (const f of catalog) {
-      const optA = document.createElement('option');
-      optA.value = f.url;
-      optA.textContent = f.name;
-      fontASelect.appendChild(optA);
-      const optB = document.createElement('option');
-      optB.value = f.url;
-      optB.textContent = f.name;
-      fontBSelect.appendChild(optB);
-    }
+    populateFontSelect(fontASelect, catalog);
+    populateFontSelect(fontBSelect, catalog);
     fontASelect.selectedIndex = Math.max(0, catalog.findIndex(f => /DiscoMo/.test(f.name)));
     fontBSelect.selectedIndex = Math.max(1, catalog.findIndex(f => /Noto Sans Regular/.test(f.name)));
-  }
-
-  async function loadFont(url) {
-    if (cache.has(url)) return cache.get(url);
-    const p = await FontParser.load(url);
-    cache.set(url, p);
-    return p;
   }
 
   function clear(ctx, w, h) {
@@ -270,8 +256,10 @@
     runBtn.disabled = true;
     runBtn.textContent = 'Loading...';
     try {
-      const aUrl = fontASelect.value;
-      const bUrl = fontBSelect.value;
+      const aSelected = getSelectedFont(fontASelect, catalog);
+      const bSelected = getSelectedFont(fontBSelect, catalog);
+      const aUrl = aSelected.url;
+      const bUrl = bSelected.url;
       const fontA = await loadFont(aUrl);
       const fontB = await loadFont(bUrl);
       const text = textInput.value || '';
@@ -295,7 +283,7 @@
 
       const report = analyzeText(fontA, fontB, text);
       renderRows(report.items);
-      renderSummary(fontA, fontB, fontASelect.options[fontASelect.selectedIndex].textContent, fontBSelect.options[fontBSelect.selectedIndex].textContent, report);
+      renderSummary(fontA, fontB, aSelected.name, bSelected.name, report);
     } catch (err) {
       summary.innerHTML = `<span class="warn">Compare failed: ${err?.message || err}</span>`;
     } finally {

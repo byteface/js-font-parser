@@ -58,7 +58,7 @@
     import { FontParser } from '../dist/data/FontParser.js';
     import { getFontList } from '../tools/shared/font-catalog.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
-    import { Table } from '../dist/table/Table.js';
+    import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/demo-scaffold.js';
 
     const fontSelect = document.getElementById('fontSelect');
     const textInput = document.getElementById('textInput');
@@ -70,25 +70,7 @@
     const ctx = canvas.getContext('2d');
 
     const fonts = getFontList('demoCore');
-
-    const cache = new Map();
-
-    function populate() {
-      fontSelect.innerHTML = '';
-      fonts.forEach((f, i) => {
-        const opt = document.createElement('option');
-        opt.value = String(i);
-        opt.textContent = f.name;
-        fontSelect.appendChild(opt);
-      });
-    }
-
-    async function loadFont(url) {
-      if (cache.has(url)) return cache.get(url);
-      const font = await FontParser.load(url);
-      cache.set(url, font);
-      return font;
-    }
+    const loadFont = createFontLoader(FontParser.load);
 
     function clear() {
       if (!ctx) return;
@@ -98,15 +80,14 @@
     }
 
     async function render() {
-      const font = await loadFont(fonts[Number(fontSelect.value)]?.url ?? fonts[0].url);
+      const font = await loadFont(getSelectedFont(fontSelect, fonts).url);
       const text = textInput.value || '';
       const sizePx = Number(sizeInput.value);
       const depth = Number(depthInput.value);
       const angle = (Number(angleInput.value) * Math.PI) / 180;
       const spread = Number(spreadInput.value);
 
-      const head = font.getTableByType(Table.head);
-      const unitsPerEm = head?.unitsPerEm ?? 1000;
+      const unitsPerEm = typeof font.getUnitsPerEm === 'function' ? font.getUnitsPerEm() : 1000;
       const scale = sizePx / unitsPerEm;
 
       clear();
@@ -136,7 +117,7 @@
     angleInput.addEventListener('input', render);
     spreadInput.addEventListener('input', render);
 
-    populate();
+    populateFontSelect(fontSelect, fonts);
     render();
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>

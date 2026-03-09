@@ -96,11 +96,13 @@
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { getFontList } from './shared/font-catalog.js';
+    import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
     import { Table } from '../dist/table/Table.js';
 
     const output = document.getElementById('output');
     const fontSelect = document.getElementById('fontSelect');
     const fonts = getFontList('featureMatrix');
+    const loadFont = createFontLoader(FontParser.load);
 
     function tagToString(tag) {
       return String.fromCharCode(
@@ -153,20 +155,10 @@
       output.appendChild(card);
     }
 
-    function populateFonts() {
-      fontSelect.innerHTML = '';
-      fonts.forEach((f, i) => {
-        const opt = document.createElement('option');
-        opt.value = String(i);
-        opt.textContent = f.name;
-        fontSelect.appendChild(opt);
-      });
-    }
-
     function loadAndRender() {
       output.innerHTML = '';
-      const fontUrl = fonts[Number(fontSelect.value)]?.url ?? fonts[0].url;
-      FontParser.load(fontUrl)
+      const fontUrl = getSelectedFont(fontSelect, fonts).url;
+      loadFont(fontUrl)
         .then(font => {
           const gsub = font.getTableByType(Table.GSUB);
           const gpos = font.getTableByType(Table.GPOS);
@@ -179,7 +171,7 @@
         });
     }
 
-    populateFonts();
+    populateFontSelect(fontSelect, fonts);
     fontSelect.addEventListener('change', loadAndRender);
     loadAndRender();
   </script>

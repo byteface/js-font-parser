@@ -38,6 +38,7 @@
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { getFontList } from './shared/font-catalog.js';
+    import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const input = document.getElementById('textInput');
@@ -47,29 +48,12 @@
     const info = document.getElementById('info');
 
     const fonts = getFontList('shapingCore');
-    const cache = new Map();
+    const loadFont = createFontLoader(FontParser.load);
     let font = null;
-
-    function populateFonts() {
-      fontSelect.innerHTML = '';
-      fonts.forEach((f, i) => {
-        const opt = document.createElement('option');
-        opt.value = String(i);
-        opt.textContent = f.name;
-        fontSelect.appendChild(opt);
-      });
-    }
-
-    async function loadFont(url) {
-      if (cache.has(url)) return cache.get(url);
-      const f = await FontParser.load(url);
-      cache.set(url, f);
-      return f;
-    }
 
     input.addEventListener('input', render);
     fontSelect.addEventListener('change', async () => {
-      font = await loadFont(fonts[Number(fontSelect.value)]?.url ?? fonts[0].url);
+      font = await loadFont(getSelectedFont(fontSelect, fonts).url);
       render();
     });
 
@@ -94,7 +78,7 @@
         : 'No ligature substitutions detected for this string/font.';
     }
 
-    populateFonts();
+    populateFontSelect(fontSelect, fonts);
     loadFont(fonts[0].url).then(f => { font = f; render(); });
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>

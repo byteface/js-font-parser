@@ -377,7 +377,7 @@ var FontParserTTF = /** @class */ (function () {
      */
     FontParserTTF.prototype.applyGposPositioning = function (glyphIndices, positioned, gposFeatures, scriptTags) {
         var _this = this;
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1;
         if (!this.gpos)
             return;
         var subtables = this.gpos.getSubtablesForFeatures(gposFeatures, scriptTags);
@@ -412,7 +412,15 @@ var FontParserTTF = /** @class */ (function () {
                 }
                 continue;
             }
-            this.emitDiagnostic("UNSUPPORTED_GPOS_SUBTABLE", "info", "layout", "Encountered GPOS subtable type not handled by pair/single adjustment path.", { constructorName: (_t = (_s = st === null || st === void 0 ? void 0 : st.constructor) === null || _s === void 0 ? void 0 : _s.name) !== null && _t !== void 0 ? _t : "unknown" }, "UNSUPPORTED_GPOS_SUBTABLE:".concat((_v = (_u = st === null || st === void 0 ? void 0 : st.constructor) === null || _u === void 0 ? void 0 : _u.name) !== null && _v !== void 0 ? _v : "unknown"));
+            // These attachment subtables are applied in the second pass below.
+            if (st instanceof MarkBasePosFormat1 ||
+                st instanceof MarkLigPosFormat1 ||
+                st instanceof MarkMarkPosFormat1 ||
+                st instanceof CursivePosFormat1) {
+                continue;
+            }
+            var constructorName = (_t = (_s = st === null || st === void 0 ? void 0 : st.constructor) === null || _s === void 0 ? void 0 : _s.name) !== null && _t !== void 0 ? _t : "unknown";
+            this.emitDiagnostic("UNSUPPORTED_GPOS_SUBTABLE", "info", "layout", "Encountered GPOS subtable not currently handled: ".concat(constructorName, "."), { constructorName: constructorName }, "UNSUPPORTED_GPOS_SUBTABLE:".concat(constructorName));
         }
         var markSubtables = subtables.filter(function (st) {
             return st instanceof MarkBasePosFormat1 ||
@@ -461,8 +469,8 @@ var FontParserTTF = /** @class */ (function () {
                 var mark2 = prevAnchors.find(function (a) { return a.type === 'mark2' && a.classIndex === markAnchor.classIndex; });
                 if (mark2) {
                     // Inherit parent mark placement so stacked marks follow prior attachments.
-                    positioned[i].xOffset += ((_x = (_w = positioned[prev]) === null || _w === void 0 ? void 0 : _w.xOffset) !== null && _x !== void 0 ? _x : 0) + (mark2.x - markAnchor.x);
-                    positioned[i].yOffset += ((_z = (_y = positioned[prev]) === null || _y === void 0 ? void 0 : _y.yOffset) !== null && _z !== void 0 ? _z : 0) + (mark2.y - markAnchor.y);
+                    positioned[i].xOffset += ((_v = (_u = positioned[prev]) === null || _u === void 0 ? void 0 : _u.xOffset) !== null && _v !== void 0 ? _v : 0) + (mark2.x - markAnchor.x);
+                    positioned[i].yOffset += ((_x = (_w = positioned[prev]) === null || _w === void 0 ? void 0 : _w.yOffset) !== null && _x !== void 0 ? _x : 0) + (mark2.y - markAnchor.y);
                     positioned[i].xAdvance = 0;
                     attached = true;
                     break;
@@ -483,8 +491,8 @@ var FontParserTTF = /** @class */ (function () {
                 var baseAnchor = getBaseAnchor(baseAnchors, markAnchor.classIndex);
                 if (baseAnchor) {
                     // Inherit base placement so mark anchors remain stable after prior GPOS shifts.
-                    positioned[i].xOffset += ((_1 = (_0 = positioned[baseIndex]) === null || _0 === void 0 ? void 0 : _0.xOffset) !== null && _1 !== void 0 ? _1 : 0) + (baseAnchor.x - markAnchor.x);
-                    positioned[i].yOffset += ((_3 = (_2 = positioned[baseIndex]) === null || _2 === void 0 ? void 0 : _2.yOffset) !== null && _3 !== void 0 ? _3 : 0) + (baseAnchor.y - markAnchor.y);
+                    positioned[i].xOffset += ((_z = (_y = positioned[baseIndex]) === null || _y === void 0 ? void 0 : _y.xOffset) !== null && _z !== void 0 ? _z : 0) + (baseAnchor.x - markAnchor.x);
+                    positioned[i].yOffset += ((_1 = (_0 = positioned[baseIndex]) === null || _0 === void 0 ? void 0 : _0.yOffset) !== null && _1 !== void 0 ? _1 : 0) + (baseAnchor.y - markAnchor.y);
                     positioned[i].xAdvance = 0;
                     break;
                 }
@@ -727,6 +735,80 @@ var FontParserTTF = /** @class */ (function () {
     FontParserTTF.prototype.getDescent = function () {
         var _a, _b;
         return (_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.descender) !== null && _b !== void 0 ? _b : 0;
+    };
+    FontParserTTF.prototype.getUnitsPerEm = function () {
+        var _a, _b;
+        return (_b = (_a = this.head) === null || _a === void 0 ? void 0 : _a.unitsPerEm) !== null && _b !== void 0 ? _b : 1000;
+    };
+    FontParserTTF.prototype.getGlyphPointsByChar = function (char, options) {
+        var _a;
+        if (options === void 0) { options = {}; }
+        var glyph = this.getGlyphByChar(char);
+        if (!glyph)
+            return [];
+        var sampleStep = Math.max(1, Math.floor((_a = options.sampleStep) !== null && _a !== void 0 ? _a : 1));
+        var points = [];
+        for (var i = 0; i < glyph.getPointCount(); i += sampleStep) {
+            var p = glyph.getPoint(i);
+            if (!p)
+                continue;
+            points.push({
+                x: p.x,
+                y: p.y,
+                onCurve: p.onCurve,
+                endOfContour: p.endOfContour
+            });
+        }
+        return points;
+    };
+    FontParserTTF.prototype.measureText = function (text, options) {
+        var _a;
+        if (options === void 0) { options = {}; }
+        var layout = this.layoutString(text, options);
+        var letterSpacing = (_a = options.letterSpacing) !== null && _a !== void 0 ? _a : 0;
+        var advanceWidth = 0;
+        for (var i = 0; i < layout.length; i++) {
+            advanceWidth += layout[i].xAdvance;
+            if (letterSpacing !== 0 && i < layout.length - 1)
+                advanceWidth += letterSpacing;
+        }
+        return { advanceWidth: advanceWidth, glyphCount: layout.length };
+    };
+    FontParserTTF.prototype.layoutToPoints = function (text, options) {
+        var _a, _b, _c, _d, _e;
+        if (options === void 0) { options = {}; }
+        var layout = this.layoutString(text, options);
+        var sampleStep = Math.max(1, Math.floor((_a = options.sampleStep) !== null && _a !== void 0 ? _a : 1));
+        var fontSize = (_b = options.fontSize) !== null && _b !== void 0 ? _b : this.getUnitsPerEm();
+        var scale = fontSize / this.getUnitsPerEm();
+        var originX = (_c = options.x) !== null && _c !== void 0 ? _c : 0;
+        var originY = (_d = options.y) !== null && _d !== void 0 ? _d : 0;
+        var letterSpacing = (_e = options.letterSpacing) !== null && _e !== void 0 ? _e : 0;
+        var points = [];
+        var penX = 0;
+        for (var i = 0; i < layout.length; i++) {
+            var item = layout[i];
+            var glyph = this.getGlyph(item.glyphIndex);
+            if (glyph) {
+                for (var pIndex = 0; pIndex < glyph.getPointCount(); pIndex += sampleStep) {
+                    var p = glyph.getPoint(pIndex);
+                    if (!p)
+                        continue;
+                    points.push({
+                        x: originX + (penX + item.xOffset + p.x) * scale,
+                        y: originY - (item.yOffset + p.y) * scale,
+                        onCurve: p.onCurve,
+                        endOfContour: p.endOfContour,
+                        glyphIndex: item.glyphIndex,
+                        pointIndex: pIndex
+                    });
+                }
+            }
+            penX += item.xAdvance;
+            if (letterSpacing !== 0 && i < layout.length - 1)
+                penX += letterSpacing;
+        }
+        return { points: points, advanceWidth: penX, scale: scale };
     };
     FontParserTTF.prototype.getColorLayersForGlyph = function (glyphId, paletteIndex) {
         var _a, _b;

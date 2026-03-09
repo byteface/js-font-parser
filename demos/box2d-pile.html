@@ -121,8 +121,7 @@
 
     function buildPile() {
       bodies = [];
-      const head = font.getTableByType(Table.head);
-      const unitsPerEm = head?.unitsPerEm ?? 1000;
+      const unitsPerEm = typeof font.getUnitsPerEm === "function" ? font.getUnitsPerEm() : 1000;
       const sizePx = 120;
       const glyphScale = sizePx / unitsPerEm;
 

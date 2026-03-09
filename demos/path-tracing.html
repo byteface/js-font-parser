@@ -90,13 +90,7 @@
     <div class="panel">
         <label>
             Font
-            <select id="fontSelect">
-                <option value="../truetypefonts/Quill.ttf">Quill (script)</option>
-                <option value="../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf">DevilInside</option>
-                <option value="../truetypefonts/AUGIE___.TTF">Augie</option>
-                <option value="../truetypefonts/JoeJack.ttf">JoeJack</option>
-                <option value="../truetypefonts/DiscoMo.ttf">DiscoMo</option>
-            </select>
+            <select id="fontSelect"></select>
         </label>
         <label>
             Text
@@ -129,7 +123,7 @@
     <script type="module">
         import { FontParser } from "../dist/data/FontParser.js";
         import { SVGFont } from "../dist/render/SVGFont.js";
-        import { Table } from "../dist/table/Table.js";
+        import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/demo-scaffold.js";
 
         const fontSelect = document.getElementById("fontSelect");
         const textInput = document.getElementById("textInput");
@@ -141,20 +135,20 @@
         const replayBtn = document.getElementById("replayBtn");
         const svgRoot = document.getElementById("svgRoot");
 
-        const fontCache = new Map();
+        const fonts = [
+            { name: "Quill (script)", url: "../truetypefonts/Quill.ttf" },
+            { name: "DevilInside", url: "../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf" },
+            { name: "Augie", url: "../truetypefonts/AUGIE___.TTF" },
+            { name: "JoeJack", url: "../truetypefonts/JoeJack.ttf" },
+            { name: "DiscoMo", url: "../truetypefonts/DiscoMo.ttf" }
+        ];
+        const loadFont = createFontLoader(FontParser.load);
         let currentPath = null;
 
         function clearSvg() {
             while (svgRoot.firstChild) {
                 svgRoot.removeChild(svgRoot.firstChild);
             }
-        }
-
-        async function loadFont(url) {
-            if (fontCache.has(url)) return fontCache.get(url);
-            const font = await FontParser.load(url);
-            fontCache.set(url, font);
-            return font;
         }
 
         function buildPath(font, text, scale) {
@@ -178,14 +172,15 @@
         function renderSvg(font, text, sizePx, stroke, strokeWidth, traceSeconds) {
             clearSvg();
 
-            const head = font.getTableByType(Table.head);
-            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const unitsPerEm = typeof font.getUnitsPerEm === "function" ? font.getUnitsPerEm() : 1000;
             const scale = sizePx / unitsPerEm;
             const ascent = font.getAscent() * scale;
             const descent = font.getDescent() * scale;
             const height = (font.getAscent() - font.getDescent()) * scale;
 
-            const { d, width } = buildPath(font, text, scale);
+            const { d, width: pathWidth } = buildPath(font, text, scale);
+            const measured = typeof font.measureText === "function" ? font.measureText(text, { gsubFeatures: ["liga"] }) : null;
+            const width = measured ? Math.max(1, measured.advanceWidth * scale) : pathWidth;
 
             const svg = svgRoot;
             svg.setAttribute("viewBox", `0 ${-ascent} ${width} ${height}`);
@@ -212,7 +207,7 @@
         }
 
         async function render() {
-            const fontUrl = fontSelect.value;
+            const fontUrl = getSelectedFont(fontSelect, fonts).url;
             const text = textInput.value || "";
             const sizePx = Number(sizeInput.value);
             const traceSeconds = Number(speedInput.value);
@@ -242,6 +237,7 @@
         strokeInput.addEventListener("change", render);
         widthInput.addEventListener("input", render);
 
+        populateFontSelect(fontSelect, fonts);
         render();
     </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>
