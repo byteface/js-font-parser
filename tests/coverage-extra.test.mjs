@@ -2701,19 +2701,13 @@ test('FontParserWOFF applyGposPositioning executes single/pair and mark/cursive 
 
 test('FontParserWOFF kerning and glyph index helpers cover warning and fallback branches', () => {
   const parser = Object.create(FontParserWOFF.prototype);
-  const savedWarn = console.warn;
-  const warns = [];
-  console.warn = (msg) => warns.push(String(msg));
-  try {
-    parser.cmap = {
-      getCmapFormats: () => [{ mapCharCode: (cp) => (cp > 0 ? 9 : 0) }],
-      formats: []
-    };
-    assert.equal(parser.getGlyphIndexByChar('ABC'), 9);
-    assert.ok(warns.some((w) => /multiple characters/i.test(w)));
-  } finally {
-    console.warn = savedWarn;
-  }
+  parser.cmap = {
+    getCmapFormats: () => [{ mapCharCode: (cp) => (cp > 0 ? 9 : 0) }],
+    formats: []
+  };
+  assert.equal(parser.getGlyphIndexByChar('ABC'), 9);
+  const diags = parser.getDiagnostics();
+  assert.ok(diags.some((d) => d.code === 'MULTI_CHAR_INPUT'));
 
   parser.kern = {};
   assert.equal(parser.getKerningValueByGlyphs(1, 2), 0);
@@ -3613,38 +3607,25 @@ test('FontParserTTF gvar is skipped when variation coords are empty', () => {
 test('FontParserTTF.getGlyphIndexByChar handles nullish codePointAt result', () => {
   const parser = Object.create(FontParserTTF.prototype);
   parser.cmap = { getFormat: () => null };
-  const savedError = console.error;
-  const errors = [];
-  try {
-    console.error = (...args) => errors.push(args.join(' '));
-    const weirdChar = { length: 1, codePointAt: () => undefined };
-    const gid = parser.getGlyphIndexByChar(weirdChar);
-    assert.equal(gid, null);
-    assert.ok(errors.some((m) => /Failed to get code point/i.test(m)));
-  } finally {
-    console.error = savedError;
-  }
+  const weirdChar = { length: 1, codePointAt: () => undefined };
+  const gid = parser.getGlyphIndexByChar(weirdChar);
+  assert.equal(gid, null);
+  const diags = parser.getDiagnostics();
+  assert.ok(diags.some((d) => d.code === 'CODE_POINT_RESOLVE_FAILED'));
 });
 
 test('FontParserTTF.getGlyphIndexByChar returns null with missing cmap or cmap format', () => {
   const parser = Object.create(FontParserTTF.prototype);
-  const savedWarn = console.warn;
-  const warnings = [];
-  try {
-    console.warn = (...args) => warnings.push(args.join(' '));
+  parser.cmap = null;
+  assert.equal(parser.getGlyphIndexByChar('A'), null);
 
-    parser.cmap = null;
-    assert.equal(parser.getGlyphIndexByChar('A'), null);
+  parser.cmap = { getFormat: () => null };
+  parser.getBestCmapFormatFor = () => null;
+  assert.equal(parser.getGlyphIndexByChar('A'), null);
 
-    parser.cmap = { getFormat: () => null };
-    parser.getBestCmapFormatFor = () => null;
-    assert.equal(parser.getGlyphIndexByChar('A'), null);
-
-    assert.ok(warnings.some((m) => /No cmap table available/i.test(m)));
-    assert.ok(warnings.some((m) => /No cmap format available/i.test(m)));
-  } finally {
-    console.warn = savedWarn;
-  }
+  const diags = parser.getDiagnostics();
+  assert.ok(diags.some((d) => d.code === 'MISSING_TABLE_CMAP'));
+  assert.ok(diags.some((d) => d.code === 'MISSING_CMAP_FORMAT'));
 });
 
 test('SvgTable async fallback returns compressed-null when DecompressionStream is unavailable', async () => {

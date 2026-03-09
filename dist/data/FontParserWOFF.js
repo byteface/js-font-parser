@@ -886,23 +886,19 @@ var FontParserWOFF = /** @class */ (function () {
             return null;
         }
         if (char.length > 2) {
-            console.warn("getGlyphIndexByChar received multiple characters; using the first code point.");
             this.emitDiagnostic("MULTI_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar received multiple characters; using the first code point.", undefined, "MULTI_CHAR_INPUT");
         }
         var codePoint = char.codePointAt(0);
         if (codePoint == null) {
-            console.error("Failed to get code point from input character.");
             this.emitDiagnostic("CODE_POINT_RESOLVE_FAILED", "warning", "parse", "Failed to resolve code point for character.");
             return null;
         }
         if (!this.cmap) {
-            console.warn("No cmap table available.");
             this.emitDiagnostic("MISSING_TABLE_CMAP", "warning", "parse", "No cmap table available.", undefined, "MISSING_TABLE_CMAP");
             return null;
         }
         var cmapFormat = this.getBestCmapFormatFor(codePoint);
         if (!cmapFormat) {
-            console.warn("No cmap format available for code point.");
             this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint: codePoint });
             return null;
         }
