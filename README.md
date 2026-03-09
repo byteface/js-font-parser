@@ -1,6 +1,6 @@
 # JS Font Parser
 
-Parses TTF/OTF/WOFF/WOFF2 fonts and exposes glyph geometry, tables, shaping helpers, metadata, and rendering utilities for demos/tools.
+Parses TTF/OTF/WOFF fonts and exposes glyph geometry, tables, shaping helpers, metadata, and rendering utilities for demos/tools.
 
 ## Quick Start
 
@@ -11,8 +11,7 @@ python3 -m http.server 8080
 ```
 
 Open:
-- `http://localhost:8080/demos/index.html`
-- `http://localhost:8080/tools/index.html`
+- `http://localhost:8080`
 
 ## Scripts
 

@@ -1,55 +1,5 @@
 import { Debug } from "../utils/Debug.js";
 var CmapFormat4 = /** @class */ (function () {
-    /*
-        constructor(byteArray: ByteArray) {
-            // Parse basic information
-            this.length = byteArray.readUnsignedShort();
-            this.version = byteArray.readUnsignedShort();
-            this.segCountX2 = byteArray.readUnsignedShort();
-            this.segCount = this.segCountX2 / 2;
-        
-            // Parse segment information
-            this.endCode = [];
-            this.startCode = [];
-            this.idDelta = [];
-            this.idRangeOffset = [];
-        
-            for (let i = 0; i < this.segCount; i++) {
-                this.endCode.push(byteArray.readUnsignedShort());
-            }
-        
-            byteArray.readUnsignedShort(); // Skip reserved padding
-    
-            for (let i = 0; i < this.segCount; i++) {
-                this.startCode.push(byteArray.readUnsignedShort());
-                this.idDelta.push(byteArray.readUnsignedShort());
-                this.idRangeOffset.push(byteArray.readUnsignedShort());
-            }
-        
-            // Build the glyph ID array
-            this.glyphIdArray = [];
-            let offset = 0;
-        
-            for (let i = 0; i < this.segCount; i++) {
-                const startCode = this.startCode[i];
-                const endCode = this.endCode[i];
-                const idDelta = this.idDelta[i];
-                const idRangeOffset = this.idRangeOffset[i];
-        
-                if (idRangeOffset === 0) {
-                    for (let code = startCode; code <= endCode; code++) {
-                        this.glyphIdArray.push(code + idDelta);
-                    }
-                } else {
-                    for (let code = startCode; code <= endCode; code++) {
-                        const glyphIdOffset = offset + (code - startCode) * 2;
-                        this.glyphIdArray.push(byteArray.readUnsignedShort(glyphIdOffset));
-                    }
-                    offset += idRangeOffset;
-                }
-            }
-        }
-    */
     function CmapFormat4(byteArray) {
         this.format = 4;
         this.length = 0;

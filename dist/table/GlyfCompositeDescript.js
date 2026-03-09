@@ -102,6 +102,9 @@ var GlyfCompositeDescript = /** @class */ (function () {
         var c = this.getCompositeCompEndPt(i);
         if (c != null) {
             var gd = this.parentTable.getDescription(c.glyphIndex);
+            if (gd == null) {
+                return 0;
+            }
             return gd.getEndPtOfContours(i - c.firstContour) + c.firstIndex;
         }
         return 0;
@@ -110,6 +113,9 @@ var GlyfCompositeDescript = /** @class */ (function () {
         var c = this.getCompositeComp(i);
         if (c != null) {
             var gd = this.parentTable.getDescription(c.glyphIndex);
+            if (gd == null) {
+                return 0;
+            }
             return gd.getFlags(i - c.firstIndex);
         }
         return 0;
@@ -118,6 +124,9 @@ var GlyfCompositeDescript = /** @class */ (function () {
         var c = this.getCompositeComp(i);
         if (c != null) {
             var gd = this.parentTable.getDescription(c.glyphIndex);
+            if (gd == null) {
+                return 0;
+            }
             var n = i - c.firstIndex;
             var x = gd.getXCoordinate(n);
             var y = gd.getYCoordinate(n);
@@ -130,6 +139,9 @@ var GlyfCompositeDescript = /** @class */ (function () {
         var c = this.getCompositeComp(i);
         if (c != null) {
             var gd = this.parentTable.getDescription(c.glyphIndex);
+            if (gd == null) {
+                return 0;
+            }
             var n = i - c.firstIndex;
             var x = gd.getXCoordinate(n);
             var y = gd.getYCoordinate(n);

@@ -162,9 +162,10 @@ var LayoutEngine = /** @class */ (function () {
      * Falls back to a deterministic character scanner otherwise.
      */
     LayoutEngine.tokenize = function (text, collapseSpaces, preserveNbsp, tabSize) {
-        if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+        var segmenterCtor = Intl.Segmenter;
+        if (typeof Intl !== 'undefined' && typeof segmenterCtor === 'function') {
             var segments_1 = [];
-            var segmenter_1 = new Intl.Segmenter(undefined, { granularity: 'word' });
+            var segmenter_1 = new segmenterCtor(undefined, { granularity: 'word' });
             var lines_1 = text.split('\n');
             lines_1.forEach(function (line, index) {
                 var segs = Array.from(segmenter_1.segment(line));

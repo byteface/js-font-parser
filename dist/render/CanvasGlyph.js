@@ -9,7 +9,7 @@ var CanvasGlyph = /** @class */ (function () {
         this.GLOBAL_ALPHA = 1;
         this.SCALE = 0.5;
         this.jitter = 0;
-        this.fontdata = null; // Adjust type if you have a defined type for fontdata
+        this.fontdata = null;
         this.fontLoadedPromise = FontParser.load(path)
             .then(function (ttf_font) {
             _this.fontdata = ttf_font;
@@ -32,11 +32,17 @@ var CanvasGlyph = /** @class */ (function () {
         this.GLOBAL_ALPHA = globalAlpha;
     };
     CanvasGlyph.prototype.drawChar = function (char, canvasId) {
+        if (!this.fontdata)
+            return null;
         var glyphIndex = this.fontdata.getGlyphIndexByChar(char);
+        if (glyphIndex == null)
+            return null;
         return this.drawGlyph(glyphIndex, canvasId);
     };
     // draws a glyph by its index (which is not particularly useful)
     CanvasGlyph.prototype.drawGlyph = function (index, canvasId) {
+        if (!this.fontdata)
+            return null;
         var SCALE = this.SCALE;
         var g = this.fontdata.getGlyph(index);
         var drawingCanvas = document.getElementById(canvasId);
@@ -121,6 +127,8 @@ var CanvasGlyph = /** @class */ (function () {
         var canvas = document.getElementById(canvasId);
         if (!canvas)
             return;
+        if (!this.fontdata)
+            return;
         CanvasRenderer.drawString(this.fontdata, text, canvas, options);
     };
     CanvasGlyph.prototype.drawStringWithKerning = function (text, canvasId, options) {
@@ -128,12 +136,16 @@ var CanvasGlyph = /** @class */ (function () {
         var canvas = document.getElementById(canvasId);
         if (!canvas)
             return;
+        if (!this.fontdata)
+            return;
         CanvasRenderer.drawStringWithKerning(this.fontdata, text, canvas, options);
     };
     CanvasGlyph.prototype.drawLayout = function (layout, canvasId, options) {
         if (options === void 0) { options = {}; }
         var canvas = document.getElementById(canvasId);
         if (!canvas)
+            return;
+        if (!this.fontdata)
             return;
         CanvasRenderer.drawLayout(this.fontdata, layout, canvas, options);
     };

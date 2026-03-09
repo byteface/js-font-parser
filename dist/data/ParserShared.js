@@ -1,9 +1,5 @@
 import { matchesDiagnosticFilter } from '../types/Diagnostics.js';
 export function emitDiagnostic(state, code, level, phase, message, context, onceKey) {
-    if (!Array.isArray(state.diagnostics))
-        state.diagnostics = [];
-    if (!(state.diagnosticKeys instanceof Set))
-        state.diagnosticKeys = new Set();
     if (onceKey) {
         if (state.diagnosticKeys.has(onceKey))
             return;
@@ -12,14 +8,10 @@ export function emitDiagnostic(state, code, level, phase, message, context, once
     state.diagnostics.push({ code: code, level: level, phase: phase, message: message, context: context });
 }
 export function getDiagnostics(state, filter) {
-    if (!Array.isArray(state.diagnostics))
-        state.diagnostics = [];
     return state.diagnostics.filter(function (d) { return matchesDiagnosticFilter(d, filter); }).slice();
 }
 export function clearDiagnostics(state) {
     state.diagnostics = [];
-    if (!(state.diagnosticKeys instanceof Set))
-        state.diagnosticKeys = new Set();
     state.diagnosticKeys.clear();
 }
 export function pickBestCmapFormat(formats) {

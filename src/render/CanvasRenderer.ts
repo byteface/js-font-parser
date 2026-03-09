@@ -24,6 +24,15 @@ export type CanvasDrawOptions = {
     fillRule?: CanvasFillRule;
 };
 
+type FontForCanvas = {
+    getGlyphByChar: (ch: string) => GlyphData | null;
+    getGlyph: (index: number) => GlyphData | null;
+    getGlyphIndexByChar?: (ch: string) => number | null;
+    getKerningValue?: (left: string, right: string) => number;
+    getColorLayersForGlyph?: (glyphIndex: number, paletteIndex?: number) => Array<{ glyphId: number; color: string | null }>;
+    getColrV1LayersForGlyph?: (glyphIndex: number, paletteIndex?: number) => Array<{ glyphId: number; color: string | null }>;
+};
+
 export class CanvasRenderer {
     static applyCanvasStyles(context: CanvasRenderingContext2D, styles?: CanvasStyleOptions): void {
         if (!styles) return;
@@ -157,7 +166,7 @@ export class CanvasRenderer {
         context.restore();
     }
 
-    static drawString(font: any, text: string, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
+    static drawString(font: FontForCanvas, text: string, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
         const scale = options.scale ?? 0.1;
         const x = options.x ?? 0;
         const y = options.y ?? 0;
@@ -187,7 +196,7 @@ export class CanvasRenderer {
         context.restore();
     }
 
-    static drawStringWithKerning(font: any, text: string, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
+    static drawStringWithKerning(font: FontForCanvas, text: string, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
         const scale = options.scale ?? 0.1;
         const x = options.x ?? 0;
         const y = options.y ?? 0;
@@ -226,7 +235,7 @@ export class CanvasRenderer {
         context.restore();
     }
 
-    static drawGlyphIndices(font: any, glyphIndices: number[], canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
+    static drawGlyphIndices(font: FontForCanvas, glyphIndices: number[], canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
         const scale = options.scale ?? 0.1;
         const x = options.x ?? 0;
         const y = options.y ?? 0;
@@ -257,7 +266,7 @@ export class CanvasRenderer {
     }
 
     static drawColorGlyph(
-        font: any,
+        font: FontForCanvas,
         glyphIndex: number,
         canvas: HTMLCanvasElement,
         options: CanvasDrawOptions = {}
@@ -299,7 +308,7 @@ export class CanvasRenderer {
         }
     }
 
-    static drawColorString(font: any, text: string, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
+    static drawColorString(font: FontForCanvas, text: string, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
         const scale = options.scale ?? 0.1;
         const x = options.x ?? 0;
         const y = options.y ?? 0;
@@ -339,7 +348,7 @@ export class CanvasRenderer {
         context.restore();
     }
 
-    static drawLayout(font: any, layout: Array<{ glyphIndex: number; xAdvance: number; xOffset?: number; yOffset?: number }>, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
+    static drawLayout(font: FontForCanvas, layout: Array<{ glyphIndex: number; xAdvance: number; xOffset?: number; yOffset?: number }>, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
         const scale = options.scale ?? 0.1;
         const x = options.x ?? 0;
         const y = options.y ?? 0;

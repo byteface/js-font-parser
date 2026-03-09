@@ -12,8 +12,8 @@ export type CmapLike = {
 };
 
 export type DiagnosticState = {
-    diagnostics?: FontDiagnostic[];
-    diagnosticKeys?: Set<string>;
+    diagnostics: FontDiagnostic[];
+    diagnosticKeys: Set<string>;
 };
 
 export function emitDiagnostic(
@@ -25,8 +25,6 @@ export function emitDiagnostic(
     context?: Record<string, unknown>,
     onceKey?: string
 ): void {
-    if (!Array.isArray(state.diagnostics)) state.diagnostics = [];
-    if (!(state.diagnosticKeys instanceof Set)) state.diagnosticKeys = new Set<string>();
     if (onceKey) {
         if (state.diagnosticKeys.has(onceKey)) return;
         state.diagnosticKeys.add(onceKey);
@@ -35,13 +33,11 @@ export function emitDiagnostic(
 }
 
 export function getDiagnostics(state: DiagnosticState, filter?: DiagnosticFilter): FontDiagnostic[] {
-    if (!Array.isArray(state.diagnostics)) state.diagnostics = [];
     return state.diagnostics.filter((d) => matchesDiagnosticFilter(d, filter)).slice();
 }
 
 export function clearDiagnostics(state: DiagnosticState): void {
     state.diagnostics = [];
-    if (!(state.diagnosticKeys instanceof Set)) state.diagnosticKeys = new Set<string>();
     state.diagnosticKeys.clear();
 }
 

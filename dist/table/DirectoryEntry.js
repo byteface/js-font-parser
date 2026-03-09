@@ -1,5 +1,6 @@
 var DirectoryEntry = /** @class */ (function () {
     function DirectoryEntry(byteAr) {
+        this.table = null;
         // console.log("Initial byteAr offset:", byteAr.offset);
         this.tag = byteAr.readInt();
         // console.log("Read tag:", this.tag, "New byteAr offset:", byteAr.offset);

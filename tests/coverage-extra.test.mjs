@@ -132,6 +132,20 @@ const CURATED_FIXTURES = [
   'truetypefonts/curated/NotoColorEmoji.ttf'
 ];
 
+function createTtfParserMock() {
+  const parser = Object.create(FontParserTTF.prototype);
+  parser.diagnostics = [];
+  parser.diagnosticKeys = new Set();
+  return parser;
+}
+
+function createWoffParserMock() {
+  const parser = Object.create(FontParserWOFF.prototype);
+  parser.diagnostics = [];
+  parser.diagnosticKeys = new Set();
+  return parser;
+}
+
 test('curated fixture list stays in sync with curated folder fonts', () => {
   const curatedDir = path.resolve(__dirname, '..', 'truetypefonts', 'curated');
   const actual = fs.readdirSync(curatedDir)
@@ -1665,7 +1679,7 @@ test('COLR v1 layer flattening tolerates unknown and nested paint formats', () =
 });
 
 test('COLRv1 layer flattening keeps stable fallback colors for invalid palette indexes', () => {
-  const parser = Object.create(FontParserTTF.prototype);
+  const parser = createTtfParserMock();
   parser.cpal = {
     getPalette: () => [{ red: 10, green: 20, blue: 30, alpha: 255 }]
   };
@@ -2432,7 +2446,7 @@ test('Cmap format helper classes map codepoints and bounds correctly', () => {
 });
 
 test('FontParserWOFF.getGlyph applies gvar deltas and phantom metrics on simple glyphs', () => {
-  const parser = Object.create(FontParserWOFF.prototype);
+  const parser = createWoffParserMock();
   parser.variationCoords = [0.25];
   parser.hmtx = {
     getLeftSideBearing: () => 20,
@@ -2473,7 +2487,7 @@ test('FontParserWOFF.getGlyph applies gvar deltas and phantom metrics on simple 
 });
 
 test('FontParserWOFF.getGlyph falls back to CFF descriptions when glyf is absent', () => {
-  const parser = Object.create(FontParserWOFF.prototype);
+  const parser = createWoffParserMock();
   parser.variationCoords = [];
   parser.glyf = { getDescription: () => null };
   parser.hmtx = {
@@ -2497,7 +2511,7 @@ test('FontParserWOFF.getGlyph falls back to CFF descriptions when glyf is absent
 });
 
 test('FontParserWOFF color layer helpers handle transparent and missing palette entries', () => {
-  const parser = Object.create(FontParserWOFF.prototype);
+  const parser = createWoffParserMock();
   parser.colr = {
     getLayersForGlyph: () => [
       { glyphId: 1, paletteIndex: 0xffff },
@@ -2518,7 +2532,7 @@ test('FontParserWOFF color layer helpers handle transparent and missing palette 
 });
 
 test('FontParserWOFF.applyIupDeltas and interpolate cover untouched/single and degenerate branches', () => {
-  const parser = Object.create(FontParserWOFF.prototype);
+  const parser = createWoffParserMock();
   const base = {
     getPointCount: () => 3,
     getContourCount: () => 1,
@@ -2542,7 +2556,7 @@ test('FontParserWOFF.applyIupDeltas and interpolate cover untouched/single and d
 });
 
 test('FontParserWOFF.getMarkAnchorsForGlyph collects anchors across mark/base/ligature/cursive subtables', () => {
-  const parser = Object.create(FontParserWOFF.prototype);
+  const parser = createWoffParserMock();
   parser.gpos = {};
 
   const markBase = Object.create(MarkBasePosFormat1.prototype);
@@ -2593,7 +2607,7 @@ test('FontParserWOFF.getMarkAnchorsForGlyph collects anchors across mark/base/li
 });
 
 test('FontParserWOFF.flattenColrV1Paint covers nested glyph and referenced COLR glyph branches', () => {
-  const parser = Object.create(FontParserWOFF.prototype);
+  const parser = createWoffParserMock();
   parser.cpal = {
     getPalette: () => [{ red: 1, green: 2, blue: 3, alpha: 255 }]
   };
@@ -2613,7 +2627,7 @@ test('FontParserWOFF.flattenColrV1Paint covers nested glyph and referenced COLR 
 });
 
 test('FontParserWOFF convenience API covers variation, name scoring, and svg fallback branches', async () => {
-  const parser = Object.create(FontParserWOFF.prototype);
+  const parser = createWoffParserMock();
   parser.variationCoords = [];
   let colrCoords = null;
   parser.colr = { setVariationCoords: (coords) => { colrCoords = coords.slice(); } };
@@ -2671,7 +2685,7 @@ test('GlyfCompositeDescript resolve guards recursive component references', () =
 });
 
 test('FontParserWOFF applyGposPositioning executes single/pair and mark/cursive attachment branches', () => {
-  const parser = Object.create(FontParserWOFF.prototype);
+  const parser = createWoffParserMock();
   const single = Object.create(SinglePosSubtable.prototype);
   single.getAdjustment = (gid) => (gid === 10 ? { xPlacement: 1, yPlacement: 2, xAdvance: 3, yAdvance: 4 } : null);
   const pair = Object.create(PairPosSubtable.prototype);
@@ -2700,7 +2714,7 @@ test('FontParserWOFF applyGposPositioning executes single/pair and mark/cursive 
 });
 
 test('FontParserWOFF kerning and glyph index helpers cover warning and fallback branches', () => {
-  const parser = Object.create(FontParserWOFF.prototype);
+  const parser = createWoffParserMock();
   parser.cmap = {
     getCmapFormats: () => [{ mapCharCode: (cp) => (cp > 0 ? 9 : 0) }],
     formats: []
@@ -2734,7 +2748,7 @@ test('getTableByType known tags are null-or-object across TTF/OTF/WOFF fixtures'
 });
 
 test('missing-table paths do not emit duplicate diagnostics across repeated calls', () => {
-  const parser = Object.create(FontParserTTF.prototype);
+  const parser = createTtfParserMock();
   parser.gsub = null;
   parser.gpos = null;
   parser.kern = null;
@@ -2759,7 +2773,7 @@ test('missing-table paths do not emit duplicate diagnostics across repeated call
 });
 
 test('FontParserTTF.getGlyphIndexByChar handles astral code points without multi-char warning', () => {
-  const parser = Object.create(FontParserTTF.prototype);
+  const parser = createTtfParserMock();
   parser.cmap = { formats: [], getCmapFormats: () => [] };
   parser.getBestCmapFormatFor = (cp) => ({
     mapCharCode: (x) => (x === cp ? 321 : 0)
@@ -2864,7 +2878,7 @@ test('ColrTable helper branches cover readColorLine and variation-store early re
 });
 
 test('FontParserTTF metadata helpers cover fsType/fsSelection/style and cmap selection branches', () => {
-  const parser = Object.create(FontParserTTF.prototype);
+  const parser = createTtfParserMock();
 
   assert.equal(parser.getOs2Metrics(), null);
   assert.equal(parser.getPostMetrics(), null);
@@ -3073,7 +3087,7 @@ test('CFF and CFF2 charstring parsing caps recursive subr depth to avoid stack o
 });
 
 test('FontParserTTF legacy name/os2/post info helpers return stable shapes', () => {
-  const parser = Object.create(FontParserTTF.prototype);
+  const parser = createTtfParserMock();
   parser.getNameRecord = (id) => `n${id}`;
   assert.deepEqual(parser.getNameInfo(), {
     family: 'n1',
@@ -3146,7 +3160,7 @@ test('FontParserTTF.load handles success, HTTP errors, and fetch-body failures',
 });
 
 test('FontParserTTF color layer and COLRv1 flatten helpers cover null/missing and recursion branches', () => {
-  const parser = Object.create(FontParserTTF.prototype);
+  const parser = createTtfParserMock();
   parser.colr = {
     getLayersForGlyph: () => [
       { glyphId: 1, paletteIndex: 0xffff },
@@ -3183,7 +3197,7 @@ test('FontParserTTF color layer and COLRv1 flatten helpers cover null/missing an
 });
 
 test('FontParserTTF helper branches cover inferred anchors, IUP single-touch, and format fallback', () => {
-  const parser = Object.create(FontParserTTF.prototype);
+  const parser = createTtfParserMock();
   parser.gpos = {
     lookupList: {
       getLookups: () => [
@@ -3291,7 +3305,7 @@ test('FontParserWOFF2 constructor is instantiable and fromArrayBuffer still pars
 });
 
 test('FontParserTTF.applyGposPositioning exercises single/pair positioning branches directly', () => {
-  const parser = Object.create(FontParserTTF.prototype);
+  const parser = createTtfParserMock();
   const single = Object.create(SinglePosSubtable.prototype);
   single.getAdjustment = (gid) => (gid === 10 ? { xPlacement: 1, yPlacement: 2, xAdvance: 3, yAdvance: 4 } : null);
   const pair = Object.create(PairPosSubtable.prototype);
@@ -3476,7 +3490,7 @@ test('Cff2Table debug/trace hooks execute for vsindex/blend and unknown ops', ()
 });
 
 test('FontParserTTF gvar applies component transform deltas for composite glyph points', () => {
-  const parser = Object.create(FontParserTTF.prototype);
+  const parser = createTtfParserMock();
   parser.variationCoords = [0.5];
   parser.hmtx = {
     getLeftSideBearing: () => 40,
@@ -3531,7 +3545,7 @@ test('FontParserTTF gvar applies component transform deltas for composite glyph 
 });
 
 test('FontParserTTF gvar handles sparse composite delta arrays without throwing', () => {
-  const parser = Object.create(FontParserTTF.prototype);
+  const parser = createTtfParserMock();
   parser.variationCoords = [0.2];
   parser.hmtx = {
     getLeftSideBearing: () => 10,
@@ -3573,7 +3587,7 @@ test('FontParserTTF gvar handles sparse composite delta arrays without throwing'
 });
 
 test('FontParserTTF gvar is skipped when variation coords are empty', () => {
-  const parser = Object.create(FontParserTTF.prototype);
+  const parser = createTtfParserMock();
   parser.variationCoords = [];
   parser.hmtx = {
     getLeftSideBearing: () => 12,
@@ -3605,7 +3619,7 @@ test('FontParserTTF gvar is skipped when variation coords are empty', () => {
 });
 
 test('FontParserTTF.getGlyphIndexByChar handles nullish codePointAt result', () => {
-  const parser = Object.create(FontParserTTF.prototype);
+  const parser = createTtfParserMock();
   parser.cmap = { getFormat: () => null };
   const weirdChar = { length: 1, codePointAt: () => undefined };
   const gid = parser.getGlyphIndexByChar(weirdChar);
@@ -3615,7 +3629,7 @@ test('FontParserTTF.getGlyphIndexByChar handles nullish codePointAt result', () 
 });
 
 test('FontParserTTF.getGlyphIndexByChar returns null with missing cmap or cmap format', () => {
-  const parser = Object.create(FontParserTTF.prototype);
+  const parser = createTtfParserMock();
   parser.cmap = null;
   assert.equal(parser.getGlyphIndexByChar('A'), null);
 

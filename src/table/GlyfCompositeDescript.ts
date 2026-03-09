@@ -2,6 +2,10 @@ import { ByteArray } from "../utils/ByteArray.js";
 import { GlyfCompositeComp } from './GlyfCompositeComp.js'
 import { IGlyphDescription } from "./IGlyphDescription.js";
 
+type GlyfParentTable = {
+    getDescription: (index: number) => IGlyphDescription | null;
+};
+
 export class GlyfCompositeDescript implements IGlyphDescription {
     instructions: number[] | null = null;
 
@@ -12,7 +16,7 @@ export class GlyfCompositeDescript implements IGlyphDescription {
     static xDual = 0x10;
     static yDual = 0x20;
 
-    parentTable: any;
+    parentTable: GlyfParentTable;
     numberOfContours: number = 0;
     xMin: number = 0;
     yMin: number = 0;
@@ -25,7 +29,7 @@ export class GlyfCompositeDescript implements IGlyphDescription {
     private pointCount: number = 0;
     private contourCount: number = 0;
 
-    constructor(parentTable: any, bais: ByteArray) {
+    constructor(parentTable: GlyfParentTable, bais: ByteArray) {
         this.parentTable = parentTable;
         this.init(bais);
     }
@@ -122,6 +126,9 @@ export class GlyfCompositeDescript implements IGlyphDescription {
         const c = this.getCompositeCompEndPt(i);
         if (c != null) {
             const gd = this.parentTable.getDescription(c.glyphIndex);
+            if (gd == null) {
+                return 0;
+            }
             return gd.getEndPtOfContours(i - c.firstContour) + c.firstIndex;
         }
         return 0;
@@ -131,6 +138,9 @@ export class GlyfCompositeDescript implements IGlyphDescription {
         const c = this.getCompositeComp(i);
         if (c != null) {
             const gd = this.parentTable.getDescription(c.glyphIndex);
+            if (gd == null) {
+                return 0;
+            }
             return gd.getFlags(i - c.firstIndex);
         }
         return 0;
@@ -140,6 +150,9 @@ export class GlyfCompositeDescript implements IGlyphDescription {
         const c = this.getCompositeComp(i);
         if (c != null) {
             const gd = this.parentTable.getDescription(c.glyphIndex);
+            if (gd == null) {
+                return 0;
+            }
             const n = i - c.firstIndex;
             const x = gd.getXCoordinate(n);
             const y = gd.getYCoordinate(n);
@@ -153,6 +166,9 @@ export class GlyfCompositeDescript implements IGlyphDescription {
         const c = this.getCompositeComp(i);
         if (c != null) {
             const gd = this.parentTable.getDescription(c.glyphIndex);
+            if (gd == null) {
+                return 0;
+            }
             const n = i - c.firstIndex;
             const x = gd.getXCoordinate(n);
             const y = gd.getYCoordinate(n);

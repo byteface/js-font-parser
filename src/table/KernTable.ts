@@ -5,6 +5,7 @@ import { KernSubtableFormat0 } from "./KernSubtableFormat0.js";
 import { KernSubtableFormat2 } from "./KernSubtableFormat2.js";
 import { Table } from "./Table.js";
 import { Debug } from "../utils/Debug.js";
+import { DirectoryEntry } from "./DirectoryEntry.js";
 
 
 export class KernTable implements ITable {
@@ -12,7 +13,7 @@ export class KernTable implements ITable {
     nTables: number;
     tables: Array<KernSubtable | null>;
 
-    constructor(de: any, byte_ar: ByteArray) {
+    constructor(de: DirectoryEntry, byte_ar: ByteArray) {
         byte_ar.offset = de.offset;
         this.version = byte_ar.readUnsignedShort();
         this.nTables = byte_ar.readUnsignedShort();

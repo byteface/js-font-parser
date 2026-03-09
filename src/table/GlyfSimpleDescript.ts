@@ -2,9 +2,13 @@ import { ByteArray } from "../utils/ByteArray.js";
 
 import { IGlyphDescription } from "./IGlyphDescription.js";
 
+type GlyfParentTable = {
+    getDescription: (index: number) => IGlyphDescription | null;
+};
+
 export class GlyfSimpleDescript implements IGlyphDescription {
     private instructions: number[] | null;
-    private parentTable: any;
+    private parentTable: GlyfParentTable;
     private numberOfContours: number;
     private xMin: number;
     private yMin: number;
@@ -24,7 +28,7 @@ export class GlyfSimpleDescript implements IGlyphDescription {
     private xDual: number = 0x10;
     private yDual: number = 0x20;
 
-    constructor(parentTable: any, numberOfContours: number, bais: ByteArray) {
+    constructor(parentTable: GlyfParentTable, numberOfContours: number, bais: ByteArray) {
 
         this.instructions = null;
         this.parentTable = parentTable;

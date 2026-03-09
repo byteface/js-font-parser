@@ -1,11 +1,12 @@
 import { ByteArray } from "../utils/ByteArray.js";
+import { ITable } from "./ITable.js";
 
 export class DirectoryEntry {
     tag: number | null;
     checksum: number | null;
     offset: number;
     length: number;
-    table: any | null; // TODO - specify a more accurate type here. interface Table maybe?
+    table: ITable | null = null;
 
     constructor(byteAr: ByteArray) {
         // console.log("Initial byteAr offset:", byteAr.offset);

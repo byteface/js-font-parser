@@ -116,7 +116,7 @@ export class SVGFont {
     }
 
     static exportFontSummarySvg(font: FontParserTTF, options: SVGExportOptions = {}): string {
-        const head = font.getTableByType(Table.head) as any;
+        const head = font.getTableByType(Table.head) as { unitsPerEm?: number } | null;
         const unitsPerEm = head?.unitsPerEm ?? 1000;
         const scale = options.scale ?? (1000 / unitsPerEm);
         return this.exportStringSvg(font, "Hello World", { ...options, scale });

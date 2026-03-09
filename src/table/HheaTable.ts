@@ -1,6 +1,7 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { Table } from "./Table.js";
 import { ITable } from "./ITable.js";
+import { DirectoryEntry } from "./DirectoryEntry.js";
 
 export class HheaTable implements ITable {
     version: number;
@@ -16,7 +17,7 @@ export class HheaTable implements ITable {
     metricDataFormat: number;
     numberOfHMetrics: number;
 
-    constructor(de: any, byte_ar: ByteArray) {
+    constructor(de: DirectoryEntry, byte_ar: ByteArray) {
         byte_ar.offset = de.offset;
 
         this.version = byte_ar.readInt();

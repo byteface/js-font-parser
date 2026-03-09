@@ -1,5 +1,13 @@
 import { FontParser } from '../data/FontParser.js';
 import { CanvasRenderer, CanvasDrawOptions, CanvasStyleOptions } from '../render/CanvasRenderer.js';
+import { GlyphData } from '../data/GlyphData.js';
+
+type FontForCanvasGlyph = {
+    getGlyphIndexByChar: (char: string) => number | null;
+    getGlyph: (index: number) => GlyphData | null;
+    getGlyphByChar: (char: string) => GlyphData | null;
+    getKerningValue?: (left: string, right: string) => number;
+};
 
 export class CanvasGlyph {
 
@@ -11,7 +19,7 @@ export class CanvasGlyph {
     
     private jitter: number = 0;
     
-    private fontdata: any = null;  // Adjust type if you have a defined type for fontdata
+    private fontdata: FontForCanvasGlyph | null = null;
 
     private fontLoadedPromise: Promise<void>;
 
@@ -42,12 +50,15 @@ export class CanvasGlyph {
     }
 
     drawChar(char: string, canvasId:string): CanvasRenderingContext2D | null {
+        if (!this.fontdata) return null;
         const glyphIndex = this.fontdata.getGlyphIndexByChar(char);
+        if (glyphIndex == null) return null;
         return this.drawGlyph(glyphIndex, canvasId);
     }
 
     // draws a glyph by its index (which is not particularly useful)
-    drawGlyph(index: string, canvasId: string): CanvasRenderingContext2D | null {
+    drawGlyph(index: number, canvasId: string): CanvasRenderingContext2D | null {
+        if (!this.fontdata) return null;
         const SCALE = this.SCALE;
         const g = this.fontdata.getGlyph(index);
         const drawingCanvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -168,18 +179,21 @@ export class CanvasGlyph {
     drawString(text: string, canvasId: string, options: CanvasDrawOptions = {}): void {
         const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
         if (!canvas) return;
+        if (!this.fontdata) return;
         CanvasRenderer.drawString(this.fontdata, text, canvas, options);
     }
 
     drawStringWithKerning(text: string, canvasId: string, options: CanvasDrawOptions = {}): void {
         const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
         if (!canvas) return;
+        if (!this.fontdata) return;
         CanvasRenderer.drawStringWithKerning(this.fontdata, text, canvas, options);
     }
 
     drawLayout(layout: Array<{ glyphIndex: number; xAdvance: number; xOffset?: number; yOffset?: number }>, canvasId: string, options: CanvasDrawOptions = {}): void {
         const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
         if (!canvas) return;
+        if (!this.fontdata) return;
         CanvasRenderer.drawLayout(this.fontdata, layout, canvas, options);
     }
 }

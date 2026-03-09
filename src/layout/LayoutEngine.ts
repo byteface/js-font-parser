@@ -50,11 +50,11 @@ export type LayoutDiagnostic = {
 };
 
 type FontLike = {
-    getGlyphByChar: (ch: string) => any | null;
-    getGlyph: (index: number) => any | null;
+    getGlyphByChar: (ch: string) => { advanceWidth: number } | null;
+    getGlyph: (index: number) => { advanceWidth: number } | null;
     getGlyphIndexByChar?: (ch: string) => number | null;
     getKerningValueByGlyphs?: (left: number, right: number) => number;
-    getTableByType?: (tag: number) => any | null;
+    getTableByType?: (tag: number) => { unitsPerEm?: number; ascender?: number; descender?: number; lineGap?: number } | null;
 };
 
 export class LayoutEngine {
@@ -202,9 +202,10 @@ export class LayoutEngine {
      * Falls back to a deterministic character scanner otherwise.
      */
     private static tokenize(text: string, collapseSpaces: boolean, preserveNbsp: boolean, tabSize: number): string[] {
-        if (typeof Intl !== 'undefined' && typeof (Intl as any).Segmenter === 'function') {
+        const segmenterCtor = (Intl as unknown as { Segmenter?: new (locale?: string, options?: { granularity: 'word' }) => { segment: (input: string) => Iterable<{ segment: string }> } }).Segmenter;
+        if (typeof Intl !== 'undefined' && typeof segmenterCtor === 'function') {
             const segments: string[] = [];
-            const segmenter = new (Intl as any).Segmenter(undefined, { granularity: 'word' });
+            const segmenter = new segmenterCtor(undefined, { granularity: 'word' });
             const lines = text.split('\n');
             lines.forEach((line, index) => {
                 const segs = Array.from(segmenter.segment(line));
