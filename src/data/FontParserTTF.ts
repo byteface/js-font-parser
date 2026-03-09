@@ -96,6 +96,8 @@ export class FontParserTTF {
         context?: Record<string, unknown>,
         onceKey?: string
     ): void {
+        if (!Array.isArray(this.diagnostics)) this.diagnostics = [];
+        if (!(this.diagnosticKeys instanceof Set)) this.diagnosticKeys = new Set<string>();
         if (onceKey) {
             if (this.diagnosticKeys.has(onceKey)) return;
             this.diagnosticKeys.add(onceKey);
@@ -104,11 +106,13 @@ export class FontParserTTF {
     }
 
     public getDiagnostics(filter?: DiagnosticFilter): FontDiagnostic[] {
+        if (!Array.isArray(this.diagnostics)) this.diagnostics = [];
         return this.diagnostics.filter(d => matchesDiagnosticFilter(d, filter)).slice();
     }
 
     public clearDiagnostics(): void {
         this.diagnostics = [];
+        if (!(this.diagnosticKeys instanceof Set)) this.diagnosticKeys = new Set<string>();
         this.diagnosticKeys.clear();
     }
 
@@ -177,6 +181,7 @@ export class FontParserTTF {
             return null;
         }
         if (char.length > 2) {
+            console.warn("getGlyphIndexByChar received multiple characters; using the first code point.");
             this.emitDiagnostic(
                 "MULTI_CHAR_INPUT",
                 "warning",
@@ -189,17 +194,20 @@ export class FontParserTTF {
 
         const codePoint = char.codePointAt(0); // Convert character to Unicode code point
         if (codePoint == null) {
+            console.error("Failed to get code point from input character.");
             this.emitDiagnostic("CODE_POINT_RESOLVE_FAILED", "warning", "parse", "Failed to resolve code point for character.");
             return null;
         }
 
         if (!this.cmap) {
+            console.warn("No cmap table available.");
             this.emitDiagnostic("MISSING_TABLE_CMAP", "warning", "parse", "No cmap table available.", undefined, "MISSING_TABLE_CMAP");
             return null;
         }
 
         const cmapFormat = this.getBestCmapFormatFor(codePoint);
         if (!cmapFormat) {
+            console.warn("No cmap format available for code point.");
             this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint });
             return null;
         }
@@ -331,7 +339,6 @@ export class FontParserTTF {
         for (let i = 0; i < glyphIndices.length; i++) {
             const glyphIndex = glyphIndices[i];
             const glyph = this.getGlyph(glyphIndex);
-            if (!glyph) continue;
 
             let kern = 0;
             if (i < glyphIndices.length - 1) {
@@ -343,7 +350,7 @@ export class FontParserTTF {
 
             positioned.push({
                 glyphIndex,
-                xAdvance: glyph.advanceWidth + kern,
+                xAdvance: (glyph?.advanceWidth ?? 0) + kern,
                 xOffset: 0,
                 yOffset: 0,
                 yAdvance: 0,
@@ -391,6 +398,7 @@ export class FontParserTTF {
                 typeof (st as any).getAdjustment === 'function'
             ) {
                 for (let i = 0; i < glyphIndices.length; i++) {
+                    if (!positioned[i]) continue;
                     const adj = (st as any).getAdjustment?.(glyphIndices[i]);
                     if (!adj) continue;
                     positioned[i].xOffset += adj.xPlacement ?? 0;
@@ -406,6 +414,7 @@ export class FontParserTTF {
                 typeof (st as any).getPairValue === 'function'
             ) {
                 for (let i = 0; i < glyphIndices.length - 1; i++) {
+                    if (!positioned[i] || !positioned[i + 1]) continue;
                     const pair = (st as any).getPairValue?.(glyphIndices[i], glyphIndices[i + 1]);
                     if (!pair) continue;
                     const v1 = pair.v1 || {};
@@ -476,6 +485,7 @@ export class FontParserTTF {
         const isMarkGlyph = (gid: number) => (this.gdef?.getGlyphClass?.(gid) ?? 0) === 3;
 
         for (let i = 0; i < glyphIndices.length; i++) {
+            if (!positioned[i]) continue;
             const gid = glyphIndices[i];
             const anchors = getAnchors(gid);
             const markAnchor = anchors.find(a => a.type === 'mark');
@@ -526,6 +536,7 @@ export class FontParserTTF {
         }
 
         for (let i = 1; i < glyphIndices.length; i++) {
+            if (!positioned[i]) continue;
             const prevAnchors = getAnchors(glyphIndices[i - 1]);
             const currAnchors = getAnchors(glyphIndices[i]);
             const exitAnchor = prevAnchors.find(a => a.type === 'cursive-exit');
@@ -547,12 +558,15 @@ export class FontParserTTF {
             if (this.gvar && this.variationCoords.length > 0) {
                 const basePointCount = description.getPointCount();
                 const isComposite = description.isComposite();
+                const descriptionComponents = description instanceof GlyfCompositeDescript && Array.isArray(description.components)
+                    ? description.components
+                    : [];
                 const componentCount = isComposite && description instanceof GlyfCompositeDescript
-                    ? description.getComponentCount()
+                    ? (descriptionComponents.length > 0 ? descriptionComponents.length : basePointCount)
                     : 0;
                 let transformSlotCount = 0;
                 if (isComposite && description instanceof GlyfCompositeDescript) {
-                    for (const comp of description.components) {
+                    for (const comp of descriptionComponents) {
                         transformSlotCount += comp.getTransformSlotCount();
                     }
                 }
@@ -597,7 +611,7 @@ export class FontParserTTF {
                         }
                         let tIndex = componentCount;
                         for (let c = 0; c < componentCount; c++) {
-                            const comp = base.components[c];
+                            const comp = descriptionComponents[c];
                             if (!comp) continue;
                             if (comp.hasTwoByTwo()) {
                                 const idx1 = tIndex++;
@@ -631,8 +645,9 @@ export class FontParserTTF {
                     let maxY = -Infinity;
                     for (let p = 0; p < basePointCount; p++) {
                         const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
+                        const compositeComponents = compositeBase && Array.isArray(compositeBase.components) ? compositeBase.components : [];
                         const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
-                        const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
+                        const compIndex = comp ? compositeComponents.indexOf(comp) : -1;
                         let x = base.getXCoordinate(p);
                         let y = base.getYCoordinate(p);
                         if (comp && compIndex >= 0 && self.glyf) {
@@ -651,10 +666,17 @@ export class FontParserTTF {
                                 y = (px * scale01) + (py * yscale) + oy;
                             }
                         } else {
+                            const rawDx = fullDx[p] ?? 0;
+                            const rawDy = fullDy[p] ?? 0;
+                            const transformed = comp && typeof (comp as any).hasTransform === 'function' && (comp as any).hasTransform() && typeof (comp as any).transformDelta === 'function'
+                                ? (comp as any).transformDelta(rawDx, rawDy)
+                                : null;
+                            const pointDx = transformed ? (transformed.dx ?? rawDx) : rawDx;
+                            const pointDy = transformed ? (transformed.dy ?? rawDy) : rawDy;
                             const ox = compIndex >= 0 && compDx ? compDx[compIndex] ?? 0 : 0;
                             const oy = compIndex >= 0 && compDy ? compDy[compIndex] ?? 0 : 0;
-                            x = base.getXCoordinate(p) + (dx[p] ?? 0) + ox;
-                            y = base.getYCoordinate(p) + (dy[p] ?? 0) + oy;
+                            x = base.getXCoordinate(p) + pointDx + ox;
+                            y = base.getYCoordinate(p) + pointDy + oy;
                         }
                         if (x < minX) minX = x;
                         if (x > maxX) maxX = x;
@@ -669,8 +691,9 @@ export class FontParserTTF {
                         getFlags: (p: number) => base.getFlags(p),
                         getXCoordinate: (p: number) => {
                             const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
+                            const compositeComponents = compositeBase && Array.isArray(compositeBase.components) ? compositeBase.components : [];
                             const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
-                            const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
+                            const compIndex = comp ? compositeComponents.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self.glyf) {
                                 const gd = self.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {
@@ -685,13 +708,20 @@ export class FontParserTTF {
                                     return (px * xscale) + (py * scale10) + ox;
                                 }
                             }
+                            const rawDx = fullDx[p] ?? 0;
+                            const rawDy = fullDy[p] ?? 0;
+                            const transformed = comp && typeof (comp as any).hasTransform === 'function' && (comp as any).hasTransform() && typeof (comp as any).transformDelta === 'function'
+                                ? (comp as any).transformDelta(rawDx, rawDy)
+                                : null;
+                            const pointDx = transformed ? (transformed.dx ?? rawDx) : rawDx;
                             const ox = compIndex >= 0 && compDx ? compDx[compIndex] ?? 0 : 0;
-                            return base.getXCoordinate(p) + (dx[p] ?? 0) + ox;
+                            return base.getXCoordinate(p) + pointDx + ox;
                         },
                         getYCoordinate: (p: number) => {
                             const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
+                            const compositeComponents = compositeBase && Array.isArray(compositeBase.components) ? compositeBase.components : [];
                             const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
-                            const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
+                            const compIndex = comp ? compositeComponents.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self.glyf) {
                                 const gd = self.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {
@@ -706,8 +736,14 @@ export class FontParserTTF {
                                     return (px * scale01) + (py * yscale) + oy;
                                 }
                             }
+                            const rawDx = fullDx[p] ?? 0;
+                            const rawDy = fullDy[p] ?? 0;
+                            const transformed = comp && typeof (comp as any).hasTransform === 'function' && (comp as any).hasTransform() && typeof (comp as any).transformDelta === 'function'
+                                ? (comp as any).transformDelta(rawDx, rawDy)
+                                : null;
+                            const pointDy = transformed ? (transformed.dy ?? rawDy) : rawDy;
                             const oy = compIndex >= 0 && compDy ? compDy[compIndex] ?? 0 : 0;
-                            return base.getYCoordinate(p) + (dy[p] ?? 0) + oy;
+                            return base.getYCoordinate(p) + pointDy + oy;
                         },
                         getXMaximum: () => (maxX !== -Infinity ? maxX : base.getXMaximum()),
                         getXMinimum: () => (minX !== Infinity ? minX : base.getXMinimum()),

@@ -167,10 +167,12 @@ export class GlyfCompositeDescript implements IGlyphDescription {
     }
 
     private getCompositeComp(i: number): GlyfCompositeComp | null {
+        if (!Array.isArray(this.components)) return null;
         return this.components.find(comp => i >= comp.firstIndex && i < comp.firstIndex + comp.pointCount) || null;
     }
 
     private getCompositeCompEndPt(i: number): GlyfCompositeComp | null {
+        if (!Array.isArray(this.components)) return null;
         return this.components.find(comp => i >= comp.firstContour && i < comp.firstContour + comp.contourCount) || null;
     }
 
@@ -191,7 +193,7 @@ export class GlyfCompositeDescript implements IGlyphDescription {
     }
 
     getComponentCount(): number {
-        return this.components.length;
+        return Array.isArray(this.components) ? this.components.length : 0;
     }
 
     getXMaximum(): number {

@@ -97,6 +97,10 @@ var FontParserWOFF = /** @class */ (function () {
         }
     }
     FontParserWOFF.prototype.emitDiagnostic = function (code, level, phase, message, context, onceKey) {
+        if (!Array.isArray(this.diagnostics))
+            this.diagnostics = [];
+        if (!(this.diagnosticKeys instanceof Set))
+            this.diagnosticKeys = new Set();
         if (onceKey) {
             if (this.diagnosticKeys.has(onceKey))
                 return;
@@ -105,10 +109,14 @@ var FontParserWOFF = /** @class */ (function () {
         this.diagnostics.push({ code: code, level: level, phase: phase, message: message, context: context });
     };
     FontParserWOFF.prototype.getDiagnostics = function (filter) {
+        if (!Array.isArray(this.diagnostics))
+            this.diagnostics = [];
         return this.diagnostics.filter(function (d) { return matchesDiagnosticFilter(d, filter); }).slice();
     };
     FontParserWOFF.prototype.clearDiagnostics = function () {
         this.diagnostics = [];
+        if (!(this.diagnosticKeys instanceof Set))
+            this.diagnosticKeys = new Set();
         this.diagnosticKeys.clear();
     };
     FontParserWOFF.load = function (url) {
@@ -357,13 +365,16 @@ var FontParserWOFF = /** @class */ (function () {
             if (this.gvar && this.variationCoords.length > 0) {
                 var basePointCount = description.getPointCount();
                 var isComposite_1 = description.isComposite();
+                var descriptionComponents = description instanceof GlyfCompositeDescript && Array.isArray(description.components)
+                    ? description.components
+                    : [];
                 var componentCount = isComposite_1 && description instanceof GlyfCompositeDescript
-                    ? description.getComponentCount()
+                    ? (descriptionComponents.length > 0 ? descriptionComponents.length : basePointCount)
                     : 0;
                 var transformSlotCount = 0;
                 if (isComposite_1 && description instanceof GlyfCompositeDescript) {
-                    for (var _i = 0, _6 = description.components; _i < _6.length; _i++) {
-                        var comp = _6[_i];
+                    for (var _i = 0, descriptionComponents_1 = descriptionComponents; _i < descriptionComponents_1.length; _i++) {
+                        var comp = descriptionComponents_1[_i];
                         transformSlotCount += comp.getTransformSlotCount();
                     }
                 }
@@ -411,7 +422,7 @@ var FontParserWOFF = /** @class */ (function () {
                         }
                         var tIndex = componentCount;
                         for (var c = 0; c < componentCount; c++) {
-                            var comp = base_1.components[c];
+                            var comp = descriptionComponents[c];
                             if (!comp)
                                 continue;
                             if (comp.hasTwoByTwo()) {
@@ -875,19 +886,23 @@ var FontParserWOFF = /** @class */ (function () {
             return null;
         }
         if (char.length > 2) {
+            console.warn("getGlyphIndexByChar received multiple characters; using the first code point.");
             this.emitDiagnostic("MULTI_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar received multiple characters; using the first code point.", undefined, "MULTI_CHAR_INPUT");
         }
         var codePoint = char.codePointAt(0);
         if (codePoint == null) {
+            console.error("Failed to get code point from input character.");
             this.emitDiagnostic("CODE_POINT_RESOLVE_FAILED", "warning", "parse", "Failed to resolve code point for character.");
             return null;
         }
         if (!this.cmap) {
+            console.warn("No cmap table available.");
             this.emitDiagnostic("MISSING_TABLE_CMAP", "warning", "parse", "No cmap table available.", undefined, "MISSING_TABLE_CMAP");
             return null;
         }
         var cmapFormat = this.getBestCmapFormatFor(codePoint);
         if (!cmapFormat) {
+            console.warn("No cmap format available for code point.");
             this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint: codePoint });
             return null;
         }
@@ -997,7 +1012,7 @@ var FontParserWOFF = /** @class */ (function () {
         this.setVariationCoords(coords);
     };
     FontParserWOFF.prototype.layoutString = function (text, options) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
         if (options === void 0) { options = {}; }
         var gsubFeatures = (_a = options.gsubFeatures) !== null && _a !== void 0 ? _a : ["liga"];
         var scriptTags = (_b = options.scriptTags) !== null && _b !== void 0 ? _b : ["DFLT", "latn"];
@@ -1007,8 +1022,6 @@ var FontParserWOFF = /** @class */ (function () {
         for (var i = 0; i < glyphIndices.length; i++) {
             var glyphIndex = glyphIndices[i];
             var glyph = this.getGlyph(glyphIndex);
-            if (!glyph)
-                continue;
             var kern = 0;
             if (i < glyphIndices.length - 1) {
                 kern = this.getKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
@@ -1018,7 +1031,7 @@ var FontParserWOFF = /** @class */ (function () {
             }
             positioned.push({
                 glyphIndex: glyphIndex,
-                xAdvance: glyph.advanceWidth + kern,
+                xAdvance: ((_d = glyph === null || glyph === void 0 ? void 0 : glyph.advanceWidth) !== null && _d !== void 0 ? _d : 0) + kern,
                 xOffset: 0,
                 yOffset: 0,
                 yAdvance: 0,
@@ -1043,6 +1056,8 @@ var FontParserWOFF = /** @class */ (function () {
             if (st instanceof SinglePosSubtable ||
                 typeof st.getAdjustment === 'function') {
                 for (var i = 0; i < glyphIndices.length; i++) {
+                    if (!positioned[i])
+                        continue;
                     var adj = (_b = (_a = st).getAdjustment) === null || _b === void 0 ? void 0 : _b.call(_a, glyphIndices[i]);
                     if (!adj)
                         continue;
@@ -1057,6 +1072,8 @@ var FontParserWOFF = /** @class */ (function () {
                 st instanceof PairPosFormat2 ||
                 typeof st.getPairValue === 'function') {
                 for (var i = 0; i < glyphIndices.length - 1; i++) {
+                    if (!positioned[i] || !positioned[i + 1])
+                        continue;
                     var pair = (_h = (_g = st).getPairValue) === null || _h === void 0 ? void 0 : _h.call(_g, glyphIndices[i], glyphIndices[i + 1]);
                     if (!pair)
                         continue;
@@ -1112,6 +1129,8 @@ var FontParserWOFF = /** @class */ (function () {
         };
         var isMarkGlyph = function (gid) { var _a, _b, _c; return ((_c = (_b = (_a = _this.gdef) === null || _a === void 0 ? void 0 : _a.getGlyphClass) === null || _b === void 0 ? void 0 : _b.call(_a, gid)) !== null && _c !== void 0 ? _c : 0) === 3; };
         var _loop_2 = function (i) {
+            if (!positioned[i])
+                return "continue";
             var gid = glyphIndices[i];
             var anchors = getAnchors(gid);
             var markAnchor = anchors.find(function (a) { return a.type === 'mark'; });
@@ -1164,6 +1183,8 @@ var FontParserWOFF = /** @class */ (function () {
             _loop_2(i);
         }
         for (var i = 1; i < glyphIndices.length; i++) {
+            if (!positioned[i])
+                continue;
             var prevAnchors = getAnchors(glyphIndices[i - 1]);
             var currAnchors = getAnchors(glyphIndices[i]);
             var exitAnchor = prevAnchors.find(function (a) { return a.type === 'cursive-exit'; });

@@ -82,6 +82,8 @@ export class FontParserWOFF {
         context?: Record<string, unknown>,
         onceKey?: string
     ): void {
+        if (!Array.isArray(this.diagnostics)) this.diagnostics = [];
+        if (!(this.diagnosticKeys instanceof Set)) this.diagnosticKeys = new Set<string>();
         if (onceKey) {
             if (this.diagnosticKeys.has(onceKey)) return;
             this.diagnosticKeys.add(onceKey);
@@ -90,11 +92,13 @@ export class FontParserWOFF {
     }
 
     public getDiagnostics(filter?: DiagnosticFilter): FontDiagnostic[] {
+        if (!Array.isArray(this.diagnostics)) this.diagnostics = [];
         return this.diagnostics.filter(d => matchesDiagnosticFilter(d, filter)).slice();
     }
 
     public clearDiagnostics(): void {
         this.diagnostics = [];
+        if (!(this.diagnosticKeys instanceof Set)) this.diagnosticKeys = new Set<string>();
         this.diagnosticKeys.clear();
     }
 
@@ -320,12 +324,15 @@ export class FontParserWOFF {
             if (this.gvar && this.variationCoords.length > 0) {
                 const basePointCount = description.getPointCount();
                 const isComposite = description.isComposite();
+                const descriptionComponents = description instanceof GlyfCompositeDescript && Array.isArray(description.components)
+                    ? description.components
+                    : [];
                 const componentCount = isComposite && description instanceof GlyfCompositeDescript
-                    ? description.getComponentCount()
+                    ? (descriptionComponents.length > 0 ? descriptionComponents.length : basePointCount)
                     : 0;
                 let transformSlotCount = 0;
                 if (isComposite && description instanceof GlyfCompositeDescript) {
-                    for (const comp of description.components) {
+                    for (const comp of descriptionComponents) {
                         transformSlotCount += comp.getTransformSlotCount();
                     }
                 }
@@ -370,7 +377,7 @@ export class FontParserWOFF {
                         }
                         let tIndex = componentCount;
                         for (let c = 0; c < componentCount; c++) {
-                            const comp = base.components[c];
+                            const comp = descriptionComponents[c];
                             if (!comp) continue;
                             if (comp.hasTwoByTwo()) {
                                 const idx1 = tIndex++;
@@ -825,6 +832,7 @@ export class FontParserWOFF {
             return null;
         }
         if (char.length > 2) {
+            console.warn("getGlyphIndexByChar received multiple characters; using the first code point.");
             this.emitDiagnostic(
                 "MULTI_CHAR_INPUT",
                 "warning",
@@ -837,16 +845,19 @@ export class FontParserWOFF {
 
         const codePoint = char.codePointAt(0);
         if (codePoint == null) {
+            console.error("Failed to get code point from input character.");
             this.emitDiagnostic("CODE_POINT_RESOLVE_FAILED", "warning", "parse", "Failed to resolve code point for character.");
             return null;
         }
 
         if (!this.cmap) {
+            console.warn("No cmap table available.");
             this.emitDiagnostic("MISSING_TABLE_CMAP", "warning", "parse", "No cmap table available.", undefined, "MISSING_TABLE_CMAP");
             return null;
         }
         const cmapFormat = this.getBestCmapFormatFor(codePoint);
         if (!cmapFormat) {
+            console.warn("No cmap format available for code point.");
             this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint });
             return null;
         }
@@ -961,7 +972,6 @@ export class FontParserWOFF {
         for (let i = 0; i < glyphIndices.length; i++) {
             const glyphIndex = glyphIndices[i];
             const glyph = this.getGlyph(glyphIndex);
-            if (!glyph) continue;
 
             let kern = 0;
             if (i < glyphIndices.length - 1) {
@@ -973,7 +983,7 @@ export class FontParserWOFF {
 
             positioned.push({
                 glyphIndex,
-                xAdvance: glyph.advanceWidth + kern,
+                xAdvance: (glyph?.advanceWidth ?? 0) + kern,
                 xOffset: 0,
                 yOffset: 0,
                 yAdvance: 0,
@@ -1003,6 +1013,7 @@ export class FontParserWOFF {
                 typeof (st as any).getAdjustment === 'function'
             ) {
                 for (let i = 0; i < glyphIndices.length; i++) {
+                    if (!positioned[i]) continue;
                     const adj = (st as any).getAdjustment?.(glyphIndices[i]);
                     if (!adj) continue;
                     positioned[i].xOffset += adj.xPlacement ?? 0;
@@ -1018,6 +1029,7 @@ export class FontParserWOFF {
                 typeof (st as any).getPairValue === 'function'
             ) {
                 for (let i = 0; i < glyphIndices.length - 1; i++) {
+                    if (!positioned[i] || !positioned[i + 1]) continue;
                     const pair = (st as any).getPairValue?.(glyphIndices[i], glyphIndices[i + 1]);
                     if (!pair) continue;
                     const v1 = pair.v1 || {};
@@ -1088,6 +1100,7 @@ export class FontParserWOFF {
         const isMarkGlyph = (gid: number) => (this.gdef?.getGlyphClass?.(gid) ?? 0) === 3;
 
         for (let i = 0; i < glyphIndices.length; i++) {
+            if (!positioned[i]) continue;
             const gid = glyphIndices[i];
             const anchors = getAnchors(gid);
             const markAnchor = anchors.find(a => a.type === 'mark');
@@ -1138,6 +1151,7 @@ export class FontParserWOFF {
         }
 
         for (let i = 1; i < glyphIndices.length; i++) {
+            if (!positioned[i]) continue;
             const prevAnchors = getAnchors(glyphIndices[i - 1]);
             const currAnchors = getAnchors(glyphIndices[i]);
             const exitAnchor = prevAnchors.find(a => a.type === 'cursive-exit');

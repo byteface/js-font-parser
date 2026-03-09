@@ -142,9 +142,13 @@ var GlyfCompositeDescript = /** @class */ (function () {
         return this.getCompositeComp(i);
     };
     GlyfCompositeDescript.prototype.getCompositeComp = function (i) {
+        if (!Array.isArray(this.components))
+            return null;
         return this.components.find(function (comp) { return i >= comp.firstIndex && i < comp.firstIndex + comp.pointCount; }) || null;
     };
     GlyfCompositeDescript.prototype.getCompositeCompEndPt = function (i) {
+        if (!Array.isArray(this.components))
+            return null;
         return this.components.find(function (comp) { return i >= comp.firstContour && i < comp.firstContour + comp.contourCount; }) || null;
     };
     GlyfCompositeDescript.prototype.getInstructions = function () {
@@ -160,7 +164,7 @@ var GlyfCompositeDescript = /** @class */ (function () {
         return this.contourCount;
     };
     GlyfCompositeDescript.prototype.getComponentCount = function () {
-        return this.components.length;
+        return Array.isArray(this.components) ? this.components.length : 0;
     };
     GlyfCompositeDescript.prototype.getXMaximum = function () {
         return this.xMax;
