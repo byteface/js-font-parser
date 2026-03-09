@@ -63,6 +63,11 @@ Removing those extensions may compile but break runtime module resolution in dem
 - `proj/fontparser/README.md` (CLI)
 - `tests/golden/README.md`
 
+Use `docs/WISHLIST.md` as the single source of truth for:
+- desired core features
+- known limitations
+- remaining work and close-out criteria
+
 ## Bundle Output
 
 `npm run build` writes bundled output to:

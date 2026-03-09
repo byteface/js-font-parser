@@ -35,10 +35,12 @@
 1. **Tools shared-lib cleanup**
    - Why still needed: tool pages still duplicate parsing, UI wiring, and render helpers.
    - Needed to close: extract common modules and migrate highest-duplication tools first.
-
-2. **Inline docs / cleanup pass**
-   - Why still needed: API/docs improved, but code comments and docs are uneven across parser/layout hot paths.
-   - Needed to close: targeted pass on core parser + layout modules and align docs with current behavior.
+2. **Architecture map (library-first)**
+   - Why still needed: parser/table/layout interactions are implemented but not documented as one cohesive flow.
+   - Needed to close: add a concise architecture doc covering load pipeline, table wiring, shaping/layout flow, variation path, and render surfaces.
+3. **Known limitations matrix**
+   - Why still needed: constraints are currently spread across code/comments/tool notes.
+   - Needed to close: add one section in this file listing current limitations by area (format/shaping/layout/hinting/rendering) with closure criteria.
 
 ## Maintenance
 1. **Node version policy**
