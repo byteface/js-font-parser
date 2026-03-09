@@ -164,8 +164,9 @@ var FontParserTTF = /** @class */ (function () {
         this.cpal = this.getTable(Table.CPAL);
         this.gpos = this.getTable(Table.GPOS);
         this.gdef = this.getTable(Table.GDEF);
-        if (this.gsub && this.gdef && typeof this.gsub.setGdef === 'function') {
-            this.gsub.setGdef(this.gdef);
+        var maybeGsubWithGdef = this.gsub;
+        if (this.gsub && this.gdef && typeof maybeGsubWithGdef.setGdef === 'function') {
+            maybeGsubWithGdef.setGdef(this.gdef);
         }
         this.fvar = this.getTable(Table.fvar);
         this.svg = this.getTable(Table.SVG);

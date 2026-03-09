@@ -140,41 +140,110 @@ var FontParserWOFF = /** @class */ (function () {
             });
         });
     };
-    // Initialize the FontParserWOFF instance (legacy sync path; expects uncompressed WOFF)
+    // Initialize from raw WOFF bytes. This sync path supports only stored (uncompressed)
+    // table payloads; compressed WOFF should use FontParserWOFF.load().
     FontParserWOFF.prototype.init = function (byteData) {
-        // Read the WOFF header
-        var woffVersion = byteData.readUInt(); // 4 bytes
-        var woffSize = byteData.readUInt(); // 4 bytes
-        var woffNumTables = byteData.readUnsignedShort(); // 2 bytes
-        var woffReserved = byteData.readUnsignedShort(); // 2 bytes
-        var woffTotalSfntSize = byteData.readUInt(); // 4 bytes
-        var woffMajorVersion = byteData.readUnsignedShort(); // 2 bytes
-        var woffMinorVersion = byteData.readUnsignedShort(); // 2 bytes
-        var woffMetaOffset = byteData.readUInt(); // 4 bytes
-        var woffMetaLength = byteData.readUInt(); // 4 bytes
-        var woffMetadata = byteData.readUInt(); // 4 bytes
-        // Initialize the table directory
-        this.tables = [];
-        var offset = 0;
-        // Read each table
-        for (var i = 0; i < woffNumTables; i++) {
-            var tag = byteData.readUInt(); // 4 bytes
-            var offsetTable = byteData.readUInt(); // 4 bytes
-            var lengthTable = byteData.readUInt(); // 4 bytes
-            var checksumTable = byteData.readUInt(); // 4 bytes
-            // Store table information for later extraction
-            this.tables.push({ tag: tag, offset: offsetTable, length: lengthTable });
+        var _a;
+        var rawBytes = new Uint8Array(byteData.dataView.buffer, byteData.dataView.byteOffset, byteData.dataView.byteLength);
+        try {
+            var sfnt = FontParserWOFF.decodeWoffToSfntSync(rawBytes);
+            this.parseTTF(new ByteArray(sfnt));
+            return;
         }
-        // Legacy path assumes uncompressed WOFF with contiguous tables (not generally safe).
-        // Prefer FontParserWOFF.load which rebuilds an sfnt buffer with decompression support.
-        var ttfData = new Uint8Array(byteData.dataView.buffer, byteData.dataView.byteOffset, byteData.dataView.byteLength);
-        this.parseTTF(new ByteArray(ttfData));
+        catch (error) {
+            var message = (_a = error === null || error === void 0 ? void 0 : error.message) !== null && _a !== void 0 ? _a : "";
+            if (!/Compressed WOFF table detected/i.test(message)) {
+                throw error;
+            }
+            // Compatibility fallback: retain legacy behavior for compressed WOFF
+            // in sync call sites (FontParser.fromArrayBuffer).
+            this.parseTTF(new ByteArray(rawBytes));
+        }
     };
     FontParserWOFF.readUint32 = function (view, offset) {
         return view.getUint32(offset, false);
     };
     FontParserWOFF.readUint16 = function (view, offset) {
         return view.getUint16(offset, false);
+    };
+    FontParserWOFF.decodeWoffToSfntSync = function (buffer) {
+        var view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+        if (view.byteLength < 44) {
+            throw new Error('Invalid WOFF input: too short.');
+        }
+        var signature = this.readUint32(view, 0);
+        if (signature !== this.WOFF_SIGNATURE) {
+            throw new Error('Not a valid WOFF file.');
+        }
+        var flavor = this.readUint32(view, 4);
+        var declaredLength = this.readUint32(view, 8);
+        var numTables = this.readUint16(view, 12);
+        var totalSfntSize = this.readUint32(view, 16);
+        if (declaredLength > view.byteLength) {
+            throw new Error('Invalid WOFF header: declared length exceeds available bytes.');
+        }
+        if (numTables <= 0) {
+            throw new Error('Invalid WOFF header: numTables must be greater than zero.');
+        }
+        var tableDirOffset = 44;
+        if (tableDirOffset + numTables * 20 > view.byteLength) {
+            throw new Error('Invalid WOFF header: table directory exceeds available bytes.');
+        }
+        var entries = [];
+        for (var i = 0; i < numTables; i++) {
+            var offset = tableDirOffset + i * 20;
+            var entry = {
+                tag: this.readUint32(view, offset),
+                offset: this.readUint32(view, offset + 4),
+                compLength: this.readUint32(view, offset + 8),
+                origLength: this.readUint32(view, offset + 12),
+                checksum: this.readUint32(view, offset + 16)
+            };
+            if (entry.offset > view.byteLength || entry.compLength > view.byteLength - entry.offset) {
+                throw new Error('Invalid WOFF table entry: table offset/length out of bounds.');
+            }
+            if (entry.compLength !== entry.origLength) {
+                throw new Error('Compressed WOFF table detected in sync path. Use FontParserWOFF.load() for decompression support.');
+            }
+            entries.push(entry);
+        }
+        entries.sort(function (a, b) { return a.tag - b.tag; });
+        var maxPower = Math.pow(2, Math.floor(Math.log2(numTables)));
+        var searchRange = maxPower * 16;
+        var entrySelector = Math.log2(maxPower);
+        var rangeShift = numTables * 16 - searchRange;
+        if (totalSfntSize < 12 + numTables * 16) {
+            throw new Error('Invalid WOFF header: totalSfntSize is too small for sfnt directory.');
+        }
+        var sfntBuffer = new ArrayBuffer(totalSfntSize);
+        var sfntView = new DataView(sfntBuffer);
+        sfntView.setUint32(0, flavor, false);
+        sfntView.setUint16(4, numTables, false);
+        sfntView.setUint16(6, searchRange, false);
+        sfntView.setUint16(8, entrySelector, false);
+        sfntView.setUint16(10, rangeShift, false);
+        var dataOffset = 12 + numTables * 16;
+        var tableRecords = [];
+        for (var _i = 0, entries_1 = entries; _i < entries_1.length; _i++) {
+            var entry = entries_1[_i];
+            dataOffset = (dataOffset + 3) & ~3;
+            tableRecords.push(__assign(__assign({}, entry), { sfntOffset: dataOffset }));
+            if (dataOffset + entry.origLength > sfntBuffer.byteLength) {
+                throw new Error('Invalid WOFF header: table data exceeds totalSfntSize.');
+            }
+            var source = new Uint8Array(buffer.buffer, buffer.byteOffset + entry.offset, entry.origLength);
+            var target = new Uint8Array(sfntBuffer, dataOffset, entry.origLength);
+            target.set(source);
+            dataOffset += entry.origLength;
+        }
+        tableRecords.forEach(function (record, i) {
+            var base = 12 + i * 16;
+            sfntView.setUint32(base, record.tag, false);
+            sfntView.setUint32(base + 4, record.checksum, false);
+            sfntView.setUint32(base + 8, record.sfntOffset, false);
+            sfntView.setUint32(base + 12, record.origLength, false);
+        });
+        return new Uint8Array(sfntBuffer);
     };
     FontParserWOFF.inflate = function (data) {
         return __awaiter(this, void 0, void 0, function () {
@@ -201,7 +270,7 @@ var FontParserWOFF = /** @class */ (function () {
     };
     FontParserWOFF.decodeWoffToSfnt = function (buffer) {
         return __awaiter(this, void 0, void 0, function () {
-            var view, signature, flavor, length, numTables, totalSfntSize, tableDirOffset, entries, i, offset, entry, maxPower, searchRange, entrySelector, rangeShift, sfntBuffer, sfntView, dataOffset, tableRecords, _i, entries_1, entry, aligned, tableData, decoded, target;
+            var view, signature, flavor, length, numTables, totalSfntSize, tableDirOffset, entries, i, offset, entry, maxPower, searchRange, entrySelector, rangeShift, sfntBuffer, sfntView, dataOffset, tableRecords, _i, entries_2, entry, aligned, tableData, decoded, target;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -256,11 +325,11 @@ var FontParserWOFF = /** @class */ (function () {
                         sfntView.setUint16(10, rangeShift, false);
                         dataOffset = 12 + numTables * 16;
                         tableRecords = [];
-                        _i = 0, entries_1 = entries;
+                        _i = 0, entries_2 = entries;
                         _a.label = 1;
                     case 1:
-                        if (!(_i < entries_1.length)) return [3 /*break*/, 5];
-                        entry = entries_1[_i];
+                        if (!(_i < entries_2.length)) return [3 /*break*/, 5];
+                        entry = entries_2[_i];
                         aligned = (dataOffset + 3) & ~3;
                         dataOffset = aligned;
                         tableRecords.push(__assign(__assign({}, entry), { sfntOffset: dataOffset }));
@@ -329,8 +398,9 @@ var FontParserWOFF = /** @class */ (function () {
         this.cpal = this.getTable(Table.CPAL);
         this.gpos = this.getTable(Table.GPOS);
         this.gdef = this.getTable(Table.GDEF);
-        if (this.gsub && this.gdef && typeof this.gsub.setGdef === 'function') {
-            this.gsub.setGdef(this.gdef);
+        var maybeGsubWithGdef = this.gsub;
+        if (this.gsub && this.gdef && typeof maybeGsubWithGdef.setGdef === 'function') {
+            maybeGsubWithGdef.setGdef(this.gdef);
         }
         this.svg = this.getTable(Table.SVG);
         this.fvar = this.getTable(Table.fvar);
@@ -1519,6 +1589,7 @@ var FontParserWOFF = /** @class */ (function () {
         }
         return formats[0];
     };
+    FontParserWOFF.WOFF_SIGNATURE = 0x774f4646;
     return FontParserWOFF;
 }());
 export { FontParserWOFF };

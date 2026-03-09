@@ -53,11 +53,11 @@ export class FontParserTTF {
     private pName: NameTable | null = null;
     private post: PostTable | null = null;
     private gsub: GsubTable | null = null;
-    private kern: any | null = null;
+    private kern: { getKerningValue?: (leftGlyph: number, rightGlyph: number) => number | null } | null = null;
     private colr: ColrTable | null = null;
     private cpal: CpalTable | null = null;
     private gpos: GposTable | null = null;
-    private gdef: any | null = null;
+    private gdef: { getGlyphClass?: (glyphId: number) => number } | null = null;
     private fvar: FvarTable | null = null;
     private svg: SvgTable | null = null;
     private gvar: GvarTable | null = null;
@@ -67,7 +67,7 @@ export class FontParserTTF {
 
     // Table directory and tables
     private tableDir: TableDirectory | null = null;
-    private tables: Array<any> = [];
+    private tables: ITable[] = [];
 
     // Static load method that returns a Promise
     static load(url: string): Promise<FontParserTTF> {
@@ -145,13 +145,14 @@ export class FontParserTTF {
         this.pName = this.getTable(Table.pName) as NameTable | null;
         this.post = this.getTable(Table.post) as PostTable | null;
         this.gsub = this.getTable(Table.GSUB) as GsubTable | null;
-        this.kern = this.getTable(Table.kern) as any | null;
+        this.kern = this.getTable(Table.kern) as { getKerningValue?: (leftGlyph: number, rightGlyph: number) => number | null } | null;
         this.colr = this.getTable(Table.COLR) as ColrTable | null;
         this.cpal = this.getTable(Table.CPAL) as CpalTable | null;
         this.gpos = this.getTable(Table.GPOS) as GposTable | null;
-        this.gdef = this.getTable(Table.GDEF) as any | null;
-        if (this.gsub && this.gdef && typeof (this.gsub as any).setGdef === 'function') {
-            (this.gsub as any).setGdef(this.gdef);
+        this.gdef = this.getTable(Table.GDEF) as { getGlyphClass?: (glyphId: number) => number } | null;
+        const maybeGsubWithGdef = this.gsub as GsubTable & { setGdef?: (gdef: { getGlyphClass?: (glyphId: number) => number } | null) => void };
+        if (this.gsub && this.gdef && typeof maybeGsubWithGdef.setGdef === 'function') {
+            maybeGsubWithGdef.setGdef(this.gdef);
         }
         this.fvar = this.getTable(Table.fvar) as FvarTable | null;
         this.svg = this.getTable(Table.SVG) as SvgTable | null;
