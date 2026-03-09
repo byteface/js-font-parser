@@ -21,6 +21,11 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
 var LayoutEngine = /** @class */ (function () {
     function LayoutEngine() {
     }
+    /**
+     * Generic text layout for wrapping/alignment.
+     * Works on the parser surface (`getGlyphByChar`, kerning helpers) and
+     * is intentionally independent from GSUB/GPOS internals.
+     */
     LayoutEngine.layoutText = function (font, text, options) {
         var _this = this;
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y;
@@ -152,6 +157,10 @@ var LayoutEngine = /** @class */ (function () {
             lineHeight: lineHeight
         };
     };
+    /**
+     * Tokenize by words/whitespace/newlines with Segmenter when available.
+     * Falls back to a deterministic character scanner otherwise.
+     */
     LayoutEngine.tokenize = function (text, collapseSpaces, preserveNbsp, tabSize) {
         if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
             var segments_1 = [];
@@ -251,6 +260,10 @@ var LayoutEngine = /** @class */ (function () {
             tokens.push(buffer);
         return tokens;
     };
+    /**
+     * Resolve characters to positioned glyph primitives with optional kerning.
+     * Missing glyphs are skipped and emitted as layout diagnostics.
+     */
     LayoutEngine.buildTokenGlyphs = function (font, token, letterSpacing, useKerning, emitDiagnostic) {
         var glyphs = [];
         var prevGlyph = null;

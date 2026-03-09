@@ -62,6 +62,7 @@
 
   <script type="module">
     import { FontParser } from "../dist/data/FontParser.js";
+    import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
 
     const fonts = [
       { name: "Noto Sans", url: "../truetypefonts/noto/NotoSans-Regular.ttf" },
@@ -88,24 +89,7 @@
     const ctx = canvas.getContext("2d");
 
     let font = null;
-    const cache = new Map();
-
-    function populateFonts() {
-      fontSelect.innerHTML = "";
-      fonts.forEach((f, i) => {
-        const opt = document.createElement("option");
-        opt.value = String(i);
-        opt.textContent = f.name;
-        fontSelect.appendChild(opt);
-      });
-    }
-
-    async function loadFont(url) {
-      if (cache.has(url)) return cache.get(url);
-      const loaded = await FontParser.load(url);
-      cache.set(url, loaded);
-      return loaded;
-    }
+    const loadFont = createFontLoader(FontParser.load);
 
     function cloneGlyphPoints(glyph) {
       const pts = [];
@@ -234,7 +218,7 @@
       const s = Number(strength.value) || 0;
       const mode = snapMode.value;
       const view = viewMode.value;
-      const upem = font.getTableByType?.(0x68656164)?.unitsPerEm ?? 1000;
+      const upem = typeof font.getUnitsPerEm === "function" ? font.getUnitsPerEm() : 1000;
       const scale = px / upem;
       const left = 30;
       const top = 30;
@@ -289,7 +273,7 @@
     }
 
     async function boot() {
-      const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+      const selected = getSelectedFont(fontSelect, fonts);
       try {
         font = await loadFont(selected.url);
         render();
@@ -298,7 +282,7 @@
       }
     }
 
-    populateFonts();
+    populateFontSelect(fontSelect, fonts);
     fontSelect.addEventListener("change", boot);
     textInput.addEventListener("input", render);
     pixelSize.addEventListener("input", render);

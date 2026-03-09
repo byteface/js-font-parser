@@ -84,6 +84,7 @@
     import { FontParser } from '../dist/data/FontParser.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
     import { getFontList } from './shared/font-catalog.js';
+    import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
 
     const ui = {
       fontA: document.getElementById('fontA'),
@@ -102,28 +103,15 @@
     };
 
     const fonts = getFontList('featureMatrix');
-    const cache = new Map();
+    const loadFont = createFontLoader(FontParser.load);
     let fontA = null;
     let fontB = null;
 
     function populate() {
-      [ui.fontA, ui.fontB].forEach((select, idx) => {
-        select.innerHTML = '';
-        fonts.forEach((f, i) => {
-          const opt = document.createElement('option');
-          opt.value = String(i);
-          opt.textContent = f.name;
-          select.appendChild(opt);
-        });
-        select.value = String(Math.min(idx, fonts.length - 1));
-      });
-    }
-
-    async function loadFont(url) {
-      if (cache.has(url)) return cache.get(url);
-      const parsed = await FontParser.load(url);
-      cache.set(url, parsed);
-      return parsed;
+      populateFontSelect(ui.fontA, fonts);
+      populateFontSelect(ui.fontB, fonts);
+      ui.fontA.value = "0";
+      ui.fontB.value = String(fonts.length > 1 ? 1 : 0);
     }
 
     function drawRulers(ctx, width, baselineY, ascenderY, descenderY, xHeightY, capHeightY) {
@@ -210,8 +198,8 @@
     }
 
     async function loadBoth() {
-      fontA = await loadFont(fonts[Number(ui.fontA.value)]?.url ?? fonts[0].url);
-      fontB = await loadFont(fonts[Number(ui.fontB.value)]?.url ?? fonts[0].url);
+      fontA = await loadFont(getSelectedFont(ui.fontA, fonts).url);
+      fontB = await loadFont(getSelectedFont(ui.fontB, fonts).url);
       render();
     }
 

@@ -124,6 +124,7 @@
     <script type="module">
         import { FontParser } from '../dist/data/FontParser.js';
         import { Table } from '../dist/table/Table.js';
+        import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
 
         const fontSelect = document.getElementById('fontSelect');
         const glyphInput = document.getElementById('glyphInput');
@@ -155,28 +156,11 @@
             { name: 'Noto Sans', url: '../truetypefonts/noto/NotoSans-Regular.ttf' }
         ];
 
-        const cache = new Map();
+        const loadFont = createFontLoader(FontParser.load);
         let font = null;
         let glyphCount = 0;
         const cell = 48;
         let gridCols = 6;
-
-        function populateFonts() {
-            fontSelect.innerHTML = '';
-            fonts.forEach((f, i) => {
-                const opt = document.createElement('option');
-                opt.value = String(i);
-                opt.textContent = f.name;
-                fontSelect.appendChild(opt);
-            });
-        }
-
-        async function loadFont(url) {
-            if (cache.has(url)) return cache.get(url);
-            const f = await FontParser.load(url);
-            cache.set(url, f);
-            return f;
-        }
 
         function clear(ctx, canvas) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -287,8 +271,7 @@
 
             const points = glyph.points;
             const contours = getContours(points);
-            const head = font.getTableByType(Table.head);
-            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const unitsPerEm = typeof font.getUnitsPerEm === 'function' ? font.getUnitsPerEm() : 1000;
             const scale = 240 / unitsPerEm;
 
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -412,7 +395,7 @@
         });
 
         async function loadAndRender() {
-            const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+            const selected = getSelectedFont(fontSelect, fonts);
             font = await loadFont(selected.url);
             glyphCount = font.getNumGlyphs();
             gridCols = Math.max(4, Math.floor(gridCanvas.width / cell));
@@ -432,7 +415,7 @@
             el.addEventListener('change', renderInspector);
         });
 
-        populateFonts();
+        populateFontSelect(fontSelect, fonts);
         loadAndRender();
     </script>
 </body>

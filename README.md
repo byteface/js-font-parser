@@ -43,6 +43,8 @@ Pages must be served over HTTP (not opened via `file://`).
 python3 -m http.server 8080
 ```
 
+Demo pages can reuse shared wiring in `demos/shared/` (for example `demo-scaffold.js` for font picker population and cached async font loading) to keep UI glue out of parser core.
+
 ## WOFF2 Support
 
 WOFF2 decoding requires a decoder in runtime. Provide one via:
@@ -62,6 +64,11 @@ Removing those extensions may compile but break runtime module resolution in dem
 - `docs/WISHLIST.md`
 - `proj/fontparser/README.md` (CLI)
 - `tests/golden/README.md`
+
+Use `docs/WISHLIST.md` as the single source of truth for:
+- desired core features
+- known limitations
+- remaining work and close-out criteria
 
 ## Bundle Output
 

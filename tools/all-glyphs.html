@@ -121,6 +121,7 @@
         import { FontParserWOFF } from "../dist/data/FontParserWOFF.js";
         import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
         import { Table } from "../dist/table/Table.js";
+        import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
 
         const fontSelect = document.getElementById("fontSelect");
         const fillRuleSelect = document.getElementById("fillRuleSelect");
@@ -169,32 +170,15 @@
             { name: "Source Code Pro Regular (OTF)", url: "../truetypefonts/source-code-pro/SourceCodePro-Regular.otf" }
         ];
 
-        const cache = new Map();
-
-        function populateFonts() {
-            fontSelect.innerHTML = "";
-            fonts.forEach((f, i) => {
-                const option = document.createElement("option");
-                option.value = String(i);
-                option.textContent = f.name;
-                fontSelect.appendChild(option);
-            });
-        }
+        const loadFont = createFontLoader(async (url) => {
+            if (isWoff(url)) {
+                return FontParserWOFF.load(url);
+            }
+            return FontParser.load(url);
+        });
 
         function isWoff(url) {
             return url.toLowerCase().endsWith(".woff");
-        }
-
-        async function loadFont(url) {
-            if (cache.has(url)) return cache.get(url);
-            let font;
-            if (isWoff(url)) {
-                font = await FontParserWOFF.load(url);
-            } else {
-                font = await FontParser.load(url);
-            }
-            cache.set(url, font);
-            return font;
         }
 
         function clearCanvas(width, height) {
@@ -266,9 +250,8 @@
                 return;
             }
 
-            const head = font.getTableByType(Table.head);
             const hhea = font.getTableByType(Table.hhea);
-            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const unitsPerEm = typeof font.getUnitsPerEm === "function" ? font.getUnitsPerEm() : 1000;
             const ascender = hhea?.ascender ?? unitsPerEm * 0.8;
             const descender = hhea?.descender ?? -unitsPerEm * 0.2;
             const emHeight = ascender - descender || unitsPerEm;
@@ -314,7 +297,7 @@
                             ctx,
                             glyph,
                             x + cell * 0.5 - (centerX * scale),
-                            y + cell * 0.7 + (centerY * scale),
+                            baselineY,
                             scale
                         );
                     }
@@ -329,7 +312,7 @@
         }
 
         async function render() {
-            const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+            const selected = getSelectedFont(fontSelect, fonts);
             status.textContent = `Loading ${selected.name}...`;
             status.classList.remove("warn");
             try {
@@ -344,7 +327,7 @@
 
         renderBtn.addEventListener("click", render);
         debugBtn.addEventListener("click", async () => {
-            const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+            const selected = getSelectedFont(fontSelect, fonts);
             const index = Number(debugGlyphInput.value);
             if (!Number.isFinite(index)) {
                 console.warn("Debug glyph index is not set.");
@@ -370,7 +353,7 @@
         indexInput.addEventListener("change", render);
         pointsInput.addEventListener("change", render);
 
-        populateFonts();
+        populateFontSelect(fontSelect, fonts);
         render();
     </script>
 </body>

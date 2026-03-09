@@ -58,6 +58,11 @@ type FontLike = {
 };
 
 export class LayoutEngine {
+    /**
+     * Generic text layout for wrapping/alignment.
+     * Works on the parser surface (`getGlyphByChar`, kerning helpers) and
+     * is intentionally independent from GSUB/GPOS internals.
+     */
     static layoutText(font: FontLike, text: string, options: LayoutOptions = {}): LayoutResult {
         const maxWidth = options.maxWidth ?? 0;
         const align = options.align ?? 'left';
@@ -192,6 +197,10 @@ export class LayoutEngine {
         };
     }
 
+    /**
+     * Tokenize by words/whitespace/newlines with Segmenter when available.
+     * Falls back to a deterministic character scanner otherwise.
+     */
     private static tokenize(text: string, collapseSpaces: boolean, preserveNbsp: boolean, tabSize: number): string[] {
         if (typeof Intl !== 'undefined' && typeof (Intl as any).Segmenter === 'function') {
             const segments: string[] = [];
@@ -275,6 +284,10 @@ export class LayoutEngine {
         return tokens;
     }
 
+    /**
+     * Resolve characters to positioned glyph primitives with optional kerning.
+     * Missing glyphs are skipped and emitted as layout diagnostics.
+     */
     private static buildTokenGlyphs(
         font: FontLike,
         token: string,

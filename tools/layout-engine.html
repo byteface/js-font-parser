@@ -176,7 +176,7 @@
         import { FontParser } from '../dist/data/FontParser.js';
         import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
         import { LayoutEngine } from '../dist/layout/LayoutEngine.js';
-        import { Table } from '../dist/table/Table.js';
+        import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
 
         const fontSelect = document.getElementById('fontSelect');
         const widthInput = document.getElementById('widthInput');
@@ -215,25 +215,8 @@
             { name: 'DevilInside', url: '../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf' }
         ];
 
-        const cache = new Map();
+        const loadFont = createFontLoader(FontParser.load);
         let font = null;
-
-        function populateFonts() {
-            fontSelect.innerHTML = '';
-            fonts.forEach((f, i) => {
-                const opt = document.createElement('option');
-                opt.value = String(i);
-                opt.textContent = f.name;
-                fontSelect.appendChild(opt);
-            });
-        }
-
-        async function loadFont(url) {
-            if (cache.has(url)) return cache.get(url);
-            const f = await FontParser.load(url);
-            cache.set(url, f);
-            return f;
-        }
 
         function clear() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -259,8 +242,7 @@
             if (typeof font.clearDiagnostics === 'function') {
                 font.clearDiagnostics();
             }
-            const head = font.getTableByType(Table.head);
-            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const unitsPerEm = typeof font.getUnitsPerEm === 'function' ? font.getUnitsPerEm() : 1000;
             const scale = 48 / unitsPerEm;
             const lineHeight = Number(lineInput.value);
             const width = Number(widthInput.value);
@@ -307,7 +289,7 @@
         }
 
         async function loadAndRender() {
-            const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+            const selected = getSelectedFont(fontSelect, fonts);
             font = await loadFont(selected.url);
             render();
         }
@@ -328,7 +310,7 @@
         hyphenSelect.addEventListener('change', render);
         textInput.addEventListener('input', render);
 
-        populateFonts();
+        populateFontSelect(fontSelect, fonts);
         loadAndRender();
     </script>
 </body>

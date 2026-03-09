@@ -403,6 +403,7 @@ export class FontParserWOFF {
                     let minY = Infinity;
                     let maxY = -Infinity;
                     for (let p = 0; p < basePointCount; p++) {
+                        const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
                         const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
                         const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                         let x = base.getXCoordinate(p);
@@ -440,6 +441,7 @@ export class FontParserWOFF {
                         getEndPtOfContours: (c: number) => base.getEndPtOfContours(c),
                         getFlags: (p: number) => base.getFlags(p),
                         getXCoordinate: (p: number) => {
+                            const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
                             const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
                             const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self.glyf) {
@@ -460,6 +462,7 @@ export class FontParserWOFF {
                             return base.getXCoordinate(p) + (dx[p] ?? 0) + ox;
                         },
                         getYCoordinate: (p: number) => {
+                            const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
                             const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
                             const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self.glyf) {
@@ -512,6 +515,97 @@ export class FontParserWOFF {
     // Get the descent value
     public getDescent(): number {
         return this.hhea?.descender ?? 0;
+    }
+
+    public getUnitsPerEm(): number {
+        return this.head?.unitsPerEm ?? 1000;
+    }
+
+    public getGlyphPointsByChar(
+        char: string,
+        options: { sampleStep?: number } = {}
+    ): Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean }> {
+        const glyph = this.getGlyphByChar(char);
+        if (!glyph) return [];
+        const sampleStep = Math.max(1, Math.floor(options.sampleStep ?? 1));
+        const points: Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean }> = [];
+        for (let i = 0; i < glyph.getPointCount(); i += sampleStep) {
+            const p = glyph.getPoint(i);
+            if (!p) continue;
+            points.push({
+                x: p.x,
+                y: p.y,
+                onCurve: p.onCurve,
+                endOfContour: p.endOfContour
+            });
+        }
+        return points;
+    }
+
+    public measureText(
+        text: string,
+        options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean; gposFeatures?: string[]; letterSpacing?: number } = {}
+    ): { advanceWidth: number; glyphCount: number } {
+        const layout = this.layoutString(text, options);
+        const letterSpacing = options.letterSpacing ?? 0;
+        let advanceWidth = 0;
+        for (let i = 0; i < layout.length; i++) {
+            advanceWidth += layout[i].xAdvance;
+            if (letterSpacing !== 0 && i < layout.length - 1) advanceWidth += letterSpacing;
+        }
+        return { advanceWidth, glyphCount: layout.length };
+    }
+
+    public layoutToPoints(
+        text: string,
+        options: {
+            x?: number;
+            y?: number;
+            fontSize?: number;
+            sampleStep?: number;
+            gsubFeatures?: string[];
+            scriptTags?: string[];
+            gpos?: boolean;
+            gposFeatures?: string[];
+            letterSpacing?: number;
+        } = {}
+    ): {
+        points: Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean; glyphIndex: number; pointIndex: number }>;
+        advanceWidth: number;
+        scale: number;
+    } {
+        const layout = this.layoutString(text, options);
+        const sampleStep = Math.max(1, Math.floor(options.sampleStep ?? 1));
+        const fontSize = options.fontSize ?? this.getUnitsPerEm();
+        const scale = fontSize / this.getUnitsPerEm();
+        const originX = options.x ?? 0;
+        const originY = options.y ?? 0;
+        const letterSpacing = options.letterSpacing ?? 0;
+        const points: Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean; glyphIndex: number; pointIndex: number }> = [];
+
+        let penX = 0;
+        for (let i = 0; i < layout.length; i++) {
+            const item = layout[i];
+            const glyph = this.getGlyph(item.glyphIndex);
+            if (glyph) {
+                for (let pIndex = 0; pIndex < glyph.getPointCount(); pIndex += sampleStep) {
+                    const p = glyph.getPoint(pIndex);
+                    if (!p) continue;
+                    points.push({
+                        x: originX + (penX + item.xOffset + p.x) * scale,
+                        y: originY - (item.yOffset + p.y) * scale,
+                        onCurve: p.onCurve,
+                        endOfContour: p.endOfContour,
+                        glyphIndex: item.glyphIndex,
+                        pointIndex: pIndex
+                    });
+                }
+            }
+            penX += item.xAdvance;
+            if (letterSpacing !== 0 && i < layout.length - 1) penX += letterSpacing;
+        }
+
+        return { points, advanceWidth: penX, scale };
     }
 
     public getColorLayersForGlyph(glyphId: number, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
@@ -904,7 +998,10 @@ export class FontParserWOFF {
         const subtables = this.gpos.getSubtablesForFeatures(gposFeatures, scriptTags);
 
         for (const st of subtables) {
-            if (st instanceof SinglePosSubtable) {
+            if (
+                st instanceof SinglePosSubtable ||
+                typeof (st as any).getAdjustment === 'function'
+            ) {
                 for (let i = 0; i < glyphIndices.length; i++) {
                     const adj = (st as any).getAdjustment?.(glyphIndices[i]);
                     if (!adj) continue;
@@ -914,7 +1011,12 @@ export class FontParserWOFF {
                     positioned[i].yAdvance += adj.yAdvance ?? 0;
                 }
             }
-            if (st instanceof PairPosSubtable) {
+            if (
+                st instanceof PairPosSubtable ||
+                st instanceof PairPosFormat1 ||
+                st instanceof PairPosFormat2 ||
+                typeof (st as any).getPairValue === 'function'
+            ) {
                 for (let i = 0; i < glyphIndices.length - 1; i++) {
                     const pair = (st as any).getPairValue?.(glyphIndices[i], glyphIndices[i + 1]);
                     if (!pair) continue;
@@ -931,13 +1033,23 @@ export class FontParserWOFF {
                 }
                 continue;
             }
+            // These attachment subtables are applied in the second pass below.
+            if (
+                st instanceof MarkBasePosFormat1 ||
+                st instanceof MarkLigPosFormat1 ||
+                st instanceof MarkMarkPosFormat1 ||
+                st instanceof CursivePosFormat1
+            ) {
+                continue;
+            }
+            const constructorName = (st as any)?.constructor?.name ?? "unknown";
             this.emitDiagnostic(
                 "UNSUPPORTED_GPOS_SUBTABLE",
                 "info",
                 "layout",
-                "Encountered GPOS subtable type not handled by pair/single adjustment path.",
-                { constructorName: (st as any)?.constructor?.name ?? "unknown" },
-                `UNSUPPORTED_GPOS_SUBTABLE:${(st as any)?.constructor?.name ?? "unknown"}`
+                `Encountered GPOS subtable not currently handled: ${constructorName}.`,
+                { constructorName },
+                `UNSUPPORTED_GPOS_SUBTABLE:${constructorName}`
             );
         }
 

@@ -86,8 +86,8 @@
 
     <script type="module">
         import { FontParser } from '../dist/data/FontParser.js';
-    import { getFontList } from '../tools/shared/font-catalog.js';
-        import { Table } from '../dist/table/Table.js';
+        import { getFontList } from '../tools/shared/font-catalog.js';
+        import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/demo-scaffold.js';
 
         const fontSelect = document.getElementById('fontSelect');
         const textInput = document.getElementById('textInput');
@@ -100,32 +100,14 @@
 
         const fonts = getFontList('demoCore');
 
-        const cache = new Map();
+        const loadFont = createFontLoader(FontParser.load);
         let font = null;
         let points = [];
-
-        function populate() {
-            fontSelect.innerHTML = '';
-            fonts.forEach((f, i) => {
-                const opt = document.createElement('option');
-                opt.value = String(i);
-                opt.textContent = f.name;
-                fontSelect.appendChild(opt);
-            });
-        }
-
-        async function loadFont(url) {
-            if (cache.has(url)) return cache.get(url);
-            const f = await FontParser.load(url);
-            cache.set(url, f);
-            return f;
-        }
 
         function buildPoints() {
             if (!font) return [];
             const text = textInput.value || '';
-            const head = font.getTableByType(Table.head);
-            const unitsPerEm = head?.unitsPerEm ?? 1000;
+            const unitsPerEm = typeof font.getUnitsPerEm === 'function' ? font.getUnitsPerEm() : 1000;
             const sizePx = Number(sizeInput.value);
             const scale = sizePx / unitsPerEm;
 
@@ -186,7 +168,7 @@
         }
 
         async function rebuild() {
-            const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
+            const selected = getSelectedFont(fontSelect, fonts);
             font = await loadFont(selected.url);
             points = buildPoints();
         }
@@ -200,7 +182,7 @@
         waveInput.addEventListener('input', () => {});
         speedInput.addEventListener('input', () => {});
 
-        populate();
+        populateFontSelect(fontSelect, fonts);
         rebuild().then(render);
     </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>

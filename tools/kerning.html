@@ -85,6 +85,7 @@
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { getFontList } from './shared/font-catalog.js';
+    import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const input = document.getElementById('textInput');
@@ -100,25 +101,8 @@
     const pairSummary = document.getElementById('pairSummary');
 
     const fonts = getFontList('kerning');
-    const cache = new Map();
+    const loadFont = createFontLoader(FontParser.load);
     let font = null;
-
-    function populateFonts() {
-      fontSelect.innerHTML = '';
-      fonts.forEach((f, i) => {
-        const opt = document.createElement('option');
-        opt.value = String(i);
-        opt.textContent = f.name;
-        fontSelect.appendChild(opt);
-      });
-    }
-
-    async function loadFont(url) {
-      if (cache.has(url)) return cache.get(url);
-      const loaded = await FontParser.load(url);
-      cache.set(url, loaded);
-      return loaded;
-    }
 
     function uniqueChars(value) {
       const chars = [];
@@ -257,9 +241,12 @@
       const kernTable = font.getTableByType?.(0x6b65726e);
       const gposTable = font.getTableByType?.(0x47504f53);
       const tables = `kern:${kernTable ? 'yes' : 'no'} gpos:${gposTable ? 'yes' : 'no'}`;
+      const measured = typeof font.measureText === 'function'
+        ? font.measureText(text, { gpos: true })
+        : null;
       kernInfo.textContent = seen.length > 0
-        ? `Pairs in preview text: ${seen.join(' | ')} | ${tables}`
-        : `No kerning pairs detected in preview text. | ${tables}`;
+        ? `Pairs in preview text: ${seen.join(' | ')} | ${tables}${measured ? ` | advance:${Math.round(measured.advanceWidth)}` : ''}`
+        : `No kerning pairs detected in preview text. | ${tables}${measured ? ` | advance:${Math.round(measured.advanceWidth)}` : ''}`;
 
       const diagnostics = typeof font.getDiagnostics === 'function' ? font.getDiagnostics() : [];
       diagnosticsEl.textContent = diagnostics.length
@@ -271,11 +258,11 @@
     charsInput.addEventListener('input', render);
     kernInput.addEventListener('input', render);
     fontSelect.addEventListener('change', async () => {
-      font = await loadFont(fonts[Number(fontSelect.value)]?.url ?? fonts[0].url);
+      font = await loadFont(getSelectedFont(fontSelect, fonts).url);
       render();
     });
 
-    populateFonts();
+    populateFontSelect(fontSelect, fonts);
     loadFont(fonts[0].url).then(loaded => {
       font = loaded;
       render();

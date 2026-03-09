@@ -105,8 +105,7 @@
       const glyph = font.getGlyphByChar(ch) || font.getGlyphByChar("G");
       if (!glyph) return;
 
-      const head = font.getTableByType(Table.head);
-      const unitsPerEm = head?.unitsPerEm ?? 1000;
+      const unitsPerEm = typeof font.getUnitsPerEm === "function" ? font.getUnitsPerEm() : 1000;
       const sizePx = Math.min(canvas.width, canvas.height) * 0.55;
       const glyphScale = sizePx / unitsPerEm;
 
