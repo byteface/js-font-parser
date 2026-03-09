@@ -107,6 +107,14 @@
             Points
             <input id="pointInput" type="range" min="80" max="480" value="240" />
         </label>
+        <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;">
+            <input id="fillToggle" type="checkbox" checked />
+            Show Fill
+        </label>
+        <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;">
+            <input id="pointsToggle" type="checkbox" checked />
+            Show Points
+        </label>
         <button id="renderBtn">Render</button>
         <button id="swapBtn" class="secondary">Swap</button>
     </div>
@@ -125,6 +133,8 @@
         const speedInput = document.getElementById("speedInput");
         const sizeInput = document.getElementById("sizeInput");
         const pointInput = document.getElementById("pointInput");
+        const fillToggle = document.getElementById("fillToggle");
+        const pointsToggle = document.getElementById("pointsToggle");
         const renderBtn = document.getElementById("renderBtn");
         const swapBtn = document.getElementById("swapBtn");
         const canvas = document.getElementById("canvas");
@@ -176,12 +186,13 @@
                 y,
                 scale,
                 styles: {
-                    fillStyle: "rgba(0,0,0,0)",
+                    fillStyle: fillToggle.checked ? "rgba(59,47,96,0.22)" : "rgba(0,0,0,0)",
                     strokeStyle: color,
                     lineWidth: 2
                 }
             });
 
+            if (!pointsToggle.checked) return;
             ctx.save();
             ctx.translate(x, y);
             ctx.scale(scale, -scale);
@@ -283,6 +294,8 @@
             render();
         });
         fontSelect.addEventListener("change", boot);
+        fillToggle.addEventListener("change", render);
+        pointsToggle.addEventListener("change", render);
 
         boot();
     </script>

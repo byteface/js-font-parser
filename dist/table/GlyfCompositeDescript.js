@@ -38,6 +38,7 @@ var GlyfCompositeDescript = /** @class */ (function () {
         }
     };
     GlyfCompositeDescript.prototype.resolve = function () {
+        var _this = this;
         if (this.resolved)
             return;
         if (this.beingResolved) {
@@ -47,15 +48,15 @@ var GlyfCompositeDescript = /** @class */ (function () {
         this.beingResolved = true;
         var firstIndex = 0;
         var firstContour = 0;
-        var getCompositePoint = (function (pointIndex, beforeComp) {
-            for (var _i = 0, _a = this.components; _i < _a.length; _i++) {
+        var getCompositePoint = function (pointIndex, beforeComp) {
+            for (var _i = 0, _a = _this.components; _i < _a.length; _i++) {
                 var c = _a[_i];
                 if (beforeComp && c === beforeComp)
                     break;
                 if (pointIndex < c.firstIndex || pointIndex >= c.firstIndex + c.pointCount) {
                     continue;
                 }
-                var desc = this.parentTable.getDescription(c.glyphIndex);
+                var desc = _this.parentTable.getDescription(c.glyphIndex);
                 if (!desc)
                     return null;
                 var localIndex = pointIndex - c.firstIndex;
@@ -67,7 +68,7 @@ var GlyfCompositeDescript = /** @class */ (function () {
                 };
             }
             return null;
-        }).bind(this);
+        };
         for (var _i = 0, _a = this.components; _i < _a.length; _i++) {
             var comp = _a[_i];
             comp.firstIndex = firstIndex;

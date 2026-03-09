@@ -1204,6 +1204,36 @@ test('GPOS script validation sweep remains stable across available real-font fix
   assert.ok(exercisedSamples >= 6, 'expected multiple script samples in validation sweep');
 });
 
+test('Existing NotoSans fixture supports ligature + mark attachment path (fi + acute)', () => {
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/noto/NotoSans-Regular.ttf')));
+  const text = 'fi\u0301';
+  const gsubFeatures = ['liga', 'rlig', 'ccmp', 'mark', 'mkmk'];
+  const scriptTags = ['latn', 'DFLT'];
+
+  const glyphIndices = font.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
+  assert.ok(glyphIndices.length >= 2, 'expected at least ligature+mark glyphs');
+
+  const classes = glyphIndices.map((gid) => font.gdef?.getGlyphClass?.(gid) ?? 0);
+  assert.ok(classes.includes(2), 'expected a ligature class glyph');
+  assert.ok(classes.includes(3), 'expected a mark class glyph');
+
+  const laidOut = font.layoutString(text, {
+    gsubFeatures,
+    scriptTags,
+    gpos: true,
+    gposFeatures: ['kern', 'mark', 'mkmk']
+  });
+  assert.ok(laidOut.length >= 2, 'expected non-empty ligature+mark layout');
+
+  const markEntry = laidOut.find((g) => (font.gdef?.getGlyphClass?.(g.glyphIndex) ?? 0) === 3);
+  assert.ok(markEntry, 'expected mark glyph in layout result');
+  assert.equal(markEntry.xAdvance, 0, 'mark glyph should not advance pen');
+  assert.ok(
+    markEntry.xOffset !== 0 || markEntry.yOffset !== 0,
+    'expected mark anchor offset to be applied'
+  );
+});
+
 test('Table access works for known tags on multiple font formats', () => {
   const ttfBytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
   const woffBytes = readBytes('truetypefonts/ubuntu.woff');

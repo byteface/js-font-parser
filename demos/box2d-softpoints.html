@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Box2D Soft Points</title>
+  <style>
+    :root { --bg:#0f1118; --ink:#f4f1ec; --muted:#b4a9a0; --panel:#1a1c22; --border:#2b2f3a; }
+    body { margin:0; font-family:"IBM Plex Sans", system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+    header { padding:20px 22px 10px; }
+    h1 { margin:0 0 6px; font-size:24px; }
+    p { margin:0 0 12px; color:var(--muted); }
+    .panel { display:flex; flex-wrap:wrap; gap:12px; padding:10px 22px 16px; align-items:center; }
+    label { display:flex; flex-direction:column; gap:6px; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); }
+    input, select, button { background:#151821; color:var(--ink); border:1px solid var(--border); border-radius:8px; padding:8px 10px; min-width:160px; }
+    canvas { display:block; width:100vw; height:70vh; background:#0f1118; }
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+
+  <header>
+    <h1>Soft Point Glyph</h1>
+    <p>Each sampled glyph point is a spring body. Drag points directly to deform the letter.</p>
+  </header>
+  <div class="panel">
+    <label>Font
+      <select id="fontSelect">
+        <option value="../truetypefonts/DiscoMo.ttf">DiscoMo</option>
+        <option value="../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf">DevilInside</option>
+        <option value="../truetypefonts/Quill.ttf">Quill</option>
+      </select>
+    </label>
+    <label>Character
+      <input id="charInput" value="G" maxlength="1" />
+    </label>
+    <label>Gravity
+      <input id="gravInput" type="range" min="0" max="14" value="6" />
+    </label>
+    <label>Tension
+      <input id="stiffInput" type="range" min="2" max="30" value="14" />
+    </label>
+    <button id="resetBtn">Reset</button>
+  </div>
+  <canvas id="stage" width="1200" height="600"></canvas>
+
+  <script src="https://unpkg.com/planck-js@0.3.0/dist/planck.min.js"></script>
+  <script type="module">
+    const planck = window.planck;
+    import { FontParser } from "../dist/data/FontParser.js";
+    import { Table } from "../dist/table/Table.js";
+
+    const canvas = document.getElementById("stage");
+    const ctx = canvas.getContext("2d");
+    const fontSelect = document.getElementById("fontSelect");
+    const charInput = document.getElementById("charInput");
+    const gravInput = document.getElementById("gravInput");
+    const stiffInput = document.getElementById("stiffInput");
+    const resetBtn = document.getElementById("resetBtn");
+
+    const scale = 30;
+    const floorY = () => pxToWorld(canvas.height - 24);
+    let world = null;
+    let font = null;
+    let nodes = [];
+    let links = [];
+    let dragNode = null;
+
+    function pxToWorld(v) { return v / scale; }
+    function worldToPx(v) { return v * scale; }
+
+    function splitContours(glyph) {
+      const pts = glyph.points.slice(0, Math.max(0, glyph.getPointCount() - 2));
+      const contours = [];
+      let current = [];
+      for (const p of pts) {
+        current.push(p);
+        if (p.endOfContour) {
+          if (current.length > 2) contours.push(current);
+          current = [];
+        }
+      }
+      return contours;
+    }
+
+    function setupWorld() {
+      world = planck.World({ gravity: planck.Vec2(0, Number(gravInput.value)) });
+      const ground = world.createBody();
+      ground.createFixture(planck.Edge(planck.Vec2(-10, floorY()), planck.Vec2(pxToWorld(canvas.width + 10), floorY())));
+    }
+
+    function addSpring(a, b, hz = Number(stiffInput.value) * 0.2, damping = 0.2) {
+      links.push([a, b]);
+      world.createJoint(planck.DistanceJoint({
+        frequencyHz: hz,
+        dampingRatio: damping,
+        length: planck.Vec2.distance(a.getPosition(), b.getPosition())
+      }, a, b, a.getPosition(), b.getPosition()));
+    }
+
+    function buildSoftGlyph() {
+      nodes = [];
+      links = [];
+      const ch = (charInput.value || "G").charAt(0);
+      const glyph = font.getGlyphByChar(ch) || font.getGlyphByChar("G");
+      if (!glyph) return;
+
+      const head = font.getTableByType(Table.head);
+      const unitsPerEm = head?.unitsPerEm ?? 1000;
+      const sizePx = Math.min(canvas.width, canvas.height) * 0.55;
+      const glyphScale = sizePx / unitsPerEm;
+
+      const contours = splitContours(glyph);
+      const all = contours.flat();
+      const minX = Math.min(...all.map((p) => p.x));
+      const maxX = Math.max(...all.map((p) => p.x));
+      const minY = Math.min(...all.map((p) => p.y));
+      const maxY = Math.max(...all.map((p) => p.y));
+      const anchorX = minX;
+      const anchorY = maxY;
+      const ox = canvas.width * 0.28;
+      const oy = canvas.height * 0.18;
+
+      const contourBodies = [];
+      for (let ci = 0; ci < contours.length; ci++) {
+        const contour = contours[ci].filter((_, i) => i % 2 === 0);
+        if (contour.length < 3) continue;
+        const bodies = [];
+        for (let i = 0; i < contour.length; i++) {
+          const p = contour[i];
+          const x = pxToWorld(ox + (p.x - anchorX) * glyphScale);
+          const y = pxToWorld(oy + (anchorY - p.y) * glyphScale);
+          const body = world.createBody({ type: "dynamic", position: planck.Vec2(x, y), linearDamping: 2.2, angularDamping: 2.2 });
+          body.createFixture(planck.Circle(0.06), { density: 0.8, friction: 0.8, restitution: 0.0 });
+          nodes.push({ body, contourIndex: ci, pointIndex: i });
+          bodies.push(body);
+        }
+        contourBodies.push(bodies);
+      }
+
+      for (const bodies of contourBodies) {
+        for (let i = 0; i < bodies.length; i++) {
+          const a = bodies[i];
+          const b = bodies[(i + 1) % bodies.length];
+          addSpring(a, b);
+          const skip = bodies[(i + 2) % bodies.length];
+          if (skip && bodies.length > 4) addSpring(a, skip, Number(stiffInput.value) * 0.14, 0.28);
+        }
+      }
+
+      const center = world.createBody({ type: "static", position: planck.Vec2(pxToWorld(canvas.width * 0.5), pxToWorld(canvas.height * 0.35)) });
+      for (const n of nodes) {
+        addSpring(center, n.body, Number(stiffInput.value) * 0.08, 0.35);
+      }
+
+      // Keep the system inside the canvas bounds.
+      const wall = world.createBody();
+      wall.createFixture(planck.Edge(planck.Vec2(pxToWorld(8), pxToWorld(8)), planck.Vec2(pxToWorld(8), floorY())));
+      wall.createFixture(planck.Edge(planck.Vec2(pxToWorld(canvas.width - 8), pxToWorld(8)), planck.Vec2(pxToWorld(canvas.width - 8), floorY())));
+      wall.createFixture(planck.Edge(planck.Vec2(pxToWorld(8), pxToWorld(8)), planck.Vec2(pxToWorld(canvas.width - 8), pxToWorld(8))));
+    }
+
+    async function boot() {
+      font = await FontParser.load(fontSelect.value);
+      setupWorld();
+      buildSoftGlyph();
+    }
+
+    function reset() {
+      setupWorld();
+      buildSoftGlyph();
+    }
+
+    function pickNearestNode(wx, wy) {
+      let best = null;
+      let bestDist = 0.22;
+      for (const n of nodes) {
+        const p = n.body.getPosition();
+        const d = planck.Vec2.distance(planck.Vec2(wx, wy), p);
+        if (d < bestDist) {
+          bestDist = d;
+          best = n;
+        }
+      }
+      return best;
+    }
+
+    function pointerToWorld(event) {
+      const r = canvas.getBoundingClientRect();
+      const x = (event.clientX - r.left) * (canvas.width / r.width);
+      const y = (event.clientY - r.top) * (canvas.height / r.height);
+      return { x: pxToWorld(x), y: pxToWorld(y) };
+    }
+
+    canvas.addEventListener("pointerdown", (e) => {
+      const p = pointerToWorld(e);
+      dragNode = pickNearestNode(p.x, p.y);
+      if (dragNode) canvas.setPointerCapture(e.pointerId);
+    });
+
+    canvas.addEventListener("pointermove", (e) => {
+      if (!dragNode) return;
+      const p = pointerToWorld(e);
+      const pos = dragNode.body.getPosition();
+      const to = planck.Vec2.sub(planck.Vec2(p.x, p.y), pos);
+      dragNode.body.applyForceToCenter(planck.Vec2.mul(to, 180), true);
+    });
+
+    canvas.addEventListener("pointerup", () => { dragNode = null; });
+    canvas.addEventListener("pointercancel", () => { dragNode = null; });
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#0f1118";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const fy = worldToPx(floorY());
+      ctx.strokeStyle = "#2c3140";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, fy);
+      ctx.lineTo(canvas.width, fy);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(163, 123, 255, 0.35)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (const [a, b] of links) {
+        const ap = a.getPosition();
+        const bp = b.getPosition();
+        ctx.moveTo(worldToPx(ap.x), worldToPx(ap.y));
+        ctx.lineTo(worldToPx(bp.x), worldToPx(bp.y));
+      }
+      ctx.stroke();
+
+      const grouped = new Map();
+      for (const n of nodes) {
+        if (!grouped.has(n.contourIndex)) grouped.set(n.contourIndex, []);
+        grouped.get(n.contourIndex).push(n);
+      }
+
+      ctx.fillStyle = "rgba(244, 241, 236, 0.14)";
+      ctx.strokeStyle = "#f4f1ec";
+      ctx.lineWidth = 2;
+      for (const arr of grouped.values()) {
+        if (arr.length < 3) continue;
+        ctx.beginPath();
+        arr.forEach((n, i) => {
+          const p = n.body.getPosition();
+          const x = worldToPx(p.x);
+          const y = worldToPx(p.y);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = dragNode ? "#ffd166" : "#a7c7ff";
+      for (const n of nodes) {
+        const p = n.body.getPosition();
+        ctx.beginPath();
+        ctx.arc(worldToPx(p.x), worldToPx(p.y), 3.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function tick() {
+      if (world) {
+        world.step(1 / 60);
+        draw();
+      }
+      requestAnimationFrame(tick);
+    }
+
+    fontSelect.addEventListener("change", boot);
+    charInput.addEventListener("input", reset);
+    gravInput.addEventListener("input", reset);
+    stiffInput.addEventListener("input", reset);
+    resetBtn.addEventListener("click", reset);
+
+    boot();
+    requestAnimationFrame(tick);
+  </script>
+  <script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

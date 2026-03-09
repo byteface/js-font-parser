@@ -4,6 +4,7 @@
   "description": "This library can load truetype fonts for creative experiments.",
   "main": "index.js",
   "scripts": {
+    "audit:tables": "node scripts/audit-table-coverage.mjs",
     "test": "node --test",
     "test:coverage": "node --test --experimental-test-coverage",
     "test:golden:capture": "node tests/golden/scripts/capture.mjs --out tests/golden/current",

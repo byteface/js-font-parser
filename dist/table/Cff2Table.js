@@ -279,6 +279,7 @@ var Cff2Table = /** @class */ (function () {
                 if (!s)
                     continue;
                 for (var i = 0; i < n; i++) {
+                    // CFF2 blend deltas are argument-major: [arg0 r0..rN, arg1 r0..rN, ...]
                     out[i] += deltas[i * regionCount + r] * s;
                 }
             }
@@ -306,16 +307,16 @@ var Cff2Table = /** @class */ (function () {
             }
             var i = 0;
             var blendCount = 0;
-            var _loop_1 = function () {
+            while (i < bytes.length) {
                 var b0 = bytes[i++];
                 if (b0 >= 32 || b0 === 28 || b0 === 255) {
                     var _21 = _this.readCharStringNumber(bytes, i - 1), num = _21[0], next = _21[1];
                     stack.push(num);
                     i = next;
-                    return "continue";
+                    continue;
                 }
                 if (b0 === 11) {
-                    return { value: void 0 };
+                    return;
                 }
                 var args = stack.splice(0, stack.length);
                 switch (b0) {
@@ -385,7 +386,7 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 14: {
                         closeContour();
-                        return { value: void 0 };
+                        return;
                     }
                     case 19:
                     case 20: {
@@ -621,11 +622,6 @@ var Cff2Table = /** @class */ (function () {
                         args: args.slice()
                     });
                 }
-            };
-            while (i < bytes.length) {
-                var state_1 = _loop_1();
-                if (typeof state_1 === "object")
-                    return state_1.value;
             }
             if ((globalThis === null || globalThis === void 0 ? void 0 : globalThis.__CFF2_DEBUG) && blendCount) {
                 var regionIndices = (_20 = _this.vstoreRegionIndices[vsIndex]) !== null && _20 !== void 0 ? _20 : [];

@@ -60,6 +60,7 @@
     const resetBtn = document.getElementById("resetBtn");
 
     const scale = 30; // pixels per meter
+    const floorY = pxToWorld(canvas.height - 24);
     let world = null;
     let font = null;
     let bodies = [];
@@ -79,11 +80,47 @@
       };
     }
 
+    function splitContours(glyph) {
+      const pts = glyph.points.slice(0, Math.max(0, glyph.getPointCount() - 2));
+      const contours = [];
+      let current = [];
+      for (const p of pts) {
+        current.push(p);
+        if (p.endOfContour) {
+          if (current.length > 1) contours.push(current);
+          current = [];
+        }
+      }
+      return contours;
+    }
+
+    function addGlyphEdgeFixtures(body, glyph, glyphScale, bounds) {
+      const contours = splitContours(glyph);
+      const anchorX = bounds.minX;
+      const anchorY = bounds.maxY;
+      for (const contour of contours) {
+        const sampled = contour.filter((_, i) => i % 2 === 0);
+        if (sampled.length < 2) continue;
+        for (let i = 0; i < sampled.length; i++) {
+          const a = sampled[i];
+          const b = sampled[(i + 1) % sampled.length];
+          const ax = pxToWorld((a.x - anchorX) * glyphScale);
+          const ay = pxToWorld((anchorY - a.y) * glyphScale);
+          const bx = pxToWorld((b.x - anchorX) * glyphScale);
+          const by = pxToWorld((anchorY - b.y) * glyphScale);
+          body.createFixture(planck.Edge(planck.Vec2(ax, ay), planck.Vec2(bx, by)), {
+            friction: 0.6,
+            restitution: 0.1
+          });
+        }
+      }
+    }
+
     function setupWorld() {
       const gravity = Number(gravInput.value);
-      world = planck.World({ gravity: planck.Vec2(0, -gravity) });
+      world = planck.World({ gravity: planck.Vec2(0, gravity) });
       const ground = world.createBody();
-      ground.createFixture(planck.Edge(planck.Vec2(-50, 0), planck.Vec2(50, 0)));
+      ground.createFixture(planck.Edge(planck.Vec2(-10, floorY), planck.Vec2(pxToWorld(canvas.width + 10), floorY)));
     }
 
     function buildBodies() {
@@ -94,7 +131,7 @@
       const glyphScale = sizePx / unitsPerEm;
 
       let cursorX = 60;
-      const baseY = 420;
+      const baseY = 80;
       for (const ch of Array.from(textInput.value || "")) {
         const glyph = font.getGlyphByChar(ch);
         if (!glyph) {
@@ -109,7 +146,8 @@
           position: planck.Vec2(pxToWorld(cursorX), pxToWorld(baseY)),
           angle: (Math.random() - 0.5) * 0.3
         });
-        body.createFixture(planck.Box(pxToWorld(w / 2), pxToWorld(h / 2)), { density: 1, friction: 0.5, restitution: 0.1 });
+        body.createFixture(planck.Circle(0.08), { density: 1, friction: 0.5, restitution: 0.1 });
+        addGlyphEdgeFixtures(body, glyph, glyphScale, bounds);
         bodies.push({ body, glyph, glyphScale, bounds });
         cursorX += w + 18;
       }
@@ -134,8 +172,8 @@
       ctx.strokeStyle = "#2c3140";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(0, worldToPx(0));
-      ctx.lineTo(canvas.width, worldToPx(0));
+      ctx.moveTo(0, worldToPx(floorY));
+      ctx.lineTo(canvas.width, worldToPx(floorY));
       ctx.stroke();
 
       for (const item of bodies) {

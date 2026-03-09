@@ -65,6 +65,9 @@ var GlyfCompositeComp = /** @class */ (function () {
             this.yscale = k / 0x4000;
         }
     }
+    GlyfCompositeComp.prototype.isArgsAreXY = function () {
+        return (this.flags & GlyfCompositeComp.ARGS_ARE_XY_VALUES) !== 0;
+    };
     /**
      * Transforms an x-coordinate of a point for this component.
      * @param x The x-coordinate of the point to transform
@@ -82,9 +85,6 @@ var GlyfCompositeComp = /** @class */ (function () {
      */
     GlyfCompositeComp.prototype.scaleY = function (x, y) {
         return Math.round((x * this.scale01) + (y * this.yscale));
-    };
-    GlyfCompositeComp.prototype.isArgsAreXY = function () {
-        return (this.flags & GlyfCompositeComp.ARGS_ARE_XY_VALUES) !== 0;
     };
     GlyfCompositeComp.prototype.hasTransform = function () {
         return this.xscale !== 1 || this.yscale !== 1 || this.scale01 !== 0 || this.scale10 !== 0;

@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Font Diff</title>
+  <style>
+    :root { --bg:#f6f4f1; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e3e1db; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 12px; color:var(--muted); }
+    .panel {
+      margin: 0 20px 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: end;
+    }
+    label { display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--muted); }
+    select, input[type="text"], input[type="range"] {
+      min-width: 220px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 14px;
+    }
+    button {
+      padding: 9px 13px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #2c3e50;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .grid {
+      margin: 0 20px 14px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .card h2 { margin: 0 0 8px; font-size: 14px; color: #2c3e50; }
+    canvas {
+      width: 100%;
+      height: 190px;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .meta {
+      margin: 0 20px 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .meta code { background: #f2f3f7; padding: 2px 4px; border-radius: 4px; }
+    table {
+      width: calc(100% - 40px);
+      margin: 0 20px 24px;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 13px;
+    }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { background: #f1efe9; color: #2c3e50; }
+    tr:last-child td { border-bottom: 0; }
+    .ok { color: #1d7a42; font-weight: 700; }
+    .warn { color: #a9442f; font-weight: 700; }
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<header>
+  <h1>Font Diff</h1>
+  <p>Compare two fonts on the same input text: mapping, metrics, and rendering.</p>
+</header>
+
+<div class="panel">
+  <label>
+    Font A
+    <select id="fontA"></select>
+  </label>
+  <label>
+    Font B
+    <select id="fontB"></select>
+  </label>
+  <label>
+    Text
+    <input id="textInput" type="text" value="Hamburgefons ÅÁÉÖÑ æœ مرحبا नमस्ते" />
+  </label>
+  <label>
+    Size
+    <input id="sizeInput" type="range" min="80" max="220" value="150" />
+  </label>
+  <button id="runBtn">Compare</button>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Font A</h2>
+    <canvas id="canvasA" width="900" height="190"></canvas>
+  </div>
+  <div class="card">
+    <h2>Font B</h2>
+    <canvas id="canvasB" width="900" height="190"></canvas>
+  </div>
+  <div class="card">
+    <h2>Overlay (A blue / B red)</h2>
+    <canvas id="canvasDiff" width="900" height="190"></canvas>
+  </div>
+</div>
+
+<div class="meta" id="summary"></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Char</th>
+      <th>U+</th>
+      <th>Glyph A</th>
+      <th>Glyph B</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<script type="module">
+  import { FontParser } from '../dist/data/FontParser.js';
+  import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+  import { getFontList } from './shared/font-catalog.js';
+
+  const fontASelect = document.getElementById('fontA');
+  const fontBSelect = document.getElementById('fontB');
+  const textInput = document.getElementById('textInput');
+  const sizeInput = document.getElementById('sizeInput');
+  const runBtn = document.getElementById('runBtn');
+  const summary = document.getElementById('summary');
+  const rows = document.getElementById('rows');
+  const canvasA = document.getElementById('canvasA');
+  const canvasB = document.getElementById('canvasB');
+  const canvasDiff = document.getElementById('canvasDiff');
+
+  const ctxA = canvasA.getContext('2d');
+  const ctxB = canvasB.getContext('2d');
+  const ctxD = canvasDiff.getContext('2d');
+  const catalog = getFontList('allGlyphs');
+  const cache = new Map();
+
+  function fillSelects() {
+    for (const f of catalog) {
+      const optA = document.createElement('option');
+      optA.value = f.url;
+      optA.textContent = f.name;
+      fontASelect.appendChild(optA);
+      const optB = document.createElement('option');
+      optB.value = f.url;
+      optB.textContent = f.name;
+      fontBSelect.appendChild(optB);
+    }
+    fontASelect.selectedIndex = Math.max(0, catalog.findIndex(f => /DiscoMo/.test(f.name)));
+    fontBSelect.selectedIndex = Math.max(1, catalog.findIndex(f => /Noto Sans Regular/.test(f.name)));
+  }
+
+  async function loadFont(url) {
+    if (cache.has(url)) return cache.get(url);
+    const p = await FontParser.load(url);
+    cache.set(url, p);
+    return p;
+  }
+
+  function clear(ctx, w, h) {
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  function drawPreview(font, text, ctx, color, size) {
+    clear(ctx, ctx.canvas.width, ctx.canvas.height);
+    const upm = font.getUnitsPerEm?.() ?? 1000;
+    const scale = size / upm;
+    CanvasRenderer.drawString(font, text, ctx.canvas, {
+      x: 24,
+      y: 150,
+      scale,
+      spacing: 2,
+      styles: { fillStyle: color, strokeStyle: color, lineWidth: 1 }
+    });
+  }
+
+  function analyzeText(fontA, fontB, text) {
+    let missingA = 0;
+    let missingB = 0;
+    let mismatch = 0;
+    const items = [];
+    for (const ch of Array.from(text)) {
+      const cp = ch.codePointAt(0) ?? 0;
+      const gidA = fontA.getGlyphIndexByChar?.(ch);
+      const gidB = fontB.getGlyphIndexByChar?.(ch);
+      const missingThisA = gidA == null || gidA < 0;
+      const missingThisB = gidB == null || gidB < 0;
+      if (missingThisA) missingA++;
+      if (missingThisB) missingB++;
+      if (!missingThisA && !missingThisB && gidA !== gidB) mismatch++;
+      items.push({
+        ch,
+        cp,
+        gidA: missingThisA ? 'missing' : gidA,
+        gidB: missingThisB ? 'missing' : gidB,
+        status: missingThisA || missingThisB ? 'coverage gap' : (gidA === gidB ? 'same gid' : 'different gid')
+      });
+    }
+    return { items, missingA, missingB, mismatch };
+  }
+
+  function renderRows(items) {
+    rows.innerHTML = '';
+    for (const it of items) {
+      const tr = document.createElement('tr');
+      const statusCls = it.status === 'coverage gap' ? 'warn' : 'ok';
+      tr.innerHTML = `
+        <td>${it.ch === ' ' ? '␠' : it.ch}</td>
+        <td>U+${it.cp.toString(16).toUpperCase().padStart(4, '0')}</td>
+        <td>${it.gidA}</td>
+        <td>${it.gidB}</td>
+        <td class="${statusCls}">${it.status}</td>
+      `;
+      rows.appendChild(tr);
+    }
+  }
+
+  function renderSummary(fontA, fontB, aName, bName, report) {
+    const infoA = fontA.getNameInfo?.() ?? {};
+    const infoB = fontB.getNameInfo?.() ?? {};
+    const upmA = fontA.getUnitsPerEm?.() ?? 'n/a';
+    const upmB = fontB.getUnitsPerEm?.() ?? 'n/a';
+    const ascA = fontA.getAscent?.() ?? 'n/a';
+    const ascB = fontB.getAscent?.() ?? 'n/a';
+    const descA = fontA.getDescent?.() ?? 'n/a';
+    const descB = fontB.getDescent?.() ?? 'n/a';
+    const glyphsA = fontA.getNumGlyphs?.() ?? 'n/a';
+    const glyphsB = fontB.getNumGlyphs?.() ?? 'n/a';
+    summary.innerHTML = `
+      <div><strong>A:</strong> <code>${aName}</code> (${infoA.fullName || 'n/a'})</div>
+      <div><strong>B:</strong> <code>${bName}</code> (${infoB.fullName || 'n/a'})</div>
+      <div><strong>Metrics:</strong> UPM ${upmA} vs ${upmB} | Asc ${ascA} vs ${ascB} | Desc ${descA} vs ${descB} | Glyphs ${glyphsA} vs ${glyphsB}</div>
+      <div><strong>Text report:</strong> Missing A ${report.missingA}, Missing B ${report.missingB}, Different mapped glyph IDs ${report.mismatch}</div>
+    `;
+  }
+
+  async function run() {
+    runBtn.disabled = true;
+    runBtn.textContent = 'Loading...';
+    try {
+      const aUrl = fontASelect.value;
+      const bUrl = fontBSelect.value;
+      const fontA = await loadFont(aUrl);
+      const fontB = await loadFont(bUrl);
+      const text = textInput.value || '';
+      const size = Number(sizeInput.value || 150);
+
+      drawPreview(fontA, text, ctxA, '#1f4f8b', size);
+      drawPreview(fontB, text, ctxB, '#8b2e2e', size);
+      clear(ctxD, canvasDiff.width, canvasDiff.height);
+      const upmA = fontA.getUnitsPerEm?.() ?? 1000;
+      const scaleA = size / upmA;
+      CanvasRenderer.drawString(fontA, text, canvasDiff, {
+        x: 24, y: 150, scale: scaleA, spacing: 2,
+        styles: { fillStyle: 'rgba(31,79,139,0.50)', strokeStyle: 'rgba(31,79,139,0.60)', lineWidth: 1 }
+      });
+      const upmB = fontB.getUnitsPerEm?.() ?? 1000;
+      const scaleB = size / upmB;
+      CanvasRenderer.drawString(fontB, text, canvasDiff, {
+        x: 24, y: 150, scale: scaleB, spacing: 2,
+        styles: { fillStyle: 'rgba(171,49,49,0.45)', strokeStyle: 'rgba(171,49,49,0.55)', lineWidth: 1 }
+      });
+
+      const report = analyzeText(fontA, fontB, text);
+      renderRows(report.items);
+      renderSummary(fontA, fontB, fontASelect.options[fontASelect.selectedIndex].textContent, fontBSelect.options[fontBSelect.selectedIndex].textContent, report);
+    } catch (err) {
+      summary.innerHTML = `<span class="warn">Compare failed: ${err?.message || err}</span>`;
+    } finally {
+      runBtn.disabled = false;
+      runBtn.textContent = 'Compare';
+    }
+  }
+
+  runBtn.addEventListener('click', run);
+  textInput.addEventListener('input', run);
+  sizeInput.addEventListener('input', run);
+  fontASelect.addEventListener('change', run);
+  fontBSelect.addEventListener('change', run);
+
+  fillSelects();
+  run();
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

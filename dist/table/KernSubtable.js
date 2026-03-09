@@ -1,5 +1,5 @@
 // UNTESTED
-import { Debug } from "../utils/Debug.js";
+import { Debug } from '../utils/Debug.js';
 var KernSubtable = /** @class */ (function () {
     function KernSubtable() {
     }

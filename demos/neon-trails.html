@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Neon Glyph Trails</title>
+  <style>
+    :root { --bg:#05040a; --ink:#f6f1ff; --muted:#b9a7d8; --panel:#121025; --border:#2c2842; }
+    body { margin:0; font-family:"Alegreya Sans", system-ui, sans-serif; color:var(--ink); background:radial-gradient(circle at 30% 20%, #35206b 0%, #160f30 40%, #06040f 100%); }
+    header { padding:20px 22px 10px; }
+    h1 { margin:0 0 6px; font-size:24px; }
+    p { margin:0 0 12px; color:var(--muted); }
+    .panel { display:flex; flex-wrap:wrap; gap:12px; padding:10px 22px 16px; align-items:center; }
+    label { display:flex; flex-direction:column; gap:6px; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); }
+    input, select { background:var(--panel); color:var(--ink); border:1px solid var(--border); border-radius:8px; padding:8px 10px; min-width:160px; }
+    canvas { display:block; width:100vw; height:70vh; background:rgba(2,2,8,0.65); }
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+
+<header>
+  <h1>Neon Glyph Trails</h1>
+  <p>Glyph outlines become a living neon current with long-exposure trails.</p>
+</header>
+<div class="panel">
+  <label>Font
+    <select id="fontSelect">
+      <option value="../truetypefonts/DiscoMo.ttf">DiscoMo</option>
+      <option value="../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf">DevilInside</option>
+      <option value="../truetypefonts/Quill.ttf">Quill</option>
+    </select>
+  </label>
+  <label>Text
+    <input id="textInput" value="NEON" />
+  </label>
+  <label>Density
+    <input id="densityInput" type="range" min="1" max="8" value="3" />
+  </label>
+  <label>Glow
+    <input id="glowInput" type="range" min="1" max="40" value="18" />
+  </label>
+</div>
+<canvas id="stage" width="1200" height="620"></canvas>
+
+<script type="module">
+  import { FontParser } from "../dist/data/FontParser.js";
+  import { Table } from "../dist/table/Table.js";
+
+  const canvas = document.getElementById("stage");
+  const ctx = canvas.getContext("2d");
+  const fontSelect = document.getElementById("fontSelect");
+  const textInput = document.getElementById("textInput");
+  const densityInput = document.getElementById("densityInput");
+  const glowInput = document.getElementById("glowInput");
+
+  let font = null;
+  let points = [];
+
+  function collectPoints(text, density) {
+    if (!font) return [];
+    const head = font.getTableByType(Table.head);
+    const unitsPerEm = head?.unitsPerEm ?? 1000;
+    const scale = (canvas.height * 0.45) / unitsPerEm;
+    let cursorX = 60;
+    const baseline = canvas.height * 0.72;
+    const out = [];
+
+    for (const ch of Array.from(text || "")) {
+      const glyph = font.getGlyphByChar(ch);
+      if (!glyph || !glyph.points) {
+        cursorX += canvas.height * 0.12;
+        continue;
+      }
+      for (let i = 0; i < glyph.points.length; i += density) {
+        const p = glyph.points[i];
+        out.push({
+          x: cursorX + p.x * scale,
+          y: baseline - p.y * scale,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: (Math.random() - 0.5) * 0.8,
+          tx: cursorX + p.x * scale,
+          ty: baseline - p.y * scale,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+      cursorX += glyph.advanceWidth * scale + 10;
+    }
+    return out;
+  }
+
+  async function boot() {
+    font = await FontParser.load(fontSelect.value);
+    points = collectPoints(textInput.value, Number(densityInput.value));
+  }
+
+  function rebuild() {
+    points = collectPoints(textInput.value, Number(densityInput.value));
+  }
+
+  function frame(time) {
+    const glow = Number(glowInput.value);
+    ctx.fillStyle = "rgba(3,2,10,0.12)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.globalCompositeOperation = "lighter";
+    for (const p of points) {
+      const dx = p.tx - p.x;
+      const dy = p.ty - p.y;
+      const wobble = Math.sin(time * 0.0014 + p.phase) * 0.35;
+      p.vx += dx * 0.004 + wobble * 0.03;
+      p.vy += dy * 0.004 + Math.cos(time * 0.0012 + p.phase) * 0.03;
+      p.vx *= 0.92;
+      p.vy *= 0.92;
+      p.x += p.vx;
+      p.y += p.vy;
+
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glow);
+      g.addColorStop(0, "rgba(140,255,255,0.95)");
+      g.addColorStop(0.5, "rgba(168,108,255,0.4)");
+      g.addColorStop(1, "rgba(168,108,255,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, glow, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = "source-over";
+
+    requestAnimationFrame(frame);
+  }
+
+  fontSelect.addEventListener("change", boot);
+  textInput.addEventListener("input", rebuild);
+  densityInput.addEventListener("input", rebuild);
+
+  boot();
+  requestAnimationFrame(frame);
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>
