@@ -531,6 +531,7 @@ export class FontParserTTF {
                 if (deltas) {
                     const self = this;
                     const base = description;
+                    const compositeBase = isComposite && base instanceof GlyfCompositeDescript ? base : null;
                     const fullDx = deltas.dx;
                     const fullDy = deltas.dy;
                     let dx: number[] = [];
@@ -598,8 +599,8 @@ export class FontParserTTF {
                     let minY = Infinity;
                     let maxY = -Infinity;
                     for (let p = 0; p < basePointCount; p++) {
-                        const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
-                        const compIndex = comp ? base.components.indexOf(comp) : -1;
+                        const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                        const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                         let x = base.getXCoordinate(p);
                         let y = base.getYCoordinate(p);
                         if (comp && compIndex >= 0 && self.glyf) {
@@ -635,8 +636,8 @@ export class FontParserTTF {
                         getEndPtOfContours: (c: number) => base.getEndPtOfContours(c),
                         getFlags: (p: number) => base.getFlags(p),
                         getXCoordinate: (p: number) => {
-                            const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
-                            const compIndex = comp ? base.components.indexOf(comp) : -1;
+                            const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self.glyf) {
                                 const gd = self.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {
@@ -655,8 +656,8 @@ export class FontParserTTF {
                             return base.getXCoordinate(p) + (dx[p] ?? 0) + ox;
                         },
                         getYCoordinate: (p: number) => {
-                            const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
-                            const compIndex = comp ? base.components.indexOf(comp) : -1;
+                            const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self.glyf) {
                                 const gd = self.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {

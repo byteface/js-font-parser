@@ -154,7 +154,8 @@ export class FontParserWOFF {
             throw new Error('WOFF decompression requires DecompressionStream (not available).');
         }
         const stream = new DecompressionStream('deflate');
-        const response = new Response(data).body;
+        const payload = new Uint8Array(data);
+        const response = new Response(payload).body;
         if (!response) throw new Error('Failed to create response body for decompression.');
         const decompressed = response.pipeThrough(stream);
         const buffer = await new Response(decompressed).arrayBuffer();
@@ -227,7 +228,7 @@ export class FontParserWOFF {
             tableRecords.push({ ...entry, sfntOffset: dataOffset });
 
             const tableData = new Uint8Array(buffer, entry.offset, entry.compLength);
-            let decoded = tableData;
+            let decoded: Uint8Array = tableData;
             if (entry.compLength < entry.origLength) {
                 decoded = await this.inflate(tableData);
             }
@@ -334,6 +335,7 @@ export class FontParserWOFF {
                 if (deltas) {
                     const self = this;
                     const base = description;
+                    const compositeBase = isComposite && base instanceof GlyfCompositeDescript ? base : null;
                     const fullDx = deltas.dx;
                     const fullDy = deltas.dy;
                     let dx: number[] = [];
@@ -401,8 +403,8 @@ export class FontParserWOFF {
                     let minY = Infinity;
                     let maxY = -Infinity;
                     for (let p = 0; p < basePointCount; p++) {
-                        const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
-                        const compIndex = comp ? base.components.indexOf(comp) : -1;
+                        const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                        const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                         let x = base.getXCoordinate(p);
                         let y = base.getYCoordinate(p);
                         if (comp && compIndex >= 0 && self.glyf) {
@@ -438,8 +440,8 @@ export class FontParserWOFF {
                         getEndPtOfContours: (c: number) => base.getEndPtOfContours(c),
                         getFlags: (p: number) => base.getFlags(p),
                         getXCoordinate: (p: number) => {
-                            const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
-                            const compIndex = comp ? base.components.indexOf(comp) : -1;
+                            const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self.glyf) {
                                 const gd = self.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {
@@ -458,8 +460,8 @@ export class FontParserWOFF {
                             return base.getXCoordinate(p) + (dx[p] ?? 0) + ox;
                         },
                         getYCoordinate: (p: number) => {
-                            const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
-                            const compIndex = comp ? base.components.indexOf(comp) : -1;
+                            const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self.glyf) {
                                 const gd = self.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {

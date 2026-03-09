@@ -1,6 +1,34 @@
 export async function runCli(args, ctx, actions) {
   const { font, originalBuffer, resolved, __dirname, parseBoolean } = ctx;
 
+  if (args.convert != null) {
+    const mode = String(args.convert).toLowerCase();
+    if (!["woff", "sfnt", "ttf", "otf"].includes(mode)) {
+      throw new Error("--convert must be one of: woff, sfnt, ttf, otf.");
+    }
+    const inType = actions.detectInputType(originalBuffer);
+    if (mode === "woff") {
+      if (inType !== "sfnt") {
+        throw new Error("--convert woff expects TTF/OTF sfnt input.");
+      }
+      const woffBuffer = actions.convertSfntToWoff(originalBuffer);
+      const outPath = actions.resolveConvertOutPath(resolved, "woff", args.out);
+      actions.writeBuffer(outPath, woffBuffer);
+      console.log(`Wrote WOFF: ${outPath}`);
+      return;
+    }
+
+    if (inType !== "woff") {
+      throw new Error("--convert sfnt/ttf/otf expects WOFF input.");
+    }
+    const sfntBuffer = actions.convertWoffToSfnt(originalBuffer);
+    const outPath = actions.resolveConvertOutPath(resolved, mode, args.out, sfntBuffer);
+    actions.writeBuffer(outPath, sfntBuffer);
+    const label = mode === "otf" ? "OTF" : (mode === "ttf" ? "TTF" : "SFNT");
+    console.log(`Wrote ${label}: ${outPath}`);
+    return;
+  }
+
   if (args["list-languages"]) {
     actions.printLanguages();
   }

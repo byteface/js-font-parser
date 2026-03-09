@@ -24,6 +24,10 @@ node proj/fontparser/index.mjs --font truetypefonts/GothamNarrow-Ultra.otf --svg
 node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --localise es --out /tmp/DiscoMo-es.ttf
 node proj/fontparser/index.mjs --font truetypefonts/noto/NotoSans-Regular.ttf --subset --subset-lang en,es --out /tmp/NotoSans-en-es-subset.ttf
 node proj/fontparser/index.mjs --font truetypefonts/noto/NotoSans-Regular.ttf --subset --subset-chars "AVWToY.,tafy123" --subset-file /tmp/custom_chars.txt --out /tmp/NotoSans-custom-subset.ttf
+node proj/fontparser/index.mjs --font truetypefonts/noto/NotoSans-Regular.ttf --convert woff --out /tmp/NotoSans-Regular.woff
+node proj/fontparser/index.mjs --font /tmp/NotoSans-Regular.woff --convert sfnt --out /tmp/NotoSans-Regular.roundtrip.ttf
+node proj/fontparser/index.mjs --font truetypefonts/curated/SourceSerif4-Regular.otf --convert woff --out /tmp/SourceSerif4-Regular.woff
+node proj/fontparser/index.mjs --font /tmp/SourceSerif4-Regular.woff --convert otf --out /tmp/SourceSerif4-Regular.roundtrip.otf
 ```
 
 ## Notes
@@ -44,6 +48,8 @@ node proj/fontparser/index.mjs --font truetypefonts/noto/NotoSans-Regular.ttf --
 - SVG tuning flags: `--svg-font-size`, `--svg-fill`, `--svg-stroke`, `--svg-stroke-width`, `--svg-padding`, `--svg-line-height`, `--svg-letter-spacing`, `--svg-use-kerning`, `--svg-bg`.
 - `--localise` writes a new font and attempts to compose missing Latin glyphs using base + combining marks.
 - `--subset` writes a TTF subset by keeping only requested characters (plus required composite dependencies), and writes a sidecar report JSON.
+- `--convert woff` wraps a TTF/OTF sfnt font into WOFF (table-level deflate where beneficial).
+- `--convert sfnt|ttf|otf` decodes WOFF back to sfnt bytes and writes with requested/default extension.
 - Subset character sources can be combined: `--subset-chars`, `--subset-file`, `--subset-lang`.
 - Use `--subset-report <path>` to override the default report path (`<out>.report.json`).
 - If combining marks are missing, it will try simple fallback punctuation (e.g. dot/comma) for proof-of-concept.
@@ -54,6 +60,7 @@ node proj/fontparser/index.mjs --font truetypefonts/noto/NotoSans-Regular.ttf --
 - Subset currently targets BMP `cmap` output (format 4) and glyf/loca-based TTF fonts.
 - CFF/CFF2 fonts are not supported for writing yet.
 - Some marks may be missing in the source font; those composites will be skipped.
+- WOFF conversion currently targets WOFF 1.0 only (`sfnt <-> woff`), not WOFF2.
 
 ## Fallback Rules (Current)
 - Acute/grave/etc: fallback to `"."`, `"'"`, ``"` ``, `"^"`, `"~"` when marks are missing.

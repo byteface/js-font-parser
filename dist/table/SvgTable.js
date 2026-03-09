@@ -77,7 +77,7 @@ var SvgTable = /** @class */ (function () {
     };
     SvgTable.prototype.getSvgDocumentForGlyphAsync = function (glyphId) {
         return __awaiter(this, void 0, void 0, function () {
-            var base, entry, docStart, bytes, stream, response, decompressed, buffer, decoder;
+            var base, entry, docStart, bytes, stream, payload, response, decompressed, buffer, decoder;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -93,7 +93,8 @@ var SvgTable = /** @class */ (function () {
                         docStart = this.startOffset + this.svgDocIndexOffset + entry.svgDocOffset;
                         bytes = new Uint8Array(this.view.buffer, docStart, entry.svgDocLength);
                         stream = new DecompressionStream('gzip');
-                        response = new Response(bytes).body;
+                        payload = new Uint8Array(bytes);
+                        response = new Response(payload).body;
                         if (!response)
                             return [2 /*return*/, { svgText: null, isCompressed: true }];
                         decompressed = response.pipeThrough(stream);

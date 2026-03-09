@@ -72,7 +72,8 @@ export class SvgTable implements ITable {
         const docStart = this.startOffset + this.svgDocIndexOffset + entry.svgDocOffset;
         const bytes = new Uint8Array(this.view.buffer, docStart, entry.svgDocLength);
         const stream = new DecompressionStream('gzip');
-        const response = new Response(bytes).body;
+        const payload = new Uint8Array(bytes);
+        const response = new Response(payload).body;
         if (!response) return { svgText: null, isCompressed: true };
         const decompressed = response.pipeThrough(stream);
         const buffer = await new Response(decompressed).arrayBuffer();

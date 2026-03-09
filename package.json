@@ -15,12 +15,14 @@
     "build:bundle": "webpack",
     "build": "npm run build:dist && npm run build:bundle"
   },
-  "keywords": ["font"],
+  "keywords": [
+    "font"
+  ],
   "author": "byteface",
   "license": "ISC",
   "devDependencies": {
     "ts-loader": "^9.5.1",
-    "typescript": "^5.6.3",
+    "typescript": "^5.9.3",
     "webpack": "^5.95.0",
     "webpack-cli": "^5.1.4"
   }

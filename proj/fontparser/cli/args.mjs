@@ -29,7 +29,9 @@ export function usageLines() {
     "fontparser --font path.ttf --overview [--min-coverage 90] [--kerning-chars \"AVTo\"] [--kerning-limit 10]",
     "fontparser --font path.ttf --svg-text \"Hello\" [--svg-out out.svg] [--svg-font-size 96] [--svg-fill '#111'] [--svg-stroke none] [--svg-stroke-width 0] [--svg-padding 24] [--svg-line-height 1.2] [--svg-letter-spacing 0] [--svg-use-kerning true] [--svg-bg '#fff']",
     "fontparser --font path.ttf --localise <code> [--out output.ttf]",
-    "fontparser --font path.ttf --subset [--subset-chars <text>] [--subset-file <txt>] [--subset-lang <code[,code]>] [--out output.ttf] [--subset-report report.json]"
+    "fontparser --font path.ttf --subset [--subset-chars <text>] [--subset-file <txt>] [--subset-lang <code[,code]>] [--out output.ttf] [--subset-report report.json]",
+    "fontparser --font input.ttf --convert woff [--out output.woff]",
+    "fontparser --font input.woff --convert sfnt|ttf|otf [--out output.ttf|output.otf]"
   ];
 }
 

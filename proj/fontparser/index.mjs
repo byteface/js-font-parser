@@ -2,8 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { ByteArray } from "../../dist/utils/ByteArray.js";
-import { FontParserTTF } from "../../dist/data/FontParserTTF.js";
+import { FontParser } from "../../dist/data/FontParser.js";
 import { supportsLanguage } from "../../dist/utils/LanguageSupport.js";
 
 import { parseArgs, parseBoolean, printUsage } from "./cli/args.mjs";
@@ -16,13 +15,20 @@ import { exportSvgText } from "./commands/svg-text.mjs";
 import { buildSubsetFont, collectSubsetChars } from "./commands/subset.mjs";
 import { composeFont } from "./commands/localise.mjs";
 import { basenameNoExt, updateNameTableBuffer } from "./lib/font-utils.mjs";
+import {
+  convertSfntToWoff,
+  convertWoffToSfnt,
+  resolveConvertOutPath,
+  detectInputType,
+  asArrayBuffer
+} from "./commands/convert.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 function loadFont(pathLike) {
   const data = fs.readFileSync(pathLike);
-  return new FontParserTTF(new ByteArray(new Uint8Array(data)));
+  return FontParser.fromArrayBuffer(asArrayBuffer(data));
 }
 
 async function main() {
@@ -34,8 +40,8 @@ async function main() {
   }
 
   const resolved = path.resolve(process.cwd(), fontPath);
-  const font = loadFont(resolved);
   const originalBuffer = Buffer.from(fs.readFileSync(resolved));
+  const font = args.convert != null ? null : loadFont(resolved);
 
   await runCli(args, {
     font,
@@ -64,10 +70,14 @@ async function main() {
     basenameNoExt,
     basenameWithExt: basenameNoExt,
     bufferFrom: (b) => Buffer.from(b),
-    loadFontFromBuffer: (buffer) => new FontParserTTF(new ByteArray(new Uint8Array(buffer))),
+    loadFontFromBuffer: (buffer) => FontParser.fromArrayBuffer(asArrayBuffer(buffer)),
     writeBuffer: (target, buffer) => fs.writeFileSync(target, buffer),
     writeUtf8: (target, data) => fs.writeFileSync(target, data, "utf8"),
-    writeJson: (target, data) => fs.writeFileSync(target, JSON.stringify(data, null, 2))
+    writeJson: (target, data) => fs.writeFileSync(target, JSON.stringify(data, null, 2)),
+    convertSfntToWoff,
+    convertWoffToSfnt,
+    resolveConvertOutPath,
+    detectInputType
   });
 }
 

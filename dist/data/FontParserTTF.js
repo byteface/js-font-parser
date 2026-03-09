@@ -502,23 +502,24 @@ var FontParserTTF = /** @class */ (function () {
             var advance = (_e = (_d = this.hmtx) === null || _d === void 0 ? void 0 : _d.getAdvanceWidth(i)) !== null && _e !== void 0 ? _e : 0;
             if (this.gvar && this.variationCoords.length > 0) {
                 var basePointCount = description.getPointCount();
-                var isComposite_1 = description.isComposite();
-                var componentCount = isComposite_1 && description instanceof GlyfCompositeDescript
+                var isComposite = description.isComposite();
+                var componentCount = isComposite && description instanceof GlyfCompositeDescript
                     ? description.getComponentCount()
                     : 0;
                 var transformSlotCount = 0;
-                if (isComposite_1 && description instanceof GlyfCompositeDescript) {
+                if (isComposite && description instanceof GlyfCompositeDescript) {
                     for (var _i = 0, _10 = description.components; _i < _10.length; _i++) {
                         var comp = _10[_i];
                         transformSlotCount += comp.getTransformSlotCount();
                     }
                 }
-                var compositePointCount = isComposite_1 ? (componentCount + transformSlotCount) : basePointCount;
+                var compositePointCount = isComposite ? (componentCount + transformSlotCount) : basePointCount;
                 var gvarPointCount = compositePointCount + 4; // phantom points
                 var deltas = this.gvar.getDeltasForGlyph(i, this.variationCoords, gvarPointCount);
                 if (deltas) {
                     var self_1 = this;
                     var base_1 = description;
+                    var compositeBase_1 = isComposite && base_1 instanceof GlyfCompositeDescript ? base_1 : null;
                     var fullDx = deltas.dx;
                     var fullDy = deltas.dy;
                     var dx_1 = [];
@@ -529,7 +530,7 @@ var FontParserTTF = /** @class */ (function () {
                     var compYScale_1 = null;
                     var compScale01_1 = null;
                     var compScale10_1 = null;
-                    if (!isComposite_1) {
+                    if (!isComposite) {
                         dx_1 = fullDx.slice(0, basePointCount);
                         dy_1 = fullDy.slice(0, basePointCount);
                         var touched = deltas.touched.slice(0, basePointCount);
@@ -580,7 +581,7 @@ var FontParserTTF = /** @class */ (function () {
                             }
                         }
                     }
-                    var phantomBase = isComposite_1 ? compositePointCount : basePointCount;
+                    var phantomBase = isComposite ? compositePointCount : basePointCount;
                     var lsbDelta = (_q = fullDx[phantomBase]) !== null && _q !== void 0 ? _q : 0;
                     var rsbDelta = (_r = fullDx[phantomBase + 1]) !== null && _r !== void 0 ? _r : 0;
                     lsb += lsbDelta;
@@ -590,8 +591,8 @@ var FontParserTTF = /** @class */ (function () {
                     var minY_1 = Infinity;
                     var maxY_1 = -Infinity;
                     for (var p = 0; p < basePointCount; p++) {
-                        var comp = isComposite_1 && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
-                        var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                        var comp = compositeBase_1 ? compositeBase_1.getComponentForPointIndex(p) : null;
+                        var compIndex = comp && compositeBase_1 ? compositeBase_1.components.indexOf(comp) : -1;
                         var x = base_1.getXCoordinate(p);
                         var y = base_1.getYCoordinate(p);
                         if (comp && compIndex >= 0 && self_1.glyf) {
@@ -632,8 +633,8 @@ var FontParserTTF = /** @class */ (function () {
                         getFlags: function (p) { return base_1.getFlags(p); },
                         getXCoordinate: function (p) {
                             var _a, _b, _c, _d, _e, _f, _g;
-                            var comp = isComposite_1 && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
-                            var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                            var comp = compositeBase_1 ? compositeBase_1.getComponentForPointIndex(p) : null;
+                            var compIndex = comp && compositeBase_1 ? compositeBase_1.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self_1.glyf) {
                                 var gd = self_1.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {
@@ -653,8 +654,8 @@ var FontParserTTF = /** @class */ (function () {
                         },
                         getYCoordinate: function (p) {
                             var _a, _b, _c, _d, _e, _f, _g;
-                            var comp = isComposite_1 && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
-                            var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                            var comp = compositeBase_1 ? compositeBase_1.getComponentForPointIndex(p) : null;
+                            var compIndex = comp && compositeBase_1 ? compositeBase_1.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self_1.glyf) {
                                 var gd = self_1.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {
