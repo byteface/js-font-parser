@@ -93,7 +93,7 @@ function rebuild() {
   if (!b) return;
   const s = Math.min((canvas.width * 0.6) / Math.max(1, b.width), (canvas.height * 0.6) / Math.max(1, b.height));
   const centered = transformPoints(points, -((b.minX + b.maxX) * 0.5), -((b.minY + b.maxY) * 0.5), s, true);
-  const translated = centered.map((p) => ({ ...p, x: p.x + canvas.width * 0.5, y: p.y + canvas.height * 0.55 }));
+  const translated = centered.map((p) => ({ ...p, x: p.x + canvas.width * 0.5, y: p.y + canvas.height * 0.5 }));
   contours = splitContours(translated);
   nodes = contours.flat();
   center = nodes.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });

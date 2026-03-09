@@ -145,10 +145,10 @@
     <label>Font <select id="fontSelect"></select></label>
     <label>Glyph character <input id="charInput" type="text" value="R" maxlength="2" /></label>
 
-    <label class="row">Stiffness <span id="stiffVal" class="v"></span><input id="stiffInput" type="range" min="2" max="80" value="34" /></label>
-    <label class="row">Shape memory <span id="snapVal" class="v"></span><input id="snapInput" type="range" min="0" max="60" value="26" /></label>
+    <label class="row">Stiffness <span id="stiffVal" class="v"></span><input id="stiffInput" type="range" min="4" max="140" value="58" /></label>
+    <label class="row">Shape memory <span id="snapVal" class="v"></span><input id="snapInput" type="range" min="0" max="110" value="48" /></label>
     <label class="row">Damping <span id="dampVal" class="v"></span><input id="dampInput" type="range" min="80" max="995" value="936" /></label>
-    <label class="row">Gravity <span id="gravVal" class="v"></span><input id="gravInput" type="range" min="0" max="260" value="64" /></label>
+    <label class="row">Gravity <span id="gravVal" class="v"></span><input id="gravInput" type="range" min="0" max="320" value="98" /></label>
     <label class="row">Bounce <span id="bounceVal" class="v"></span><input id="bounceInput" type="range" min="10" max="98" value="72" /></label>
 
     <label class="toggle"><input id="showMesh" type="checkbox" checked /> Show spring mesh</label>
@@ -224,10 +224,10 @@
   if (joe) fontSelect.value = joe.url;
 
   function updateUiValues() {
-    stiffVal.textContent = (Number(stiffInput.value) / 1000).toFixed(3);
-    snapVal.textContent = (Number(snapInput.value) / 1000).toFixed(3);
+    stiffVal.textContent = (Number(stiffInput.value) / 38).toFixed(2);
+    snapVal.textContent = (Number(snapInput.value) / 30).toFixed(2);
     dampVal.textContent = (Number(dampInput.value) / 1000).toFixed(3);
-    gravVal.textContent = (Number(gravInput.value) / 1000).toFixed(3);
+    gravVal.textContent = (Number(gravInput.value) / 45).toFixed(2);
     bounceVal.textContent = (Number(bounceInput.value) / 100).toFixed(2);
   }
 
@@ -318,7 +318,7 @@
     const cx = (minX + maxX) * 0.5;
     const cy = (minY + maxY) * 0.5;
     const ox = canvas.width * 0.5;
-    const oy = canvas.height * 0.55;
+    const oy = canvas.height * 0.5;
 
     nodes = pts.map((p) => {
       const x = ox + (p.x - cx) * simScale;
@@ -395,7 +395,8 @@
   }
 
   function applySprings(dt) {
-    const k = Number(stiffInput.value) / 1000;
+    const k = Number(stiffInput.value) / 38;
+    const dt60 = dt * 60;
     for (const s of springs) {
       const a = nodes[s.a];
       const b = nodes[s.b];
@@ -406,18 +407,19 @@
       const f = k * s.weight * diff;
       const fx = dx * f;
       const fy = dy * f;
-      a.vx += fx * dt;
-      a.vy += fy * dt;
-      b.vx -= fx * dt;
-      b.vy -= fy * dt;
+      a.vx += fx * dt60;
+      a.vy += fy * dt60;
+      b.vx -= fx * dt60;
+      b.vy -= fy * dt60;
     }
   }
 
   function integrate(dt) {
     const damping = Number(dampInput.value) / 1000;
-    const gravity = Number(gravInput.value) / 1000;
+    const gravity = Number(gravInput.value) / 45;
     const bounce = Number(bounceInput.value) / 100;
-    const snap = Number(snapInput.value) / 1000;
+    const snap = Number(snapInput.value) / 30;
+    const dt60 = dt * 60;
     const floor = canvas.height - 18 * dpr;
     const left = 10 * dpr;
     const right = canvas.width - 10 * dpr;
@@ -427,8 +429,8 @@
       const n = nodes[i];
       if (pointer.mode === 'point' && i === pointer.nodeIndex && pointer.down) continue;
 
-      n.vx += (n.ox - n.x) * snap * dt;
-      n.vy += ((n.oy - n.y) * snap + gravity) * dt;
+      n.vx += (n.ox - n.x) * snap * dt60;
+      n.vy += ((n.oy - n.y) * snap + gravity) * dt60;
       n.vx *= damping;
       n.vy *= damping;
       n.x += n.vx * dt;

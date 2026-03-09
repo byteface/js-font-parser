@@ -29,8 +29,8 @@
     <p>Pinch and pull strands of the glyph. It stretches like woven threads then recovers.</p>
     <label>Font <select id="fontSelect"></select></label>
     <label>Character <input id="charInput" type="text" value="S" maxlength="2" /></label>
-    <label class="row">Thread tension <span id="kVal" class="v"></span><input id="kInput" type="range" min="4" max="60" value="24" /></label>
-    <label class="row">Recovery <span id="rVal" class="v"></span><input id="rInput" type="range" min="0" max="50" value="18" /></label>
+    <label class="row">Thread tension <span id="kVal" class="v"></span><input id="kInput" type="range" min="6" max="120" value="46" /></label>
+    <label class="row">Recovery <span id="rVal" class="v"></span><input id="rInput" type="range" min="0" max="90" value="34" /></label>
     <label class="row">Friction <span id="fVal" class="v"></span><input id="fInput" type="range" min="830" max="995" value="930" /></label>
     <label class="row">Trail <span id="tVal" class="v"></span><input id="tInput" type="range" min="3" max="35" value="16" /></label>
     <div class="status" id="status">Loading…</div>
@@ -72,8 +72,8 @@ for (const f of fonts) {
 }
 
 function setVals() {
-  kVal.textContent = (Number(kInput.value) / 1000).toFixed(3);
-  rVal.textContent = (Number(rInput.value) / 1000).toFixed(3);
+  kVal.textContent = (Number(kInput.value) / 35).toFixed(2);
+  rVal.textContent = (Number(rInput.value) / 30).toFixed(2);
   fVal.textContent = (Number(fInput.value) / 1000).toFixed(3);
   tVal.textContent = tInput.value;
 }
@@ -103,7 +103,7 @@ function rebuild() {
   if (!b) return;
   const scale = Math.min((canvas.width * 0.62) / Math.max(1, b.width), (canvas.height * 0.62) / Math.max(1, b.height));
   const centered = transformPoints(pts, -((b.minX + b.maxX) * 0.5), -((b.minY + b.maxY) * 0.5), scale, true)
-    .map((p) => ({ ...p, x: p.x + canvas.width * 0.5, y: p.y + canvas.height * 0.55 }));
+    .map((p) => ({ ...p, x: p.x + canvas.width * 0.5, y: p.y + canvas.height * 0.5 }));
   contours = splitContours(centered);
   nodes = centered.map((p) => ({ x: p.x, y: p.y, ox: p.x, oy: p.y, vx: 0, vy: 0, onCurve: p.onCurve, trail: [] }));
   edges = [];
@@ -175,9 +175,10 @@ function draw() {
 }
 
 function step(dt) {
-  const k = Number(kInput.value) / 1000;
-  const recover = Number(rInput.value) / 1000;
+  const k = Number(kInput.value) / 35;
+  const recover = Number(rInput.value) / 30;
   const friction = Number(fInput.value) / 1000;
+  const dt60 = dt * 60;
   for (const e of edges) {
     const a = nodes[e.a], b = nodes[e.b];
     const dx = b.x - a.x;
@@ -187,15 +188,15 @@ function step(dt) {
     const f = k * e.w * diff;
     const fx = dx * f;
     const fy = dy * f;
-    a.vx += fx * dt; a.vy += fy * dt;
-    b.vx -= fx * dt; b.vy -= fy * dt;
+    a.vx += fx * dt60; a.vy += fy * dt60;
+    b.vx -= fx * dt60; b.vy -= fy * dt60;
   }
   const left = 8 * dpr, right = canvas.width - left, top = left, bottom = canvas.height - left;
   for (let i = 0; i < nodes.length; i++) {
     const n = nodes[i];
     if (pointer.down && pointer.mode === 'node' && pointer.idx === i) continue;
-    n.vx += (n.ox - n.x) * recover * dt;
-    n.vy += (n.oy - n.y) * recover * dt;
+    n.vx += (n.ox - n.x) * recover * dt60;
+    n.vy += (n.oy - n.y) * recover * dt60;
     n.vx *= friction; n.vy *= friction;
     n.x += n.vx * dt; n.y += n.vy * dt;
     if (n.x < left) { n.x = left; n.vx *= -0.7; }
@@ -263,7 +264,7 @@ canvas.addEventListener('pointermove', (e) => {
       const dy = n.y - p.y;
       const dist = Math.hypot(dx, dy) || 1;
       if (dist < 170 * dpr) {
-        const force = (1 - dist / (170 * dpr)) * 0.18;
+        const force = (1 - dist / (170 * dpr)) * 0.55;
         n.vx += pointer.vx * force;
         n.vy += pointer.vy * force;
       }

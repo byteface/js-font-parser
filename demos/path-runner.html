@@ -60,10 +60,13 @@ let cursor = 0;
 let pauseTimer = 0;
 
 const fonts = [...getFontList('allGlyphs').slice(0, 18), ...getFontList('demoCore')]
+  .filter((f) => !/2006 Team/i.test(f.name))
   .filter((f, i, arr) => arr.findIndex((x) => x.url === f.url) === i);
 for (const f of fonts) {
   const o = document.createElement('option'); o.value = f.url; o.textContent = f.name; fontSelect.appendChild(o);
 }
+const preferred = fonts.find((f) => /Noto Sans|DiscoMo|JoeJack/i.test(f.name));
+if (preferred) fontSelect.value = preferred.url;
 
 function setVals() {
   speedVal.textContent = speedInput.value;
@@ -90,7 +93,7 @@ function rebuild() {
   if (!b) return;
   const scale = Math.min((canvas.width * 0.62) / Math.max(1, b.width), (canvas.height * 0.62) / Math.max(1, b.height));
   const transformed = transformPoints(pts, -((b.minX + b.maxX) * 0.5), -((b.minY + b.maxY) * 0.5), scale, true)
-    .map((p) => ({ ...p, x: p.x + canvas.width * 0.5, y: p.y + canvas.height * 0.56 }));
+    .map((p) => ({ ...p, x: p.x + canvas.width * 0.5, y: p.y + canvas.height * 0.5 }));
   contours = splitContours(transformed);
   route = [];
   for (const contour of contours) {
