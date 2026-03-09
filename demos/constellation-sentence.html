@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Constellation Sentence</title>
+  <style>
+    :root { --bg:#061018; --ink:#d7ebff; --muted:#90a8bf; --panel:#0d1a28; --border:#203247; --accent:#8ad3ff; }
+    body { margin:0; font-family:"Spectral", "Times New Roman", serif; background:radial-gradient(circle at 18% 10%, #15283d 0%, var(--bg) 58%); color:var(--ink); }
+    header { padding:20px 20px 8px; }
+    h1 { margin:0 0 6px; font-size:30px; letter-spacing:.02em; }
+    p { margin:0 0 12px; color:var(--muted); }
+    .panel { margin:12px 20px; padding:12px; background:rgba(13,26,40,.82); border:1px solid var(--border); border-radius:12px; }
+    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    label { display:flex; flex-direction:column; gap:4px; color:var(--muted); font-size:12px; }
+    select, input[type="range"], input[type="text"] { background:#132436; border:1px solid #274259; color:#dff1ff; border-radius:8px; padding:7px 9px; min-width:180px; }
+    canvas { width:calc(100% - 40px); margin:0 20px 24px; height:auto; border:1px solid var(--border); border-radius:14px; background:linear-gradient(180deg, #08121c 0%, #050c14 100%); }
+    .hint { color:var(--muted); font-size:12px; margin-top:8px; }
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<header>
+  <h1>Constellation Sentence</h1>
+  <p>Drifting points gather into type, with live star-links between neighbors.</p>
+</header>
+<div class="panel">
+  <div class="row">
+    <label>Font
+      <select id="fontSelect"></select>
+    </label>
+    <label>Sentence
+      <input id="sentenceInput" type="text" value="Everything aligns eventually." />
+    </label>
+    <label>Line radius
+      <input id="radiusInput" type="range" min="16" max="100" value="38" />
+    </label>
+    <label>Assembly speed
+      <input id="speedInput" type="range" min="1" max="12" value="5" />
+    </label>
+    <button id="nextBtn" type="button">Next line</button>
+  </div>
+  <div class="hint" id="status">Loading…</div>
+</div>
+<canvas id="stage" width="1360" height="640"></canvas>
+
+<script type="module">
+import { FontParser } from "../dist/data/FontParser.js";
+import { Table } from "../dist/table/Table.js";
+
+const sentences = [
+  "We're on the same type.",
+  "Mind your spacing.",
+  "Everything aligns eventually.",
+  "Kerning is caring."
+];
+
+const fontOptions = [
+  { name: "Noto Sans", url: "../truetypefonts/noto/NotoSans-Regular.ttf" },
+  { name: "Roboto VF", url: "../truetypefonts/curated/Roboto-VF.ttf" },
+  { name: "Source Code Pro", url: "../truetypefonts/curated-extra/SourceCodePro-Regular.otf" },
+  { name: "Font Awesome 4.7", url: "../truetypefonts/curated-extra/FontAwesome-4.7.0.ttf" }
+];
+
+const fontSelect = document.getElementById("fontSelect");
+const sentenceInput = document.getElementById("sentenceInput");
+const radiusInput = document.getElementById("radiusInput");
+const speedInput = document.getElementById("speedInput");
+const nextBtn = document.getElementById("nextBtn");
+const status = document.getElementById("status");
+const canvas = document.getElementById("stage");
+const ctx = canvas.getContext("2d");
+
+const fontCache = new Map();
+let font = null;
+let sentenceIndex = 2;
+let targetPoints = [];
+let particles = [];
+let assembly = 0;
+let lastSwitch = performance.now();
+
+const stars = Array.from({ length: 220 }, () => ({
+  x: Math.random() * canvas.width,
+  y: Math.random() * canvas.height,
+  r: Math.random() * 1.4 + 0.2,
+  a: Math.random() * 0.7 + 0.2,
+  drift: Math.random() * 0.015 + 0.005
+}));
+
+function populateFonts() {
+  fontSelect.innerHTML = "";
+  fontOptions.forEach((opt, i) => {
+    const o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = opt.name;
+    fontSelect.appendChild(o);
+  });
+}
+
+async function loadFont(url) {
+  if (fontCache.has(url)) return fontCache.get(url);
+  const loaded = await FontParser.load(url);
+  fontCache.set(url, loaded);
+  return loaded;
+}
+
+function normalizeSentenceForFont(text) {
+  if (fontOptions[Number(fontSelect.value)]?.name.startsWith("Font Awesome")) {
+    return "\uf2b9 \uf0c0 \uf005 \uf0e7";
+  }
+  return text;
+}
+
+function collectGlyphPoints(glyph, sampleStep) {
+  const pts = [];
+  for (let i = 0; i < glyph.getPointCount(); i += sampleStep) {
+    const p = glyph.getPoint(i);
+    if (!p) continue;
+    pts.push({ x: p.x, y: p.y });
+  }
+  return pts;
+}
+
+function buildTargetPoints(text) {
+  const head = font.getTableByType?.(Table.head);
+  const upem = head?.unitsPerEm ?? 1000;
+  const pxSize = 180;
+  const scale = pxSize / upem;
+  const layout = font.layoutString(text, { gsubFeatures: ["liga"], gpos: true });
+
+  let penX = 0;
+  const points = [];
+  const baselineX = 90;
+  const baselineY = canvas.height * 0.57;
+  for (const item of layout) {
+    const glyph = font.getGlyph(item.glyphIndex);
+    if (!glyph) {
+      penX += item.xAdvance;
+      continue;
+    }
+    const raw = collectGlyphPoints(glyph, 1);
+    for (const p of raw) {
+      points.push({
+        x: baselineX + (penX + (item.xOffset ?? 0) + p.x) * scale,
+        y: baselineY - (p.y + (item.yOffset ?? 0)) * scale
+      });
+    }
+    penX += item.xAdvance;
+  }
+
+  const maxPoints = 1200;
+  if (points.length > maxPoints) {
+    const stride = Math.ceil(points.length / maxPoints);
+    return points.filter((_, i) => i % stride === 0);
+  }
+  return points;
+}
+
+function syncParticles() {
+  while (particles.length < targetPoints.length) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: (Math.random() - 0.5) * 0.8
+    });
+  }
+  if (particles.length > targetPoints.length) {
+    particles.length = targetPoints.length;
+  }
+}
+
+function setSentence(text) {
+  const normalized = normalizeSentenceForFont(text);
+  sentenceInput.value = text;
+  targetPoints = buildTargetPoints(normalized);
+  syncParticles();
+  assembly = 0;
+  status.textContent = `${targetPoints.length} points, sentence: ${text}`;
+}
+
+function drawBackground(time) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  grad.addColorStop(0, "#0a1825");
+  grad.addColorStop(1, "#050b12");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (const s of stars) {
+    const tw = 0.6 + 0.4 * Math.sin(time * s.drift + s.x * 0.01);
+    ctx.fillStyle = `rgba(180, 220, 255, ${s.a * tw})`;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function animate(time) {
+  drawBackground(time);
+
+  const speed = Number(speedInput.value) * 0.0006;
+  assembly = Math.min(1, assembly + speed);
+
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+    const t = targetPoints[i];
+    if (!t) continue;
+    const wander = 1 - assembly;
+    const ax = (t.x - p.x) * (0.006 + assembly * 0.03) + (Math.random() - 0.5) * 0.24 * wander;
+    const ay = (t.y - p.y) * (0.006 + assembly * 0.03) + (Math.random() - 0.5) * 0.24 * wander;
+    p.vx = (p.vx + ax) * 0.9;
+    p.vy = (p.vy + ay) * 0.9;
+    p.x += p.vx;
+    p.y += p.vy;
+  }
+
+  if (assembly > 0.35) {
+    const ghostAlpha = Math.min(0.42, (assembly - 0.35) * 0.65);
+    ctx.fillStyle = `rgba(118, 199, 255, ${ghostAlpha})`;
+    for (const t of targetPoints) {
+      ctx.fillRect(t.x, t.y, 1.2, 1.2);
+    }
+  }
+
+  const radius = Number(radiusInput.value);
+  ctx.lineWidth = 1;
+  for (let i = 0; i < particles.length; i++) {
+    const a = particles[i];
+    for (let j = i + 1; j < particles.length; j++) {
+      const b = particles[j];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > radius * radius) continue;
+      const d = Math.sqrt(d2);
+      const alpha = (1 - d / radius) * (0.08 + assembly * 0.42);
+      ctx.strokeStyle = `rgba(120, 200, 255, ${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+  }
+
+  for (const p of particles) {
+    ctx.fillStyle = `rgba(180, 232, 255, ${0.5 + assembly * 0.5})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 1.6 + assembly * 0.9, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (time - lastSwitch > 14000) {
+    lastSwitch = time;
+    sentenceIndex = (sentenceIndex + 1) % sentences.length;
+    setSentence(sentences[sentenceIndex]);
+  }
+
+  requestAnimationFrame(animate);
+}
+
+async function boot() {
+  const selected = fontOptions[Number(fontSelect.value)] ?? fontOptions[0];
+  font = await loadFont(selected.url);
+  setSentence(sentences[sentenceIndex]);
+}
+
+nextBtn.addEventListener("click", () => {
+  sentenceIndex = (sentenceIndex + 1) % sentences.length;
+  setSentence(sentences[sentenceIndex]);
+  lastSwitch = performance.now();
+});
+fontSelect.addEventListener("change", boot);
+sentenceInput.addEventListener("change", () => {
+  setSentence(sentenceInput.value || sentences[sentenceIndex]);
+  lastSwitch = performance.now();
+});
+
+populateFonts();
+boot().then(() => requestAnimationFrame(animate)).catch(err => {
+  status.textContent = `Failed to load font: ${err.message}`;
+});
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>
