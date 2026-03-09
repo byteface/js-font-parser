@@ -64,9 +64,9 @@ export class LayoutEngine {
      * is intentionally independent from GSUB/GPOS internals.
      */
     static layoutText(font: FontLike, text: string, options: LayoutOptions = {}): LayoutResult {
-        const maxWidth = options.maxWidth ?? 0;
+        const maxWidth = Number.isFinite(options.maxWidth) ? (options.maxWidth as number) : 0;
         const align = options.align ?? 'left';
-        const letterSpacing = options.letterSpacing ?? 0;
+        const letterSpacing = Number.isFinite(options.letterSpacing) ? (options.letterSpacing as number) : 0;
         const useKerning = options.useKerning ?? true;
         const breakWords = options.breakWords ?? true;
         const trimLeadingSpaces = options.trimLeadingSpaces ?? true;
@@ -87,7 +87,8 @@ export class LayoutEngine {
         const hhea = font.getTableByType?.(0x68686561); // hhea
         const head = font.getTableByType?.(0x68656164); // head
         const unitsPerEm = head?.unitsPerEm ?? 1000;
-        const lineHeight = options.lineHeight ?? ((hhea?.ascender ?? unitsPerEm * 0.8) - (hhea?.descender ?? -unitsPerEm * 0.2) + (hhea?.lineGap ?? 0));
+        const computedLineHeight = ((hhea?.ascender ?? unitsPerEm * 0.8) - (hhea?.descender ?? -unitsPerEm * 0.2) + (hhea?.lineGap ?? 0));
+        const lineHeight = Number.isFinite(options.lineHeight) ? (options.lineHeight as number) : computedLineHeight;
         const emitDiagnostic = (diagnostic: LayoutDiagnostic) => {
             options.diagnostics?.push(diagnostic);
             options.onDiagnostic?.(diagnostic);
@@ -162,7 +163,7 @@ export class LayoutEngine {
 
         pushLine(true);
 
-        const resultWidth = maxWidth > 0 ? maxWidth : Math.max(0, ...lines.map(l => l.width));
+        const resultWidth = maxWidth > 0 ? maxWidth : Math.max(0, ...lines.map(l => Number.isFinite(l.width) ? l.width : 0));
         lines.forEach((line, index) => {
             const y = index * lineHeight;
             if (direction === 'rtl') {

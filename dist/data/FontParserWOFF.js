@@ -1051,11 +1051,12 @@ var FontParserWOFF = /** @class */ (function () {
             for (var i = 0; i < lookup.getSubtableCount(); i++) {
                 var st = lookup.getSubtable(i);
                 if (st instanceof PairPosFormat1 || st instanceof PairPosFormat2) {
-                    value += st.getKerning(leftGlyph, rightGlyph);
+                    var kern = st.getKerning(leftGlyph, rightGlyph);
+                    value += Number.isFinite(kern) ? kern : 0;
                 }
             }
         }
-        return value;
+        return Number.isFinite(value) ? value : 0;
     };
     FontParserWOFF.prototype.getKerningValue = function (leftChar, rightChar) {
         var left = this.getGlyphIndexByChar(leftChar);

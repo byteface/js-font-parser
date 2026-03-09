@@ -28,31 +28,32 @@ var LayoutEngine = /** @class */ (function () {
      */
     LayoutEngine.layoutText = function (font, text, options) {
         var _this = this;
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
         if (options === void 0) { options = {}; }
-        var maxWidth = (_a = options.maxWidth) !== null && _a !== void 0 ? _a : 0;
-        var align = (_b = options.align) !== null && _b !== void 0 ? _b : 'left';
-        var letterSpacing = (_c = options.letterSpacing) !== null && _c !== void 0 ? _c : 0;
-        var useKerning = (_d = options.useKerning) !== null && _d !== void 0 ? _d : true;
-        var breakWords = (_e = options.breakWords) !== null && _e !== void 0 ? _e : true;
-        var trimLeadingSpaces = (_f = options.trimLeadingSpaces) !== null && _f !== void 0 ? _f : true;
-        var trimTrailingSpaces = (_g = options.trimTrailingSpaces) !== null && _g !== void 0 ? _g : true;
-        var collapseSpaces = (_h = options.collapseSpaces) !== null && _h !== void 0 ? _h : false;
-        var preserveNbsp = (_j = options.preserveNbsp) !== null && _j !== void 0 ? _j : true;
-        var tabSize = (_k = options.tabSize) !== null && _k !== void 0 ? _k : 4;
-        var justifyLastLine = (_l = options.justifyLastLine) !== null && _l !== void 0 ? _l : false;
-        var bidi = (_m = options.bidi) !== null && _m !== void 0 ? _m : 'simple';
-        var hyphenate = (_o = options.hyphenate) !== null && _o !== void 0 ? _o : 'soft';
-        var hyphenChar = (_p = options.hyphenChar) !== null && _p !== void 0 ? _p : '-';
-        var hyphenMinWordLength = (_q = options.hyphenMinWordLength) !== null && _q !== void 0 ? _q : 6;
-        var resolvedDirection = (_r = options.direction) !== null && _r !== void 0 ? _r : 'ltr';
+        var maxWidth = Number.isFinite(options.maxWidth) ? options.maxWidth : 0;
+        var align = (_a = options.align) !== null && _a !== void 0 ? _a : 'left';
+        var letterSpacing = Number.isFinite(options.letterSpacing) ? options.letterSpacing : 0;
+        var useKerning = (_b = options.useKerning) !== null && _b !== void 0 ? _b : true;
+        var breakWords = (_c = options.breakWords) !== null && _c !== void 0 ? _c : true;
+        var trimLeadingSpaces = (_d = options.trimLeadingSpaces) !== null && _d !== void 0 ? _d : true;
+        var trimTrailingSpaces = (_e = options.trimTrailingSpaces) !== null && _e !== void 0 ? _e : true;
+        var collapseSpaces = (_f = options.collapseSpaces) !== null && _f !== void 0 ? _f : false;
+        var preserveNbsp = (_g = options.preserveNbsp) !== null && _g !== void 0 ? _g : true;
+        var tabSize = (_h = options.tabSize) !== null && _h !== void 0 ? _h : 4;
+        var justifyLastLine = (_j = options.justifyLastLine) !== null && _j !== void 0 ? _j : false;
+        var bidi = (_k = options.bidi) !== null && _k !== void 0 ? _k : 'simple';
+        var hyphenate = (_l = options.hyphenate) !== null && _l !== void 0 ? _l : 'soft';
+        var hyphenChar = (_m = options.hyphenChar) !== null && _m !== void 0 ? _m : '-';
+        var hyphenMinWordLength = (_o = options.hyphenMinWordLength) !== null && _o !== void 0 ? _o : 6;
+        var resolvedDirection = (_p = options.direction) !== null && _p !== void 0 ? _p : 'ltr';
         var direction = resolvedDirection === 'auto'
             ? (this.hasRtl(text) ? 'rtl' : 'ltr')
             : resolvedDirection;
-        var hhea = (_s = font.getTableByType) === null || _s === void 0 ? void 0 : _s.call(font, 0x68686561); // hhea
-        var head = (_t = font.getTableByType) === null || _t === void 0 ? void 0 : _t.call(font, 0x68656164); // head
-        var unitsPerEm = (_u = head === null || head === void 0 ? void 0 : head.unitsPerEm) !== null && _u !== void 0 ? _u : 1000;
-        var lineHeight = (_v = options.lineHeight) !== null && _v !== void 0 ? _v : (((_w = hhea === null || hhea === void 0 ? void 0 : hhea.ascender) !== null && _w !== void 0 ? _w : unitsPerEm * 0.8) - ((_x = hhea === null || hhea === void 0 ? void 0 : hhea.descender) !== null && _x !== void 0 ? _x : -unitsPerEm * 0.2) + ((_y = hhea === null || hhea === void 0 ? void 0 : hhea.lineGap) !== null && _y !== void 0 ? _y : 0));
+        var hhea = (_q = font.getTableByType) === null || _q === void 0 ? void 0 : _q.call(font, 0x68686561); // hhea
+        var head = (_r = font.getTableByType) === null || _r === void 0 ? void 0 : _r.call(font, 0x68656164); // head
+        var unitsPerEm = (_s = head === null || head === void 0 ? void 0 : head.unitsPerEm) !== null && _s !== void 0 ? _s : 1000;
+        var computedLineHeight = (((_t = hhea === null || hhea === void 0 ? void 0 : hhea.ascender) !== null && _t !== void 0 ? _t : unitsPerEm * 0.8) - ((_u = hhea === null || hhea === void 0 ? void 0 : hhea.descender) !== null && _u !== void 0 ? _u : -unitsPerEm * 0.2) + ((_v = hhea === null || hhea === void 0 ? void 0 : hhea.lineGap) !== null && _v !== void 0 ? _v : 0));
+        var lineHeight = Number.isFinite(options.lineHeight) ? options.lineHeight : computedLineHeight;
         var emitDiagnostic = function (diagnostic) {
             var _a, _b;
             (_a = options.diagnostics) === null || _a === void 0 ? void 0 : _a.push(diagnostic);
@@ -100,8 +101,8 @@ var LayoutEngine = /** @class */ (function () {
                 pushLine(false);
             }
             if (maxWidth > 0 && breakWords && tokenWidth > maxWidth) {
-                for (var _z = 0, tokenGlyphs_1 = tokenGlyphs; _z < tokenGlyphs_1.length; _z++) {
-                    var glyph = tokenGlyphs_1[_z];
+                for (var _w = 0, tokenGlyphs_1 = tokenGlyphs; _w < tokenGlyphs_1.length; _w++) {
+                    var glyph = tokenGlyphs_1[_w];
                     if (maxWidth > 0 && cursorX > 0 && cursorX + glyph.advance > maxWidth) {
                         pushLine(false);
                     }
@@ -112,8 +113,8 @@ var LayoutEngine = /** @class */ (function () {
                 }
                 continue;
             }
-            for (var _0 = 0, tokenGlyphs_2 = tokenGlyphs; _0 < tokenGlyphs_2.length; _0++) {
-                var glyph = tokenGlyphs_2[_0];
+            for (var _x = 0, tokenGlyphs_2 = tokenGlyphs; _x < tokenGlyphs_2.length; _x++) {
+                var glyph = tokenGlyphs_2[_x];
                 glyph.x = cursorX + glyph.x;
                 glyph.y = 0;
                 cursorX += glyph.advance;
@@ -121,7 +122,7 @@ var LayoutEngine = /** @class */ (function () {
             }
         }
         pushLine(true);
-        var resultWidth = maxWidth > 0 ? maxWidth : Math.max.apply(Math, __spreadArray([0], lines.map(function (l) { return l.width; }), false));
+        var resultWidth = maxWidth > 0 ? maxWidth : Math.max.apply(Math, __spreadArray([0], lines.map(function (l) { return Number.isFinite(l.width) ? l.width : 0; }), false));
         lines.forEach(function (line, index) {
             var y = index * lineHeight;
             if (direction === 'rtl') {

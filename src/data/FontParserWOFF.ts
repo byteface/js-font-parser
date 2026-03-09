@@ -1008,11 +1008,12 @@ export class FontParserWOFF {
             for (let i = 0; i < lookup.getSubtableCount(); i++) {
                 const st = lookup.getSubtable(i);
                 if (st instanceof PairPosFormat1 || st instanceof PairPosFormat2) {
-                    value += st.getKerning(leftGlyph, rightGlyph);
+                    const kern = st.getKerning(leftGlyph, rightGlyph);
+                    value += Number.isFinite(kern) ? kern : 0;
                 }
             }
         }
-        return value;
+        return Number.isFinite(value) ? value : 0;
     }
 
     public getKerningValue(leftChar: string, rightChar: string): number {
