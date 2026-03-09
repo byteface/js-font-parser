@@ -312,9 +312,12 @@ export class LayoutEngine {
                 prevGlyph = null;
                 continue;
             }
-            const advance = glyph.advanceWidth + letterSpacing + (useKerning && prevGlyph != null && font.getKerningValueByGlyphs
+            const baseAdvance = Number.isFinite(glyph.advanceWidth) ? glyph.advanceWidth : 0;
+            const kern = (useKerning && prevGlyph != null && font.getKerningValueByGlyphs)
                 ? font.getKerningValueByGlyphs(prevGlyph, glyphIndex ?? 0)
-                : 0);
+                : 0;
+            const safeKern = Number.isFinite(kern) ? kern : 0;
+            const advance = baseAdvance + letterSpacing + safeKern;
             glyphs.push({ glyphIndex: glyphIndex ?? 0, x: 0, y: 0, advance, char: ch });
             prevGlyph = glyphIndex ?? 0;
         }

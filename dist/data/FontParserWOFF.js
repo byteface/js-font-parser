@@ -198,8 +198,8 @@ var FontParserWOFF = /** @class */ (function () {
         var declaredLength = this.readUint32(view, 8);
         var numTables = this.readUint16(view, 12);
         var totalSfntSize = this.readUint32(view, 16);
-        if (declaredLength > view.byteLength) {
-            throw new Error('Invalid WOFF header: declared length exceeds available bytes.');
+        if (declaredLength !== view.byteLength) {
+            throw new Error('Invalid WOFF header: declared length does not match available bytes.');
         }
         if (numTables <= 0) {
             throw new Error('Invalid WOFF header: numTables must be greater than zero.');
@@ -303,8 +303,8 @@ var FontParserWOFF = /** @class */ (function () {
                         length = this.readUint32(view, 8);
                         numTables = this.readUint16(view, 12);
                         totalSfntSize = this.readUint32(view, 16);
-                        if (length > buffer.byteLength) {
-                            throw new Error('Invalid WOFF header: declared length exceeds available bytes.');
+                        if (length !== buffer.byteLength) {
+                            throw new Error('Invalid WOFF header: declared length does not match available bytes.');
                         }
                         if (numTables <= 0) {
                             throw new Error('Invalid WOFF header: numTables must be greater than zero.');
@@ -325,6 +325,9 @@ var FontParserWOFF = /** @class */ (function () {
                             };
                             if (entry.offset > buffer.byteLength || entry.compLength > buffer.byteLength - entry.offset) {
                                 throw new Error('Invalid WOFF table entry: table offset/length out of bounds.');
+                            }
+                            if (entry.compLength > entry.origLength) {
+                                throw new Error('Invalid WOFF table entry: compLength cannot exceed origLength.');
                             }
                             entries.push(entry);
                         }
@@ -1025,11 +1028,11 @@ var FontParserWOFF = /** @class */ (function () {
         return this.gsub.applyFeatures(glyphs, featureTags, scriptTags);
     };
     FontParserWOFF.prototype.getKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
-        var _a;
         if (!this.kern)
             return 0;
         if (typeof this.kern.getKerningValue === "function") {
-            return (_a = this.kern.getKerningValue(leftGlyph, rightGlyph)) !== null && _a !== void 0 ? _a : 0;
+            var value = this.kern.getKerningValue(leftGlyph, rightGlyph);
+            return typeof value === 'number' && Number.isFinite(value) ? value : 0;
         }
         return 0;
     };

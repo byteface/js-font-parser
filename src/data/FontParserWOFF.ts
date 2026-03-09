@@ -174,8 +174,8 @@ export class FontParserWOFF {
         const declaredLength = this.readUint32(view, 8);
         const numTables = this.readUint16(view, 12);
         const totalSfntSize = this.readUint32(view, 16);
-        if (declaredLength > view.byteLength) {
-            throw new Error('Invalid WOFF header: declared length exceeds available bytes.');
+        if (declaredLength !== view.byteLength) {
+            throw new Error('Invalid WOFF header: declared length does not match available bytes.');
         }
         if (numTables <= 0) {
             throw new Error('Invalid WOFF header: numTables must be greater than zero.');
@@ -273,8 +273,8 @@ export class FontParserWOFF {
         const numTables = this.readUint16(view, 12);
         const totalSfntSize = this.readUint32(view, 16);
 
-        if (length > buffer.byteLength) {
-            throw new Error('Invalid WOFF header: declared length exceeds available bytes.');
+        if (length !== buffer.byteLength) {
+            throw new Error('Invalid WOFF header: declared length does not match available bytes.');
         }
         if (numTables <= 0) {
             throw new Error('Invalid WOFF header: numTables must be greater than zero.');
@@ -296,6 +296,9 @@ export class FontParserWOFF {
             };
             if (entry.offset > buffer.byteLength || entry.compLength > buffer.byteLength - entry.offset) {
                 throw new Error('Invalid WOFF table entry: table offset/length out of bounds.');
+            }
+            if (entry.compLength > entry.origLength) {
+                throw new Error('Invalid WOFF table entry: compLength cannot exceed origLength.');
             }
             entries.push(entry);
         }
@@ -987,7 +990,8 @@ export class FontParserWOFF {
     public getKerningValueByGlyphs(leftGlyph: number, rightGlyph: number): number {
         if (!this.kern) return 0;
         if (typeof this.kern.getKerningValue === "function") {
-            return this.kern.getKerningValue(leftGlyph, rightGlyph) ?? 0;
+            const value = this.kern.getKerningValue(leftGlyph, rightGlyph);
+            return typeof value === 'number' && Number.isFinite(value) ? value : 0;
         }
         return 0;
     }

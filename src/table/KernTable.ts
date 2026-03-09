@@ -61,7 +61,8 @@ export class KernTable implements ITable {
     getKerningValue(leftGlyph: number, rightGlyph: number): number {
         for (const subtable of this.tables) {
             if (subtable && subtable instanceof KernSubtableFormat0) {
-                return subtable.getKerningValue(leftGlyph, rightGlyph);
+                const value = subtable.getKerningValue(leftGlyph, rightGlyph);
+                if (value !== 0) return value;
             }
         }
         return 0;

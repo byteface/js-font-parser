@@ -10,8 +10,12 @@ export function matchesDiagnosticFilter(diagnostic, filter) {
             if (diagnostic.code !== filter.code)
                 return false;
         }
-        else if (!filter.code.test(diagnostic.code)) {
-            return false;
+        else {
+            // Avoid stateful behavior for global/sticky regex filters.
+            var flags = filter.code.flags.replace(/g|y/g, '');
+            var safe = new RegExp(filter.code.source, flags);
+            if (!safe.test(diagnostic.code))
+                return false;
         }
     }
     return true;

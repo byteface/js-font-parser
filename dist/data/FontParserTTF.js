@@ -248,11 +248,11 @@ var FontParserTTF = /** @class */ (function () {
         return this.gsub.applyFeatures(glyphs, featureTags, scriptTags);
     };
     FontParserTTF.prototype.getKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
-        var _a;
         if (!this.kern)
             return 0;
         if (typeof this.kern.getKerningValue === "function") {
-            return (_a = this.kern.getKerningValue(leftGlyph, rightGlyph)) !== null && _a !== void 0 ? _a : 0;
+            var value = this.kern.getKerningValue(leftGlyph, rightGlyph);
+            return typeof value === 'number' && Number.isFinite(value) ? value : 0;
         }
         return 0;
     };

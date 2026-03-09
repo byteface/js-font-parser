@@ -256,7 +256,8 @@ export class FontParserTTF {
     public getKerningValueByGlyphs(leftGlyph: number, rightGlyph: number): number {
         if (!this.kern) return 0;
         if (typeof this.kern.getKerningValue === "function") {
-            return this.kern.getKerningValue(leftGlyph, rightGlyph) ?? 0;
+            const value = this.kern.getKerningValue(leftGlyph, rightGlyph);
+            return typeof value === 'number' && Number.isFinite(value) ? value : 0;
         }
         return 0;
     }

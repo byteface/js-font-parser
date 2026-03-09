@@ -283,9 +283,12 @@ var LayoutEngine = /** @class */ (function () {
                 prevGlyph = null;
                 continue;
             }
-            var advance = glyph.advanceWidth + letterSpacing + (useKerning && prevGlyph != null && font.getKerningValueByGlyphs
+            var baseAdvance = Number.isFinite(glyph.advanceWidth) ? glyph.advanceWidth : 0;
+            var kern = (useKerning && prevGlyph != null && font.getKerningValueByGlyphs)
                 ? font.getKerningValueByGlyphs(prevGlyph, glyphIndex !== null && glyphIndex !== void 0 ? glyphIndex : 0)
-                : 0);
+                : 0;
+            var safeKern = Number.isFinite(kern) ? kern : 0;
+            var advance = baseAdvance + letterSpacing + safeKern;
             glyphs.push({ glyphIndex: glyphIndex !== null && glyphIndex !== void 0 ? glyphIndex : 0, x: 0, y: 0, advance: advance, char: ch });
             prevGlyph = glyphIndex !== null && glyphIndex !== void 0 ? glyphIndex : 0;
         }

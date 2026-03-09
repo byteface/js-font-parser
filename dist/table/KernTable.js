@@ -45,7 +45,9 @@ var KernTable = /** @class */ (function () {
         for (var _i = 0, _a = this.tables; _i < _a.length; _i++) {
             var subtable = _a[_i];
             if (subtable && subtable instanceof KernSubtableFormat0) {
-                return subtable.getKerningValue(leftGlyph, rightGlyph);
+                var value = subtable.getKerningValue(leftGlyph, rightGlyph);
+                if (value !== 0)
+                    return value;
             }
         }
         return 0;
