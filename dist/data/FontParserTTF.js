@@ -60,7 +60,7 @@ import { PairPosFormat2 } from '../table/PairPosFormat2.js';
 import { SinglePosSubtable } from '../table/SinglePosSubtable.js';
 import { PairPosSubtable } from '../table/PairPosSubtable.js';
 import { detectScriptTags } from '../utils/ScriptDetector.js';
-import { matchesDiagnosticFilter } from '../types/Diagnostics.js';
+import { emitDiagnostic as emitParserDiagnostic, getDiagnostics as getParserDiagnostics, clearDiagnostics as clearParserDiagnostics, getBestCmapFormatFor as selectBestCmapFormatFor, pickBestCmapFormat } from './ParserShared.js';
 var FontParserTTF = /** @class */ (function () {
     function FontParserTTF(byteData) {
         // Define properties
@@ -109,27 +109,26 @@ var FontParserTTF = /** @class */ (function () {
         });
     };
     FontParserTTF.prototype.emitDiagnostic = function (code, level, phase, message, context, onceKey) {
-        if (!Array.isArray(this.diagnostics))
-            this.diagnostics = [];
-        if (!(this.diagnosticKeys instanceof Set))
-            this.diagnosticKeys = new Set();
-        if (onceKey) {
-            if (this.diagnosticKeys.has(onceKey))
-                return;
-            this.diagnosticKeys.add(onceKey);
-        }
-        this.diagnostics.push({ code: code, level: level, phase: phase, message: message, context: context });
+        var _a, _b;
+        var state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
+        emitParserDiagnostic(state, code, level, phase, message, context, onceKey);
+        this.diagnostics = (_a = state.diagnostics) !== null && _a !== void 0 ? _a : [];
+        this.diagnosticKeys = (_b = state.diagnosticKeys) !== null && _b !== void 0 ? _b : new Set();
     };
     FontParserTTF.prototype.getDiagnostics = function (filter) {
-        if (!Array.isArray(this.diagnostics))
-            this.diagnostics = [];
-        return this.diagnostics.filter(function (d) { return matchesDiagnosticFilter(d, filter); }).slice();
+        var _a, _b;
+        var state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
+        var out = getParserDiagnostics(state, filter);
+        this.diagnostics = (_a = state.diagnostics) !== null && _a !== void 0 ? _a : [];
+        this.diagnosticKeys = (_b = state.diagnosticKeys) !== null && _b !== void 0 ? _b : new Set();
+        return out;
     };
     FontParserTTF.prototype.clearDiagnostics = function () {
-        this.diagnostics = [];
-        if (!(this.diagnosticKeys instanceof Set))
-            this.diagnosticKeys = new Set();
-        this.diagnosticKeys.clear();
+        var _a, _b;
+        var state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
+        clearParserDiagnostics(state);
+        this.diagnostics = (_a = state.diagnostics) !== null && _a !== void 0 ? _a : [];
+        this.diagnosticKeys = (_b = state.diagnosticKeys) !== null && _b !== void 0 ? _b : new Set();
     };
     // Initialize the FontParserTTF instance
     FontParserTTF.prototype.init = function (byteData) {
@@ -1368,51 +1367,10 @@ var FontParserTTF = /** @class */ (function () {
         return this.tables.find(function (tab) { return (tab === null || tab === void 0 ? void 0 : tab.getType()) === tableType; }) || null;
     };
     FontParserTTF.prototype.getBestCmapFormatFor = function (codePoint) {
-        if (!this.cmap)
-            return null;
-        var prefersUcs4 = codePoint > 0xffff;
-        var preferred = prefersUcs4
-            ? [
-                { platformId: 3, encodingId: 10 }, // Windows, UCS-4
-                { platformId: 0, encodingId: 4 }, // Unicode, UCS-4
-                { platformId: 3, encodingId: 1 }, // Windows, Unicode BMP
-                { platformId: 0, encodingId: 3 }, // Unicode, BMP
-                { platformId: 0, encodingId: 1 }, // Unicode, 1.1
-                { platformId: 1, encodingId: 0 }, // Macintosh, Roman
-            ]
-            : [
-                { platformId: 3, encodingId: 1 }, // Windows, Unicode BMP
-                { platformId: 0, encodingId: 3 }, // Unicode, BMP
-                { platformId: 0, encodingId: 1 }, // Unicode, 1.1
-                { platformId: 3, encodingId: 10 }, // Windows, UCS-4
-                { platformId: 0, encodingId: 4 }, // Unicode, UCS-4
-                { platformId: 1, encodingId: 0 }, // Macintosh, Roman
-            ];
-        for (var _i = 0, preferred_1 = preferred; _i < preferred_1.length; _i++) {
-            var pref = preferred_1[_i];
-            var formats = this.cmap.getCmapFormats(pref.platformId, pref.encodingId);
-            if (formats.length > 0) {
-                return this.pickBestFormat(formats);
-            }
-        }
-        return this.cmap.formats.length > 0 ? this.pickBestFormat(this.cmap.formats) : null;
+        return selectBestCmapFormatFor(this.cmap, codePoint);
     };
     FontParserTTF.prototype.pickBestFormat = function (formats) {
-        if (formats.length === 0)
-            return null;
-        var order = [4, 12, 10, 8, 6, 2, 0];
-        var _loop_3 = function (fmt) {
-            var found = formats.find(function (f) { return (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt; });
-            if (found)
-                return { value: found };
-        };
-        for (var _i = 0, order_1 = order; _i < order_1.length; _i++) {
-            var fmt = order_1[_i];
-            var state_1 = _loop_3(fmt);
-            if (typeof state_1 === "object")
-                return state_1.value;
-        }
-        return formats[0];
+        return pickBestCmapFormat(formats);
     };
     return FontParserTTF;
 }());

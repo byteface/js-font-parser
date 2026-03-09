@@ -36,7 +36,13 @@ import { detectScriptTags } from '../utils/ScriptDetector.js';
 import { SvgTable } from '../table/SvgTable.js';
 import { GvarTable } from '../table/GvarTable.js';
 import type { Diagnostic as FontDiagnostic, DiagnosticFilter } from '../types/Diagnostics.js';
-import { matchesDiagnosticFilter } from '../types/Diagnostics.js';
+import {
+    emitDiagnostic as emitParserDiagnostic,
+    getDiagnostics as getParserDiagnostics,
+    clearDiagnostics as clearParserDiagnostics,
+    getBestCmapFormatFor as selectBestCmapFormatFor,
+    pickBestCmapFormat
+} from './ParserShared.js';
 
 export class FontParserTTF {
     // Define properties
@@ -96,24 +102,25 @@ export class FontParserTTF {
         context?: Record<string, unknown>,
         onceKey?: string
     ): void {
-        if (!Array.isArray(this.diagnostics)) this.diagnostics = [];
-        if (!(this.diagnosticKeys instanceof Set)) this.diagnosticKeys = new Set<string>();
-        if (onceKey) {
-            if (this.diagnosticKeys.has(onceKey)) return;
-            this.diagnosticKeys.add(onceKey);
-        }
-        this.diagnostics.push({ code, level, phase, message, context });
+        const state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
+        emitParserDiagnostic(state, code, level, phase, message, context, onceKey);
+        this.diagnostics = state.diagnostics ?? [];
+        this.diagnosticKeys = state.diagnosticKeys ?? new Set<string>();
     }
 
     public getDiagnostics(filter?: DiagnosticFilter): FontDiagnostic[] {
-        if (!Array.isArray(this.diagnostics)) this.diagnostics = [];
-        return this.diagnostics.filter(d => matchesDiagnosticFilter(d, filter)).slice();
+        const state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
+        const out = getParserDiagnostics(state, filter);
+        this.diagnostics = state.diagnostics ?? [];
+        this.diagnosticKeys = state.diagnosticKeys ?? new Set<string>();
+        return out;
     }
 
     public clearDiagnostics(): void {
-        this.diagnostics = [];
-        if (!(this.diagnosticKeys instanceof Set)) this.diagnosticKeys = new Set<string>();
-        this.diagnosticKeys.clear();
+        const state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
+        clearParserDiagnostics(state);
+        this.diagnostics = state.diagnostics ?? [];
+        this.diagnosticKeys = state.diagnosticKeys ?? new Set<string>();
     }
 
     // Initialize the FontParserTTF instance
@@ -1469,45 +1476,11 @@ export class FontParserTTF {
     }
 
     private getBestCmapFormatFor(codePoint: number): any | null {
-        if (!this.cmap) return null;
-
-        const prefersUcs4 = codePoint > 0xffff;
-        const preferred = prefersUcs4
-            ? [
-                { platformId: 3, encodingId: 10 }, // Windows, UCS-4
-                { platformId: 0, encodingId: 4 },  // Unicode, UCS-4
-                { platformId: 3, encodingId: 1 },  // Windows, Unicode BMP
-                { platformId: 0, encodingId: 3 },  // Unicode, BMP
-                { platformId: 0, encodingId: 1 },  // Unicode, 1.1
-                { platformId: 1, encodingId: 0 },  // Macintosh, Roman
-            ]
-            : [
-                { platformId: 3, encodingId: 1 },  // Windows, Unicode BMP
-                { platformId: 0, encodingId: 3 },  // Unicode, BMP
-                { platformId: 0, encodingId: 1 },  // Unicode, 1.1
-                { platformId: 3, encodingId: 10 }, // Windows, UCS-4
-                { platformId: 0, encodingId: 4 },  // Unicode, UCS-4
-                { platformId: 1, encodingId: 0 },  // Macintosh, Roman
-            ];
-
-        for (const pref of preferred) {
-            const formats = this.cmap.getCmapFormats(pref.platformId, pref.encodingId);
-            if (formats.length > 0) {
-                return this.pickBestFormat(formats);
-            }
-        }
-
-        return this.cmap.formats.length > 0 ? this.pickBestFormat(this.cmap.formats) : null;
+        return selectBestCmapFormatFor(this.cmap as any, codePoint);
     }
 
     private pickBestFormat(formats: any[]): any | null {
-        if (formats.length === 0) return null;
-        const order = [4, 12, 10, 8, 6, 2, 0];
-        for (const fmt of order) {
-            const found = formats.find(f => (typeof f.getFormatType === "function" ? f.getFormatType() : f.format) === fmt);
-            if (found) return found;
-        }
-        return formats[0];
+        return pickBestCmapFormat(formats as any);
     }
 //     private getTable( tableType:any )
 //     {
