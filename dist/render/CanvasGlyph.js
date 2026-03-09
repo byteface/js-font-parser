@@ -1,5 +1,6 @@
 import { FontParser } from '../data/FontParser.js';
 import { CanvasRenderer } from '../render/CanvasRenderer.js';
+import { matchesDiagnosticFilter } from '../types/Diagnostics.js';
 var CanvasGlyph = /** @class */ (function () {
     function CanvasGlyph(path) {
         var _this = this;
@@ -10,14 +11,30 @@ var CanvasGlyph = /** @class */ (function () {
         this.SCALE = 0.5;
         this.jitter = 0;
         this.fontdata = null;
+        this.diagnostics = [];
+        this.diagnosticKeys = new Set();
         this.fontLoadedPromise = FontParser.load(path)
             .then(function (ttf_font) {
             _this.fontdata = ttf_font;
         })
             .catch(function (error) {
-            console.error("Failed to load font:", error);
+            _this.emitDiagnostic("FONT_LOAD_FAILED", "warning", "render", "Failed to load font.", { error: error instanceof Error ? error.message : String(error) }, "FONT_LOAD_FAILED");
         });
     }
+    CanvasGlyph.prototype.emitDiagnostic = function (code, level, phase, message, context, onceKey) {
+        if (onceKey && this.diagnosticKeys.has(onceKey))
+            return;
+        if (onceKey)
+            this.diagnosticKeys.add(onceKey);
+        this.diagnostics.push({ code: code, level: level, phase: phase, message: message, context: context });
+    };
+    CanvasGlyph.prototype.getDiagnostics = function (filter) {
+        return this.diagnostics.filter(function (d) { return matchesDiagnosticFilter(d, filter); }).slice();
+    };
+    CanvasGlyph.prototype.clearDiagnostics = function () {
+        this.diagnostics = [];
+        this.diagnosticKeys.clear();
+    };
     // Wrapper method to access the font-loaded promise when needed
     CanvasGlyph.prototype.onFontLoaded = function () {
         return this.fontLoadedPromise;
@@ -47,7 +64,7 @@ var CanvasGlyph = /** @class */ (function () {
         var g = this.fontdata.getGlyph(index);
         var drawingCanvas = document.getElementById(canvasId);
         if (!drawingCanvas) {
-            console.error("Canvas not found.");
+            this.emitDiagnostic("CANVAS_NOT_FOUND", "warning", "render", "Canvas not found.", { canvasId: canvasId }, "CANVAS_NOT_FOUND:".concat(canvasId));
             return null;
         }
         var context = drawingCanvas.getContext('2d');

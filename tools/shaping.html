@@ -30,10 +30,7 @@
   <div class="panel">
     <div class="row">
       <label>Font
-        <select id="fontSelect">
-          <option value="../truetypefonts/noto/NotoNaskhArabic-Regular.ttf">Noto Naskh Arabic</option>
-          <option value="../truetypefonts/noto/NotoSansDevanagari-Regular.ttf">Noto Sans Devanagari</option>
-        </select>
+        <select id="fontSelect"></select>
       </label>
       <label>Script tags
         <input id="scriptTags" type="text" value="arab,DFLT" />
@@ -75,6 +72,8 @@
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
     import { detectScriptTags } from "../dist/utils/ScriptDetector.js";
     import { Table } from "../dist/table/Table.js";
+    import { getFontList } from "./shared/font-catalog.js";
+    import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
 
     const fontSelect = document.getElementById("fontSelect");
     const scriptTagsInput = document.getElementById("scriptTags");
@@ -90,6 +89,8 @@
     const status = document.getElementById("status");
     const summary = document.getElementById("summary");
     const diagnosticsEl = document.getElementById("diagnostics");
+    const fonts = getFontList("shapingGpos");
+    const loadFontByUrl = createFontLoader((url) => FontParser.load(url));
 
     let font = null;
 
@@ -111,7 +112,8 @@
     }
 
     async function loadFont() {
-      font = await FontParser.load(fontSelect.value);
+      const selected = getSelectedFont(fontSelect, fonts);
+      font = await loadFontByUrl(selected.url);
       render();
     }
 
@@ -179,7 +181,8 @@
     }
 
     fontSelect.addEventListener("change", () => {
-      const value = fontSelect.value;
+      const selected = getSelectedFont(fontSelect, fonts);
+      const value = selected?.name || "";
       if (value.includes("Arabic")) {
         sampleInput.value = "بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيمِ";
         scriptTagsInput.value = "arab,DFLT";
@@ -192,7 +195,7 @@
       loadFont();
     });
     presetArabic.addEventListener("click", () => {
-      fontSelect.value = "../truetypefonts/noto/NotoNaskhArabic-Regular.ttf";
+      fontSelect.value = "0";
       sampleInput.value = "بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيمِ";
       scriptTagsInput.value = "arab,DFLT";
       featuresInput.value = "ccmp,locl,init,medi,fina,isol,rlig,liga,calt";
@@ -200,7 +203,7 @@
       loadFont();
     });
     presetDeva.addEventListener("click", () => {
-      fontSelect.value = "../truetypefonts/noto/NotoSansDevanagari-Regular.ttf";
+      fontSelect.value = "1";
       sampleInput.value = "प्रार्थना शक्ति कर्म";
       scriptTagsInput.value = "deva,DFLT";
       featuresInput.value = "locl,nukt,akhn,rphf,rkrf,pref,blwf,abvf,half,pstf,cjct";
@@ -214,6 +217,7 @@
     enableGpos.addEventListener("change", render);
     autoDetect.addEventListener("change", render);
 
+    populateFontSelect(fontSelect, fonts);
     loadFont();
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>

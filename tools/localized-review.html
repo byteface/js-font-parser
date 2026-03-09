@@ -68,8 +68,10 @@
     import { Table } from "../dist/table/Table.js";
     import { listLanguages, supportsLanguage } from "../dist/utils/LanguageSupport.js";
     import { getFontList } from "./shared/font-catalog.js";
+    import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
 
     const fonts = getFontList('localizedReview');
+    const loadFont = createFontLoader((url) => FontParser.load(url));
 
     const samples = [
       { code: "pl", label: "Polish", text: "Zażółć gęślą jaźń" },
@@ -89,12 +91,7 @@
     const glyphRows = document.getElementById("glyphRows");
     const languages = listLanguages();
 
-    fonts.forEach((f, i) => {
-      const opt = document.createElement("option");
-      opt.value = String(i);
-      opt.textContent = f.name;
-      fontSelect.appendChild(opt);
-    });
+    populateFontSelect(fontSelect, fonts);
 
     samples.forEach((s, i) => {
       const opt = document.createElement("option");
@@ -104,12 +101,12 @@
     });
 
     async function render() {
-      const fontInfo = fonts[Number(fontSelect.value)] ?? fonts[0];
+      const fontInfo = getSelectedFont(fontSelect, fonts);
       const sample = samples[Number(sampleSelect.value)] ?? samples[0];
       const lang = languages.find(l => l.code === sample.code);
       const required = lang ? Array.from(new Set(Array.from(lang.required))) : [];
 
-      const font = await FontParser.load(fontInfo.url);
+      const font = await loadFont(fontInfo.url);
       fontUrl.textContent = `Using font: ${fontInfo.url}`;
       const support = supportsLanguage(font, sample.code);
       const missingSet = new Set(support?.missing ?? []);

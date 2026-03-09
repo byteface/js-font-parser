@@ -25,6 +25,7 @@
   </header>
   <div class="wrap">
     <div class="panel">
+      <select id="fontSelect" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); margin-bottom:10px;"></select>
       <input id="textInput" value="A\u0301 A\u0327 A\u0303" />
       <canvas id="plain" width="900" height="220"></canvas>
     </div>
@@ -37,19 +38,25 @@
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+    import { getFontList } from './shared/font-catalog.js';
+    import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
 
+    const fontSelect = document.getElementById('fontSelect');
     const input = document.getElementById('textInput');
     const plainCanvas = document.getElementById('plain');
     const anchoredCanvas = document.getElementById('anchored');
     const info = document.getElementById('info');
+    const fonts = getFontList('marks');
+    const loadFont = createFontLoader((url) => FontParser.load(url));
 
     let font = null;
-    FontParser.load('../truetypefonts/noto/NotoSans-Regular.ttf').then(f => {
-      font = f;
-      render();
-    });
 
     input.addEventListener('input', render);
+    fontSelect.addEventListener('change', async () => {
+      const selected = getSelectedFont(fontSelect, fonts);
+      font = await loadFont(selected.url);
+      render();
+    });
 
     function render() {
       if (!font) return;
@@ -68,6 +75,12 @@
       ? `Anchors applied: ${attachments}`
       : 'No mark anchors found for this string/font.';
   }
+    populateFontSelect(fontSelect, fonts);
+    const initial = getSelectedFont(fontSelect, fonts);
+    loadFont(initial.url).then((f) => {
+      font = f;
+      render();
+    });
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>

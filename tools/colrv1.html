@@ -20,7 +20,7 @@
   </style>
 </head>
 <body>
-<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+<div data-nav="main"></div>
   <header>
     <h1>COLRv1 Paint Explorer</h1>
     <p>Inspect COLRv1 paint trees and render supported paints.</p>
@@ -29,11 +29,7 @@
   <div class="panel">
     <div class="row">
       <label>Font
-        <select id="fontSelect">
-          <option value="../truetypefonts/color/colrv1-var/Nabla.ttf">Nabla (COLRv1 variable)</option>
-          <option value="../truetypefonts/color/nabla/Nabla[EDPT,EHLT].ttf">Nabla (COLRv1 letters)</option>
-          <option value="../truetypefonts/color/colrv1/test_glyphs-glyf_colr_1.ttf">COLRv1 Test Shapes</option>
-        </select>
+        <select id="fontSelect"></select>
       </label>
       <button id="loadSample">Load</button>
       <button id="prevGlyph">Prev</button>
@@ -60,6 +56,8 @@
     import { FontParser } from "../dist/data/FontParser.js";
     import { Table } from "../dist/table/Table.js";
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
+    import { getFontList } from "./shared/font-catalog.js";
+    import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
 
     const loadSample = document.getElementById("loadSample");
     const fontSelect = document.getElementById("fontSelect");
@@ -74,6 +72,8 @@
     const unsupportedEl = document.getElementById("unsupported");
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
+    const fonts = getFontList("colrv1Explorer");
+    const loadFont = createFontLoader((url) => FontParser.load(url));
 
     let font = null;
     let colr = null;
@@ -659,14 +659,13 @@
     }
 
     async function loadSampleFont() {
-      const response = await fetch(fontSelect.value);
-      const buf = await response.arrayBuffer();
-      font = FontParser.fromArrayBuffer(buf);
+      const selected = getSelectedFont(fontSelect, fonts);
+      font = await loadFont(selected.url);
       colr = font.getTableByType(Table.COLR);
       records = colr?.baseGlyphPaintRecords ?? [];
       index = 0;
       renderAxes();
-      const label = fontSelect.options[fontSelect.selectedIndex]?.textContent ?? "Font";
+      const label = selected?.name ?? "Font";
       if (records.length) {
         glyphInput.value = String(records[0].glyphId);
         info.textContent = `${label} | COLR version ${colr.version} | base glyph paints: ${records.length}`;
@@ -700,7 +699,9 @@
       render();
     });
     glyphInput.addEventListener("input", render);
+    populateFontSelect(fontSelect, fonts);
     loadSampleFont();
   </script>
+  <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

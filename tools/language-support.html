@@ -53,22 +53,19 @@
     import { FontParser } from "../dist/data/FontParser.js";
     import { getSupportedLanguages } from "../dist/utils/LanguageSupport.js";
     import { getFontList } from "./shared/font-catalog.js";
+    import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
 
     const fontSelect = document.getElementById("fontSelect");
     const rows = document.getElementById("rows");
 
     const fonts = getFontList('languageSupport');
+    const loadFont = createFontLoader((url) => FontParser.load(url));
 
-    fonts.forEach((f, i) => {
-      const opt = document.createElement("option");
-      opt.value = String(i);
-      opt.textContent = f.name;
-      fontSelect.appendChild(opt);
-    });
+    populateFontSelect(fontSelect, fonts);
 
     async function render() {
-      const selected = fonts[Number(fontSelect.value)] ?? fonts[0];
-      const font = await FontParser.load(selected.url);
+      const selected = getSelectedFont(fontSelect, fonts);
+      const font = await loadFont(selected.url);
       const results = getSupportedLanguages(font);
       rows.innerHTML = "";
       results.forEach(r => {

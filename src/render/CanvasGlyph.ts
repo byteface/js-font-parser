@@ -1,6 +1,8 @@
 import { FontParser } from '../data/FontParser.js';
 import { CanvasRenderer, CanvasDrawOptions, CanvasStyleOptions } from '../render/CanvasRenderer.js';
 import { GlyphData } from '../data/GlyphData.js';
+import type { Diagnostic, DiagnosticFilter } from '../types/Diagnostics.js';
+import { matchesDiagnosticFilter } from '../types/Diagnostics.js';
 
 type FontForCanvasGlyph = {
     getGlyphIndexByChar: (char: string) => number | null;
@@ -20,6 +22,8 @@ export class CanvasGlyph {
     private jitter: number = 0;
     
     private fontdata: FontForCanvasGlyph | null = null;
+    private diagnostics: Diagnostic[] = [];
+    private diagnosticKeys = new Set<string>();
 
     private fontLoadedPromise: Promise<void>;
 
@@ -29,8 +33,37 @@ export class CanvasGlyph {
                 this.fontdata = ttf_font;
             })
             .catch(error => {
-                console.error("Failed to load font:", error);
+                this.emitDiagnostic(
+                    "FONT_LOAD_FAILED",
+                    "warning",
+                    "render",
+                    "Failed to load font.",
+                    { error: error instanceof Error ? error.message : String(error) },
+                    "FONT_LOAD_FAILED"
+                );
             });
+    }
+
+    private emitDiagnostic(
+        code: string,
+        level: 'warning' | 'info',
+        phase: 'parse' | 'layout' | 'render',
+        message: string,
+        context?: Record<string, unknown>,
+        onceKey?: string
+    ): void {
+        if (onceKey && this.diagnosticKeys.has(onceKey)) return;
+        if (onceKey) this.diagnosticKeys.add(onceKey);
+        this.diagnostics.push({ code, level, phase, message, context });
+    }
+
+    public getDiagnostics(filter?: DiagnosticFilter): Diagnostic[] {
+        return this.diagnostics.filter((d) => matchesDiagnosticFilter(d, filter)).slice();
+    }
+
+    public clearDiagnostics(): void {
+        this.diagnostics = [];
+        this.diagnosticKeys.clear();
     }
 
     // Wrapper method to access the font-loaded promise when needed
@@ -64,7 +97,14 @@ export class CanvasGlyph {
         const drawingCanvas = document.getElementById(canvasId) as HTMLCanvasElement;
         
         if (!drawingCanvas) {
-            console.error("Canvas not found.");
+            this.emitDiagnostic(
+                "CANVAS_NOT_FOUND",
+                "warning",
+                "render",
+                "Canvas not found.",
+                { canvasId },
+                `CANVAS_NOT_FOUND:${canvasId}`
+            );
             return null;
         }
 

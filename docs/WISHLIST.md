@@ -9,9 +9,8 @@
    - Why still needed: major mark/base/mark/ligature paths are in, but script coverage confidence is still test-driven rather than sign-off complete.
    - Needed to close: expand real-font fixture matrix and add explicit expected outputs for complex mark+ligature combinations per script family.
 
-3. **Structured diagnostics expansion**
-   - Why still needed: diagnostics exist, but not every fallback/unsupported path is standardized and surfaced consistently.
-   - Needed to close: complete codepath audit and map remaining console-only branches to typed diagnostics.
+3. **Structured diagnostics expansion** — Completed (2026-03-09)
+   - Delivered: parser/render console-only failure paths were migrated to typed diagnostics; tests now assert these diagnostics.
 
 ## P1 — Parsing / Runtime Completeness
 1. **WOFF2 support (runtime packaging)**

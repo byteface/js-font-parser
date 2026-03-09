@@ -27,6 +27,9 @@ const PATHS = {
   notoDevanagari: '../truetypefonts/noto/NotoSansDevanagari-Regular.ttf',
   notoArabic: '../truetypefonts/noto/NotoNaskhArabic-Regular.ttf',
   sourceCodeProRegular: '../truetypefonts/source-code-pro/SourceCodePro-Regular.otf',
+  sourceSerif4VarRoman: '../truetypefonts/OTF/source-serif4/SourceSerif4Variable-Roman.otf',
+  sourceSerif4VarItalic: '../truetypefonts/curated/SourceSerif4Variable-Italic.otf',
+  sourceSans3Regular: '../truetypefonts/curated/SourceSans3-Regular.otf',
   notoSerifVar: '../truetypefonts/curated/NotoSerif-VF.ttf',
   robotoVar: '../truetypefonts/curated/Roboto-VF.ttf',
   playwriteVar: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-VariableFont_wght.ttf',
@@ -41,7 +44,10 @@ const PATHS = {
   sourceCodeProRegularExtra: '../truetypefonts/curated-extra/SourceCodePro-Regular.otf',
   sourceCodeProBoldExtra: '../truetypefonts/curated-extra/SourceCodePro-Bold.otf',
   fontAwesome47Ttf: '../truetypefonts/curated-extra/FontAwesome-4.7.0.ttf',
-  fontAwesome47Woff: '../truetypefonts/curated-extra/FontAwesome-4.7.0.woff'
+  fontAwesome47Woff: '../truetypefonts/curated-extra/FontAwesome-4.7.0.woff',
+  nablaColrv1Var: '../truetypefonts/color/colrv1-var/Nabla.ttf',
+  nablaColrv1Letters: '../truetypefonts/color/nabla/Nabla[EDPT,EHLT].ttf',
+  colrv1TestShapes: '../truetypefonts/color/colrv1/test_glyphs-glyf_colr_1.ttf'
 };
 
 export const FONT_LISTS = {
@@ -214,6 +220,35 @@ export const FONT_LISTS = {
     { name: 'Font Awesome 4.7 (TTF)', url: PATHS.fontAwesome47Ttf },
     { name: 'Source Code Pro Regular (OTF)', url: PATHS.sourceCodeProRegular },
     { name: 'Source Code Pro Bold (OTF)', url: PATHS.sourceCodeProBoldExtra }
+  ],
+  cff2Inspector: [
+    { name: 'SourceSerif4Variable-Roman.otf', url: PATHS.sourceSerif4VarRoman },
+    { name: 'SourceSerif4Variable-Italic.otf', url: PATHS.sourceSerif4VarItalic },
+    { name: 'SourceCodePro-Regular.otf', url: PATHS.sourceCodeProRegularExtra },
+    { name: 'SourceCodePro-Bold.otf', url: PATHS.sourceCodeProBoldExtra },
+    { name: 'GothamNarrow-Ultra.otf', url: PATHS.gothamNarrow },
+    { name: 'SourceSans3-Regular.otf', url: PATHS.sourceSans3Regular },
+    { name: 'NotoSansArabic-VF.ttf', url: PATHS.notoArabicVar },
+    { name: 'NotoSansDevanagari-VF.ttf', url: PATHS.notoDevanagariVar },
+    { name: 'NotoSansHebrew-VF.ttf', url: PATHS.notoHebrewVar },
+    { name: 'NotoSansThai-VF.ttf', url: PATHS.notoThaiVar },
+    { name: 'NotoSansKhmer-VF.ttf', url: PATHS.notoKhmerVar },
+    { name: 'NotoSansEthiopic-VF.ttf', url: PATHS.notoEthiopicVar },
+    { name: 'NotoSans-Regular.ttf', url: PATHS.notoSans }
+  ],
+  colrv1Explorer: [
+    { name: 'Nabla (COLRv1 variable)', url: PATHS.nablaColrv1Var },
+    { name: 'Nabla (COLRv1 letters)', url: PATHS.nablaColrv1Letters },
+    { name: 'COLRv1 Test Shapes', url: PATHS.colrv1TestShapes }
+  ],
+  shapingGpos: [
+    { name: 'Noto Naskh Arabic', url: PATHS.notoArabic },
+    { name: 'Noto Sans Devanagari', url: PATHS.notoDevanagari }
+  ],
+  marks: [
+    { name: 'Noto Sans', url: PATHS.notoSans },
+    { name: 'Noto Naskh Arabic', url: PATHS.notoArabic },
+    { name: 'Noto Sans Devanagari', url: PATHS.notoDevanagari }
   ],
   stringExplorer: [
     '2006 Team.ttf',

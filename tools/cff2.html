@@ -27,21 +27,7 @@
   <div class="panel">
     <div class="row">
       <label>Font
-        <select id="fontSelect">
-          <option value="../truetypefonts/OTF/source-serif4/SourceSerif4Variable-Roman.otf">SourceSerif4Variable-Roman.otf</option>
-          <option value="../truetypefonts/curated/SourceSerif4Variable-Italic.otf">SourceSerif4Variable-Italic.otf</option>
-          <option value="../truetypefonts/curated-extra/SourceCodePro-Regular.otf">SourceCodePro-Regular.otf</option>
-          <option value="../truetypefonts/curated-extra/SourceCodePro-Bold.otf">SourceCodePro-Bold.otf</option>
-          <option value="../truetypefonts/GothamNarrow-Ultra.otf">GothamNarrow-Ultra.otf</option>
-          <option value="../truetypefonts/curated/SourceSans3-Regular.otf">SourceSans3-Regular.otf</option>
-          <option value="../truetypefonts/curated-extra/NotoSansArabic-VF.ttf">NotoSansArabic-VF.ttf</option>
-          <option value="../truetypefonts/curated-extra/NotoSansDevanagari-VF.ttf">NotoSansDevanagari-VF.ttf</option>
-          <option value="../truetypefonts/curated-extra/NotoSansHebrew-VF.ttf">NotoSansHebrew-VF.ttf</option>
-          <option value="../truetypefonts/curated-extra/NotoSansThai-VF.ttf">NotoSansThai-VF.ttf</option>
-          <option value="../truetypefonts/curated-extra/NotoSansKhmer-VF.ttf">NotoSansKhmer-VF.ttf</option>
-          <option value="../truetypefonts/curated-extra/NotoSansEthiopic-VF.ttf">NotoSansEthiopic-VF.ttf</option>
-          <option value="../truetypefonts/noto/NotoSans-Regular.ttf">NotoSans-Regular.ttf</option>
-        </select>
+        <select id="fontSelect"></select>
       </label>
       <label>Sample <input id="sample" value="CFF2 test" /></label>
       <button id="setDefault" type="button">Default Axes</button>
@@ -60,6 +46,8 @@
     import { FontParser } from "../dist/data/FontParser.js";
     import { Table } from "../dist/table/Table.js";
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
+    import { getFontList } from "./shared/font-catalog.js";
+    import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
 
     const fontSelect = document.getElementById("fontSelect");
     const info = document.getElementById("info");
@@ -69,6 +57,8 @@
     const setDefault = document.getElementById("setDefault");
     const setMin = document.getElementById("setMin");
     const setMax = document.getElementById("setMax");
+    const fonts = getFontList("cff2Inspector");
+    const loadFont = createFontLoader((url) => FontParser.load(url));
 
     let font = null;
     let axisValues = {};
@@ -142,7 +132,8 @@
     }
 
     async function loadSelectedFont() {
-      font = await FontParser.load(fontSelect.value);
+      const selected = getSelectedFont(fontSelect, fonts);
+      font = await loadFont(selected.url);
       const hasCFF2 = !!font.getTableByType?.(Table.CFF2);
       axisValues = getAxisExtremes("default");
       applyAxes(axisValues);
@@ -159,6 +150,7 @@
         info.textContent = `Failed to load font: ${err.message}`;
       });
     });
+    populateFontSelect(fontSelect, fonts);
     loadSelectedFont().catch(err => {
       info.textContent = `Failed to load font: ${err.message}`;
     });

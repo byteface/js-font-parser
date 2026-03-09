@@ -6,8 +6,10 @@ import { fileURLToPath } from 'node:url';
 
 import { ByteArray } from '../dist/utils/ByteArray.js';
 import { FontParserTTF } from '../dist/data/FontParserTTF.js';
+import { FontParser } from '../dist/data/FontParser.js';
 import { Table } from '../dist/table/Table.js';
 import { SVGFont } from '../dist/render/SVGFont.js';
+import { CanvasGlyph } from '../dist/render/CanvasGlyph.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -79,4 +81,43 @@ test('layout returns positioned glyphs', () => {
   const layout = font.layoutString('AVATAR', { gsubFeatures: ['liga'] });
   assert.ok(layout.length > 0, 'expected layout entries');
   assert.ok(typeof layout[0].xAdvance === 'number', 'expected xAdvance');
+});
+
+test('CanvasGlyph emits FONT_LOAD_FAILED diagnostic when font loading fails', async () => {
+  const originalLoad = FontParser.load;
+  FontParser.load = async () => {
+    throw new Error('synthetic-load-failure');
+  };
+  try {
+    const canvasGlyph = new CanvasGlyph('/missing.ttf');
+    await canvasGlyph.onFontLoaded();
+    const diagnostics = canvasGlyph.getDiagnostics();
+    assert.ok(diagnostics.some((d) => d.code === 'FONT_LOAD_FAILED'), 'expected FONT_LOAD_FAILED diagnostic');
+  } finally {
+    FontParser.load = originalLoad;
+  }
+});
+
+test('CanvasGlyph emits CANVAS_NOT_FOUND diagnostic for missing canvas', async () => {
+  const originalLoad = FontParser.load;
+  const originalDocument = globalThis.document;
+  FontParser.load = async () => ({
+    getGlyphIndexByChar: () => 1,
+    getGlyph: () => null,
+    getGlyphByChar: () => null
+  });
+  globalThis.document = {
+    getElementById: () => null
+  };
+  try {
+    const canvasGlyph = new CanvasGlyph('/synthetic.ttf');
+    await canvasGlyph.onFontLoaded();
+    const context = canvasGlyph.drawGlyph(1, 'missing-canvas-id');
+    assert.equal(context, null, 'expected null context for missing canvas');
+    const diagnostics = canvasGlyph.getDiagnostics();
+    assert.ok(diagnostics.some((d) => d.code === 'CANVAS_NOT_FOUND'), 'expected CANVAS_NOT_FOUND diagnostic');
+  } finally {
+    FontParser.load = originalLoad;
+    globalThis.document = originalDocument;
+  }
 });

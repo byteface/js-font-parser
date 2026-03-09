@@ -3138,10 +3138,7 @@ test('FontParserTTF legacy name/os2/post info helpers return stable shapes', () 
 
 test('FontParserTTF.load handles success, HTTP errors, and fetch-body failures', async () => {
   const savedFetch = globalThis.fetch;
-  const savedError = console.error;
   const ttfBytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
-  const errors = [];
-  console.error = (...args) => errors.push(args.join(' '));
   try {
     globalThis.fetch = async () => ({ ok: true, arrayBuffer: async () => toArrayBuffer(ttfBytes) });
     const loaded = await FontParserTTF.load('https://example.test/ok.ttf');
@@ -3152,10 +3149,8 @@ test('FontParserTTF.load handles success, HTTP errors, and fetch-body failures',
 
     globalThis.fetch = async () => ({ ok: true, arrayBuffer: async () => { throw new Error('body-fail'); } });
     await assert.rejects(() => FontParserTTF.load('https://example.test/body-fail.ttf'), /body-fail/);
-    assert.ok(errors.some((e) => /Error loading font/i.test(e)));
   } finally {
     globalThis.fetch = savedFetch;
-    console.error = savedError;
   }
 });
 
