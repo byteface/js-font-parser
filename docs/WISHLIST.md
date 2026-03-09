@@ -19,26 +19,11 @@
    - Needed to close: publish a default decoder packaging approach (or official integration guide) and validate with real WOFF2 fixtures end-to-end.
 
 ## P2 — Hinting and Outline Quality
-1. **TrueType hinting engine (VM)**
-   - Why still needed: current rendering is outline-driven, not bytecode-executed hinting.
-   - Needed to close: execute `fpgm`/`prep`/glyph instructions with `cvt` + touched-point behavior.
-
-2. **Hinted vs unhinted visual diff (real)**
-   - Why still needed: existing preview is simulated and not VM-backed.
-   - Needed to close: wire preview tool to true hinting output and compare against raw outlines at multiple ppem sizes.
-
-3. **Glyph path simplifier**
-   - Why still needed: no production simplification pipeline yet for export/perf workflows.
-   - Needed to close: add tolerance-driven simplifier with shape-error bounds and regression fixtures.
-
 ## P3 — Tooling and DX
 1. **Tools shared-lib cleanup**
    - Why still needed: tool pages still duplicate parsing, UI wiring, and render helpers.
    - Needed to close: extract common modules and migrate highest-duplication tools first.
-2. **Architecture map (library-first)**
-   - Why still needed: parser/table/layout interactions are implemented but not documented as one cohesive flow.
-   - Needed to close: add a concise architecture doc covering load pipeline, table wiring, shaping/layout flow, variation path, and render surfaces.
-3. **Known limitations matrix**
+2. **Known limitations matrix**
    - Why still needed: constraints are currently spread across code/comments/tool notes.
    - Needed to close: add one section in this file listing current limitations by area (format/shaping/layout/hinting/rendering) with closure criteria.
 

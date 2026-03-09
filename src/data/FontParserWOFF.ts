@@ -996,7 +996,10 @@ export class FontParserWOFF {
         const subtables = this.gpos.getSubtablesForFeatures(gposFeatures, scriptTags);
 
         for (const st of subtables) {
-            if (st instanceof SinglePosSubtable) {
+            if (
+                st instanceof SinglePosSubtable ||
+                typeof (st as any).getAdjustment === 'function'
+            ) {
                 for (let i = 0; i < glyphIndices.length; i++) {
                     const adj = (st as any).getAdjustment?.(glyphIndices[i]);
                     if (!adj) continue;
@@ -1006,7 +1009,12 @@ export class FontParserWOFF {
                     positioned[i].yAdvance += adj.yAdvance ?? 0;
                 }
             }
-            if (st instanceof PairPosSubtable) {
+            if (
+                st instanceof PairPosSubtable ||
+                st instanceof PairPosFormat1 ||
+                st instanceof PairPosFormat2 ||
+                typeof (st as any).getPairValue === 'function'
+            ) {
                 for (let i = 0; i < glyphIndices.length - 1; i++) {
                     const pair = (st as any).getPairValue?.(glyphIndices[i], glyphIndices[i + 1]);
                     if (!pair) continue;

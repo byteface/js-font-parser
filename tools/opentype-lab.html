@@ -58,6 +58,7 @@
     </label>
     <button id="renderBtn" type="button">Render</button>
   </div>
+  <div id="renderStatus" class="small" style="margin-top:8px"></div>
 </div>
 
 <div class="panel">
@@ -176,7 +177,59 @@
   import { Table } from '../dist/table/Table.js';
   import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
 
-  const fonts = getFontList('featureMatrix');
+  const baseFonts = getFontList('featureMatrix');
+  const extraOtfUrls = [
+    '../truetypefonts/FontAwesome.otf',
+    '../truetypefonts/GothamNarrow-Ultra.otf',
+    '../truetypefonts/OTF/Salina-Trial-Black.otf',
+    '../truetypefonts/OTF/Salina-Trial-BlackItalic.otf',
+    '../truetypefonts/OTF/Salina-Trial-Bold.otf',
+    '../truetypefonts/OTF/Salina-Trial-BoldItalic.otf',
+    '../truetypefonts/OTF/Salina-Trial-Book.otf',
+    '../truetypefonts/OTF/Salina-Trial-BookItalic.otf',
+    '../truetypefonts/OTF/Salina-Trial-ExtraLight.otf',
+    '../truetypefonts/OTF/Salina-Trial-ExtraLightItalic.otf',
+    '../truetypefonts/OTF/Salina-Trial-Light.otf',
+    '../truetypefonts/OTF/Salina-Trial-LightItalic.otf',
+    '../truetypefonts/OTF/Salina-Trial-Medium.otf',
+    '../truetypefonts/OTF/Salina-Trial-MediumItalic.otf',
+    '../truetypefonts/OTF/Salina-Trial-Regular.otf',
+    '../truetypefonts/OTF/Salina-Trial-RegularItalic.otf',
+    '../truetypefonts/OTF/source-serif4/SourceSerif4Variable-Roman.otf',
+    '../truetypefonts/curated/NotoSansCJKjp-Regular.otf',
+    '../truetypefonts/curated/SourceSans3-Regular.otf',
+    '../truetypefonts/curated/SourceSerif4-Regular.otf',
+    '../truetypefonts/curated/SourceSerif4Variable-Italic.otf',
+    '../truetypefonts/curated/SourceSerif4Variable-Roman.otf',
+    '../truetypefonts/curated-extra/SourceCodePro-Bold.otf',
+    '../truetypefonts/curated-extra/SourceCodePro-Regular.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-Black.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-BlackIt.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-Bold.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-BoldIt.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-ExtraLight.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-ExtraLightIt.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-It.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-Light.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-LightIt.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-Medium.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-MediumIt.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-Regular.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-Semibold.otf',
+    '../truetypefonts/source-code-pro/SourceCodePro-SemiboldIt.otf'
+  ];
+  function inferFontNameFromUrl(url) {
+    const filename = url.split('/').pop() || url;
+    return filename.replace(/\.otf$/i, '').replace(/[-_]+/g, ' ');
+  }
+  const fonts = (() => {
+    const map = new Map();
+    for (const f of baseFonts) map.set(f.url, f);
+    for (const url of extraOtfUrls) {
+      if (!map.has(url)) map.set(url, { name: `${inferFontNameFromUrl(url)} (OTF)`, url });
+    }
+    return Array.from(map.values());
+  })();
   const loadFont = createFontLoader(FontParser.load);
   let font = null;
 
@@ -205,6 +258,7 @@
     diagPhase: document.getElementById('diagPhase'),
     diagCode: document.getElementById('diagCode'),
     diagnostics: document.getElementById('diagnostics')
+    , renderStatus: document.getElementById('renderStatus')
   };
 
   const canvases = {
@@ -368,6 +422,7 @@
     if (diagnostics.length && filtered.length === 0) {
       ui.diagnostics.textContent = 'No diagnostics match current filters.';
     }
+    ui.renderStatus.textContent = `Rendered ${new Date().toLocaleTimeString()} | Font: ${fonts[Number(ui.fontSelect.value)]?.name ?? 'unknown'}`;
   }
 
   async function boot() {
@@ -377,7 +432,13 @@
   }
 
   ui.fontSelect.addEventListener('change', boot);
-  ui.renderBtn.addEventListener('click', renderAll);
+  ui.renderBtn.addEventListener('click', async () => {
+    const f = fonts[Number(ui.fontSelect.value)] ?? fonts[0];
+    // Force a fresh parser instance so the button always performs a visible re-run.
+    cache.delete(f.url);
+    font = await loadFont(f.url);
+    renderAll();
+  });
   ui.sampleInput.addEventListener('input', renderAll);
   ui.scriptTags.addEventListener('input', renderAll);
   ui.features.addEventListener('input', renderAll);

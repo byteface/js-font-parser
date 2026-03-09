@@ -383,7 +383,8 @@ var FontParserTTF = /** @class */ (function () {
         var subtables = this.gpos.getSubtablesForFeatures(gposFeatures, scriptTags);
         for (var _i = 0, subtables_1 = subtables; _i < subtables_1.length; _i++) {
             var st = subtables_1[_i];
-            if (st instanceof SinglePosSubtable) {
+            if (st instanceof SinglePosSubtable ||
+                typeof st.getAdjustment === 'function') {
                 for (var i = 0; i < glyphIndices.length; i++) {
                     var adj = (_b = (_a = st).getAdjustment) === null || _b === void 0 ? void 0 : _b.call(_a, glyphIndices[i]);
                     if (!adj)
@@ -394,7 +395,10 @@ var FontParserTTF = /** @class */ (function () {
                     positioned[i].yAdvance += (_f = adj.yAdvance) !== null && _f !== void 0 ? _f : 0;
                 }
             }
-            if (st instanceof PairPosSubtable) {
+            if (st instanceof PairPosSubtable ||
+                st instanceof PairPosFormat1 ||
+                st instanceof PairPosFormat2 ||
+                typeof st.getPairValue === 'function') {
                 for (var i = 0; i < glyphIndices.length - 1; i++) {
                     var pair = (_h = (_g = st).getPairValue) === null || _h === void 0 ? void 0 : _h.call(_g, glyphIndices[i], glyphIndices[i + 1]);
                     if (!pair)
