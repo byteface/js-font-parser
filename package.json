@@ -2,12 +2,24 @@
   "name": "js-font-parser",
   "version": "1.0.0",
   "description": "This library can load truetype fonts for creative experiments.",
-  "main": "index.js",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "dist-build",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22 <24"
+  },
   "scripts": {
     "audit:tables": "node scripts/audit-table-coverage.mjs",
-    "test": "node --test",
+    "test": "node --test tests/*.test.mjs",
     "test:font": "node scripts/test-font.mjs",
-    "test:coverage": "node --test --experimental-test-coverage",
+    "test:coverage": "node --test --experimental-test-coverage tests/*.test.mjs",
     "test:golden:capture": "node tests/golden/scripts/capture.mjs --out tests/golden/current",
     "test:golden:compare": "node tests/golden/scripts/compare.mjs --base tests/golden/baseline --head tests/golden/current --out tests/golden/diff",
     "test:golden:between": "node tests/golden/scripts/between-commits.mjs",

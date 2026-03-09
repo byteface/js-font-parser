@@ -5,6 +5,7 @@ Parses TTF/OTF/WOFF fonts and exposes glyph geometry, tables, shaping helpers, m
 ## Quick Start
 
 ```bash
+nvm use
 npm install
 npm run build:dist
 python3 -m http.server 8080
@@ -16,7 +17,7 @@ Open:
 ## Scripts
 
 - `npm test`  
-  Run all tests with Node's built-in test runner.
+  Run the checked-in `tests/*.test.mjs` suite with Node's built-in test runner.
 - `npm run test:coverage`  
   Run tests with coverage output (`--experimental-test-coverage`).
 - `npm run test:golden:capture`  
@@ -56,6 +57,10 @@ The WOFF2 smoke page is `tools/woff2.html`.
 
 TypeScript source intentionally uses `.js` import extensions so browser-loaded compiled output resolves correctly.  
 Removing those extensions may compile but break runtime module resolution in demos/tools.
+
+## Node Version
+
+Use the pinned version in `.nvmrc` (`22`).
 
 ## API and Docs
 

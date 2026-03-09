@@ -1158,6 +1158,46 @@ test('GPOS script validation sweep remains stable across available real-font fix
       gposFeatures: ['kern', 'mark', 'mkmk'],
       samples: ['श्रृंखला', 'संस्कृत', 'प्रार्थना'],
       requireAdjustedMarks: false
+    },
+    {
+      font: 'truetypefonts/curated-extra/NotoSansBengali-VF.ttf',
+      gsubFeatures: ['locl', 'ccmp', 'nukt', 'akhn'],
+      scriptTags: ['beng', 'DFLT'],
+      gposFeatures: ['kern', 'mark', 'mkmk'],
+      samples: ['বাংলা', 'কীর্তি', 'শ্রদ্ধা'],
+      requireAdjustedMarks: false
+    },
+    {
+      font: 'truetypefonts/curated-extra/NotoSansMyanmar-VF.ttf',
+      gsubFeatures: ['locl', 'ccmp'],
+      scriptTags: ['mymr', 'DFLT'],
+      gposFeatures: ['kern', 'mark', 'mkmk'],
+      samples: ['မြန်မာ', 'ကောင်းကင်', 'မြို့'],
+      requireAdjustedMarks: false
+    },
+    {
+      font: 'truetypefonts/curated-extra/NotoNastaliqUrdu-VF.ttf',
+      gsubFeatures: ['ccmp', 'locl', 'isol', 'fina', 'init', 'medi', 'rlig', 'liga', 'calt'],
+      scriptTags: ['arab', 'DFLT'],
+      gposFeatures: ['kern', 'mark', 'mkmk', 'curs'],
+      samples: ['اردو', 'پاکستان', 'خوشی'],
+      requireAdjustedMarks: false
+    },
+    {
+      font: 'truetypefonts/curated-extra/NotoSansLao-VF.ttf',
+      gsubFeatures: ['locl', 'ccmp'],
+      scriptTags: ['lao ', 'DFLT'],
+      gposFeatures: ['kern', 'mark', 'mkmk'],
+      samples: ['ພາສາລາວ', 'ສະບາຍດີ', 'ກຳລັງ'],
+      requireAdjustedMarks: false
+    },
+    {
+      font: 'truetypefonts/curated-extra/NotoSerifTibetan-VF.ttf',
+      gsubFeatures: ['locl', 'ccmp'],
+      scriptTags: ['tibt', 'DFLT'],
+      gposFeatures: ['kern', 'mark', 'mkmk'],
+      samples: ['བོད་ཡིག', 'བཀྲ་ཤིས', 'སྐད་ཡིག'],
+      requireAdjustedMarks: false
     }
   ];
 

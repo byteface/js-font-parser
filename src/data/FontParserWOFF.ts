@@ -928,7 +928,7 @@ export class FontParserWOFF {
             this.emitDiagnostic("INVALID_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar expects a character.");
             return null;
         }
-        if (char.length > 2) {
+        if (Array.from(char).length > 1) {
             this.emitDiagnostic(
                 "MULTI_CHAR_INPUT",
                 "warning",
@@ -1076,7 +1076,7 @@ export class FontParserWOFF {
 
             positioned.push({
                 glyphIndex,
-                xAdvance: (glyph?.advanceWidth ?? 0) + kern,
+                xAdvance: this.isMarkGlyphClass(glyphIndex) ? 0 : (glyph?.advanceWidth ?? 0) + kern,
                 xOffset: 0,
                 yOffset: 0,
                 yAdvance: 0,
@@ -1190,7 +1190,7 @@ export class FontParserWOFF {
             return candidates[0];
         };
 
-        const isMarkGlyph = (gid: number) => (this.gdef?.getGlyphClass?.(gid) ?? 0) === 3;
+        const isMarkGlyph = (gid: number) => this.isMarkGlyphClass(gid);
 
         for (let i = 0; i < glyphIndices.length; i++) {
             if (!positioned[i]) continue;
@@ -1254,6 +1254,16 @@ export class FontParserWOFF {
                 positioned[i].yOffset += exitAnchor.y - entryAnchor.y;
             }
         }
+
+        for (let i = 0; i < glyphIndices.length; i++) {
+            if (positioned[i] && this.isMarkGlyphClass(glyphIndices[i])) {
+                positioned[i].xAdvance = 0;
+            }
+        }
+    }
+
+    private isMarkGlyphClass(glyphId: number): boolean {
+        return (this.gdef?.getGlyphClass?.(glyphId) ?? 0) === 3;
     }
 
     public getNameRecord(nameId: number): string {

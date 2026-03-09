@@ -194,7 +194,7 @@ var FontParserTTF = /** @class */ (function () {
             this.emitDiagnostic("INVALID_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar expects a character.");
             return null;
         }
-        if (char.length > 2) {
+        if (Array.from(char).length > 1) {
             this.emitDiagnostic("MULTI_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar received multiple characters; using the first code point.", undefined, "MULTI_CHAR_INPUT");
         }
         var codePoint = char.codePointAt(0); // Convert character to Unicode code point
@@ -351,7 +351,7 @@ var FontParserTTF = /** @class */ (function () {
             }
             positioned.push({
                 glyphIndex: glyphIndex,
-                xAdvance: ((_d = glyph === null || glyph === void 0 ? void 0 : glyph.advanceWidth) !== null && _d !== void 0 ? _d : 0) + kern,
+                xAdvance: this.isMarkGlyphClass(glyphIndex) ? 0 : ((_d = glyph === null || glyph === void 0 ? void 0 : glyph.advanceWidth) !== null && _d !== void 0 ? _d : 0) + kern,
                 xOffset: 0,
                 yOffset: 0,
                 yAdvance: 0,
@@ -463,7 +463,7 @@ var FontParserTTF = /** @class */ (function () {
             }
             return candidates[0];
         };
-        var isMarkGlyph = function (gid) { var _a, _b, _c; return ((_c = (_b = (_a = _this.gdef) === null || _a === void 0 ? void 0 : _a.getGlyphClass) === null || _b === void 0 ? void 0 : _b.call(_a, gid)) !== null && _c !== void 0 ? _c : 0) === 3; };
+        var isMarkGlyph = function (gid) { return _this.isMarkGlyphClass(gid); };
         var _loop_1 = function (i) {
             if (!positioned[i])
                 return "continue";
@@ -530,6 +530,15 @@ var FontParserTTF = /** @class */ (function () {
                 positioned[i].yOffset += exitAnchor.y - entryAnchor.y;
             }
         }
+        for (var i = 0; i < glyphIndices.length; i++) {
+            if (positioned[i] && this.isMarkGlyphClass(glyphIndices[i])) {
+                positioned[i].xAdvance = 0;
+            }
+        }
+    };
+    FontParserTTF.prototype.isMarkGlyphClass = function (glyphId) {
+        var _a, _b, _c;
+        return ((_c = (_b = (_a = this.gdef) === null || _a === void 0 ? void 0 : _a.getGlyphClass) === null || _b === void 0 ? void 0 : _b.call(_a, glyphId)) !== null && _c !== void 0 ? _c : 0) === 3;
     };
     // Get a glyph description by index
     FontParserTTF.prototype.getGlyph = function (i) {
