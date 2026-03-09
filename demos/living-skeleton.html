@@ -34,13 +34,13 @@
     <label class="row">Spin <span class="v" id="spinVal"></span><input id="spinInput" type="range" min="0" max="22" value="7" /></label>
     <div class="status" id="status">Loading…</div>
   </section>
-  <canvas id="stage"></canvas>
+  <canvas id="stage" width="1360" height="760"></canvas>
 </div>
 
 <script type="module">
 import { FontParser } from '../dist/data/FontParser.js';
 import { getFontList } from '../tools/shared/font-catalog.js';
-import { collectGlyphPoints, splitContours, drawGlyphPath, getBounds, transformPoints } from './shared/glyph-helpers.js';
+import { collectGlyphPoints, splitContours, drawGlyphPath, getBounds } from './shared/glyph-helpers.js';
 
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
@@ -92,10 +92,15 @@ function rebuild() {
   const b = getBounds(points);
   if (!b) return;
   const s = Math.min((canvas.width * 0.6) / Math.max(1, b.width), (canvas.height * 0.6) / Math.max(1, b.height));
-  const centered = transformPoints(points, -((b.minX + b.maxX) * 0.5), -((b.minY + b.maxY) * 0.5), s, true);
-  const translated = centered.map((p) => ({ ...p, x: p.x + canvas.width * 0.5, y: p.y + canvas.height * 0.5 }));
-  contours = splitContours(translated);
-  nodes = contours.flat();
+  const gx = (b.minX + b.maxX) * 0.5;
+  const gy = (b.minY + b.maxY) * 0.5;
+  const mapped = points.map((p) => ({
+    ...p,
+    x: (p.x - gx) * s + canvas.width * 0.5,
+    y: (gy - p.y) * s + canvas.height * 0.5
+  }));
+  contours = splitContours(mapped);
+  nodes = mapped;
   center = nodes.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
   center.x /= Math.max(1, nodes.length);
   center.y /= Math.max(1, nodes.length);

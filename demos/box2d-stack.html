@@ -46,7 +46,6 @@
     const planck = window.planck;
     import { FontParser } from "../dist/data/FontParser.js";
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
-    import { Table } from "../dist/table/Table.js";
 
     const canvas = document.getElementById("stage");
     const ctx = canvas.getContext("2d");
@@ -90,23 +89,20 @@
       return contours;
     }
 
-    function addGlyphEdgeFixtures(body, glyph, glyphScale, bounds) {
+    function addGlyphPointFixtures(body, glyph, glyphScale, bounds) {
       const contours = splitContours(glyph);
       const anchorX = bounds.minX;
       const anchorY = bounds.maxY;
+      const pointRadius = pxToWorld(Math.max(2.2, glyphScale * 6));
       for (const contour of contours) {
-        const sampled = contour.filter((_, i) => i % 2 === 0);
-        if (sampled.length < 2) continue;
-        for (let i = 0; i < sampled.length; i++) {
-          const a = sampled[i];
-          const b = sampled[(i + 1) % sampled.length];
-          const ax = pxToWorld((a.x - anchorX) * glyphScale);
-          const ay = pxToWorld((anchorY - a.y) * glyphScale);
-          const bx = pxToWorld((b.x - anchorX) * glyphScale);
-          const by = pxToWorld((anchorY - b.y) * glyphScale);
-          body.createFixture(planck.Edge(planck.Vec2(ax, ay), planck.Vec2(bx, by)), {
-            friction: 0.6,
-            restitution: 0.1
+        for (let i = 0; i < contour.length; i += 2) {
+          const p = contour[i];
+          const x = pxToWorld((p.x - anchorX) * glyphScale);
+          const y = pxToWorld((anchorY - p.y) * glyphScale);
+          body.createFixture(planck.Circle(planck.Vec2(x, y), pointRadius), {
+            density: 0.55,
+            friction: 0.62,
+            restitution: 0.08
           });
         }
       }
@@ -139,8 +135,12 @@
             position: planck.Vec2(pxToWorld(x), pxToWorld(20 + i * (h + 10))),
             angle: (Math.random() - 0.5) * 0.2
           });
-          body.createFixture(planck.Circle(0.08), { density: 1, friction: 0.5, restitution: 0.1 });
-          addGlyphEdgeFixtures(body, glyph, glyphScale, bounds);
+          body.createFixture(planck.Box(pxToWorld(w * 0.28), pxToWorld(h * 0.28)), {
+            density: 0.9,
+            friction: 0.55,
+            restitution: 0.08
+          });
+          addGlyphPointFixtures(body, glyph, glyphScale, bounds);
           bodies.push({ body, glyph, glyphScale, bounds });
         }
         x += w + 24;

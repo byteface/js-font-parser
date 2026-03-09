@@ -47,6 +47,7 @@
 <script type="module">
 import { FontParser } from "../dist/data/FontParser.js";
 import { DEFAULT_DEMO_FONTS, createFontLoader, getSelectedFont, populateFontSelect } from "./shared/demo-scaffold.js";
+import { getFontList } from "../tools/shared/font-catalog.js";
 
 const sentences = [
   "We're on the same type.",
@@ -55,7 +56,11 @@ const sentences = [
   "Kerning is caring."
 ];
 
-const fontOptions = DEFAULT_DEMO_FONTS;
+const fontOptions = [
+  ...DEFAULT_DEMO_FONTS,
+  ...getFontList("kerning").slice(0, 6),
+  ...getFontList("featureMatrix").slice(0, 6)
+].filter((f, i, arr) => arr.findIndex((x) => x.url === f.url) === i);
 
 const fontSelect = document.getElementById("fontSelect");
 const sentenceInput = document.getElementById("sentenceInput");
