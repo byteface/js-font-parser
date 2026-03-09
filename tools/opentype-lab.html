@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenType Lab</title>
+  <style>
+    :root { --bg:#f6f4f1; --ink:#1e1f24; --muted:#5e6574; --panel:#fff; --border:#e3e1db; --accent:#2f4f7a; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
+    header { padding:22px 20px 10px; }
+    h1 { margin:0 0 6px; font-size:26px; }
+    p { margin:0 0 14px; color:var(--muted); }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 20px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    .grid-2 { display:grid; grid-template-columns:1fr; gap:12px; }
+    @media (min-width: 960px) { .grid-2 { grid-template-columns:1fr 1fr; } }
+    label { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:6px; }
+    input, select, button { padding:6px 10px; border:1px solid #ccc; border-radius:8px; background:#fff; }
+    canvas { width:100%; height:200px; border:1px dashed var(--border); border-radius:10px; background:#fff; }
+    .chips { display:flex; flex-wrap:wrap; gap:6px; }
+    .chip { background:#eef3f8; color:#234; border:1px solid #d7e3ef; padding:4px 8px; border-radius:999px; font-size:12px; }
+    .small { color:var(--muted); font-size:12px; }
+    .diag { border:1px solid var(--border); border-radius:10px; background:#fff; padding:8px; white-space:pre-wrap; font-family:ui-monospace, Menlo, monospace; font-size:11px; color:var(--muted); max-height:170px; overflow:auto; }
+    h2 { margin:0 0 10px; font-size:18px; color:var(--accent); }
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+
+<header>
+  <h1>OpenType Lab</h1>
+  <p>Unified GSUB/GPOS tool: feature inventory, ligature substitutions, mark attachment, and shaping diagnostics.</p>
+</header>
+
+<div class="panel">
+  <div class="row">
+    <label>Font
+      <select id="fontSelect"></select>
+    </label>
+    <label>Sample text
+      <input id="sampleInput" value="office بِسْمِ اللهِ" style="min-width:320px" />
+    </label>
+    <label>Script tags
+      <input id="scriptTags" value="latn,arab,DFLT" style="min-width:240px" />
+    </label>
+    <label>GSUB features
+      <input id="features" value="liga,ccmp,locl,init,medi,fina,isol,rlig,calt" style="min-width:340px" />
+    </label>
+    <label>GPOS features
+      <input id="gposFeatures" value="kern,mark,mkmk,curs" style="min-width:220px" />
+    </label>
+    <label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin-top:20px;">
+      <input id="autoDetect" type="checkbox" checked /> Auto detect scripts/features
+    </label>
+    <label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin-top:20px;">
+      <input id="enableGpos" type="checkbox" checked /> Enable GPOS
+    </label>
+    <button id="renderBtn" type="button">Render</button>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Feature Inventory</h2>
+  <div class="grid-2">
+    <div>
+      <div class="small">GSUB Scripts</div>
+      <div id="gsubScripts" class="chips"></div>
+      <div class="small" style="margin-top:8px">GSUB Features</div>
+      <div id="gsubFeatures" class="chips"></div>
+    </div>
+    <div>
+      <div class="small">GPOS Scripts</div>
+      <div id="gposScripts" class="chips"></div>
+      <div class="small" style="margin-top:8px">GPOS Features</div>
+      <div id="gposFeaturesList" class="chips"></div>
+    </div>
+  </div>
+  <div id="lookupSummary" class="small" style="margin-top:10px"></div>
+</div>
+
+<div class="panel">
+  <h2>GSUB Ligatures</h2>
+  <div class="grid-2">
+    <div>
+      <div class="small">Raw glyph mapping</div>
+      <canvas id="gsubRaw" width="1200" height="200"></canvas>
+    </div>
+    <div>
+      <div class="small">After GSUB substitution</div>
+      <canvas id="gsubShaped" width="1200" height="200"></canvas>
+    </div>
+  </div>
+  <div id="gsubSummary" class="small" style="margin-top:10px"></div>
+</div>
+
+<div class="panel">
+  <h2>Mark Attachment</h2>
+  <div class="grid-2">
+    <div>
+      <div class="small">Raw marks</div>
+      <canvas id="marksRaw" width="1200" height="200"></canvas>
+    </div>
+    <div>
+      <div class="small">With GPOS mark anchors</div>
+      <canvas id="marksShaped" width="1200" height="200"></canvas>
+    </div>
+  </div>
+  <div id="marksSummary" class="small" style="margin-top:10px"></div>
+</div>
+
+<div class="panel">
+  <h2>Shaping (Raw vs GSUB/GPOS)</h2>
+  <div class="grid-2">
+    <div>
+      <div class="small">Raw (direct cmap)</div>
+      <canvas id="shapeRaw" width="1200" height="200"></canvas>
+    </div>
+    <div>
+      <div class="small">Shaped layout run</div>
+      <canvas id="shapeShaped" width="1200" height="200"></canvas>
+    </div>
+  </div>
+  <div id="shapeSummary" class="small" style="margin-top:10px"></div>
+</div>
+
+<div class="panel">
+  <h2>Diagnostics</h2>
+  <div id="diagnostics" class="diag">No diagnostics.</div>
+</div>
+
+<script type="module">
+  import { FontParser } from '../dist/data/FontParser.js';
+  import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+  import { detectScriptTags } from '../dist/utils/ScriptDetector.js';
+  import { getFontList } from './shared/font-catalog.js';
+  import { Table } from '../dist/table/Table.js';
+
+  const fonts = getFontList('featureMatrix');
+  const cache = new Map();
+  let font = null;
+
+  const ui = {
+    fontSelect: document.getElementById('fontSelect'),
+    sampleInput: document.getElementById('sampleInput'),
+    scriptTags: document.getElementById('scriptTags'),
+    features: document.getElementById('features'),
+    gposFeatures: document.getElementById('gposFeatures'),
+    autoDetect: document.getElementById('autoDetect'),
+    enableGpos: document.getElementById('enableGpos'),
+    renderBtn: document.getElementById('renderBtn'),
+    gsubScripts: document.getElementById('gsubScripts'),
+    gsubFeatures: document.getElementById('gsubFeatures'),
+    gposScripts: document.getElementById('gposScripts'),
+    gposFeaturesList: document.getElementById('gposFeaturesList'),
+    lookupSummary: document.getElementById('lookupSummary'),
+    gsubSummary: document.getElementById('gsubSummary'),
+    marksSummary: document.getElementById('marksSummary'),
+    shapeSummary: document.getElementById('shapeSummary'),
+    diagnostics: document.getElementById('diagnostics')
+  };
+
+  const canvases = {
+    gsubRaw: document.getElementById('gsubRaw'),
+    gsubShaped: document.getElementById('gsubShaped'),
+    marksRaw: document.getElementById('marksRaw'),
+    marksShaped: document.getElementById('marksShaped'),
+    shapeRaw: document.getElementById('shapeRaw'),
+    shapeShaped: document.getElementById('shapeShaped')
+  };
+
+  function tagToString(tag) {
+    return String.fromCharCode((tag >> 24) & 0xff, (tag >> 16) & 0xff, (tag >> 8) & 0xff, tag & 0xff).replace(/\0/g, '');
+  }
+
+  function asChips(el, items) {
+    el.innerHTML = '';
+    if (!items || items.length === 0) {
+      el.innerHTML = '<span class="small">none</span>';
+      return;
+    }
+    for (const i of items) {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = i;
+      el.appendChild(chip);
+    }
+  }
+
+  function drawPositioned(canvas, positioned, scale = 0.12, y = 150, color = '#2c3e50') {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let x = 24;
+    for (const item of positioned) {
+      const glyph = font.getGlyph(item.glyphIndex);
+      if (!glyph) continue;
+      CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+        x: x + (item.xOffset ?? 0) * scale,
+        y: y + (item.yOffset ?? 0) * scale,
+        scale,
+        styles: { fillStyle: color, strokeStyle: color, lineWidth: 1.2 }
+      });
+      x += (item.xAdvance ?? 0) * scale;
+    }
+  }
+
+  function plainRun(text) {
+    const glyphs = font.getGlyphIndicesForString(text);
+    return glyphs.map((gid) => {
+      const g = font.getGlyph(gid);
+      return { glyphIndex: gid, xAdvance: g ? g.advanceWidth : 0, xOffset: 0, yOffset: 0, yAdvance: 0 };
+    });
+  }
+
+  function parseCsv(value) {
+    return value.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+
+  async function loadFont(url) {
+    if (cache.has(url)) return cache.get(url);
+    const f = await FontParser.load(url);
+    cache.set(url, f);
+    return f;
+  }
+
+  function renderInventory() {
+    const gsub = font.getTableByType(Table.GSUB);
+    const gpos = font.getTableByType(Table.GPOS);
+
+    const gsubScripts = gsub?.scriptList?.scriptRecords?.map((r) => tagToString(r.tag)) ?? [];
+    const gsubFeatures = gsub?.featureList?.featureRecords?.map((r) => tagToString(r.getTag())) ?? [];
+    const gposScripts = gpos?.scriptList?.scriptRecords?.map((r) => tagToString(r.tag)) ?? [];
+    const gposFeatures = gpos?.featureList?.featureRecords?.map((r) => tagToString(r.getTag())) ?? [];
+
+    asChips(ui.gsubScripts, gsubScripts);
+    asChips(ui.gsubFeatures, gsubFeatures);
+    asChips(ui.gposScripts, gposScripts);
+    asChips(ui.gposFeaturesList, gposFeatures);
+
+    const gsubLookups = gsub?.lookupList?.lookups?.length ?? 0;
+    const gposLookups = gpos?.lookupList?.lookups?.length ?? 0;
+    ui.lookupSummary.textContent = `GSUB lookups: ${gsubLookups} | GPOS lookups: ${gposLookups}`;
+  }
+
+  function renderAll() {
+    if (!font) return;
+    if (typeof font.clearDiagnostics === 'function') font.clearDiagnostics();
+
+    const text = ui.sampleInput.value;
+    let scriptTags = parseCsv(ui.scriptTags.value);
+    let features = parseCsv(ui.features.value);
+    const gposFeatures = parseCsv(ui.gposFeatures.value);
+
+    if (ui.autoDetect.checked) {
+      const detected = detectScriptTags(text);
+      scriptTags = detected.scripts;
+      features = detected.features;
+      ui.scriptTags.value = scriptTags.join(',');
+      ui.features.value = features.join(',');
+    }
+
+    renderInventory();
+
+    // GSUB panel
+    const rawRun = plainRun(text);
+    const gsubIndices = font.getGlyphIndicesForStringWithGsub(text, features, scriptTags);
+    const gsubRun = gsubIndices.map((gid) => {
+      const g = font.getGlyph(gid);
+      return { glyphIndex: gid, xAdvance: g ? g.advanceWidth : 0, xOffset: 0, yOffset: 0, yAdvance: 0 };
+    });
+    drawPositioned(canvases.gsubRaw, rawRun, 0.12, 150, '#1b1b1b');
+    drawPositioned(canvases.gsubShaped, gsubRun, 0.12, 150, '#1b1b1b');
+    ui.gsubSummary.textContent = `Raw glyphs: ${rawRun.length} | GSUB glyphs: ${gsubRun.length} | substitutions: ${Math.max(0, rawRun.length - gsubRun.length)}`;
+
+    // Marks panel (mark-friendly sample fallback)
+    const markSample = /\p{M}/u.test(text) ? text : 'A\u0301 A\u0327 A\u0303';
+    const marksRaw = plainRun(markSample);
+    const marksShaped = font.layoutString(markSample, { gsubFeatures: [], scriptTags, gpos: true, gposFeatures: ['mark', 'mkmk', 'kern', 'curs'] });
+    drawPositioned(canvases.marksRaw, marksRaw, 0.12, 150, '#1b1b1b');
+    drawPositioned(canvases.marksShaped, marksShaped, 0.12, 150, '#2f4f7a');
+    const anchored = marksShaped.filter((item) => item.xAdvance === 0 && ((item.xOffset ?? 0) !== 0 || (item.yOffset ?? 0) !== 0)).length;
+    ui.marksSummary.textContent = `Sample: ${JSON.stringify(markSample)} | anchored marks: ${anchored}`;
+
+    // Shaping panel
+    const shaped = (typeof font.layoutStringAuto === 'function' && ui.autoDetect.checked)
+      ? font.layoutStringAuto(text, { gpos: ui.enableGpos.checked, gposFeatures })
+      : font.layoutString(text, { gsubFeatures: features, scriptTags, gpos: ui.enableGpos.checked, gposFeatures });
+    drawPositioned(canvases.shapeRaw, rawRun, 0.12, 150, '#1b1b1b');
+    drawPositioned(canvases.shapeShaped, shaped.length ? shaped : gsubRun, 0.12, 150, '#2f4f7a');
+
+    const gdef = font.getTableByType(Table.GDEF);
+    const gsub = font.getTableByType(Table.GSUB);
+    const gpos = font.getTableByType(Table.GPOS);
+    const contextLookups = (gsub?.lookupList?.getLookups?.() ?? []).filter((l) => l.getType && (l.getType() === 5 || l.getType() === 6)).length;
+    ui.shapeSummary.textContent = `Raw: ${rawRun.length} | GSUB: ${gsubRun.length} | Shaped: ${shaped.length} | GDEF: ${gdef ? 'yes' : 'no'} | GSUB contextual lookups: ${contextLookups} | GPOS: ${gpos ? 'yes' : 'no'}`;
+
+    const diagnostics = typeof font.getDiagnostics === 'function' ? font.getDiagnostics() : [];
+    ui.diagnostics.textContent = diagnostics.length
+      ? diagnostics.slice(0, 36).map((d) => `[${d.phase}/${d.level}] ${d.code}: ${d.message}`).join('\n')
+      : 'No diagnostics.';
+  }
+
+  function populateFonts() {
+    ui.fontSelect.innerHTML = '';
+    fonts.forEach((f, i) => {
+      const opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = f.name;
+      ui.fontSelect.appendChild(opt);
+    });
+  }
+
+  async function boot() {
+    const f = fonts[Number(ui.fontSelect.value)] ?? fonts[0];
+    font = await loadFont(f.url);
+    renderAll();
+  }
+
+  ui.fontSelect.addEventListener('change', boot);
+  ui.renderBtn.addEventListener('click', renderAll);
+  ui.sampleInput.addEventListener('input', renderAll);
+  ui.scriptTags.addEventListener('input', renderAll);
+  ui.features.addEventListener('input', renderAll);
+  ui.gposFeatures.addEventListener('input', renderAll);
+  ui.autoDetect.addEventListener('change', renderAll);
+  ui.enableGpos.addEventListener('change', renderAll);
+
+  populateFonts();
+  boot();
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>
