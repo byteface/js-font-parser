@@ -261,6 +261,10 @@ export class FontParserTTF {
         }
     }
 
+    /**
+     * Convert user-space axis values (for example `wght: 700`) to normalized
+     * design coordinates in [-1, 1] for variation stores.
+     */
     public setVariationByAxes(values: Record<string, number>): void {
         if (!this.fvar) return;
         const coords: number[] = [];
@@ -310,6 +314,10 @@ export class FontParserTTF {
         return this.getGposKerningValueByGlyphs(left, right);
     }
 
+    /**
+     * Shape and position a single glyph run (no wrapping/line layout).
+     * Applies GSUB substitutions first, then kerning + optional GPOS.
+     */
     public layoutString(
         text: string,
         options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean; gposFeatures?: string[] } = {}
@@ -363,6 +371,11 @@ export class FontParserTTF {
         });
     }
 
+    /**
+     * Apply GPOS value and attachment adjustments to an already-shaped run.
+     * Attachment positioning runs after value positioning so mark anchors
+     * inherit parent/base offsets introduced earlier in the run.
+     */
     private applyGposPositioning(
         glyphIndices: number[],
         positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }>,
@@ -598,8 +611,9 @@ export class FontParserTTF {
                     let minY = Infinity;
                     let maxY = -Infinity;
                     for (let p = 0; p < basePointCount; p++) {
-                        const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
-                        const compIndex = comp ? base.components.indexOf(comp) : -1;
+                        const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
+                        const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                        const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                         let x = base.getXCoordinate(p);
                         let y = base.getYCoordinate(p);
                         if (comp && compIndex >= 0 && self.glyf) {
@@ -635,8 +649,9 @@ export class FontParserTTF {
                         getEndPtOfContours: (c: number) => base.getEndPtOfContours(c),
                         getFlags: (p: number) => base.getFlags(p),
                         getXCoordinate: (p: number) => {
-                            const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
-                            const compIndex = comp ? base.components.indexOf(comp) : -1;
+                            const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
+                            const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self.glyf) {
                                 const gd = self.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {
@@ -655,8 +670,9 @@ export class FontParserTTF {
                             return base.getXCoordinate(p) + (dx[p] ?? 0) + ox;
                         },
                         getYCoordinate: (p: number) => {
-                            const comp = isComposite && base instanceof GlyfCompositeDescript ? base.getComponentForPointIndex(p) : null;
-                            const compIndex = comp ? base.components.indexOf(comp) : -1;
+                            const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
+                            const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            const compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self.glyf) {
                                 const gd = self.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {

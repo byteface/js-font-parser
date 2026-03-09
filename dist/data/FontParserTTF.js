@@ -260,6 +260,10 @@ var FontParserTTF = /** @class */ (function () {
             this.colr.setVariationCoords(coords);
         }
     };
+    /**
+     * Convert user-space axis values (for example `wght: 700`) to normalized
+     * design coordinates in [-1, 1] for variation stores.
+     */
     FontParserTTF.prototype.setVariationByAxes = function (values) {
         var _a;
         if (!this.fvar)
@@ -315,6 +319,10 @@ var FontParserTTF = /** @class */ (function () {
             return kern;
         return this.getGposKerningValueByGlyphs(left, right);
     };
+    /**
+     * Shape and position a single glyph run (no wrapping/line layout).
+     * Applies GSUB substitutions first, then kerning + optional GPOS.
+     */
     FontParserTTF.prototype.layoutString = function (text, options) {
         var _a, _b, _c;
         if (options === void 0) { options = {}; }
@@ -362,6 +370,11 @@ var FontParserTTF = /** @class */ (function () {
             gposFeatures: options.gposFeatures
         });
     };
+    /**
+     * Apply GPOS value and attachment adjustments to an already-shaped run.
+     * Attachment positioning runs after value positioning so mark anchors
+     * inherit parent/base offsets introduced earlier in the run.
+     */
     FontParserTTF.prototype.applyGposPositioning = function (glyphIndices, positioned, gposFeatures, scriptTags) {
         var _this = this;
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3;
@@ -590,8 +603,9 @@ var FontParserTTF = /** @class */ (function () {
                     var minY_1 = Infinity;
                     var maxY_1 = -Infinity;
                     for (var p = 0; p < basePointCount; p++) {
-                        var comp = isComposite_1 && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
-                        var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                        var compositeBase = (isComposite_1 && base_1 instanceof GlyfCompositeDescript) ? base_1 : null;
+                        var comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                        var compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                         var x = base_1.getXCoordinate(p);
                         var y = base_1.getYCoordinate(p);
                         if (comp && compIndex >= 0 && self_1.glyf) {
@@ -632,8 +646,9 @@ var FontParserTTF = /** @class */ (function () {
                         getFlags: function (p) { return base_1.getFlags(p); },
                         getXCoordinate: function (p) {
                             var _a, _b, _c, _d, _e, _f, _g;
-                            var comp = isComposite_1 && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
-                            var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                            var compositeBase = (isComposite_1 && base_1 instanceof GlyfCompositeDescript) ? base_1 : null;
+                            var comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            var compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self_1.glyf) {
                                 var gd = self_1.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {
@@ -653,8 +668,9 @@ var FontParserTTF = /** @class */ (function () {
                         },
                         getYCoordinate: function (p) {
                             var _a, _b, _c, _d, _e, _f, _g;
-                            var comp = isComposite_1 && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
-                            var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                            var compositeBase = (isComposite_1 && base_1 instanceof GlyfCompositeDescript) ? base_1 : null;
+                            var comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            var compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self_1.glyf) {
                                 var gd = self_1.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {

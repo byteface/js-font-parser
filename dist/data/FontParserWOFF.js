@@ -443,8 +443,9 @@ var FontParserWOFF = /** @class */ (function () {
                     var minY_1 = Infinity;
                     var maxY_1 = -Infinity;
                     for (var p = 0; p < basePointCount; p++) {
-                        var comp = isComposite_1 && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
-                        var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                        var compositeBase = (isComposite_1 && base_1 instanceof GlyfCompositeDescript) ? base_1 : null;
+                        var comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                        var compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                         var x = base_1.getXCoordinate(p);
                         var y = base_1.getYCoordinate(p);
                         if (comp && compIndex >= 0 && self_1.glyf) {
@@ -485,8 +486,9 @@ var FontParserWOFF = /** @class */ (function () {
                         getFlags: function (p) { return base_1.getFlags(p); },
                         getXCoordinate: function (p) {
                             var _a, _b, _c, _d, _e, _f, _g;
-                            var comp = isComposite_1 && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
-                            var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                            var compositeBase = (isComposite_1 && base_1 instanceof GlyfCompositeDescript) ? base_1 : null;
+                            var comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            var compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self_1.glyf) {
                                 var gd = self_1.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {
@@ -506,8 +508,9 @@ var FontParserWOFF = /** @class */ (function () {
                         },
                         getYCoordinate: function (p) {
                             var _a, _b, _c, _d, _e, _f, _g;
-                            var comp = isComposite_1 && base_1 instanceof GlyfCompositeDescript ? base_1.getComponentForPointIndex(p) : null;
-                            var compIndex = comp ? base_1.components.indexOf(comp) : -1;
+                            var compositeBase = (isComposite_1 && base_1 instanceof GlyfCompositeDescript) ? base_1 : null;
+                            var comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            var compIndex = comp && compositeBase ? compositeBase.components.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && self_1.glyf) {
                                 var gd = self_1.glyf.getDescription(comp.glyphIndex);
                                 if (gd) {

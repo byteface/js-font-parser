@@ -1,24 +1,46 @@
 # Wishlist
 
-## P0 — Core parser completeness (do first)
-1. **Table coverage closure** — resolve the current missing table tags from factory wiring:
-   `BASE`, `DSIG`, `EBDT`, `EBLC`, `EBSC`, `JSTF`, `LTSH`, `MMFX`, `MMSD`, `PCLT`, `VDMX`, `gasp`, `hdmx`, `prep`, `vhea`, `vmtx`.
-2. **WOFF2 support** — decode Brotli-compressed tables with a stable decoder/runtime packaging strategy.
-3. **Golden-image tests** — add rendering regression tests for key demos/tools to catch visual breakage early.
+## P0 — Must-Finish Reliability
+1. **Golden-image tests**
+   - Why still needed: harness exists, but baseline coverage is not yet enforced in CI and not all key demos/tools are locked.
+   - Needed to close: define stable baseline set, run compare in CI, and gate regressions on changed targets.
 
-## P1 — Text shaping and layout fidelity
-1. **Full GPOS positioning across scripts** — broaden real-font validation sweep for complex script/mark/ligature combinations.
-2. **Structured diagnostics expansion** — continue surfacing fallback/unsupported paths as structured warnings instead of console-only signals.
-3. **Direction/script validation sweep** — verify `layoutStringAuto` and script detection against multilingual fixtures.
+2. **Full GPOS positioning across scripts**
+   - Why still needed: major mark/base/mark/ligature paths are in, but script coverage confidence is still test-driven rather than sign-off complete.
+   - Needed to close: expand real-font fixture matrix and add explicit expected outputs for complex mark+ligature combinations per script family.
 
-## P2 — Hinting and outline quality
-1. **TrueType hinting engine (VM)** — execute `fpgm`/`prep`/glyph bytecode + `cvt` for spec-accurate grid fitting.
-2. **Hinted vs unhinted visual diff (real)** — upgrade current simulated auto-hint preview to true VM-backed hint diff.
-3. **Glyph path simplifier** — reduce point counts while preserving visible shape for optimization workflows.
+3. **Structured diagnostics expansion**
+   - Why still needed: diagnostics exist, but not every fallback/unsupported path is standardized and surfaced consistently.
+   - Needed to close: complete codepath audit and map remaining console-only branches to typed diagnostics.
 
-## P3 — Tooling and demo UX
-1. **Tools shared-lib cleanup** — continue moving duplicated tool logic into shared modules.
-2. **Inline docs / cleanup pass** — improve API/docs clarity and code readability around parser/layout hot paths.
+## P1 — Parsing / Runtime Completeness
+1. **WOFF2 support (runtime packaging)**
+   - Why still needed: parser + decoder hook exist, but decoder strategy is still external/injected.
+   - Needed to close: publish a default decoder packaging approach (or official integration guide) and validate with real WOFF2 fixtures end-to-end.
+
+## P2 — Hinting and Outline Quality
+1. **TrueType hinting engine (VM)**
+   - Why still needed: current rendering is outline-driven, not bytecode-executed hinting.
+   - Needed to close: execute `fpgm`/`prep`/glyph instructions with `cvt` + touched-point behavior.
+
+2. **Hinted vs unhinted visual diff (real)**
+   - Why still needed: existing preview is simulated and not VM-backed.
+   - Needed to close: wire preview tool to true hinting output and compare against raw outlines at multiple ppem sizes.
+
+3. **Glyph path simplifier**
+   - Why still needed: no production simplification pipeline yet for export/perf workflows.
+   - Needed to close: add tolerance-driven simplifier with shape-error bounds and regression fixtures.
+
+## P3 — Tooling and DX
+1. **Tools shared-lib cleanup**
+   - Why still needed: tool pages still duplicate parsing, UI wiring, and render helpers.
+   - Needed to close: extract common modules and migrate highest-duplication tools first.
+
+2. **Inline docs / cleanup pass**
+   - Why still needed: API/docs improved, but code comments and docs are uneven across parser/layout hot paths.
+   - Needed to close: targeted pass on core parser + layout modules and align docs with current behavior.
 
 ## Maintenance
-1. **Node version policy** — standardize on LTS (`22.x` preferred, `20.x` acceptable) via `.nvmrc` + `package.json` engines.
+1. **Node version policy**
+   - Why still needed: no `.nvmrc` and no `engines` field in `package.json`.
+   - Needed to close: add both, pin LTS policy, and verify local/CI parity.

@@ -74,6 +74,9 @@ font.layoutString("Hello", {
 });
 ```
 
+`layoutString(...)` returns a single positioned glyph run (no line wrapping).
+Use `LayoutEngine.layoutText(...)` for wrapping, alignment, justification, bidi ordering, and soft-hyphen handling.
+
 `FontParserTTF` also exposes:
 
 ```js
@@ -102,6 +105,8 @@ const layout = LayoutEngine.layoutText(font, "hyphen\u00ADation sample", {
   hyphenMinWordLength: 6
 });
 ```
+
+`LayoutEngine` does not run GSUB/GPOS by itself; it consumes glyph mapping + kerning from the provided font surface.
 
 ## Variation Fonts
 
