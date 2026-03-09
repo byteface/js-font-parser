@@ -70,6 +70,16 @@
             color: #4a5671;
             font-size: 12px;
         }
+        .links {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #4a5671;
+        }
+        .links a {
+            color: #2f4f7a;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(47, 79, 122, 0.35);
+        }
         .warn { color: #a33a2a; }
     </style>
 </head>
@@ -107,13 +117,19 @@
     <div id="stage">
         <canvas id="canvas" width="1200" height="360"></canvas>
         <div id="status" class="hint"></div>
+        <div class="links">
+            Font sources:
+            <a href="https://www.cdnfonts.com/" target="_blank" rel="noreferrer">CDN Fonts</a>
+            ·
+            <a href="https://fonts.google.com/" target="_blank" rel="noreferrer">Google Fonts</a>
+        </div>
     </div>
 
     <script type="module">
         import { FontParser } from "../dist/data/FontParser.js";
         import { FontParserWOFF } from "../dist/data/FontParserWOFF.js";
         import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
-        import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
+        import { getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
 
         const fontSelect = document.getElementById("fontSelect");
         const urlInput = document.getElementById("urlInput");
@@ -219,15 +235,117 @@
             }
         ];
 
-        const loadFont = createFontLoader(async (url) => {
-            if (isWoff(url)) {
-                return FontParserWOFF.load(url);
-            }
-            return FontParser.load(url);
-        });
+        const loadedFontCache = new Map();
 
-        function isWoff(url) {
-            return url.toLowerCase().endsWith(".woff");
+        function absoluteUrl(baseUrl, maybeRelativeUrl) {
+            try {
+                return new URL(maybeRelativeUrl, baseUrl).toString();
+            } catch {
+                return maybeRelativeUrl;
+            }
+        }
+
+        function pickBestFontUrlFromCss(cssText, cssUrl) {
+            const matches = Array.from(cssText.matchAll(/url\(([^)]+)\)/gi))
+                .map((m) => m[1].trim().replace(/^['"]|['"]$/g, ""))
+                .filter((u) => !u.startsWith("data:"));
+            if (matches.length === 0) return null;
+
+            const abs = matches.map((u) => absoluteUrl(cssUrl, u));
+            // Prefer .woff for web use (stable + no WOFF2 decoder dependency).
+            const score = (u) => {
+                const l = u.toLowerCase();
+                if (l.endsWith(".woff")) return 5;
+                if (l.endsWith(".ttf")) return 4;
+                if (l.endsWith(".otf")) return 3;
+                if (l.endsWith(".woff2")) return 2;
+                return 1;
+            };
+            abs.sort((a, b) => score(b) - score(a));
+            return abs[0] || null;
+        }
+
+        function detectFontMagic(bytes) {
+            if (bytes.length < 4) return "unknown";
+            const b0 = bytes[0], b1 = bytes[1], b2 = bytes[2], b3 = bytes[3];
+            const tag = String.fromCharCode(b0, b1, b2, b3);
+            if (tag === "wOFF") return "woff";
+            if (tag === "wOF2") return "woff2";
+            if (tag === "OTTO") return "otf";
+            if (tag === "true") return "ttf";
+            if (b0 === 0x00 && b1 === 0x01 && b2 === 0x00 && b3 === 0x00) return "ttf";
+            if (b0 === 0x3c && (b1 === 0x21 || b1 === 0x68 || b1 === 0x3f)) return "html";
+            return "unknown";
+        }
+
+        async function loadFontFromUrl(url) {
+            if (loadedFontCache.has(url)) return loadedFontCache.get(url);
+
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} while fetching font.`);
+            }
+            const buf = await response.arrayBuffer();
+            const bytes = new Uint8Array(buf);
+            const magic = detectFontMagic(bytes);
+            if (magic === "html" || magic === "unknown") {
+                const ct = response.headers.get("content-type") || "unknown";
+                throw new Error(`Downloaded content is not a readable font binary (magic=${magic}, content-type=${ct}).`);
+            }
+            let parsed;
+            try {
+                if (magic === "woff") {
+                    // Use async WOFF path with decompression support.
+                    parsed = await FontParserWOFF.load(url);
+                } else {
+                    parsed = FontParser.fromArrayBuffer(buf);
+                }
+            } catch (primaryError) {
+                // Practical CDN fallback: if a direct .woff URL fails to parse,
+                // try sibling .ttf/.otf URLs before surfacing the error.
+                if (magic === "woff") {
+                    const candidates = [
+                        url.replace(/\.woff$/i, ".ttf"),
+                        url.replace(/\.woff$/i, ".otf")
+                    ].filter((u, i, arr) => arr.indexOf(u) === i && u !== url);
+                    for (const candidate of candidates) {
+                        try {
+                            const r = await fetch(candidate);
+                            if (!r.ok) continue;
+                            const b = await r.arrayBuffer();
+                            const m = detectFontMagic(new Uint8Array(b));
+                            if (m === "ttf" || m === "otf") {
+                                parsed = FontParser.fromArrayBuffer(b);
+                                status.textContent = `Primary WOFF parse failed; using fallback: ${candidate}`;
+                                break;
+                            }
+                        } catch {
+                            // continue trying next fallback candidate
+                        }
+                    }
+                }
+                if (!parsed) {
+                    throw new Error(`Parse failed for ${url} (magic=${magic}): ${primaryError}`);
+                }
+            }
+            loadedFontCache.set(url, parsed);
+            return parsed;
+        }
+
+        async function resolveInputToFontUrl(rawInputUrl) {
+            const lower = rawInputUrl.toLowerCase();
+            if (!lower.endsWith(".css")) return rawInputUrl;
+
+            const response = await fetch(rawInputUrl);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch CSS (${response.status})`);
+            }
+            const cssText = await response.text();
+            const fontUrl = pickBestFontUrlFromCss(cssText, rawInputUrl);
+            if (!fontUrl) {
+                throw new Error("No font file URL found in CSS.");
+            }
+            return fontUrl;
         }
 
         function clearCanvas() {
@@ -272,13 +390,17 @@
         async function loadAndRender() {
             const customUrl = urlInput.value.trim();
             const selected = getSelectedFont(fontSelect, catalog);
-            const url = customUrl || selected.url;
+            const inputUrl = customUrl || selected.url;
 
-            status.textContent = `Loading font: ${url}`;
+            status.textContent = `Loading font: ${inputUrl}`;
             status.classList.remove("warn");
 
             try {
-                const font = await loadFont(url);
+                const url = await resolveInputToFontUrl(inputUrl);
+                if (url !== inputUrl) {
+                    status.textContent = `Resolved CSS to font: ${url}`;
+                }
+                const font = await loadFontFromUrl(url);
                 const text = textInput.value || "";
                 renderFont(font, text);
             } catch (err) {

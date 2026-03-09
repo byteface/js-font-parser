@@ -291,6 +291,18 @@ test('OTF/CFF font parsing returns glyphs and metadata', () => {
   assert.ok(names.family.length > 0 || names.fullName.length > 0);
 });
 
+test('CFF CID-keyed OTF smoke glyphs keep valid outlines', () => {
+  const otfBytes = readBytes('truetypefonts/curated/NotoSansCJKjp-Regular.otf');
+  const font = FontParser.fromArrayBuffer(toArrayBuffer(otfBytes));
+  assert.ok(font instanceof FontParserTTF);
+
+  for (const ch of ['h', 'e', 'o', 'd']) {
+    const glyph = font.getGlyphByChar(ch);
+    assert.ok(glyph, `expected glyph object for ${ch}`);
+    assert.ok(glyph.getPointCount() > 0, `expected outline points for ${ch}`);
+  }
+});
+
 test('curated fixture fonts parse and expose stable core metadata', () => {
   for (const fixture of CURATED_FIXTURES) {
     const bytes = readBytes(fixture);
@@ -2993,13 +3005,13 @@ test('CffTable and Cff2Table helper branches cover fdselect, bias, and number de
   const f0 = new ByteArray(Uint8Array.from([0, 9, 8, 7]));
   assert.deepEqual(cff.readFdSelect(f0, 0, 3), [9, 8, 7]);
   // format 3
-  const f3 = new Uint8Array(13);
+  const f3 = new Uint8Array(11);
   const v3 = new DataView(f3.buffer);
   v3.setUint8(0, 3);
   v3.setUint16(1, 2, false); // ranges
-  v3.setUint16(3, 0, false); v3.setUint16(5, 5, false); // start 0 -> fd 5
-  v3.setUint16(7, 2, false); v3.setUint16(9, 7, false); // start 2 -> fd 7
-  v3.setUint16(11, 4, false); // sentinel
+  v3.setUint16(3, 0, false); v3.setUint8(5, 5); // start 0 -> fd 5
+  v3.setUint16(6, 2, false); v3.setUint8(8, 7); // start 2 -> fd 7
+  v3.setUint16(9, 4, false); // sentinel
   assert.deepEqual(cff.readFdSelect(new ByteArray(f3), 0, 4), [5, 5, 7, 7]);
   // format 4
   const f4 = new Uint8Array(21);
@@ -3010,7 +3022,14 @@ test('CffTable and Cff2Table helper branches cover fdselect, bias, and number de
   v4.setUint32(11, 2, false); v4.setUint16(15, 7, false);
   v4.setUint32(17, 4, false); // sentinel
   assert.deepEqual(cff.readFdSelect(new ByteArray(f4), 0, 4), [5, 5, 7, 7]);
-  assert.deepEqual(cff2.readFdSelect(new ByteArray(f3), 0, 4), [5, 5, 7, 7]);
+  const f3c2 = new Uint8Array(13);
+  const v3c2 = new DataView(f3c2.buffer);
+  v3c2.setUint8(0, 3);
+  v3c2.setUint16(1, 2, false); // ranges
+  v3c2.setUint16(3, 0, false); v3c2.setUint16(5, 5, false); // start 0 -> fd 5
+  v3c2.setUint16(7, 2, false); v3c2.setUint16(9, 7, false); // start 2 -> fd 7
+  v3c2.setUint16(11, 4, false); // sentinel
+  assert.deepEqual(cff2.readFdSelect(new ByteArray(f3c2), 0, 4), [5, 5, 7, 7]);
   assert.deepEqual(cff2.readFdSelect(new ByteArray(f4), 0, 4), [5, 5, 7, 7]);
 });
 

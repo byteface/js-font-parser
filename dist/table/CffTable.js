@@ -249,7 +249,8 @@ var CffTable = /** @class */ (function () {
             var nRanges = byte_ar.readUnsignedShort();
             var ranges = [];
             for (var i = 0; i < nRanges; i++) {
-                ranges.push({ first: byte_ar.readUnsignedShort(), fd: byte_ar.readUnsignedShort() });
+                // CFF1 FDSelect format 3 stores FD as Card8 (not Card16).
+                ranges.push({ first: byte_ar.readUnsignedShort(), fd: byte_ar.readUnsignedByte() });
             }
             var sentinel = byte_ar.readUnsignedShort();
             for (var i = 0; i < ranges.length; i++) {

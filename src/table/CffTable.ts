@@ -248,7 +248,8 @@ export class CffTable implements ITable {
             const nRanges = byte_ar.readUnsignedShort();
             const ranges: { first: number; fd: number }[] = [];
             for (let i = 0; i < nRanges; i++) {
-                ranges.push({ first: byte_ar.readUnsignedShort(), fd: byte_ar.readUnsignedShort() });
+                // CFF1 FDSelect format 3 stores FD as Card8 (not Card16).
+                ranges.push({ first: byte_ar.readUnsignedShort(), fd: byte_ar.readUnsignedByte() });
             }
             const sentinel = byte_ar.readUnsignedShort();
             for (let i = 0; i < ranges.length; i++) {

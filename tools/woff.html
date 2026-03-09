@@ -23,6 +23,7 @@
         <input id="textInput" value="Hello WOFF" />
     </label>
 </div>
+<div id="status" style="margin-bottom:12px;color:#444;"></div>
 <canvas id="myDrawing" width="900" height="360"></canvas>
 
 <script type="module">
@@ -32,6 +33,7 @@
     const canvas = document.getElementById('myDrawing');
     const textInput = document.getElementById('textInput');
     const fontSelect = document.getElementById('fontSelect');
+    const status = document.getElementById('status');
     const ctx = canvas.getContext('2d');
 
     let font = null;
@@ -49,11 +51,20 @@
     loadFont(fontSelect.value);
 
     textInput.addEventListener('input', render);
-    fontSelect.addEventListener('change', () => loadFont(fontSelect.value));
+    fontSelect.addEventListener('change', () => {
+        if (fontSelect.value.includes('FontAwesome')) {
+            // Pick common FA codepoints so the demo visibly renders something.
+            textInput.value = '\uf17b  \uf013  \uf0c0';
+        } else {
+            textInput.value = 'Hello WOFF';
+        }
+        loadFont(fontSelect.value);
+    });
 
     function render() {
         if (!font) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        status.textContent = `Loaded: ${fontSelect.options[fontSelect.selectedIndex].text}`;
         CanvasRenderer.drawString(font, textInput.value, canvas, {
             x: 40,
             y: 220,
