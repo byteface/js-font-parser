@@ -4,6 +4,8 @@ import { matchesDiagnosticFilter } from '../types/Diagnostics.js';
 export type CmapFormatLike = {
     format?: number;
     getFormatType?: () => number;
+    getGlyphIndex?: (codePoint: number) => number | null;
+    mapCharCode?: (codePoint: number) => number | null;
 };
 
 export type CmapLike = {
