@@ -20,9 +20,9 @@
     <label>Alpha <input id="alphaInput" type="range" min="0" max="100" value="100" /></label>
 </div>
 <canvas id="myDrawing" width="900" height="420"></canvas>
+<script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-    import { FontParser } from '../dist/data/FontParser.js';
-    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 
     const canvas = document.getElementById('myDrawing');
     const ctx = canvas.getContext('2d');

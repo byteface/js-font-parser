@@ -56,11 +56,11 @@
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.158.0/build/three.module.js" } }
 </script>
+<script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
   import * as THREE from "three";
   import { OrbitControls } from "https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js";
-  import { FontParser } from "../dist/data/FontParser.js";
-  import { Table } from "../dist/table/Table.js";
 
   const canvas = document.getElementById("stage");
   const fontSelect = document.getElementById("fontSelect");

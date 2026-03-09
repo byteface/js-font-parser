@@ -38,8 +38,9 @@
   <canvas id="stage" width="1360" height="760"></canvas>
 </div>
 
+<script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-import { FontParser } from '../dist/data/FontParser.js';
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 import { getFontList } from '../tools/shared/font-catalog.js';
 import { collectGlyphPoints, splitContours, drawGlyphPath, getBounds } from './shared/glyph-helpers.js';
 

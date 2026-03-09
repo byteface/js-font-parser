@@ -8,15 +8,18 @@
 <div data-nav="main"></div>
 
 <div id="font-list"></div>
+<script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-    import { FontParser } from '../dist/data/FontParser.js';
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     import { getFontList } from '../tools/shared/font-catalog.js';
-    import { Debug } from '../dist/utils/Debug.js';
-    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
-    import { Table } from '../dist/table/Table.js';
 
     const DEBUG = false;
-    Debug.enabled = DEBUG;
+    if (DEBUG) console.log("String demo debug mode enabled");
+    const TABLE_TAGS = {
+        glyf: 0x676c7966,
+        CFF: 0x43464620,
+        CFF2: 0x43464632
+    };
 
     const fonts = getFontList('stringExplorer');
 
@@ -48,9 +51,9 @@
         const url = `../truetypefonts/${encodeURIComponent(file)}`;
         FontParser.load(url)
             .then(font => {
-                const hasGlyf = !!font.getTableByType(Table.glyf);
-                const hasCff = !!font.getTableByType(Table.CFF);
-                const hasCff2 = !!font.getTableByType(Table.CFF2);
+                const hasGlyf = !!font.getTableByType(TABLE_TAGS.glyf);
+                const hasCff = !!font.getTableByType(TABLE_TAGS.CFF);
+                const hasCff2 = !!font.getTableByType(TABLE_TAGS.CFF2);
                 if (!hasGlyf && !hasCff) {
                     status.textContent = hasCff2 ? "CFF2 outlines not supported yet." : "No glyph outlines found.";
                     return;

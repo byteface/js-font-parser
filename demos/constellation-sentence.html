@@ -44,8 +44,9 @@
 </div>
 <canvas id="stage" width="1360" height="640"></canvas>
 
+<script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-import { FontParser } from "../dist/data/FontParser.js";
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 import { DEFAULT_DEMO_FONTS, createFontLoader, getSelectedFont, populateFontSelect } from "./shared/demo-scaffold.js";
 import { getFontList } from "../tools/shared/font-catalog.js";
 

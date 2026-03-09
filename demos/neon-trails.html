@@ -43,8 +43,9 @@
 </div>
 <canvas id="stage" width="1200" height="620"></canvas>
 
+<script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-  import { FontParser } from "../dist/data/FontParser.js";
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 
   const canvas = document.getElementById("stage");
   const ctx = canvas.getContext("2d");

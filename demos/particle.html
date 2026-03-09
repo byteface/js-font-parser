@@ -18,12 +18,12 @@
     <canvas id="c" width="1000" height="600"></canvas>
 </div>
 
+<script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-    import { FontParser } from '../dist/data/FontParser.js';
-    import { Debug } from '../dist/utils/Debug.js';
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 
     const DEBUG = false;
-    Debug.enabled = DEBUG;
+    if (DEBUG) console.log("Particle demo debug mode enabled");
 
     const canvas = document.getElementById('c');
     const ctx = canvas.getContext('2d');

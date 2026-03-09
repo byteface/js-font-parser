@@ -117,9 +117,9 @@
     </div>
     <div class="hint">This demo morphs point clouds between glyphs. For best results, use equal-length words.</div>
 
-    <script type="module">
-        import { FontParser } from "../dist/data/FontParser.js";
-        import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
+    <script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/demo-scaffold.js";
 
         const fontSelect = document.getElementById("fontSelect");

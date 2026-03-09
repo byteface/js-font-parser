@@ -54,10 +54,10 @@
     <canvas id="canvas" width="1200" height="360"></canvas>
   </div>
 
-  <script type="module">
-    import { FontParser } from '../dist/data/FontParser.js';
+  <script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     import { getFontList } from '../tools/shared/font-catalog.js';
-    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
     import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/demo-scaffold.js';
 
     const fontSelect = document.getElementById('fontSelect');

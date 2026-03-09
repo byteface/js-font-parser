@@ -42,10 +42,10 @@
   <canvas id="stage" width="1200" height="600"></canvas>
 
   <script src="https://unpkg.com/planck-js@0.3.0/dist/planck.min.js"></script>
-  <script type="module">
+  <script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     const planck = window.planck;
-    import { FontParser } from "../dist/data/FontParser.js";
-    import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
 
     const canvas = document.getElementById("stage");
     const ctx = canvas.getContext("2d");
