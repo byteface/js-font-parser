@@ -259,6 +259,67 @@ LayoutEngine.layoutText(font, "hy\u00ADphen ?", {
 });
 ```
 
+## Proposed API Additions (Not Implemented Yet)
+
+These are candidates to reduce duplicated logic in `tools/*.html` and make demos consume the same stable helper surface.
+
+```js
+// 1) One-shot capabilities snapshot (tables, shaping, color, variation, svg)
+analyzeFontCapabilities(font);
+// -> {
+//   format, parsedTables, hasGsub, hasGpos, hasKern,
+//   hasColr, hasSvg, hasVariations, axes, diagnosticsSummary
+// }
+
+// 2) GSUB/GPOS discovery helpers used by feature/tools pages
+listOpenTypeFeatures(font, { table: "GSUB" | "GPOS" });
+// -> { scripts, languages, features, lookupCount, lookupTypes }
+
+// 3) Unicode coverage summary used by unicode/language tools
+getUnicodeCoverageByBlock(font, {
+  includeMissing: true,
+  onlyBlocks: ["Basic Latin", "Arabic"]
+});
+// -> [{ block, covered, total, coverage, missingCodePoints }]
+
+// 4) Font diff primitive for future diff tool
+diffFonts(fontA, fontB, { sampleText, includeTables: true });
+// -> {
+//   glyphCountDelta, cmapDiff, metricDiff, tablePresenceDiff,
+//   kerningDiff, variationAxisDiff
+// }
+
+// 5) Kerning analytics helper for matrix/preview pages
+analyzeKerning(font, {
+  chars: "AVToWa",
+  source: "auto" // kern | gpos | auto
+});
+// -> { pairs, nonZeroPairs, matrix, sourceStats }
+
+// 6) Glyph inspector helper for glyph-inspector/metrics pages
+inspectGlyph(font, { glyphId: 42 /* or char: "A" */ });
+// -> {
+//   glyphId, bbox, bearings, advance, pointCount, contourCount,
+//   anchors, colorLayers, svgDocumentInfo
+// }
+
+// 7) Safe parsed table summaries for table inspector UIs
+getTableSummary(font, tag);
+// -> { tag, offset, length, parsed: object | null, warnings: [] }
+
+// 8) Layout debug payload for baseline/grid/line-box overlays
+layoutDebug(font, text, layoutOptions);
+// -> { lines, glyphRuns, lineBoxes, glyphBoxes, attachments, diagnostics }
+
+// 9) COLR flattening helper for color tool pages
+flattenColorGlyph(font, glyphId, { paletteIndex: 0, depthLimit: 16 });
+// -> { layers, paints, unsupportedFormats, clipBox }
+
+// 10) Unified safe loader with diagnostics and source metadata
+safeLoad(input, { woff2Decoder, urlLabel });
+// -> { font, diagnostics, sourceType, bytesRead }
+```
+
 Current diagnostic codes:
 - `INVALID_CHAR_INPUT`
 - `MULTI_CHAR_INPUT`

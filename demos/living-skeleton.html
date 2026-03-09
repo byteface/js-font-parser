@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Living Skeleton</title>
+  <style>
+    :root { --bg:#050913; --ink:#e9f8ff; --muted:#9bb8cf; --line:#7fd9ff; --hot:#ff8cb3; }
+    body { margin:0; color:var(--ink); font-family:"Avenir Next", sans-serif; background:radial-gradient(circle at 20% 10%, #203e75 0, transparent 38%), linear-gradient(140deg,#050913,#0f1b30); }
+    .wrap { width:min(1200px, calc(100vw - 20px)); margin:10px auto 20px; display:grid; grid-template-columns:320px 1fr; gap:12px; }
+    .panel { border:1px solid rgba(149,200,240,.35); border-radius:12px; padding:12px; background:rgba(8,20,34,.72); }
+    h1 { margin:0 0 6px; font-size:22px; }
+    p { margin:0 0 12px; color:var(--muted); font-size:13px; }
+    label { display:block; font-size:12px; color:var(--muted); margin-bottom:9px; }
+    select,input[type="text"],input[type="range"] { width:100%; margin-top:6px; }
+    select,input[type="text"] { background:#081424; color:var(--ink); border:1px solid rgba(149,200,240,.35); border-radius:8px; padding:8px 10px; }
+    .row { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; }
+    .v { min-width:36px; text-align:right; color:#cfefff; }
+    .status { font-size:12px; color:#c2e7ff; min-height:16px; margin-top:8px; }
+    canvas { width:100%; height:min(74vh,680px); display:block; border:1px solid rgba(149,200,240,.35); border-radius:12px; background:linear-gradient(#050a12,#0a1525); }
+    @media (max-width:940px){ .wrap{grid-template-columns:1fr;} canvas{height:min(60vh,560px);} }
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<div class="wrap">
+  <section class="panel">
+    <h1>Living Skeleton</h1>
+    <p>The glyph's contour graph becomes an animated kinetic skeleton.</p>
+    <label>Font <select id="fontSelect"></select></label>
+    <label>Character <input id="charInput" type="text" value="G" maxlength="2" /></label>
+    <label class="row">Pulse <span class="v" id="pulseVal"></span><input id="pulseInput" type="range" min="0" max="32" value="10" /></label>
+    <label class="row">Jitter <span class="v" id="jitVal"></span><input id="jitInput" type="range" min="0" max="30" value="6" /></label>
+    <label class="row">Spin <span class="v" id="spinVal"></span><input id="spinInput" type="range" min="0" max="22" value="7" /></label>
+    <div class="status" id="status">Loading…</div>
+  </section>
+  <canvas id="stage"></canvas>
+</div>
+
+<script type="module">
+import { FontParser } from '../dist/data/FontParser.js';
+import { getFontList } from '../tools/shared/font-catalog.js';
+import { collectGlyphPoints, splitContours, drawGlyphPath, getBounds, transformPoints } from './shared/glyph-helpers.js';
+
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const statusEl = document.getElementById('status');
+const fontSelect = document.getElementById('fontSelect');
+const charInput = document.getElementById('charInput');
+const pulseInput = document.getElementById('pulseInput');
+const jitInput = document.getElementById('jitInput');
+const spinInput = document.getElementById('spinInput');
+const pulseVal = document.getElementById('pulseVal');
+const jitVal = document.getElementById('jitVal');
+const spinVal = document.getElementById('spinVal');
+
+let dpr = 1;
+let font = null;
+let contours = [];
+let nodes = [];
+let center = { x: 0, y: 0 };
+
+const fonts = [...getFontList('demoCore'), ...getFontList('variableFonts').slice(0, 3)]
+  .filter((f, i, arr) => arr.findIndex((x) => x.url === f.url) === i);
+for (const f of fonts) {
+  const o = document.createElement('option');
+  o.value = f.url; o.textContent = f.name;
+  fontSelect.appendChild(o);
+}
+
+function setVals() {
+  pulseVal.textContent = (Number(pulseInput.value) / 100).toFixed(2);
+  jitVal.textContent = (Number(jitInput.value) / 100).toFixed(2);
+  spinVal.textContent = (Number(spinInput.value) / 100).toFixed(2);
+}
+
+function resize() {
+  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  rebuild();
+}
+
+function rebuild() {
+  if (!font) return;
+  const ch = Array.from(charInput.value || 'G')[0] || 'G';
+  const gi = font.getGlyphIndexByChar(ch) ?? font.getGlyphIndexByChar('A') ?? 0;
+  const glyph = font.getGlyph(gi);
+  if (!glyph) { contours = []; nodes = []; statusEl.textContent = `Missing glyph: ${ch}`; return; }
+  const points = collectGlyphPoints(glyph);
+  const b = getBounds(points);
+  if (!b) return;
+  const s = Math.min((canvas.width * 0.6) / Math.max(1, b.width), (canvas.height * 0.6) / Math.max(1, b.height));
+  const centered = transformPoints(points, -((b.minX + b.maxX) * 0.5), -((b.minY + b.maxY) * 0.5), s, true);
+  const translated = centered.map((p) => ({ ...p, x: p.x + canvas.width * 0.5, y: p.y + canvas.height * 0.55 }));
+  contours = splitContours(translated);
+  nodes = contours.flat();
+  center = nodes.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
+  center.x /= Math.max(1, nodes.length);
+  center.y /= Math.max(1, nodes.length);
+  statusEl.textContent = `Glyph ${ch} | contours ${contours.length} | points ${nodes.length}`;
+}
+
+function draw(ts) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const t = ts * 0.001;
+  const pulse = Number(pulseInput.value) / 100;
+  const jitter = Number(jitInput.value) / 100;
+  const spin = Number(spinInput.value) / 100;
+
+  const animatedContours = contours.map((contour, ci) => contour.map((p, pi) => {
+    const dx = p.x - center.x;
+    const dy = p.y - center.y;
+    const r = Math.hypot(dx, dy) || 1;
+    const wave = 1 + Math.sin(t * 2.2 + ci * 0.7 + pi * 0.18) * pulse;
+    const angle = Math.atan2(dy, dx) + Math.sin(t * 1.4 + ci * 0.9) * spin * 0.06;
+    const jr = Math.sin(t * 3.1 + pi * 0.9) * jitter * 18 * dpr;
+    return {
+      ...p,
+      x: center.x + Math.cos(angle) * r * wave + jr * 0.35,
+      y: center.y + Math.sin(angle) * r * wave + jr * 0.22
+    };
+  }));
+
+  const flat = animatedContours.flat();
+  const c = flat.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
+  c.x /= Math.max(1, flat.length); c.y /= Math.max(1, flat.length);
+
+  ctx.save();
+  drawGlyphPath(ctx, animatedContours);
+  ctx.fillStyle = 'rgba(80,210,255,0.14)';
+  ctx.fill('evenodd');
+  ctx.strokeStyle = 'rgba(110,225,255,0.9)';
+  ctx.shadowColor = 'rgba(95,215,255,0.8)';
+  ctx.shadowBlur = 18 * dpr;
+  ctx.lineWidth = 1.6 * dpr;
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(245,157,179,0.25)';
+  ctx.lineWidth = 1 * dpr;
+  ctx.beginPath();
+  for (const contour of animatedContours) {
+    for (let i = 0; i < contour.length; i++) {
+      const a = contour[i];
+      const b = contour[(i + 1) % contour.length];
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      if (i % 2 === 0) {
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(c.x, c.y);
+      }
+    }
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  for (const p of flat) {
+    ctx.beginPath();
+    ctx.fillStyle = p.onCurve ? 'rgba(245,157,179,0.85)' : 'rgba(95,211,255,0.75)';
+    ctx.arc(p.x, p.y, (p.onCurve ? 2.2 : 1.7) * dpr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  requestAnimationFrame(draw);
+}
+
+async function loadFont() {
+  try {
+    statusEl.textContent = `Loading ${fontSelect.selectedOptions[0]?.textContent || ''}…`;
+    font = await FontParser.load(fontSelect.value);
+    rebuild();
+  } catch (e) {
+    statusEl.textContent = `Load failed: ${e?.message || e}`;
+  }
+}
+
+fontSelect.addEventListener('change', loadFont);
+charInput.addEventListener('input', rebuild);
+[pulseInput, jitInput, spinInput].forEach((el) => el.addEventListener('input', setVals));
+window.addEventListener('resize', resize);
+setVals();
+resize();
+await loadFont();
+requestAnimationFrame(draw);
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

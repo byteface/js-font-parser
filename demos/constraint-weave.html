@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Constraint Weave</title>
+  <style>
+    :root { --ink:#edf9ff; --muted:#a3bfda; --line:rgba(139,206,255,.35); }
+    body { margin:0; color:var(--ink); font-family:"Avenir Next",sans-serif; background:radial-gradient(circle at 12% 8%, #25417a 0, transparent 40%), linear-gradient(150deg,#050a14,#121f33); }
+    .wrap { width:min(1240px, calc(100vw - 20px)); margin:10px auto 22px; display:grid; grid-template-columns:320px 1fr; gap:12px; }
+    .panel { border:1px solid var(--line); border-radius:12px; background:rgba(8,20,35,.74); padding:12px; }
+    h1 { margin:0 0 6px; font-size:22px; }
+    p { margin:0 0 12px; color:var(--muted); font-size:13px; }
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:10px}
+    select,input[type="text"],input[type="range"]{width:100%;margin-top:6px}
+    select,input[type="text"]{border:1px solid var(--line);border-radius:8px;background:#081424;color:var(--ink);padding:8px 10px}
+    .row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.v{min-width:36px;text-align:right;color:#d4f0ff}
+    .status{font-size:12px;color:#c9ebff;min-height:16px;margin-top:8px}
+    canvas{width:100%;height:min(74vh,690px);display:block;border:1px solid var(--line);border-radius:12px;background:linear-gradient(#040a13,#0b1728);cursor:grab}
+    canvas.drag{cursor:grabbing}
+    @media (max-width:940px){.wrap{grid-template-columns:1fr}canvas{height:min(60vh,560px)}}
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<div class="wrap">
+  <section class="panel">
+    <h1>Constraint Weave</h1>
+    <p>Pinch and pull strands of the glyph. It stretches like woven threads then recovers.</p>
+    <label>Font <select id="fontSelect"></select></label>
+    <label>Character <input id="charInput" type="text" value="S" maxlength="2" /></label>
+    <label class="row">Thread tension <span id="kVal" class="v"></span><input id="kInput" type="range" min="4" max="60" value="24" /></label>
+    <label class="row">Recovery <span id="rVal" class="v"></span><input id="rInput" type="range" min="0" max="50" value="18" /></label>
+    <label class="row">Friction <span id="fVal" class="v"></span><input id="fInput" type="range" min="830" max="995" value="930" /></label>
+    <label class="row">Trail <span id="tVal" class="v"></span><input id="tInput" type="range" min="3" max="35" value="16" /></label>
+    <div class="status" id="status">Loading…</div>
+  </section>
+  <canvas id="stage"></canvas>
+</div>
+
+<script type="module">
+import { FontParser } from '../dist/data/FontParser.js';
+import { getFontList } from '../tools/shared/font-catalog.js';
+import { collectGlyphPoints, splitContours, drawGlyphPath, getBounds, transformPoints } from './shared/glyph-helpers.js';
+
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const fontSelect = document.getElementById('fontSelect');
+const charInput = document.getElementById('charInput');
+const statusEl = document.getElementById('status');
+const kInput = document.getElementById('kInput');
+const rInput = document.getElementById('rInput');
+const fInput = document.getElementById('fInput');
+const tInput = document.getElementById('tInput');
+const kVal = document.getElementById('kVal');
+const rVal = document.getElementById('rVal');
+const fVal = document.getElementById('fVal');
+const tVal = document.getElementById('tVal');
+
+let dpr = 1;
+let font = null;
+let nodes = [];
+let edges = [];
+let contours = [];
+let prevTs = 0;
+let pointer = { down: false, mode: 'none', idx: -1, x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 };
+
+const fonts = [...getFontList('demoCore'), ...getFontList('allGlyphs').slice(0, 10)]
+  .filter((f, i, arr) => arr.findIndex((x) => x.url === f.url) === i);
+for (const f of fonts) {
+  const o = document.createElement('option'); o.value = f.url; o.textContent = f.name; fontSelect.appendChild(o);
+}
+
+function setVals() {
+  kVal.textContent = (Number(kInput.value) / 1000).toFixed(3);
+  rVal.textContent = (Number(rInput.value) / 1000).toFixed(3);
+  fVal.textContent = (Number(fInput.value) / 1000).toFixed(3);
+  tVal.textContent = tInput.value;
+}
+
+function resize() {
+  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  rebuild();
+}
+
+function addEdge(a, b, w) {
+  const dx = nodes[b].x - nodes[a].x;
+  const dy = nodes[b].y - nodes[a].y;
+  edges.push({ a, b, rest: Math.hypot(dx, dy) || 1, w });
+}
+
+function rebuild() {
+  if (!font) return;
+  const ch = Array.from(charInput.value || 'S')[0] || 'S';
+  const gi = font.getGlyphIndexByChar(ch) ?? font.getGlyphIndexByChar('A') ?? 0;
+  const glyph = font.getGlyph(gi);
+  if (!glyph) { statusEl.textContent = `Missing glyph: ${ch}`; return; }
+  const pts = collectGlyphPoints(glyph);
+  const b = getBounds(pts);
+  if (!b) return;
+  const scale = Math.min((canvas.width * 0.62) / Math.max(1, b.width), (canvas.height * 0.62) / Math.max(1, b.height));
+  const centered = transformPoints(pts, -((b.minX + b.maxX) * 0.5), -((b.minY + b.maxY) * 0.5), scale, true)
+    .map((p) => ({ ...p, x: p.x + canvas.width * 0.5, y: p.y + canvas.height * 0.55 }));
+  contours = splitContours(centered);
+  nodes = centered.map((p) => ({ x: p.x, y: p.y, ox: p.x, oy: p.y, vx: 0, vy: 0, onCurve: p.onCurve, trail: [] }));
+  edges = [];
+  let base = 0;
+  for (const c of contours) {
+    const n = c.length;
+    for (let i = 0; i < n; i++) {
+      addEdge(base + i, base + ((i + 1) % n), 1.0);
+      addEdge(base + i, base + ((i + 2) % n), 0.33);
+      if (i % 4 === 0) addEdge(base + i, base + ((i + Math.floor(n / 2)) % n), 0.2);
+    }
+    base += n;
+  }
+  statusEl.textContent = `Glyph ${ch} | points ${nodes.length} | threads ${edges.length}`;
+}
+
+function draw() {
+  const trail = Number(tInput.value);
+  ctx.fillStyle = `rgba(4,10,18,${Math.max(0.08, 0.42 - trail / 100)})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(113,199,255,0.24)';
+  ctx.lineWidth = 1 * dpr;
+  ctx.beginPath();
+  for (const e of edges) {
+    const a = nodes[e.a], b = nodes[e.b];
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  const dynContours = [];
+  let at = 0;
+  for (const c of contours) {
+    dynContours.push(Array.from({ length: c.length }, (_, i) => ({ ...nodes[at + i] })));
+    at += c.length;
+  }
+
+  ctx.save();
+  drawGlyphPath(ctx, dynContours);
+  const grad = ctx.createLinearGradient(canvas.width * 0.2, canvas.height * 0.2, canvas.width * 0.8, canvas.height * 0.85);
+  grad.addColorStop(0, 'rgba(95,211,255,0.18)');
+  grad.addColorStop(1, 'rgba(245,157,179,0.16)');
+  ctx.fillStyle = grad;
+  ctx.fill('evenodd');
+  ctx.lineWidth = 1.8 * dpr;
+  ctx.strokeStyle = 'rgba(123,222,255,0.95)';
+  ctx.shadowColor = 'rgba(95,211,255,0.75)';
+  ctx.shadowBlur = 16 * dpr;
+  ctx.stroke();
+  ctx.restore();
+
+  for (const n of nodes) {
+    n.trail.push({ x: n.x, y: n.y });
+    if (n.trail.length > trail) n.trail.shift();
+  }
+  ctx.save();
+  for (const n of nodes) {
+    if (n.trail.length < 2) continue;
+    ctx.beginPath();
+    ctx.moveTo(n.trail[0].x, n.trail[0].y);
+    for (let i = 1; i < n.trail.length; i++) ctx.lineTo(n.trail[i].x, n.trail[i].y);
+    ctx.strokeStyle = n.onCurve ? 'rgba(245,157,179,0.18)' : 'rgba(95,211,255,0.12)';
+    ctx.lineWidth = 1 * dpr;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function step(dt) {
+  const k = Number(kInput.value) / 1000;
+  const recover = Number(rInput.value) / 1000;
+  const friction = Number(fInput.value) / 1000;
+  for (const e of edges) {
+    const a = nodes[e.a], b = nodes[e.b];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const diff = (d - e.rest) / d;
+    const f = k * e.w * diff;
+    const fx = dx * f;
+    const fy = dy * f;
+    a.vx += fx * dt; a.vy += fy * dt;
+    b.vx -= fx * dt; b.vy -= fy * dt;
+  }
+  const left = 8 * dpr, right = canvas.width - left, top = left, bottom = canvas.height - left;
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i];
+    if (pointer.down && pointer.mode === 'node' && pointer.idx === i) continue;
+    n.vx += (n.ox - n.x) * recover * dt;
+    n.vy += (n.oy - n.y) * recover * dt;
+    n.vx *= friction; n.vy *= friction;
+    n.x += n.vx * dt; n.y += n.vy * dt;
+    if (n.x < left) { n.x = left; n.vx *= -0.7; }
+    if (n.x > right) { n.x = right; n.vx *= -0.7; }
+    if (n.y < top) { n.y = top; n.vy *= -0.7; }
+    if (n.y > bottom) { n.y = bottom; n.vy *= -0.7; }
+  }
+}
+
+function nearestNode(x, y, r = 20 * dpr) {
+  let best = -1; let bd = r * r;
+  for (let i = 0; i < nodes.length; i++) {
+    const dx = nodes[i].x - x, dy = nodes[i].y - y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bd) { bd = d2; best = i; }
+  }
+  return best;
+}
+
+function pointInGlyph(x, y) {
+  const dynContours = [];
+  let at = 0;
+  for (const c of contours) {
+    dynContours.push(Array.from({ length: c.length }, (_, i) => ({ ...nodes[at + i] })));
+    at += c.length;
+  }
+  ctx.save();
+  drawGlyphPath(ctx, dynContours);
+  const inside = ctx.isPointInPath(x, y, 'evenodd');
+  ctx.restore();
+  return inside;
+}
+
+function pxy(e) {
+  const r = canvas.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * dpr, y: (e.clientY - r.top) * dpr };
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  const p = pxy(e);
+  pointer.down = true; pointer.x = pointer.ox = p.x; pointer.y = pointer.oy = p.y;
+  const idx = nearestNode(p.x, p.y);
+  if (idx >= 0) {
+    pointer.mode = 'node'; pointer.idx = idx;
+  } else if (pointInGlyph(p.x, p.y)) {
+    pointer.mode = 'weave';
+  } else {
+    pointer.mode = 'none';
+  }
+  canvas.classList.add('drag');
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  const p = pxy(e);
+  pointer.vx = (p.x - pointer.x) * 0.65;
+  pointer.vy = (p.y - pointer.y) * 0.65;
+  pointer.x = p.x; pointer.y = p.y;
+  if (!pointer.down) return;
+  if (pointer.mode === 'node' && pointer.idx >= 0) {
+    const n = nodes[pointer.idx];
+    n.x = p.x; n.y = p.y; n.vx = pointer.vx; n.vy = pointer.vy;
+  } else if (pointer.mode === 'weave') {
+    for (const n of nodes) {
+      const dx = n.x - p.x;
+      const dy = n.y - p.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      if (dist < 170 * dpr) {
+        const force = (1 - dist / (170 * dpr)) * 0.18;
+        n.vx += pointer.vx * force;
+        n.vy += pointer.vy * force;
+      }
+    }
+  }
+});
+
+function release() {
+  if (!pointer.down) return;
+  pointer.down = false; pointer.mode = 'none'; pointer.idx = -1;
+  canvas.classList.remove('drag');
+}
+canvas.addEventListener('pointerup', release);
+canvas.addEventListener('pointerleave', release);
+
+function frame(ts) {
+  if (!prevTs) prevTs = ts;
+  const dt = Math.min(0.033, (ts - prevTs) / 1000);
+  prevTs = ts;
+  if (nodes.length) step(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+async function loadFont() {
+  try {
+    statusEl.textContent = `Loading ${fontSelect.selectedOptions[0]?.textContent || ''}…`;
+    font = await FontParser.load(fontSelect.value);
+    rebuild();
+  } catch (e) {
+    statusEl.textContent = `Load failed: ${e?.message || e}`;
+  }
+}
+
+fontSelect.addEventListener('change', loadFont);
+charInput.addEventListener('input', rebuild);
+[kInput, rInput, fInput, tInput].forEach((el) => el.addEventListener('input', setVals));
+window.addEventListener('resize', resize);
+setVals();
+resize();
+await loadFont();
+requestAnimationFrame(frame);
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

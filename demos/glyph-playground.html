@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glyph Playground</title>
+  <style>
+    :root {
+      --bg0: #070b16;
+      --bg1: #121b30;
+      --panel: rgba(10, 20, 36, 0.7);
+      --line: rgba(157, 210, 255, 0.35);
+      --ink: #e7f5ff;
+      --muted: #9eb9d3;
+      --hot: #5fd3ff;
+      --accent: #f59db3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 10%, #223e73 0%, transparent 42%),
+        radial-gradient(circle at 88% 4%, #6a1f45 0%, transparent 38%),
+        linear-gradient(160deg, var(--bg0), var(--bg1));
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+    }
+    .shell {
+      width: min(1250px, calc(100vw - 22px));
+      margin: 10px auto 24px;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 14px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      backdrop-filter: blur(10px);
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      letter-spacing: 0.02em;
+    }
+    .sub {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 10px;
+      letter-spacing: 0.03em;
+    }
+    input[type="text"], select, input[type="range"] {
+      width: 100%;
+      margin-top: 6px;
+    }
+    input[type="text"], select {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: rgba(4, 12, 22, 0.74);
+      color: var(--ink);
+      padding: 8px 10px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .v {
+      min-width: 40px;
+      text-align: right;
+      color: #d8f6ff;
+      font-size: 12px;
+    }
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--ink);
+      margin-top: 7px;
+    }
+    .hint {
+      margin-top: 12px;
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+    .status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #cbe6ff;
+      min-height: 16px;
+    }
+    .stage {
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      background: rgba(2, 7, 13, 0.9);
+      display: flex;
+      flex-direction: column;
+    }
+    canvas {
+      width: 100%;
+      height: min(75vh, 700px);
+      display: block;
+      cursor: grab;
+      background: linear-gradient(to bottom, #050a12, #0a1422);
+    }
+    canvas.dragging { cursor: grabbing; }
+    .legend {
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    @media (max-width: 980px) {
+      .shell { grid-template-columns: 1fr; }
+      canvas { height: min(62vh, 560px); }
+    }
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+
+<div class="shell">
+  <section class="panel">
+    <h1>Glyph Playground</h1>
+    <p class="sub">Grab the glyph body and throw it. Pull points to deform it. Springs and memory forces snap it back.</p>
+
+    <label>Font <select id="fontSelect"></select></label>
+    <label>Glyph character <input id="charInput" type="text" value="R" maxlength="2" /></label>
+
+    <label class="row">Stiffness <span id="stiffVal" class="v"></span><input id="stiffInput" type="range" min="2" max="80" value="34" /></label>
+    <label class="row">Shape memory <span id="snapVal" class="v"></span><input id="snapInput" type="range" min="0" max="60" value="26" /></label>
+    <label class="row">Damping <span id="dampVal" class="v"></span><input id="dampInput" type="range" min="80" max="995" value="936" /></label>
+    <label class="row">Gravity <span id="gravVal" class="v"></span><input id="gravInput" type="range" min="0" max="260" value="64" /></label>
+    <label class="row">Bounce <span id="bounceVal" class="v"></span><input id="bounceInput" type="range" min="10" max="98" value="72" /></label>
+
+    <label class="toggle"><input id="showMesh" type="checkbox" checked /> Show spring mesh</label>
+    <label class="toggle"><input id="showPoints" type="checkbox" /> Show points</label>
+
+    <div class="status" id="status">Loading font…</div>
+    <p class="hint">Interaction: click inside glyph to move/throw whole body. Click near a point to pull that point directly.</p>
+  </section>
+
+  <section class="stage">
+    <canvas id="stage"></canvas>
+    <div class="legend">
+      <span>Modes: body throw + point pull</span>
+      <span>Try high stiffness + low damping for chaotic bounce</span>
+    </div>
+  </section>
+</div>
+
+<script type="module">
+  import { FontParser } from '../dist/data/FontParser.js';
+  import { getFontList } from '../tools/shared/font-catalog.js';
+
+  const canvas = document.getElementById('stage');
+  const ctx = canvas.getContext('2d');
+  const fontSelect = document.getElementById('fontSelect');
+  const charInput = document.getElementById('charInput');
+  const statusEl = document.getElementById('status');
+
+  const stiffInput = document.getElementById('stiffInput');
+  const snapInput = document.getElementById('snapInput');
+  const dampInput = document.getElementById('dampInput');
+  const gravInput = document.getElementById('gravInput');
+  const bounceInput = document.getElementById('bounceInput');
+  const showMesh = document.getElementById('showMesh');
+  const showPoints = document.getElementById('showPoints');
+
+  const stiffVal = document.getElementById('stiffVal');
+  const snapVal = document.getElementById('snapVal');
+  const dampVal = document.getElementById('dampVal');
+  const gravVal = document.getElementById('gravVal');
+  const bounceVal = document.getElementById('bounceVal');
+
+  let dpr = 1;
+  let font = null;
+  let nodes = [];
+  let springs = [];
+  let contours = [];
+  let pathOpen = false;
+  let simScale = 1;
+  let prevTs = 0;
+
+  const pointer = {
+    x: 0, y: 0, down: false,
+    lastX: 0, lastY: 0,
+    vx: 0, vy: 0,
+    mode: 'none', // none | point | body
+    nodeIndex: -1,
+    bodyOffsets: []
+  };
+
+  const fonts = [
+    ...getFontList('demoCore'),
+    ...getFontList('allGlyphs').slice(0, 12)
+  ].filter((f, i, arr) => arr.findIndex((x) => x.url === f.url) === i);
+
+  for (const f of fonts) {
+    const option = document.createElement('option');
+    option.value = f.url;
+    option.textContent = f.name;
+    fontSelect.appendChild(option);
+  }
+  const joe = fonts.find((f) => /JoeJack/i.test(f.name));
+  if (joe) fontSelect.value = joe.url;
+
+  function updateUiValues() {
+    stiffVal.textContent = (Number(stiffInput.value) / 1000).toFixed(3);
+    snapVal.textContent = (Number(snapInput.value) / 1000).toFixed(3);
+    dampVal.textContent = (Number(dampInput.value) / 1000).toFixed(3);
+    gravVal.textContent = (Number(gravInput.value) / 1000).toFixed(3);
+    bounceVal.textContent = (Number(bounceInput.value) / 100).toFixed(2);
+  }
+
+  function resize() {
+    dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const b = canvas.getBoundingClientRect();
+    canvas.width = Math.max(2, Math.round(b.width * dpr));
+    canvas.height = Math.max(2, Math.round(b.height * dpr));
+    rebuildGlyph();
+  }
+
+  function collectPoints(glyph) {
+    if (Array.isArray(glyph.points) && glyph.points.length > 0) {
+      return glyph.points.map((p) => ({ x: p.x, y: p.y, onCurve: !!p.onCurve, endOfContour: !!p.endOfContour }));
+    }
+    const out = [];
+    for (let i = 0; i < glyph.getPointCount(); i++) {
+      const p = glyph.getPoint(i);
+      out.push({ x: p.x, y: p.y, onCurve: !!p.onCurve, endOfContour: !!p.endOfContour });
+    }
+    return out;
+  }
+
+  function splitContours(points) {
+    const c = [];
+    let start = 0;
+    for (let i = 0; i < points.length; i++) {
+      if (points[i].endOfContour) {
+        c.push(Array.from({ length: i - start + 1 }, (_, k) => start + k));
+        start = i + 1;
+      }
+    }
+    if (start < points.length) c.push(Array.from({ length: points.length - start }, (_, k) => start + k));
+    return c.filter((x) => x.length > 1);
+  }
+
+  function createSprings() {
+    springs = [];
+    for (const contour of contours) {
+      for (let i = 0; i < contour.length; i++) {
+        const a = contour[i];
+        const b = contour[(i + 1) % contour.length];
+        const c = contour[(i + 2) % contour.length];
+        addSpring(a, b, 1.0);
+        addSpring(a, c, 0.35);
+      }
+    }
+  }
+
+  function addSpring(a, b, weight) {
+    const dx = nodes[b].x - nodes[a].x;
+    const dy = nodes[b].y - nodes[a].y;
+    const rest = Math.hypot(dx, dy) || 1;
+    springs.push({ a, b, rest, weight });
+  }
+
+  function rebuildGlyph() {
+    if (!font) return;
+    const char = Array.from(charInput.value || 'R')[0] || 'R';
+    const index = font.getGlyphIndexByChar(char) ?? font.getGlyphIndexByChar('A') ?? 0;
+    const glyph = font.getGlyph(index);
+    if (!glyph) {
+      statusEl.textContent = `No glyph found for "${char}"`;
+      nodes = [];
+      springs = [];
+      contours = [];
+      return;
+    }
+    const pts = collectPoints(glyph);
+    contours = splitContours(pts);
+    if (pts.length === 0 || contours.length === 0) {
+      statusEl.textContent = `Glyph "${char}" has no drawable contours`;
+      nodes = [];
+      springs = [];
+      return;
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of pts) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    const gw = Math.max(1, maxX - minX);
+    const gh = Math.max(1, maxY - minY);
+    simScale = Math.min((canvas.width * 0.62) / gw, (canvas.height * 0.62) / gh);
+    const cx = (minX + maxX) * 0.5;
+    const cy = (minY + maxY) * 0.5;
+    const ox = canvas.width * 0.5;
+    const oy = canvas.height * 0.55;
+
+    nodes = pts.map((p) => {
+      const x = ox + (p.x - cx) * simScale;
+      const y = oy - (p.y - cy) * simScale;
+      return {
+        x, y, vx: 0, vy: 0,
+        ox: x, oy: y,
+        onCurve: p.onCurve
+      };
+    });
+
+    createSprings();
+    statusEl.textContent = `Glyph "${char}" | points ${nodes.length} | springs ${springs.length}`;
+  }
+
+  function drawGlyphPath(targetCtx) {
+    for (const contour of contours) {
+      const count = contour.length;
+      const get = (i) => nodes[contour[(i + count) % count]];
+      const p0 = get(0);
+      targetCtx.moveTo(p0.x, p0.y);
+      let offset = 0;
+      while (offset < count) {
+        const a = get(offset);
+        const b = get(offset + 1);
+        if (a.onCurve) {
+          if (b.onCurve) {
+            targetCtx.lineTo(b.x, b.y);
+            offset++;
+          } else {
+            const c = get(offset + 2);
+            if (c.onCurve) {
+              targetCtx.quadraticCurveTo(b.x, b.y, c.x, c.y);
+            } else {
+              targetCtx.quadraticCurveTo(b.x, b.y, (b.x + c.x) * 0.5, (b.y + c.y) * 0.5);
+            }
+            offset += 2;
+          }
+        } else {
+          if (!b.onCurve) {
+            targetCtx.quadraticCurveTo(a.x, a.y, (a.x + b.x) * 0.5, (a.y + b.y) * 0.5);
+          } else {
+            targetCtx.quadraticCurveTo(a.x, a.y, b.x, b.y);
+          }
+          offset++;
+        }
+      }
+      targetCtx.closePath();
+    }
+  }
+
+  function isInsideGlyph(x, y) {
+    ctx.save();
+    ctx.beginPath();
+    drawGlyphPath(ctx);
+    const inside = ctx.isPointInPath(x, y, 'evenodd');
+    ctx.restore();
+    return inside;
+  }
+
+  function nearestNode(x, y, radius = 20 * dpr) {
+    let best = -1;
+    let bestD = radius * radius;
+    for (let i = 0; i < nodes.length; i++) {
+      const dx = nodes[i].x - x;
+      const dy = nodes[i].y - y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD) {
+        bestD = d2;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  function applySprings(dt) {
+    const k = Number(stiffInput.value) / 1000;
+    for (const s of springs) {
+      const a = nodes[s.a];
+      const b = nodes[s.b];
+      let dx = b.x - a.x;
+      let dy = b.y - a.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const diff = (len - s.rest) / len;
+      const f = k * s.weight * diff;
+      const fx = dx * f;
+      const fy = dy * f;
+      a.vx += fx * dt;
+      a.vy += fy * dt;
+      b.vx -= fx * dt;
+      b.vy -= fy * dt;
+    }
+  }
+
+  function integrate(dt) {
+    const damping = Number(dampInput.value) / 1000;
+    const gravity = Number(gravInput.value) / 1000;
+    const bounce = Number(bounceInput.value) / 100;
+    const snap = Number(snapInput.value) / 1000;
+    const floor = canvas.height - 18 * dpr;
+    const left = 10 * dpr;
+    const right = canvas.width - 10 * dpr;
+    const top = 10 * dpr;
+
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      if (pointer.mode === 'point' && i === pointer.nodeIndex && pointer.down) continue;
+
+      n.vx += (n.ox - n.x) * snap * dt;
+      n.vy += ((n.oy - n.y) * snap + gravity) * dt;
+      n.vx *= damping;
+      n.vy *= damping;
+      n.x += n.vx * dt;
+      n.y += n.vy * dt;
+
+      if (n.x < left) { n.x = left; if (n.vx < 0) n.vx *= -bounce; }
+      if (n.x > right) { n.x = right; if (n.vx > 0) n.vx *= -bounce; }
+      if (n.y < top) { n.y = top; if (n.vy < 0) n.vy *= -bounce; }
+      if (n.y > floor) { n.y = floor; if (n.vy > 0) n.vy *= -bounce; }
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    g.addColorStop(0, '#040913');
+    g.addColorStop(1, '#0a1423');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (!nodes.length) return;
+
+    if (showMesh.checked) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(108,170,230,0.18)';
+      ctx.lineWidth = 1 * dpr;
+      ctx.beginPath();
+      for (const s of springs) {
+        const a = nodes[s.a], b = nodes[s.b];
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    drawGlyphPath(ctx);
+    ctx.fillStyle = 'rgba(95,211,255,0.18)';
+    ctx.fill('evenodd');
+    ctx.lineWidth = 2 * dpr;
+    ctx.strokeStyle = 'rgba(95,211,255,0.95)';
+    ctx.shadowColor = 'rgba(95,211,255,0.65)';
+    ctx.shadowBlur = 18 * dpr;
+    ctx.stroke();
+    ctx.restore();
+
+    if (showPoints.checked) {
+      ctx.save();
+      for (const n of nodes) {
+        ctx.beginPath();
+        ctx.fillStyle = n.onCurve ? 'rgba(245,157,179,0.9)' : 'rgba(95,211,255,0.8)';
+        ctx.arc(n.x, n.y, (n.onCurve ? 2.4 : 1.9) * dpr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  function animate(ts) {
+    if (!prevTs) prevTs = ts;
+    const dt = Math.min(0.033, (ts - prevTs) / 1000);
+    prevTs = ts;
+    if (nodes.length) {
+      applySprings(dt);
+      integrate(dt);
+    }
+    draw();
+    requestAnimationFrame(animate);
+  }
+
+  function pointerPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: (e.clientX - rect.left) * dpr, y: (e.clientY - rect.top) * dpr };
+  }
+
+  function onDown(e) {
+    if (!nodes.length) return;
+    const p = pointerPos(e);
+    pointer.down = true;
+    pointer.x = pointer.lastX = p.x;
+    pointer.y = pointer.lastY = p.y;
+    pointer.vx = pointer.vy = 0;
+    const ni = nearestNode(p.x, p.y);
+    if (ni >= 0) {
+      pointer.mode = 'point';
+      pointer.nodeIndex = ni;
+      canvas.classList.add('dragging');
+      return;
+    }
+    if (isInsideGlyph(p.x, p.y)) {
+      pointer.mode = 'body';
+      pointer.bodyOffsets = nodes.map((n) => ({ x: n.x - p.x, y: n.y - p.y }));
+      canvas.classList.add('dragging');
+      return;
+    }
+    pointer.mode = 'none';
+    pointer.nodeIndex = -1;
+  }
+
+  function onMove(e) {
+    const p = pointerPos(e);
+    pointer.vx = (p.x - pointer.lastX) * 0.6;
+    pointer.vy = (p.y - pointer.lastY) * 0.6;
+    pointer.lastX = p.x;
+    pointer.lastY = p.y;
+    pointer.x = p.x;
+    pointer.y = p.y;
+    if (!pointer.down) return;
+    if (pointer.mode === 'point' && pointer.nodeIndex >= 0) {
+      const n = nodes[pointer.nodeIndex];
+      n.x = p.x;
+      n.y = p.y;
+      n.vx = pointer.vx;
+      n.vy = pointer.vy;
+      return;
+    }
+    if (pointer.mode === 'body' && pointer.bodyOffsets.length === nodes.length) {
+      for (let i = 0; i < nodes.length; i++) {
+        nodes[i].x = p.x + pointer.bodyOffsets[i].x;
+        nodes[i].y = p.y + pointer.bodyOffsets[i].y;
+        nodes[i].vx = pointer.vx;
+        nodes[i].vy = pointer.vy;
+      }
+    }
+  }
+
+  function onUp() {
+    pointer.down = false;
+    if (pointer.mode === 'body') {
+      for (const n of nodes) {
+        n.vx += pointer.vx * 1.3;
+        n.vy += pointer.vy * 1.3;
+      }
+    }
+    pointer.mode = 'none';
+    pointer.nodeIndex = -1;
+    pointer.bodyOffsets = [];
+    canvas.classList.remove('dragging');
+  }
+
+  async function loadSelectedFont() {
+    try {
+      statusEl.textContent = `Loading ${fontSelect.selectedOptions[0]?.textContent || ''}…`;
+      font = await FontParser.load(fontSelect.value);
+      rebuildGlyph();
+      draw();
+    } catch (err) {
+      statusEl.textContent = `Load failed: ${err?.message || err}`;
+      font = null;
+      nodes = [];
+      springs = [];
+      contours = [];
+      draw();
+    }
+  }
+
+  fontSelect.addEventListener('change', loadSelectedFont);
+  charInput.addEventListener('input', rebuildGlyph);
+  for (const el of [stiffInput, snapInput, dampInput, gravInput, bounceInput]) {
+    el.addEventListener('input', updateUiValues);
+  }
+  showMesh.addEventListener('change', draw);
+  showPoints.addEventListener('change', draw);
+
+  canvas.addEventListener('pointerdown', onDown);
+  canvas.addEventListener('pointermove', onMove);
+  canvas.addEventListener('pointerup', onUp);
+  canvas.addEventListener('pointerleave', onUp);
+
+  window.addEventListener('resize', resize);
+  updateUiValues();
+  resize();
+  await loadSelectedFont();
+  requestAnimationFrame(animate);
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>
