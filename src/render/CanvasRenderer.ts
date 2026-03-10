@@ -34,6 +34,15 @@ type FontForCanvas = {
 };
 
 export class CanvasRenderer {
+    private static safeNumber(value: number | undefined, fallback: number): number {
+        return Number.isFinite(value) ? (value as number) : fallback;
+    }
+
+    private static safeProduct(a: number, b: number, fallback = 0): number {
+        const product = a * b;
+        return Number.isFinite(product) ? product : fallback;
+    }
+
     static applyCanvasStyles(context: CanvasRenderingContext2D, styles?: CanvasStyleOptions): void {
         if (!styles) return;
         if (styles.fillStyle != null) context.fillStyle = styles.fillStyle;
@@ -130,9 +139,9 @@ export class CanvasRenderer {
     ): void {
         if (!glyph) return;
 
-        const scale = options.scale ?? 0.1;
-        const x = options.x ?? 0;
-        const y = options.y ?? 0;
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
 
         context.save();
         context.translate(x, y);
@@ -167,10 +176,10 @@ export class CanvasRenderer {
     }
 
     static drawString(font: FontForCanvas, text: string, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
-        const scale = options.scale ?? 0.1;
-        const x = options.x ?? 0;
-        const y = options.y ?? 0;
-        const spacing = options.spacing ?? 0;
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
+        const spacing = this.safeNumber(options.spacing, 0);
         const context = canvas.getContext('2d');
         if (!context) return;
 
@@ -178,7 +187,7 @@ export class CanvasRenderer {
         context.save();
         context.translate(0, y);
 
-        for (const ch of text) {
+        for (const ch of Array.from(text)) {
             const glyph = font.getGlyphByChar(ch);
             if (!glyph) {
                 cursorX += spacing;
@@ -190,27 +199,28 @@ export class CanvasRenderer {
                 scale,
                 styles: options.styles
             });
-            cursorX += glyph.advanceWidth * scale + spacing;
+            cursorX += this.safeProduct(glyph.advanceWidth, scale) + spacing;
         }
 
         context.restore();
     }
 
     static drawStringWithKerning(font: FontForCanvas, text: string, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
-        const scale = options.scale ?? 0.1;
-        const x = options.x ?? 0;
-        const y = options.y ?? 0;
-        const spacing = options.spacing ?? 0;
-        const kerningScale = options.kerningScale ?? 1;
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
+        const spacing = this.safeNumber(options.spacing, 0);
+        const kerningScale = this.safeNumber(options.kerningScale, 1);
         const context = canvas.getContext('2d');
         if (!context) return;
+        const chars = Array.from(text);
 
         let cursorX = x;
         context.save();
         context.translate(0, y);
 
-        for (let i = 0; i < text.length; i++) {
-            const ch = text[i];
+        for (let i = 0; i < chars.length; i++) {
+            const ch = chars[i];
             const glyph = font.getGlyphByChar(ch);
             if (!glyph) {
                 cursorX += spacing;
@@ -218,8 +228,13 @@ export class CanvasRenderer {
             }
 
             let kern = 0;
-            if (i < text.length - 1 && typeof font.getKerningValue === 'function') {
-                kern = font.getKerningValue(ch, text[i + 1]) * scale * kerningScale;
+            if (i < chars.length - 1 && typeof font.getKerningValue === 'function') {
+                try {
+                    const rawKern = font.getKerningValue(ch, chars[i + 1]);
+                    kern = this.safeProduct(this.safeProduct(rawKern, scale), kerningScale);
+                } catch {
+                    kern = 0;
+                }
             }
 
             this.drawGlyphToContext(context, glyph, {
@@ -229,17 +244,17 @@ export class CanvasRenderer {
                 styles: options.styles
             });
 
-            cursorX += glyph.advanceWidth * scale + spacing + kern;
+            cursorX += this.safeProduct(glyph.advanceWidth, scale) + spacing + kern;
         }
 
         context.restore();
     }
 
     static drawGlyphIndices(font: FontForCanvas, glyphIndices: number[], canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
-        const scale = options.scale ?? 0.1;
-        const x = options.x ?? 0;
-        const y = options.y ?? 0;
-        const spacing = options.spacing ?? 0;
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
+        const spacing = this.safeNumber(options.spacing, 0);
         const context = canvas.getContext('2d');
         if (!context) return;
 
@@ -259,7 +274,7 @@ export class CanvasRenderer {
                 scale,
                 styles: options.styles
             });
-            cursorX += glyph.advanceWidth * scale + spacing;
+            cursorX += this.safeProduct(glyph.advanceWidth, scale) + spacing;
         }
 
         context.restore();
@@ -271,17 +286,27 @@ export class CanvasRenderer {
         canvas: HTMLCanvasElement,
         options: CanvasDrawOptions = {}
     ): void {
-        const scale = options.scale ?? 0.1;
-        const x = options.x ?? 0;
-        const y = options.y ?? 0;
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
         const context = canvas.getContext('2d');
         if (!context) return;
 
-        let layers = typeof font.getColorLayersForGlyph === 'function'
-            ? font.getColorLayersForGlyph(glyphIndex, options.paletteIndex ?? 0)
-            : [];
+        const paletteIndex = this.safeNumber(options.paletteIndex, 0);
+        let layers: Array<{ glyphId: number; color: string | null }> = [];
+        if (typeof font.getColorLayersForGlyph === 'function') {
+            try {
+                layers = font.getColorLayersForGlyph(glyphIndex, paletteIndex) ?? [];
+            } catch {
+                layers = [];
+            }
+        }
         if ((!layers || layers.length === 0) && typeof font.getColrV1LayersForGlyph === 'function') {
-            layers = font.getColrV1LayersForGlyph(glyphIndex, options.paletteIndex ?? 0);
+            try {
+                layers = font.getColrV1LayersForGlyph(glyphIndex, paletteIndex) ?? [];
+            } catch {
+                layers = [];
+            }
         }
 
         if (!layers || layers.length === 0) {
@@ -309,10 +334,12 @@ export class CanvasRenderer {
     }
 
     static drawColorString(font: FontForCanvas, text: string, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
-        const scale = options.scale ?? 0.1;
-        const x = options.x ?? 0;
-        const y = options.y ?? 0;
-        const spacing = options.spacing ?? 0;
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
+        const spacing = this.safeNumber(options.spacing, 0);
+        const paletteIndex = this.safeNumber(options.paletteIndex, 0);
+        const fallbackAdvance = this.safeNumber(options.fallbackAdvance, 0);
         const context = canvas.getContext('2d');
         if (!context) return;
 
@@ -334,24 +361,24 @@ export class CanvasRenderer {
                 x: cursorX,
                 y: 0,
                 scale,
-                paletteIndex: options.paletteIndex,
+                paletteIndex,
                 fallbackFill: options.fallbackFill,
                 styles: options.styles
             });
 
             const glyph = font.getGlyph(glyphIndex);
             const advance = glyph?.advanceWidth ?? 0;
-            const fallbackAdvance = options.fallbackAdvance ?? 0;
-            cursorX += (advance > 0 ? advance : fallbackAdvance) * scale + spacing;
+            const effectiveAdvance = advance > 0 ? advance : fallbackAdvance;
+            cursorX += this.safeProduct(effectiveAdvance, scale) + spacing;
         }
 
         context.restore();
     }
 
     static drawLayout(font: FontForCanvas, layout: Array<{ glyphIndex: number; xAdvance: number; xOffset?: number; yOffset?: number }>, canvas: HTMLCanvasElement, options: CanvasDrawOptions = {}): void {
-        const scale = options.scale ?? 0.1;
-        const x = options.x ?? 0;
-        const y = options.y ?? 0;
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
         const context = canvas.getContext('2d');
         if (!context) return;
 
@@ -362,13 +389,16 @@ export class CanvasRenderer {
         for (const item of layout) {
             const glyph = font.getGlyph(item.glyphIndex);
             if (!glyph) continue;
+            const xOffset = this.safeNumber(item.xOffset, 0);
+            const yOffset = this.safeNumber(item.yOffset, 0);
+            const xAdvance = this.safeNumber(item.xAdvance, 0);
             this.drawGlyphToContext(context, glyph, {
-                x: cursorX + (item.xOffset ?? 0) * scale,
-                y: (item.yOffset ?? 0) * scale,
+                x: cursorX + this.safeProduct(xOffset, scale),
+                y: this.safeProduct(yOffset, scale),
                 scale,
                 styles: options.styles
             });
-            cursorX += (item.xAdvance ?? 0) * scale;
+            cursorX += this.safeProduct(xAdvance, scale);
         }
 
         context.restore();
