@@ -12,6 +12,35 @@
    - Why still needed: parser + decoder hook exist, but decoder strategy is still external/injected.
    - Needed to close: publish a default decoder packaging approach (or official integration guide) and validate with real WOFF2 fixtures end-to-end.
 
+## Quality Gates (Definition of Done)
+
+- **Table coverage gate**
+  - Run `npm run audit:tables`.
+  - Target: `Missing from factory: 0`.
+  - If non-zero, each missing tag must be classified in this wishlist as `implement`, `intentionally unsupported`, or `defer` with rationale.
+
+- **Behavioral test gate**
+  - Keep `npm test` green for default CI/local fast coverage.
+  - Run `npm run test:full` before release/high-risk merges to include full fixture sweeps.
+  - For each new parser capability, add:
+    - one happy-path test with a real fixture
+    - one unhappy-path test (truncated/invalid/missing table)
+
+- **Rendering/layout confidence gate**
+  - Major paths should have an inspectable demo/tool surface:
+    - GSUB/GPOS shaping
+    - Kerning
+    - Variable interpolation (gvar/CFF2)
+    - Color fonts (COLR/CPAL/SVG)
+  - For high-risk visual changes, run golden capture/compare.
+
+- **Subsystem done criteria**
+  - Parsed and exposed through public API.
+  - At least one real fixture exercises it.
+  - Invalid/truncated handling is tested.
+  - Demo/tool can visualize or inspect it.
+  - Diagnostics exist for fallback/unsupported behavior.
+
 
 
 Top next byte-cut steps, in order:
@@ -35,3 +64,6 @@ Expected gain: ~0.5–2 KB.
 Clean tiny dead imports/legacy branches
 
 Small wins (hundreds of bytes each), but worth doing after the big dedupe items.
+
+
+

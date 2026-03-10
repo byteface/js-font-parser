@@ -4,7 +4,7 @@ Current public API for loading and inspecting TTF/OTF/WOFF/WOFF2 fonts.
 
 ## Package Exports
 
-Top-level exports from `dist/index.js`:
+Top-level exports from the package entrypoint:
 
 ```js
 import {
@@ -23,7 +23,7 @@ import {
   setWoff2Decoder,
   detectScriptTags,
   Color
-} from "./dist/index.js";
+} from "js-font-parser";
 ```
 
 ## Loading
@@ -31,7 +31,7 @@ import {
 Use the unified loader in most cases:
 
 ```js
-import { FontParser } from "./dist/data/FontParser.js";
+import { FontParser } from "js-font-parser";
 
 const font = await FontParser.load("truetypefonts/DiscoMo.ttf");
 ```
@@ -45,9 +45,7 @@ const font = FontParser.fromArrayBuffer(arrayBuffer);
 Direct loaders are also available:
 
 ```js
-import { FontParserTTF } from "./dist/data/FontParserTTF.js";
-import { FontParserWOFF } from "./dist/data/FontParserWOFF.js";
-import { FontParserWOFF2 } from "./dist/data/FontParserWOFF2.js";
+import { FontParserTTF, FontParserWOFF, FontParserWOFF2 } from "js-font-parser";
 ```
 
 ## Character and Glyph Mapping
@@ -94,7 +92,7 @@ font.layoutToPoints("Hello", {
 `layoutString(...)` returns a single positioned glyph run (no line wrapping).
 Use `LayoutEngine.layoutText(...)` for wrapping, alignment, justification, bidi ordering, and soft-hyphen handling.
 
-`FontParserTTF` also exposes:
+Parsers that derive from the shared base parser surface (TTF/WOFF/WOFF2) also expose:
 
 ```js
 font.layoutStringAuto("مرحبا"); // auto-detects script/features
@@ -205,7 +203,7 @@ font.getMetadata();
 ## Rendering
 
 ```js
-import { CanvasRenderer } from "./dist/render/CanvasRenderer.js";
+import { CanvasRenderer } from "js-font-parser";
 
 CanvasRenderer.drawString(font, "Hello", canvas, {
   x: 20,
@@ -282,67 +280,6 @@ LayoutEngine.layoutText(font, "hy\u00ADphen ?", {
 });
 ```
 
-## Proposed API Additions (Not Implemented Yet)
-
-These are candidates to reduce duplicated logic in `tools/*.html` and make demos consume the same stable helper surface.
-
-```js
-// 1) One-shot capabilities snapshot (tables, shaping, color, variation, svg)
-analyzeFontCapabilities(font);
-// -> {
-//   format, parsedTables, hasGsub, hasGpos, hasKern,
-//   hasColr, hasSvg, hasVariations, axes, diagnosticsSummary
-// }
-
-// 2) GSUB/GPOS discovery helpers used by feature/tools pages
-listOpenTypeFeatures(font, { table: "GSUB" | "GPOS" });
-// -> { scripts, languages, features, lookupCount, lookupTypes }
-
-// 3) Unicode coverage summary used by unicode/language tools
-getUnicodeCoverageByBlock(font, {
-  includeMissing: true,
-  onlyBlocks: ["Basic Latin", "Arabic"]
-});
-// -> [{ block, covered, total, coverage, missingCodePoints }]
-
-// 4) Font diff primitive for future diff tool
-diffFonts(fontA, fontB, { sampleText, includeTables: true });
-// -> {
-//   glyphCountDelta, cmapDiff, metricDiff, tablePresenceDiff,
-//   kerningDiff, variationAxisDiff
-// }
-
-// 5) Kerning analytics helper for matrix/preview pages
-analyzeKerning(font, {
-  chars: "AVToWa",
-  source: "auto" // kern | gpos | auto
-});
-// -> { pairs, nonZeroPairs, matrix, sourceStats }
-
-// 6) Glyph inspector helper for glyph-inspector/metrics pages
-inspectGlyph(font, { glyphId: 42 /* or char: "A" */ });
-// -> {
-//   glyphId, bbox, bearings, advance, pointCount, contourCount,
-//   anchors, colorLayers, svgDocumentInfo
-// }
-
-// 7) Safe parsed table summaries for table inspector UIs
-getTableSummary(font, tag);
-// -> { tag, offset, length, parsed: object | null, warnings: [] }
-
-// 8) Layout debug payload for baseline/grid/line-box overlays
-layoutDebug(font, text, layoutOptions);
-// -> { lines, glyphRuns, lineBoxes, glyphBoxes, attachments, diagnostics }
-
-// 9) COLR flattening helper for color tool pages
-flattenColorGlyph(font, glyphId, { paletteIndex: 0, depthLimit: 16 });
-// -> { layers, paints, unsupportedFormats, clipBox }
-
-// 10) Unified safe loader with diagnostics and source metadata
-safeLoad(input, { woff2Decoder, urlLabel });
-// -> { font, diagnostics, sourceType, bytesRead }
-```
-
 Current diagnostic codes:
 - `INVALID_CHAR_INPUT`
 - `MULTI_CHAR_INPUT`
@@ -359,4 +296,4 @@ Current diagnostic codes:
 
 - `FontParser.load(...)` returns a parser instance for the detected format.
 - WOFF2 parsing requires a decoder in your runtime (set via `setWoff2Decoder(...)` or global `WOFF2.decode(...)`).
-- Some methods are format-dependent (for example, `layoutStringAuto` is currently on `FontParserTTF`).
+- This document covers currently implemented API only. Track future API ideas in `docs/WISHLIST.md`.
