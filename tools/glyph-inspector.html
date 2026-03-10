@@ -65,13 +65,24 @@
         }
         canvas {
             width: 100%;
-            height: 360px;
+            height: auto;
+            border: 1px dashed #dbe2e7;
+            border-radius: 12px;
+            background: #fbfcff;
+        }
+        .inspectCanvas {
+            min-height: 360px;
+        }
+        .gridViewport {
+            max-height: 520px;
+            overflow: auto;
             border: 1px dashed #dbe2e7;
             border-radius: 12px;
             background: #fbfcff;
         }
         .gridCanvas {
-            height: 520px;
+            display: block;
+            border: 0;
         }
         .info {
             font-size: 13px;
@@ -114,10 +125,12 @@
         <div class="card">
             <div class="info" id="meta"></div>
             <div class="hint">Click a glyph in the grid to inspect it.</div>
-            <canvas id="gridCanvas" class="gridCanvas" width="320" height="520"></canvas>
+            <div class="gridViewport" id="gridViewport">
+                <canvas id="gridCanvas" class="gridCanvas" width="320" height="520"></canvas>
+            </div>
         </div>
         <div class="card">
-            <canvas id="inspectCanvas" width="900" height="360"></canvas>
+            <canvas id="inspectCanvas" class="inspectCanvas" width="900" height="360"></canvas>
         </div>
     </div>
 
@@ -139,6 +152,7 @@
         const indexToggle = document.getElementById('indexToggle');
         const anchorToggle = document.getElementById('anchorToggle');
         const bboxToggle = document.getElementById('bboxToggle');
+        const gridViewport = document.getElementById('gridViewport');
         const gridCanvas = document.getElementById('gridCanvas');
         const inspectCanvas = document.getElementById('inspectCanvas');
         const meta = document.getElementById('meta');
@@ -152,6 +166,7 @@
         let glyphCount = 0;
         const cell = 48;
         let gridCols = 6;
+        let selectedGlyphIndex = 0;
 
         function clear(ctx, canvas) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -248,6 +263,15 @@
                     gridCtx.restore();
                 }
             }
+
+            const selected = Math.max(0, Math.min(glyphCount - 1, selectedGlyphIndex));
+            const selectedCol = selected % cols;
+            const selectedRow = Math.floor(selected / cols);
+            gridCtx.save();
+            gridCtx.lineWidth = 2;
+            gridCtx.strokeStyle = '#1f6feb';
+            gridCtx.strokeRect(selectedCol * cell + 1, selectedRow * cell + 1, cell - 2, cell - 2);
+            gridCtx.restore();
         }
 
         function renderInspector() {
@@ -371,14 +395,18 @@
         }
 
         function selectGlyph(idx) {
-            glyphInput.value = String(Math.max(0, Math.min(glyphCount - 1, idx)));
+            selectedGlyphIndex = Math.max(0, Math.min(glyphCount - 1, Number(idx) || 0));
+            glyphInput.value = String(selectedGlyphIndex);
+            renderGrid();
             renderInspector();
         }
 
         gridCanvas.addEventListener('click', (event) => {
             const rect = gridCanvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
+            const scaleX = gridCanvas.width / rect.width;
+            const scaleY = gridCanvas.height / rect.height;
+            const x = (event.clientX - rect.left) * scaleX;
+            const y = (event.clientY - rect.top) * scaleY;
             const col = Math.floor(x / cell);
             const row = Math.floor(y / cell);
             const idx = row * gridCols + col;
@@ -391,13 +419,15 @@
             glyphCount = font.getNumGlyphs();
             gridCols = Math.max(4, Math.floor(gridCanvas.width / cell));
             renderGrid();
-            renderInspector();
+            selectGlyph(Number(glyphInput.value) || 0);
         }
 
         fontSelect.addEventListener('change', loadAndRender);
         glyphInput.addEventListener('input', () => selectGlyph(Number(glyphInput.value)));
         charInput.addEventListener('input', () => {
-            const idx = font?.getGlyphIndexByChar(charInput.value) ?? 0;
+            const ch = Array.from(charInput.value || '')[0] || '';
+            if (!ch) return;
+            const idx = font?.getGlyphIndexByChar(ch) ?? 0;
             selectGlyph(idx);
         });
         prevBtn.addEventListener('click', () => selectGlyph(Number(glyphInput.value) - 1));
