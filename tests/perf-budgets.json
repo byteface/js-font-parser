@@ -1,0 +1,9 @@
+{
+  "parse-noto-ttf": 20,
+  "parse-ubuntu-woff": 1,
+  "parse-cjk-otf": 90,
+  "layout-urdu-gpos": 15,
+  "layout-deva-gpos": 12,
+  "layout-beng-gpos": 10,
+  "variation-source-serif": 2
+}

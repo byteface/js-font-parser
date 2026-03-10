@@ -20,6 +20,12 @@ Open:
   Run the checked-in `tests/*.test.mjs` suite with Node's built-in test runner.
 - `npm run test:coverage`  
   Run tests with coverage output (`--experimental-test-coverage`).
+- `npm run test:perf`  
+  Run the local performance report against representative parse/layout workloads.
+- `npm run test:perf:enforce`  
+  Run the same performance report, but fail if checked-in budgets regress.
+- `npm run test:perf:profile`  
+  Run a phase-level hotspot profile for representative parse and layout workloads.
 - `npm run test:golden:capture`  
   Capture visual snapshots for key demo/tool pages.
 - `npm run test:golden:compare`  
