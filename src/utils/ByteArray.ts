@@ -3,7 +3,6 @@ export class ByteArray {
     public offset: number = 0;
 
     constructor(byteArray: Uint8Array) {
-        // this.dataView = new DataView(byteArray.buffer);
         this.dataView = new DataView(
             byteArray.buffer,
             byteArray.byteOffset,
@@ -13,9 +12,7 @@ export class ByteArray {
     }
 
     readByte(): number {
-        // console.log( this.dataView.buffer )
-        // console.log(this.offset);
-        return this.dataView.getUint8(this.offset++);     // NOTE - reads unsigned
+        return this.dataView.getUint8(this.offset++);
     }
 
     readBool(): boolean {
@@ -68,12 +65,10 @@ export class ByteArray {
     }
 
     public readUnsignedByte(): number {
-        // Read a byte and convert it to an unsigned value
-        return this.readByte() & 0xFF; // Ensure the byte is treated as unsigned
+        return this.readByte() & 0xFF;
     }
 
     seek(position: number): void {
-        // Ensure the position is within bounds
         if (position < 0 || position >= this.dataView.byteLength) {
             throw new RangeError("Position out of bounds");
         }
@@ -88,7 +83,6 @@ export class ByteArray {
             throw new RangeError("Read exceeds buffer length");
         }
         this.offset = end;
-        // return new Uint8Array(this.dataView.buffer.slice(start, end));
         return new Uint8Array(
             this.dataView.buffer,
             this.dataView.byteOffset + start,
