@@ -57,16 +57,20 @@ const svg = SVGFont.exportStringSvg(font, 'Hello');
 
 WOFF2 decoder hook:
 - `setWoff2Decoder(...)`, or
+- `setWoff2DecoderAsync(...)`, or
 - global `WOFF2.decode(...)`
 
-See: `tools/woff2.html`
+Official browser integration path (used by `tools/woff2.html`): load `wawoff2` and wire `Module.decompress` into `setWoff2Decoder(...)`.
+
+Known-good WOFF2 smoke fixture path:
+- `truetypefonts/curated-extra/woff2/NotoSans-Regular-subset.woff2`
 
 ## Current Known Gaps
 
 Current top open items are tracked in `docs/WISHLIST.md`:
 - golden image CI enforcement
 - final GPOS sign-off across more real-script fixtures
-- default WOFF2 runtime packaging strategy
+- broader WOFF2 fixture coverage across scripts/variations
 
 ## API by Task
 

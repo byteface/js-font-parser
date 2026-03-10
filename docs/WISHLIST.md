@@ -16,21 +16,15 @@ Prioritized by impact on parser correctness, release confidence, and npm usabili
      - Define required page set for visual lock.
      - Ensure CI/branch protection treats golden compare as a required check for high-risk visual/layout changes.
 
-3. **WOFF2 runtime story (ship-ready)**
-   - Current status: WOFF2 parse path exists via injected decoder hook.
-   - Do next:
-     - Provide one official default integration path (documented and tested end-to-end).
-     - Add a single “known good” WOFF2 smoke fixture path in CI/docs.
-
 ## P1 (Important, After P0)
 
-4. **TrueType hint VM execution (explicitly scoped)**
+3. **TrueType hint VM execution (explicitly scoped)**
    - Keep this as a deliberate long-track item.
    - Scope clearly: `fpgm`/`prep`/glyph instruction execution goals, non-goals, and milestones.
 
 ## P2 (Nice-to-have / later)
 
-5. **Docs tightening for release cadence**
+4. **Docs tightening for release cadence**
    - Keep API + README + CLI docs aligned whenever behavior changes.
    - Add a short “release checklist” doc section for version bump, dry-run, and publish validation.
 
@@ -42,3 +36,4 @@ Prioritized by impact on parser correctness, release confidence, and npm usabili
 - **NPM package metadata hardening**: `types`, `exports`, `repository`, `homepage`, `bugs`, license file, and dry-run publish checks are in place.
 - **CI Node coverage expansion**: matrix now verifies Node `20.x`, `22.x`, and `24.x`.
 - **Structured diagnostics cleanup**: remaining runtime parser console fallback logging removed from `FontParserTTF.load`.
+- **WOFF2 runtime story (ship-ready)**: official browser decoder path documented (`wawoff2`), WOFF2 tool upgraded with local sample fixtures, and CI/docs smoke fixture path added (`truetypefonts/curated-extra/woff2/NotoSans-Regular-subset.woff2`).

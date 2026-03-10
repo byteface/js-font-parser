@@ -21,6 +21,7 @@ import {
   supportsLanguage,
   listLanguages,
   setWoff2Decoder,
+  setWoff2DecoderAsync,
   detectScriptTags,
   Color
 } from "js-font-parser";
@@ -247,6 +248,22 @@ const { scripts, features } = detectScriptTags("مرحبا Hello");
 setWoff2Decoder((compressedBytes) => decodedTtfBytes);
 // compressedBytes: Uint8Array (WOFF2 payload)
 // return: Uint8Array (decoded sfnt/TTF bytes)
+
+setWoff2DecoderAsync(async (compressedBytes) => decodedTtfBytes);
+// async hook is used by FontParser.load(...) / FontParserWOFF2.load(...)
+```
+
+Official browser path:
+
+```html
+<script src="https://unpkg.com/wawoff2@2.0.1/build/decompress_binding.js"></script>
+<script type="module">
+  import { setWoff2Decoder } from "js-font-parser";
+
+  Module.onRuntimeInitialized = () => {
+    setWoff2Decoder((bytes) => Module.decompress(bytes));
+  };
+</script>
 ```
 
 ## Color Utility
@@ -302,5 +319,6 @@ Current diagnostic codes:
 ## Notes
 
 - `FontParser.load(...)` returns a parser instance for the detected format.
-- WOFF2 parsing requires a decoder in your runtime (set via `setWoff2Decoder(...)` or global `WOFF2.decode(...)`).
+- WOFF2 parsing requires a decoder in your runtime (set via `setWoff2Decoder(...)`, `setWoff2DecoderAsync(...)`, or global `WOFF2.decode(...)`).
+- Known-good fixture path used in CI smoke test: `truetypefonts/curated-extra/woff2/NotoSans-Regular-subset.woff2`.
 - This document covers currently implemented API only. Track future API ideas in `docs/WISHLIST.md`.

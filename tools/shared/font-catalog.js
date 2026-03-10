@@ -57,6 +57,11 @@ const PATHS = {
   sourceCodeProBoldExtra: '../truetypefonts/curated-extra/SourceCodePro-Bold.otf',
   fontAwesome47Ttf: '../truetypefonts/curated-extra/FontAwesome-4.7.0.ttf',
   fontAwesome47Woff: '../truetypefonts/curated-extra/FontAwesome-4.7.0.woff',
+  woff2NotoSansSubset: '../truetypefonts/curated-extra/woff2/NotoSans-Regular-subset.woff2',
+  woff2NotoHebrewSubset: '../truetypefonts/curated-extra/woff2/NotoSansHebrew-Regular-subset.woff2',
+  woff2NotoArabicSubset: '../truetypefonts/curated-extra/woff2/NotoNaskhArabic-Regular-subset.woff2',
+  woff2RobotoVarSubset: '../truetypefonts/curated-extra/woff2/Roboto-VF-subset.woff2',
+  woff2FontAwesomeSubset: '../truetypefonts/curated-extra/woff2/FontAwesome-4.7.0-icons-subset.woff2',
   nablaColrv1Var: '../truetypefonts/color/colrv1-var/Nabla.ttf',
   nablaColrv1Letters: '../truetypefonts/color/nabla/Nabla[EDPT,EHLT].ttf',
   colrv1TestShapes: '../truetypefonts/color/colrv1/test_glyphs-glyf_colr_1.ttf'
@@ -355,6 +360,13 @@ export const FONT_LISTS = {
     { name: 'Noto Sans Sinhala VF', url: PATHS.notoSinhalaVar },
     { name: 'Noto Sans Telugu VF', url: PATHS.notoTeluguVar },
     { name: 'Noto Nastaliq Urdu VF', url: PATHS.notoNastaliqUrduVar }
+  ],
+  woff2Samples: [
+    { name: 'Noto Sans subset (Latin)', url: PATHS.woff2NotoSansSubset },
+    { name: 'Noto Sans Hebrew subset', url: PATHS.woff2NotoHebrewSubset },
+    { name: 'Noto Naskh Arabic subset', url: PATHS.woff2NotoArabicSubset },
+    { name: 'Roboto Variable subset', url: PATHS.woff2RobotoVarSubset },
+    { name: 'Font Awesome icons subset', url: PATHS.woff2FontAwesomeSubset }
   ],
   stringExplorer: [
     'DiscoMo.ttf',

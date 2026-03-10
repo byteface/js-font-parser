@@ -8,6 +8,7 @@
         .panel { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
         canvas { border: 1px dashed #ccc; width: 100%; height: auto; }
         .hint { font-size: 12px; color: #666; margin-top: 6px; }
+        button { cursor: pointer; }
     </style>
 </head>
 <body>
@@ -15,65 +16,204 @@
 
 <h1>WOFF2 Loader</h1>
 <div class="panel">
-    <label>Text:
-        <input id="textInput" value="Hello WOFF2" />
+    <label>Sample WOFF2:
+        <select id="sampleSelect"></select>
     </label>
-    <label>Font file:
+    <button id="sampleLoadBtn" type="button">Load sample</button>
+    <label>Upload WOFF2:
         <input id="fileInput" type="file" accept=".woff2" />
     </label>
 </div>
-<div class="hint">Requires a WOFF2 decoder. Provide one via <code>setWoff2Decoder</code> or global <code>WOFF2.decode</code>.</div>
+<div class="panel">
+    <label>Text:
+        <input id="textInput" value="Hello WOFF2" />
+    </label>
+    <label>Size:
+        <input id="sizeInput" type="range" min="48" max="280" value="160" step="4" />
+    </label>
+    <button id="decoderBtn" type="button">Enable browser decoder</button>
+</div>
+<div class="hint">Default browser decoder path: <code>wawoff2</code> from unpkg (sets <code>setWoff2Decoder(...)</code>).</div>
 <div id="status" class="hint"></div>
-<canvas id="myDrawing" width="900" height="360"></canvas>
+<canvas id="myDrawing" width="1000" height="420"></canvas>
 
 <script type="module">
-    import { FontParserWOFF2 } from '../dist/data/FontParserWOFF2.js';
-    import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+    import { FontParserWOFF2, CanvasRenderer, setWoff2Decoder } from '../dist/index.js';
     import { clearCanvas } from './shared/canvas-utils.js';
     import { setStatus } from './shared/status-ui.js';
+    import { getFontList } from './shared/font-catalog.js';
+    import { populateFontSelect, getSelectedFont } from './shared/font-ui.js';
+    import { fetchArrayBuffer } from './shared/font-io.js';
 
     const canvas = document.getElementById('myDrawing');
     const textInput = document.getElementById('textInput');
+    const sizeInput = document.getElementById('sizeInput');
     const fileInput = document.getElementById('fileInput');
+    const sampleSelect = document.getElementById('sampleSelect');
+    const sampleLoadBtn = document.getElementById('sampleLoadBtn');
+    const decoderBtn = document.getElementById('decoderBtn');
     const status = document.getElementById('status');
     const ctx = canvas.getContext('2d');
 
+    const sampleFonts = getFontList('woff2Samples');
+    const DEFAULT_DECODER_SCRIPT = 'https://unpkg.com/wawoff2@2.0.1/build/decompress_binding.js';
+
     let font = null;
+    let decoderReady = false;
+
+    populateFontSelect(sampleSelect, sampleFonts);
 
     textInput.addEventListener('input', render);
+    sizeInput.addEventListener('input', render);
+
+    decoderBtn.addEventListener('click', async () => {
+        try {
+            await ensureDecoderInstalled();
+            setStatus(status, 'WOFF2 browser decoder is ready.', 'success');
+        } catch (err) {
+            setStatus(status, `Decoder setup failed: ${err?.message || err}`, 'warning');
+        }
+    });
+
+    sampleLoadBtn.addEventListener('click', async () => {
+        const selected = getSelectedFont(sampleSelect, sampleFonts);
+        if (!selected) return;
+        await loadWoff2Url(selected.url, selected.name);
+    });
+
     fileInput.addEventListener('change', async () => {
         const file = fileInput.files?.[0];
         if (!file) return;
-        setStatus(status, `Loading: ${file.name}`, 'info');
-        const buffer = await file.arrayBuffer();
         try {
-            font = FontParserWOFF2.fromArrayBuffer(buffer);
-            setStatus(status, `Loaded: ${file.name}`, 'success');
+            await ensureDecoderInstalled();
+            setStatus(status, `Loading ${file.name}...`, 'info');
+            const parser = await FontParserWOFF2.fromArrayBufferAsync(await file.arrayBuffer());
+            font = parser;
+            setStatus(status, `Loaded ${file.name}`, 'success');
             render();
         } catch (err) {
             font = null;
             clearCanvas(canvas, ctx);
-            setStatus(status, `Failed to load WOFF2: ${err?.message || err}`, 'warning');
+            setStatus(status, `Failed to load ${file.name}: ${err?.message || err}`, 'warning');
         }
     });
+
+    async function loadWoff2Url(url, label) {
+        try {
+            await ensureDecoderInstalled();
+            setStatus(status, `Loading ${label}...`, 'info');
+            const parser = await FontParserWOFF2.fromArrayBufferAsync(await fetchArrayBuffer(url));
+            font = parser;
+            setStatus(status, `Loaded ${label}`, 'success');
+            render();
+        } catch (err) {
+            font = null;
+            clearCanvas(canvas, ctx);
+            setStatus(status, `Failed to load ${label}: ${err?.message || err}`, 'warning');
+        }
+    }
+
+    async function ensureDecoderInstalled() {
+        if (decoderReady) return;
+        const globalDecode = globalThis?.WOFF2?.decode;
+        if (typeof globalDecode === 'function') {
+            setWoff2Decoder((bytes) => globalDecode(bytes));
+            decoderReady = true;
+            return;
+        }
+
+        setStatus(status, 'Setting up browser WOFF2 decoder...', 'info');
+        const moduleRef = await loadWawoff2Module(DEFAULT_DECODER_SCRIPT);
+        if (!moduleRef || typeof moduleRef.decompress !== 'function') {
+            throw new Error('Decoder module loaded but Module.decompress is unavailable.');
+        }
+
+        setWoff2Decoder((bytes) => {
+            const decoded = moduleRef.decompress(bytes);
+            if (decoded instanceof Uint8Array) return decoded;
+            if (decoded instanceof ArrayBuffer) return new Uint8Array(decoded);
+            if (ArrayBuffer.isView(decoded)) {
+                return new Uint8Array(decoded.buffer, decoded.byteOffset, decoded.byteLength);
+            }
+            throw new Error('Decoder returned unsupported byte type.');
+        });
+        decoderReady = true;
+    }
+
+    async function loadWawoff2Module(src) {
+        if (!document.querySelector(`script[data-woff2-decoder="${src}"]`)) {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = true;
+                script.dataset.woff2Decoder = src;
+                script.onload = resolve;
+                script.onerror = () => reject(new Error(`Failed to load decoder script: ${src}`));
+                document.head.appendChild(script);
+            });
+        }
+
+        const moduleRef = globalThis.Module;
+        if (!moduleRef) {
+            throw new Error('Decoder script loaded but global Module was not created.');
+        }
+        if (typeof moduleRef.decompress === 'function') {
+            return moduleRef;
+        }
+
+        await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('Decoder initialization timed out.')), 7000);
+            const prevInit = moduleRef.onRuntimeInitialized;
+            moduleRef.onRuntimeInitialized = () => {
+                clearTimeout(timeout);
+                if (typeof prevInit === 'function') {
+                    try { prevInit(); } catch {
+                        // ignore
+                    }
+                }
+                resolve();
+            };
+        });
+
+        return moduleRef;
+    }
 
     function render() {
         if (!font) return;
         clearCanvas(canvas, ctx);
-        CanvasRenderer.drawString(font, textInput.value, canvas, {
+
+        const fontSize = Number(sizeInput.value) || 160;
+        const unitsPerEm = Number(font.getUnitsPerEm?.()) || 1000;
+        const scale = fontSize / unitsPerEm;
+
+        CanvasRenderer.drawString(font, textInput.value || '', canvas, {
             x: 40,
-            y: 220,
-            scale: 0.18,
+            y: Math.round(canvas.height * 0.65),
+            scale,
             spacing: 2,
             styles: {
-                fillStyle: '#000000',
-                strokeStyle: '#000000',
+                fillStyle: '#111111',
+                strokeStyle: '#111111',
                 lineWidth: '1',
                 globalAlpha: '1'
             }
         });
     }
+
+    // Try to boot decoder + first sample automatically.
+    (async () => {
+        try {
+            await ensureDecoderInstalled();
+            setStatus(status, 'WOFF2 browser decoder ready. Loading first sample...', 'success');
+            const first = sampleFonts[0];
+            if (first) {
+                await loadWoff2Url(first.url, first.name);
+            }
+        } catch (err) {
+            setStatus(status, `Decoder not ready yet: ${err?.message || err}`, 'warning');
+        }
+    })();
 </script>
-  <script type="module" src="../tools/shared/main-nav.js"></script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>
