@@ -53,19 +53,15 @@
     import { FontParser } from "../dist/data/FontParser.js";
     import { getSupportedLanguages } from "../dist/utils/LanguageSupport.js";
     import { getFontList } from "./shared/font-catalog.js";
-    import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
+    import { createFontLoader } from "./shared/font-ui.js";
+    import { wireFontSelect } from "./shared/tool-scaffold.js";
 
     const fontSelect = document.getElementById("fontSelect");
     const rows = document.getElementById("rows");
 
     const fonts = getFontList('languageSupport');
     const loadFont = createFontLoader((url) => FontParser.load(url));
-
-    populateFontSelect(fontSelect, fonts);
-
-    async function render() {
-      const selected = getSelectedFont(fontSelect, fonts);
-      const font = await loadFont(selected.url);
+    async function render(font) {
       const results = getSupportedLanguages(font);
       rows.innerHTML = "";
       results.forEach(r => {
@@ -80,9 +76,16 @@
         rows.appendChild(tr);
       });
     }
-
-    fontSelect.addEventListener("change", render);
-    render();
+    const selector = wireFontSelect({
+      select: fontSelect,
+      fonts,
+      loadFont,
+      onLoaded: (font) => render(font),
+      onError: (err) => {
+        rows.innerHTML = `<tr><td colspan="5">Failed to load font: ${err}</td></tr>`;
+      }
+    });
+    selector.run();
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>

@@ -177,7 +177,8 @@
         import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
         import { LayoutEngine } from '../dist/layout/LayoutEngine.js';
         import { getFontList } from './shared/font-catalog.js';
-        import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
+        import { createFontLoader } from './shared/font-ui.js';
+        import { wireFontSelect } from './shared/tool-scaffold.js';
 
         const fontSelect = document.getElementById('fontSelect');
         const widthInput = document.getElementById('widthInput');
@@ -273,13 +274,19 @@
             renderDiagnostics(fontDiagnostics, layoutDiagnostics);
         }
 
-        async function loadAndRender() {
-            const selected = getSelectedFont(fontSelect, fonts);
-            font = await loadFont(selected.url);
-            render();
-        }
+        const selector = wireFontSelect({
+            select: fontSelect,
+            fonts,
+            loadFont,
+            onLoaded: (loaded) => {
+                font = loaded;
+                render();
+            },
+            onError: (err) => {
+                diagnosticsEl.textContent = `Failed to load font: ${err?.message ?? err}`;
+            }
+        });
 
-        fontSelect.addEventListener('change', loadAndRender);
         widthInput.addEventListener('input', render);
         alignSelect.addEventListener('change', render);
         directionSelect.addEventListener('change', render);
@@ -294,9 +301,7 @@
         bidiSelect.addEventListener('change', render);
         hyphenSelect.addEventListener('change', render);
         textInput.addEventListener('input', render);
-
-        populateFontSelect(fontSelect, fonts);
-        loadAndRender();
+        selector.run();
     </script>
 </body>
 </html>

@@ -68,7 +68,8 @@
     import { Table } from "../dist/table/Table.js";
     import { listLanguages, supportsLanguage } from "../dist/utils/LanguageSupport.js";
     import { getFontList } from "./shared/font-catalog.js";
-    import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
+    import { createFontLoader } from "./shared/font-ui.js";
+    import { wireFontSelect } from "./shared/tool-scaffold.js";
 
     const fonts = getFontList('localizedReview');
     const loadFont = createFontLoader((url) => FontParser.load(url));
@@ -90,8 +91,8 @@
     const fontUrl = document.getElementById("fontUrl");
     const glyphRows = document.getElementById("glyphRows");
     const languages = listLanguages();
-
-    populateFontSelect(fontSelect, fonts);
+    let currentFont = null;
+    let currentFontInfo = null;
 
     samples.forEach((s, i) => {
       const opt = document.createElement("option");
@@ -100,13 +101,13 @@
       sampleSelect.appendChild(opt);
     });
 
-    async function render() {
-      const fontInfo = getSelectedFont(fontSelect, fonts);
+    function render() {
+      if (!currentFont || !currentFontInfo) return;
+      const fontInfo = currentFontInfo;
+      const font = currentFont;
       const sample = samples[Number(sampleSelect.value)] ?? samples[0];
       const lang = languages.find(l => l.code === sample.code);
       const required = lang ? Array.from(new Set(Array.from(lang.required))) : [];
-
-      const font = await loadFont(fontInfo.url);
       fontUrl.textContent = `Using font: ${fontInfo.url}`;
       const support = supportsLanguage(font, sample.code);
       const missingSet = new Set(support?.missing ?? []);
@@ -152,9 +153,26 @@
       });
     }
 
-    fontSelect.addEventListener("change", render);
+    const selector = wireFontSelect({
+      select: fontSelect,
+      fonts,
+      loadFont,
+      onLoaded: (font, selected) => {
+        currentFont = font;
+        currentFontInfo = selected;
+        render();
+      },
+      onError: (err, selected) => {
+        fontUrl.textContent = `Failed to load font: ${selected?.url ?? ""}`;
+        missingNote.textContent = `Error: ${err}`;
+        const ctx = preview.getContext("2d");
+        ctx.clearRect(0, 0, preview.width, preview.height);
+        glyphRows.innerHTML = "";
+      }
+    });
+
     sampleSelect.addEventListener("change", render);
-    render();
+    selector.run();
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>

@@ -142,6 +142,7 @@
         import { Table } from '../dist/table/Table.js';
         import { getFontList } from './shared/font-catalog.js';
         import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
+        import { setStatus } from './shared/status-ui.js';
 
         const fontSelect = document.getElementById('fontSelect');
         const textInput = document.getElementById('textInput');
@@ -389,7 +390,11 @@
             const axisSummary = axes.map(axis => `${axis.name}=${axis.value}`).join(', ');
             const coords = liveCoords.map(v => v.toFixed(2)).join(',');
             const probeInfo = renderProbeGlyph();
-            status.textContent = `fvar: ${font.getTableByType(Table.fvar) ? 'yes' : 'no'} | gvar: ${font.getTableByType(Table.gvar) ? 'yes' : 'no'} | cff2: ${font.getTableByType(Table.CFF2) ? 'yes' : 'no'} | max Δ: ${maxDelta.toFixed(2)} | coords: [${coords}]${axisSummary ? ' | ' + axisSummary : ''}${probeInfo ? ' | ' + probeInfo : ''}`;
+            setStatus(
+                status,
+                `fvar: ${font.getTableByType(Table.fvar) ? 'yes' : 'no'} | gvar: ${font.getTableByType(Table.gvar) ? 'yes' : 'no'} | cff2: ${font.getTableByType(Table.CFF2) ? 'yes' : 'no'} | max Δ: ${maxDelta.toFixed(2)} | coords: [${coords}]${axisSummary ? ' | ' + axisSummary : ''}${probeInfo ? ' | ' + probeInfo : ''}`,
+                'info'
+            );
 
             if (dumpCff2Trace) {
                 dumpCff2Trace = false;

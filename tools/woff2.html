@@ -23,15 +23,19 @@
     </label>
 </div>
 <div class="hint">Requires a WOFF2 decoder. Provide one via <code>setWoff2Decoder</code> or global <code>WOFF2.decode</code>.</div>
+<div id="status" class="hint"></div>
 <canvas id="myDrawing" width="900" height="360"></canvas>
 
 <script type="module">
     import { FontParserWOFF2 } from '../dist/data/FontParserWOFF2.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+    import { clearCanvas } from './shared/canvas-utils.js';
+    import { setStatus } from './shared/status-ui.js';
 
     const canvas = document.getElementById('myDrawing');
     const textInput = document.getElementById('textInput');
     const fileInput = document.getElementById('fileInput');
+    const status = document.getElementById('status');
     const ctx = canvas.getContext('2d');
 
     let font = null;
@@ -40,18 +44,22 @@
     fileInput.addEventListener('change', async () => {
         const file = fileInput.files?.[0];
         if (!file) return;
+        setStatus(status, `Loading: ${file.name}`, 'info');
         const buffer = await file.arrayBuffer();
         try {
             font = FontParserWOFF2.fromArrayBuffer(buffer);
+            setStatus(status, `Loaded: ${file.name}`, 'success');
             render();
         } catch (err) {
-            console.error('Error loading WOFF2:', err);
+            font = null;
+            clearCanvas(canvas, ctx);
+            setStatus(status, `Failed to load WOFF2: ${err?.message || err}`, 'warning');
         }
     });
 
     function render() {
         if (!font) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        clearCanvas(canvas, ctx);
         CanvasRenderer.drawString(font, textInput.value, canvas, {
             x: 40,
             y: 220,

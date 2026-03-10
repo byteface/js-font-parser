@@ -62,7 +62,9 @@
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { getFontList } from './shared/font-catalog.js';
-    import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
+    import { createFontLoader } from './shared/font-ui.js';
+    import { wireFontSelect } from './shared/tool-scaffold.js';
+    import { fetchArrayBuffer } from './shared/font-io.js';
 
     const fontSelect = document.getElementById('fontSelect');
     const byteLimit = document.getElementById('byteLimit');
@@ -191,32 +193,34 @@
       renderDiagnostics();
     }
 
-    async function loadFontSelection() {
-      const fontUrl = getSelectedFont(fontSelect, fonts).url;
-      const [font, response] = await Promise.all([loadFont(fontUrl), fetch(fontUrl)]);
+    async function loadFontSelection(font, selected) {
+      const fontUrl = selected.url;
+      const bytes = await fetchArrayBuffer(fontUrl);
       parsedFont = font;
       if (typeof parsedFont.clearDiagnostics === 'function') {
         parsedFont.clearDiagnostics();
       }
       toolDiagnostics = [];
-      rawBytes = await response.arrayBuffer();
+      rawBytes = bytes;
       records = parseTableRecords(rawBytes);
       selectedTag = records[0]?.tag ?? null;
       renderTableList();
       renderDetail();
     }
 
-    fontSelect.addEventListener('change', () => {
-      loadFontSelection().catch(err => {
-        detail.innerHTML = `<div class="meta">Failed to load font: ${err.message}</div>`;
-      });
+    const selector = wireFontSelect({
+      select: fontSelect,
+      fonts,
+      loadFont,
+      onLoaded: async (font, selected) => {
+        await loadFontSelection(font, selected);
+      },
+      onError: (err) => {
+        detail.innerHTML = `<div class="meta">Failed to load font: ${err.message ?? err}</div>`;
+      }
     });
     byteLimit.addEventListener('input', renderDetail);
-
-    populateFontSelect(fontSelect, fonts);
-    loadFontSelection().catch(err => {
-      detail.innerHTML = `<div class="meta">Failed to load font: ${err.message}</div>`;
-    });
+    selector.run();
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>

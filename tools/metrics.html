@@ -84,7 +84,8 @@
     import { FontParser } from '../dist/data/FontParser.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
     import { getFontList } from './shared/font-catalog.js';
-    import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
+    import { createFontLoader, populateFontSelect } from './shared/font-ui.js';
+    import { loadSelectedFont } from './shared/tool-scaffold.js';
 
     const ui = {
       fontA: document.getElementById('fontA'),
@@ -198,8 +199,8 @@
     }
 
     async function loadBoth() {
-      fontA = await loadFont(getSelectedFont(ui.fontA, fonts).url);
-      fontB = await loadFont(getSelectedFont(ui.fontB, fonts).url);
+      ({ font: fontA } = await loadSelectedFont(ui.fontA, fonts, loadFont));
+      ({ font: fontB } = await loadSelectedFont(ui.fontB, fonts, loadFont));
       render();
     }
 

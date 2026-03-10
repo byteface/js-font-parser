@@ -45,6 +45,8 @@
   <script type="module">
     import { FontParser } from "../dist/data/FontParser.js";
     import { Table } from "../dist/table/Table.js";
+    import { fetchArrayBuffer } from "./shared/font-io.js";
+    import { setStatus } from "./shared/status-ui.js";
 
     const input = document.getElementById("fileInput");
     const charInput = document.getElementById("charInput");
@@ -112,16 +114,19 @@
       let glyphId = glyphInput.value ? Number(glyphInput.value) : font.getGlyphIndexByChar?.(char);
       if (glyphId == null || Number.isNaN(glyphId)) {
         preview.textContent = "No glyph index found.";
+        setStatus(info, "No glyph index found for current input.", "warning");
         return;
       }
       const svgTable = font.getTableByType(Table.SVG);
       if (!svgTable || typeof svgTable.getSvgDocumentForGlyphAsync !== "function") {
         preview.textContent = "SVG table not found in this font.";
+        setStatus(info, "SVG table not present in this font.", "warning");
         return;
       }
       const result = await svgTable.getSvgDocumentForGlyphAsync(glyphId);
       if (!result.svgText) {
         preview.textContent = result.isCompressed ? "SVG data is compressed; decompression failed." : "No SVG glyph found.";
+        setStatus(info, "No SVG payload for this glyph.", "warning");
         return;
       }
       const rawText = result.svgText;
@@ -155,36 +160,49 @@
         preview.appendChild(svgEl);
       } else {
         preview.textContent = "SVG glyph parsed, but no <svg> root found.";
+        setStatus(info, "SVG payload parsed but root element was missing.", "warning");
       }
     }
 
     input.addEventListener("change", async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      const buf = await file.arrayBuffer();
-      font = FontParser.fromArrayBuffer(buf);
-      renderGlyph();
+      setStatus(info, `Loading ${file.name}...`, "info");
+      try {
+        const buf = await file.arrayBuffer();
+        font = FontParser.fromArrayBuffer(buf);
+        setStatus(info, `Loaded ${file.name}`, "success");
+        renderGlyph();
+      } catch (err) {
+        font = null;
+        preview.textContent = "Failed to parse selected font.";
+        setStatus(info, `Failed to parse ${file.name}: ${err?.message || err}`, "warning");
+      }
     });
 
     loadSample.addEventListener("click", async () => {
-      const response = await fetch("../truetypefonts/svg/TwitterColorEmoji-SVGinOT-15.1.0/TwitterColorEmoji-SVGinOT.ttf");
-      if (!response.ok) {
+      setStatus(info, "Loading Twemoji SVG sample...", "info");
+      try {
+        const buf = await fetchArrayBuffer("../truetypefonts/svg/TwitterColorEmoji-SVGinOT-15.1.0/TwitterColorEmoji-SVGinOT.ttf");
+        font = FontParser.fromArrayBuffer(buf);
+        charInput.value = "😀";
+        glyphInput.value = "";
+        const svgTable = font.getTableByType(Table.SVG);
+        if (svgTable?.entries?.length) {
+          svgRanges = svgTable.entries;
+          currentRangeIndex = 0;
+          const first = svgRanges[0];
+          glyphInput.value = String(first.startGlyphId);
+          setStatus(info, `SVG entries: ${svgRanges.length} (first ${first.startGlyphId}-${first.endGlyphId})`, "success");
+        } else {
+          setStatus(info, "Sample loaded, but SVG entries were not found.", "warning");
+        }
+        renderGlyph();
+      } catch (err) {
+        font = null;
         preview.textContent = "Failed to load sample font.";
-        return;
+        setStatus(info, `Failed to load sample font: ${err?.message || err}`, "warning");
       }
-      const buf = await response.arrayBuffer();
-      font = FontParser.fromArrayBuffer(buf);
-      charInput.value = "😀";
-      glyphInput.value = "";
-      const svgTable = font.getTableByType(Table.SVG);
-      if (svgTable?.entries?.length) {
-        svgRanges = svgTable.entries;
-        currentRangeIndex = 0;
-        const first = svgRanges[0];
-        glyphInput.value = String(first.startGlyphId);
-        info.textContent = `SVG entries: ${svgRanges.length} (first ${first.startGlyphId}-${first.endGlyphId})`;
-      }
-      renderGlyph();
     });
 
     prevBtn.addEventListener("click", () => {

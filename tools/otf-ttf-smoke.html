@@ -43,6 +43,7 @@
     import { FontParser } from "../dist/data/FontParser.js";
     import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
     import { Table } from "../dist/table/Table.js";
+    import { setStatus } from "./shared/status-ui.js";
 
     const sampleInput = document.getElementById("sample");
     const filterTtf = document.getElementById("filterTtf");
@@ -186,7 +187,7 @@
         canvas.height = 160;
         const status = document.createElement("div");
         status.className = "label";
-        status.textContent = "loading...";
+        setStatus(status, "loading...", "info");
         card.appendChild(label);
         card.appendChild(canvas);
         card.appendChild(status);
@@ -209,15 +210,15 @@
           const hasCff2 = !!font.getTableByType(Table.CFF2);
           const issues = getSampleOutlineIssues(font, sampleInput.value);
           draw(font, entry.canvas, sampleInput.value);
-          entry.status.textContent = `ok | ${hasGlyf ? "glyf" : ""}${hasCff ? " CFF" : ""}${hasCff2 ? " CFF2" : ""}`.trim();
+          setStatus(entry.status, `ok | ${hasGlyf ? "glyf" : ""}${hasCff ? " CFF" : ""}${hasCff2 ? " CFF2" : ""}`.trim(), "success");
           if (issues.length > 0) {
-            entry.status.textContent += ` | outline issues: ${issues.join(", ")}`;
+            setStatus(entry.status, `${entry.status.textContent} | outline issues: ${issues.join(", ")}`, "warning");
             entry.card.dataset.failed = "1";
           } else {
             entry.card.dataset.failed = "0";
           }
         } catch (err) {
-          entry.status.textContent = "failed";
+          setStatus(entry.status, "failed", "warning");
           entry.card.dataset.failed = "1";
         }
       }

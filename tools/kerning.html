@@ -55,9 +55,9 @@
         <input id="charsInput" type="text" value="AVWToY.,tafy" />
         <div class="row">
           <label for="kernInput">Kerning strength</label>
-          <span id="kernStrength" class="chip">x3</span>
+          <span id="kernStrength" class="chip">x1.00</span>
         </div>
-        <input id="kernInput" type="range" min="1" max="8" value="3" />
+        <input id="kernInput" type="range" min="0" max="2" step="0.05" value="1" />
       </div>
 
       <div class="stack">
@@ -85,7 +85,8 @@
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { getFontList } from './shared/font-catalog.js';
-    import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
+    import { createFontLoader } from './shared/font-ui.js';
+    import { wireFontSelect } from './shared/tool-scaffold.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const input = document.getElementById('textInput');
@@ -226,7 +227,7 @@
       }
       const text = input.value || 'AV';
       const scale = Number(kernInput.value);
-      kernStrength.textContent = `x${scale}`;
+      kernStrength.textContent = `x${scale.toFixed(2)}`;
       drawPreviews(text, scale);
 
       const chars = sampleChars();
@@ -257,18 +258,20 @@
     input.addEventListener('input', render);
     charsInput.addEventListener('input', render);
     kernInput.addEventListener('input', render);
-    fontSelect.addEventListener('change', async () => {
-      font = await loadFont(getSelectedFont(fontSelect, fonts).url);
-      render();
+    const selector = wireFontSelect({
+      select: fontSelect,
+      fonts,
+      loadFont,
+      onLoaded: (loaded) => {
+        font = loaded;
+        render();
+      },
+      onError: (err) => {
+        kernInfo.textContent = `Failed to load font: ${err?.message ?? err}`;
+      }
     });
 
-    populateFontSelect(fontSelect, fonts);
-    loadFont(fonts[0].url).then(loaded => {
-      font = loaded;
-      render();
-    }).catch(err => {
-      kernInfo.textContent = `Failed to load font: ${err.message}`;
-    });
+    selector.run();
   </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>

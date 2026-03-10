@@ -123,6 +123,8 @@
         import { Table } from "../dist/table/Table.js";
         import { getFontList } from "./shared/font-catalog.js";
         import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
+        import { clearCanvas } from "./shared/canvas-utils.js";
+        import { setStatus } from "./shared/status-ui.js";
 
         const fontSelect = document.getElementById("fontSelect");
         const fillRuleSelect = document.getElementById("fillRuleSelect");
@@ -148,13 +150,6 @@
 
         function isWoff(url) {
             return url.toLowerCase().endsWith(".woff");
-        }
-
-        function clearCanvas(width, height) {
-            if (!ctx) return;
-            ctx.clearRect(0, 0, width, height);
-            ctx.fillStyle = "#fbfbf8";
-            ctx.fillRect(0, 0, width, height);
         }
 
         function getGlyphBounds(glyph) {
@@ -213,9 +208,8 @@
             const hasCff = !!font.getTableByType(Table.CFF);
             const hasCff2 = !!font.getTableByType(Table.CFF2);
             if (!hasGlyf && !hasCff) {
-                clearCanvas(canvas.width, canvas.height);
-                status.textContent = hasCff2 ? "CFF2 outlines are not supported yet." : "No glyph outlines found.";
-                status.classList.add("warn");
+                clearCanvas(canvas, ctx, "#fbfbf8");
+                setStatus(status, hasCff2 ? "CFF2 outlines are not supported yet." : "No glyph outlines found.", "warning");
                 return;
             }
 
@@ -232,7 +226,7 @@
             const height = rows * cell + 40;
 
             canvas.height = height;
-            clearCanvas(canvas.width, height);
+            clearCanvas(canvas, ctx, "#fbfbf8");
 
             ctx.strokeStyle = "#e6e3da";
             ctx.lineWidth = 1;
@@ -277,20 +271,18 @@
                 }
             }
 
-            status.textContent = `Glyphs: ${glyphCount} | Columns: ${cols} | Rows: ${rows}`;
+            setStatus(status, `Glyphs: ${glyphCount} | Columns: ${cols} | Rows: ${rows}`, "info");
         }
 
         async function render() {
             const selected = getSelectedFont(fontSelect, fonts);
-            status.textContent = `Loading ${selected.name}...`;
-            status.classList.remove("warn");
+            setStatus(status, `Loading ${selected.name}...`, "info");
             try {
                 const font = await loadFont(selected.url);
                 window.__allGlyphsFont = font;
                 renderGrid(font);
             } catch (err) {
-                status.textContent = `Failed to load font: ${err}`;
-                status.classList.add("warn");
+                setStatus(status, `Failed to load font: ${err}`, "warning");
             }
         }
 

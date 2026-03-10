@@ -37,6 +37,7 @@
     import { FontParser } from '../dist/data/FontParser.js';
     import { Debug } from '../dist/utils/Debug.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+    import { setStatus } from './shared/status-ui.js';
 
     const DEBUG = false;
     Debug.enabled = DEBUG;
@@ -95,11 +96,18 @@
         canvas.height = 220;
         block.appendChild(canvas);
 
+        const status = document.createElement("div");
+        status.className = "note";
+        status.style.marginTop = "8px";
+        status.style.marginBottom = "0";
+        block.appendChild(status);
+
         container.appendChild(block);
 
         const url = `../truetypefonts/noto/${encodeURIComponent(sample.file)}`;
         FontParser.load(url)
             .then(font => {
+                setStatus(status, `Loaded: ${sample.file}`, "success");
                 CanvasRenderer.drawString(font, sample.text, canvas, {
                     x: 20,
                     y: 160,
@@ -108,7 +116,7 @@
                 });
             })
             .catch(error => {
-                console.error("Failed to load font:", sample.file, error);
+                setStatus(status, `Failed to load ${sample.file}: ${error?.message || error}`, "warning");
             });
     });
 

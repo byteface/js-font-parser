@@ -24,7 +24,8 @@
 <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { getFontList } from './shared/font-catalog.js';
-    import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
+    import { createFontLoader } from './shared/font-ui.js';
+    import { wireFontSelect } from './shared/tool-scaffold.js';
 
     const fonts = getFontList('metadata');
     const loadFontByUrl = createFontLoader((url) => FontParser.load(url));
@@ -52,20 +53,20 @@
     const select = document.getElementById('fontSelect');
     const output = document.getElementById('output');
 
-    populateFontSelect(select, fonts);
-    select.addEventListener('change', loadFont);
-    loadFont();
-
-    function loadFont() {
-        output.innerHTML = 'Loading...';
-        const selected = getSelectedFont(select, fonts);
-        loadFontByUrl(selected.url).then(font => {
+    const selector = wireFontSelect({
+        select,
+        fonts,
+        loadFont: (url) => loadFontByUrl(url),
+        onLoaded: (font) => {
             const records = font.getAllNameRecords();
             renderRecords(records, font);
-        }).catch(err => {
+        },
+        onError: (err) => {
             output.textContent = `Failed to load font: ${err}`;
-        });
-    }
+        }
+    });
+    output.innerHTML = 'Loading...';
+    selector.run();
 
     function renderRecords(records, font) {
         if (!records.length) {

@@ -29,6 +29,8 @@
 <script type="module">
     import { FontParserWOFF } from '../dist/data/FontParserWOFF.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+    import { clearCanvas } from './shared/canvas-utils.js';
+    import { setStatus } from './shared/status-ui.js';
 
     const canvas = document.getElementById('myDrawing');
     const textInput = document.getElementById('textInput');
@@ -38,13 +40,17 @@
 
     let font = null;
     function loadFont(url) {
+        setStatus(status, `Loading: ${fontSelect.options[fontSelect.selectedIndex].text}`, 'info');
         FontParserWOFF.load(url)
             .then(f => {
                 font = f;
+                setStatus(status, `Loaded: ${fontSelect.options[fontSelect.selectedIndex].text}`, 'success');
                 render();
             })
             .catch(error => {
-                console.error('Error loading WOFF:', error);
+                font = null;
+                clearCanvas(canvas, ctx);
+                setStatus(status, `Failed to load font: ${error?.message || error}`, 'warning');
             });
     }
 
@@ -63,8 +69,7 @@
 
     function render() {
         if (!font) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        status.textContent = `Loaded: ${fontSelect.options[fontSelect.selectedIndex].text}`;
+        clearCanvas(canvas, ctx);
         CanvasRenderer.drawString(font, textInput.value, canvas, {
             x: 40,
             y: 220,
