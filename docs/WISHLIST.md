@@ -4,12 +4,6 @@ Prioritized by impact on parser correctness, release confidence, and npm usabili
 
 ## P0 (Do Next)
 
-1. **GPOS script sign-off**
-   - Current status: broad paths work, but confidence still comes mainly from generic/fuzz coverage.
-   - Do next:
-     - Add explicit real-font expected outputs for tricky cases (mark+ligature+mark, stacked marks, mixed scripts).
-     - Lock at least one canonical fixture per major script family used in demos/tools.
-
 2. **Golden-image regression as a required gate**
    - Current status: required target set is now locked/validated and CI runs compare for visual-risk paths.
    - Do next:
@@ -31,6 +25,7 @@ Prioritized by impact on parser correctness, release confidence, and npm usabili
 
 ## Done Recently (Removed from active wishlist)
 
+- **GPOS script sign-off**: canonical real-font expected-output fixtures are now locked for Latin (ligature+mark), Arabic (stacked marks and mixed mark stacks), Devanagari, Bengali, Hebrew, and Thai.
 - **Table coverage closure**: `npm run audit:tables` now reports `Missing from factory: 0`.
 - **NPM package metadata hardening**: `types`, `exports`, `repository`, `homepage`, `bugs`, license file, and dry-run publish checks are in place.
 - **CI Node coverage expansion**: matrix now verifies Node `20.x`, `22.x`, and `24.x`.
