@@ -66,7 +66,7 @@
     </style>
 </head>
 <body>
-<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+<div data-nav="main"></div>
 
     <h1>Variable Font Explorer</h1>
     <div class="panel">
@@ -140,6 +140,7 @@
         import { FontParser } from '../dist/data/FontParser.js';
         import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
         import { Table } from '../dist/table/Table.js';
+        import { getFontList } from './shared/font-catalog.js';
         import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
 
         const fontSelect = document.getElementById('fontSelect');
@@ -197,18 +198,7 @@
             };
         }
 
-        const fonts = [
-            { name: 'Source Serif 4 Variable (CFF2)', url: '../truetypefonts/OTF/source-serif4/SourceSerif4Variable-Roman.otf' },
-            { name: 'Playwrite GB S Variable', url: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-VariableFont_wght.ttf' },
-            { name: 'Playwrite GB S Italic Variable', url: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-Italic-VariableFont_wght.ttf' },
-            { name: 'Arimo Variable', url: '../truetypefonts/arimo/Arimo[wght].ttf' },
-            { name: 'Noto Sans Arabic VF', url: '../truetypefonts/curated-extra/NotoSansArabic-VF.ttf' },
-            { name: 'Noto Sans Devanagari VF', url: '../truetypefonts/curated-extra/NotoSansDevanagari-VF.ttf' },
-            { name: 'Noto Sans Hebrew VF', url: '../truetypefonts/curated-extra/NotoSansHebrew-VF.ttf' },
-            { name: 'Noto Sans Thai VF', url: '../truetypefonts/curated-extra/NotoSansThai-VF.ttf' },
-            { name: 'Noto Sans Khmer VF', url: '../truetypefonts/curated-extra/NotoSansKhmer-VF.ttf' },
-            { name: 'Noto Sans Ethiopic VF', url: '../truetypefonts/curated-extra/NotoSansEthiopic-VF.ttf' }
-        ];
+        const fonts = getFontList('variableFonts');
 
         const loadFont = createFontLoader(FontParser.load);
         let font = null;

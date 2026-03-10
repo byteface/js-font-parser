@@ -72,7 +72,7 @@
     </style>
 </head>
 <body>
-<div data-nav="main" style="position:sticky;top:0;z-index:10;background:#f6f4f1;border-bottom:1px solid #e3e1db;padding:10px 16px;font-family:'Merriweather',serif;display:flex;gap:12px;align-items:center"><a href="../demos/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Demos</a><a href="../tools/index.html" style="color:#2c3e50;text-decoration:none;font-weight:600">Tools</a></div>
+<div data-nav="main"></div>
 
     <h1>All Glyphs Grid</h1>
     <div class="panel">
@@ -121,6 +121,7 @@
         import { FontParserWOFF } from "../dist/data/FontParserWOFF.js";
         import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
         import { Table } from "../dist/table/Table.js";
+        import { getFontList } from "./shared/font-catalog.js";
         import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
 
         const fontSelect = document.getElementById("fontSelect");
@@ -136,39 +137,7 @@
         const status = document.getElementById("status");
         const ctx = canvas.getContext("2d");
 
-        const fonts = [
-            { name: "2006 Team", url: "../truetypefonts/2006 Team.ttf" },
-            { name: "20FACES", url: "../truetypefonts/20FACES.TTF" },
-            { name: "AUGIE", url: "../truetypefonts/AUGIE___.TTF" },
-            { name: "Aims in your Life", url: "../truetypefonts/Aims in your Life normal.ttf" },
-            { name: "CARDS", url: "../truetypefonts/CARDS.TTF" },
-            { name: "DiscoMo", url: "../truetypefonts/DiscoMo.ttf" },
-            { name: "DiscoMo ES (localised)", url: "../truetypefonts/DiscoMo-es.ttf" },
-            { name: "DiscoMo PL (localised)", url: "../truetypefonts/DiscoMo-pl.ttf" },
-            { name: "DiscoMo CS (localised)", url: "../truetypefonts/DiscoMo-cs.ttf" },
-            { name: "DiscoMo HU (localised)", url: "../truetypefonts/DiscoMo-hu.ttf" },
-            { name: "DiscoMo TR (localised)", url: "../truetypefonts/DiscoMo-tr.ttf" },
-            { name: "DiscoMo RO (localised)", url: "../truetypefonts/DiscoMo-ro.ttf" },
-            { name: "DevilInside", url: "../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf" },
-            { name: "ELLO", url: "../truetypefonts/ELLO____.TTF" },
-            { name: "Gotham Narrow Ultra (OTF)", url: "../truetypefonts/GothamNarrow-Ultra.otf" },
-            { name: "Font Awesome (OTF)", url: "../truetypefonts/FontAwesome.otf" },
-            { name: "Minecraft", url: "../truetypefonts/Minecraft.ttf" },
-            { name: "Kremlin Minister", url: "../truetypefonts/kremlin_minister/Kremlin Minister.ttf" },
-            { name: "JoeJack", url: "../truetypefonts/JoeJack.ttf" },
-            { name: "Playwrite GB S", url: "../truetypefonts/Playwrite_GB_S/PlaywriteGBS-VariableFont_wght.ttf" },
-            { name: "Quill", url: "../truetypefonts/Quill.ttf" },
-            { name: "RENAV", url: "../truetypefonts/RENAV___.TTF" },
-            { name: "ZWISDOM", url: "../truetypefonts/ZWISDOM.ttf" },
-            { name: "slkscr", url: "../truetypefonts/slkscr.ttf" },
-            { name: "Twemoji Mozilla (color)", url: "../truetypefonts/color/TwemojiMozilla.ttf" },
-            { name: "Noto Sans Regular", url: "../truetypefonts/noto/NotoSans-Regular.ttf" },
-            { name: "Noto Sans Hebrew", url: "../truetypefonts/noto/NotoSansHebrew-Regular.ttf" },
-            { name: "Noto Sans Thai", url: "../truetypefonts/noto/NotoSansThaiLooped-Regular.ttf" },
-            { name: "Noto Sans Devanagari", url: "../truetypefonts/noto/NotoSansDevanagari-Regular.ttf" },
-            { name: "Noto Naskh Arabic", url: "../truetypefonts/noto/NotoNaskhArabic-Regular.ttf" },
-            { name: "Source Code Pro Regular (OTF)", url: "../truetypefonts/source-code-pro/SourceCodePro-Regular.otf" }
-        ];
+        const fonts = getFontList("allGlyphs");
 
         const loadFont = createFontLoader(async (url) => {
             if (isWoff(url)) {
