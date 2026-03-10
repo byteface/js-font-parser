@@ -17,6 +17,7 @@ import { Script } from "./Script.js";
 import { LangSys } from "./LangSys.js";
 
 export class GposTable implements ITable, ILookupSubtableFactory {
+    private static readonly SUBTABLE_CACHE_LIMIT = 128;
     scriptList: ScriptList;
     featureList: FeatureList;
     lookupList: LookupList;
@@ -94,8 +95,18 @@ export class GposTable implements ITable, ILookupSubtableFactory {
                 }
             }
         }
-        this.subtableCache.set(cacheKey, subtables);
+        this.setBoundedCacheEntry(cacheKey, subtables);
         return subtables;
+    }
+
+    private setBoundedCacheEntry(key: string, value: LookupSubtable[]): void {
+        if (this.subtableCache.size >= GposTable.SUBTABLE_CACHE_LIMIT && !this.subtableCache.has(key)) {
+            const firstKey = this.subtableCache.keys().next().value;
+            if (firstKey != null) {
+                this.subtableCache.delete(firstKey);
+            }
+        }
+        this.subtableCache.set(key, value);
     }
 
     public getType(): number {

@@ -17,6 +17,8 @@ import { MultipleSubst } from "./MultipleSubst.js";
 import { AlternateSubst } from "./AlternateSubst.js";
 
 export class GsubTable implements ITable {
+    private static readonly FEATURE_ORDER_CACHE_LIMIT = 128;
+    private static readonly APPLY_FEATURES_CACHE_LIMIT = 128;
     scriptList: ScriptList;
     featureList: FeatureList;
     lookupList: LookupList;
@@ -291,7 +293,7 @@ export class GsubTable implements ITable {
         const script = this.findPreferredScript(scriptTags);
         const langSys = this.getDefaultLangSys(script);
         if (!langSys) {
-            this.featureOrderCache.set(cacheKey, null);
+            this.setBoundedCacheEntry(this.featureOrderCache, cacheKey, null, GsubTable.FEATURE_ORDER_CACHE_LIMIT);
             return null;
         }
 
@@ -313,7 +315,7 @@ export class GsubTable implements ITable {
             featureOrder.push(idx);
         }
 
-        this.featureOrderCache.set(cacheKey, featureOrder);
+        this.setBoundedCacheEntry(this.featureOrderCache, cacheKey, featureOrder, GsubTable.FEATURE_ORDER_CACHE_LIMIT);
         return featureOrder;
     }
 
@@ -325,13 +327,17 @@ export class GsubTable implements ITable {
         if (!this.applyFeaturesCache) {
             this.applyFeaturesCache = new Map<string, number[]>();
         }
-        if (this.applyFeaturesCache.size >= 128) {
-            const firstKey = this.applyFeaturesCache.keys().next().value;
-            if (firstKey) {
-                this.applyFeaturesCache.delete(firstKey);
+        this.setBoundedCacheEntry(this.applyFeaturesCache, cacheKey, glyphs.slice(), GsubTable.APPLY_FEATURES_CACHE_LIMIT);
+    }
+
+    private setBoundedCacheEntry<T>(cache: Map<string, T>, key: string, value: T, limit: number): void {
+        if (cache.size >= limit && !cache.has(key)) {
+            const firstKey = cache.keys().next().value;
+            if (firstKey != null) {
+                cache.delete(firstKey);
             }
         }
-        this.applyFeaturesCache.set(cacheKey, glyphs.slice());
+        cache.set(key, value);
     }
 
     getType(): number {
