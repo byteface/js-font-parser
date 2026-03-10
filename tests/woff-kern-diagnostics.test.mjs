@@ -35,46 +35,46 @@ function makeMinimalWoff({
   return new Uint8Array(buffer);
 }
 
-test('round3 edge: diagnostic filter with global regex should be stable across repeated calls', () => {
+test('woff/kern diagnostics: diagnostic filter with global regex should be stable across repeated calls', () => {
   const filter = { code: /MISSING_/g };
   const diagnostic = { code: 'MISSING_CMAP_FORMAT', level: 'warning', phase: 'parse', message: 'x' };
   assert.equal(matchesDiagnosticFilter(diagnostic, filter), true);
   assert.equal(matchesDiagnosticFilter(diagnostic, filter), true);
 });
 
-test('round3 edge: diagnostic filter with sticky regex should be stable across repeated calls', () => {
+test('woff/kern diagnostics: diagnostic filter with sticky regex should be stable across repeated calls', () => {
   const filter = { code: /MISSING_/y };
   const diagnostic = { code: 'MISSING_GPOS', level: 'info', phase: 'layout', message: 'x' };
   assert.equal(matchesDiagnosticFilter(diagnostic, filter), true);
   assert.equal(matchesDiagnosticFilter(diagnostic, filter), true);
 });
 
-test('round3 edge: WOFF sync decode should reject when declared length is smaller than actual buffer size', () => {
+test('woff/kern diagnostics: WOFF sync decode should reject when declared length is smaller than actual buffer size', () => {
   const woff = makeMinimalWoff({ length: 80, entryOffset: 80, compLength: 8, origLength: 8 });
   assert.throws(() => FontParserWOFF.decodeWoffToSfntSync(woff), /length|invalid|header/i);
 });
 
-test('round3 edge: WOFF async decode should reject when declared length is smaller than actual buffer size', async () => {
+test('woff/kern diagnostics: WOFF async decode should reject when declared length is smaller than actual buffer size', async () => {
   const woff = makeMinimalWoff({ length: 80, entryOffset: 80, compLength: 8, origLength: 8 });
   await assert.rejects(() => FontParserWOFF.decodeWoffToSfnt(woff.buffer), /length|invalid|header/i);
 });
 
-test('round3 edge: WOFF async decode should reject when compLength > origLength for a table', async () => {
+test('woff/kern diagnostics: WOFF async decode should reject when compLength > origLength for a table', async () => {
   const woff = makeMinimalWoff({ compLength: 12, origLength: 8 });
   await assert.rejects(() => FontParserWOFF.decodeWoffToSfnt(woff.buffer), /origLength|invalid|table/i);
 });
 
-test('round3 edge: WOFF sync decode rejects numTables=0 malformed header', () => {
+test('woff/kern diagnostics: WOFF sync decode rejects numTables=0 malformed header', () => {
   const woff = makeMinimalWoff({ numTables: 0, length: 64, entryOffset: 44, compLength: 0, origLength: 0 });
   assert.throws(() => FontParserWOFF.decodeWoffToSfntSync(woff), /numTables/i);
 });
 
-test('round3 edge: WOFF async decode rejects numTables=0 malformed header', async () => {
+test('woff/kern diagnostics: WOFF async decode rejects numTables=0 malformed header', async () => {
   const woff = makeMinimalWoff({ numTables: 0, length: 64, entryOffset: 44, compLength: 0, origLength: 0 });
   await assert.rejects(() => FontParserWOFF.decodeWoffToSfnt(woff.buffer), /numTables/i);
 });
 
-test('round3 edge: KernTable should continue to later format0 subtable when earlier one returns 0', () => {
+test('woff/kern diagnostics: KernTable should continue to later format0 subtable when earlier one returns 0', () => {
   const kt = Object.create(KernTable.prototype);
   const s1 = Object.create(KernSubtableFormat0.prototype);
   const s2 = Object.create(KernSubtableFormat0.prototype);
@@ -85,7 +85,7 @@ test('round3 edge: KernTable should continue to later format0 subtable when earl
   assert.equal(kt.getKerningValue(10, 11), -75);
 });
 
-test('round3 edge: KernTable returns 0 when all format0 subtables return 0', () => {
+test('woff/kern diagnostics: KernTable returns 0 when all format0 subtables return 0', () => {
   const kt = Object.create(KernTable.prototype);
   const s1 = Object.create(KernSubtableFormat0.prototype);
   const s2 = Object.create(KernSubtableFormat0.prototype);
@@ -96,7 +96,7 @@ test('round3 edge: KernTable returns 0 when all format0 subtables return 0', () 
   assert.equal(kt.getKerningValue(1, 2), 0);
 });
 
-test('round3 edge: KernTable ignores non-format0 subtables and still resolves later format0 values', () => {
+test('woff/kern diagnostics: KernTable ignores non-format0 subtables and still resolves later format0 values', () => {
   const kt = Object.create(KernTable.prototype);
   const non0 = { getKerningValue: () => -30 };
   const s2 = Object.create(KernSubtableFormat0.prototype);

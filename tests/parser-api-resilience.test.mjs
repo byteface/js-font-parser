@@ -15,7 +15,7 @@ function glyph(points) {
   };
 }
 
-test('round11 edge: measureText should not throw when layoutString throws', () => {
+test('parser API resilience: measureText should not throw when layoutString throws', () => {
   assert.doesNotThrow(() => {
     const out = measureText('AB', {}, () => {
       throw new Error('layout-boom');
@@ -25,13 +25,13 @@ test('round11 edge: measureText should not throw when layoutString throws', () =
   });
 });
 
-test('round11 edge: measureText should tolerate non-array layoutString result', () => {
+test('parser API resilience: measureText should tolerate non-array layoutString result', () => {
   const out = measureText('AB', {}, () => null);
   assert.equal(out.advanceWidth, 0);
   assert.equal(out.glyphCount, 0);
 });
 
-test('round11 edge: layoutToPoints should not throw when layoutString throws', () => {
+test('parser API resilience: layoutToPoints should not throw when layoutString throws', () => {
   assert.doesNotThrow(() => {
     const out = layoutToPoints('A', {}, {
       layoutString() { throw new Error('layout-boom'); },
@@ -44,7 +44,7 @@ test('round11 edge: layoutToPoints should not throw when layoutString throws', (
   });
 });
 
-test('round11 edge: layoutToPoints should tolerate non-array layout and throwing getGlyph', () => {
+test('parser API resilience: layoutToPoints should tolerate non-array layout and throwing getGlyph', () => {
   const out = layoutToPoints('AB', {}, {
     layoutString() { return { nope: true }; },
     getGlyph() { throw new Error('glyph-boom'); },
@@ -54,7 +54,7 @@ test('round11 edge: layoutToPoints should tolerate non-array layout and throwing
   assert.equal(out.advanceWidth, 0);
 });
 
-test('round11 edge: layoutToPoints should skip glyph when getPointCount/getPoint throws', () => {
+test('parser API resilience: layoutToPoints should skip glyph when getPointCount/getPoint throws', () => {
   const out = layoutToPoints('A', {}, {
     layoutString() { return [{ glyphIndex: 1, xAdvance: 500, xOffset: 0, yOffset: 0 }]; },
     getGlyph() {
@@ -69,7 +69,7 @@ test('round11 edge: layoutToPoints should skip glyph when getPointCount/getPoint
   assert.equal(out.advanceWidth, 500);
 });
 
-test('round11 edge: getColorLayersForGlyph should not throw for non-array/throwing layer+palette deps', () => {
+test('parser API resilience: getColorLayersForGlyph should not throw for non-array/throwing layer+palette deps', () => {
   assert.doesNotThrow(() => {
     const out = getColorLayersForGlyph(1, 0, {
       hasColr: true,
@@ -80,7 +80,7 @@ test('round11 edge: getColorLayersForGlyph should not throw for non-array/throwi
   });
 });
 
-test('round11 edge: getColorLayersForChar should not throw when glyph index lookup throws', () => {
+test('parser API resilience: getColorLayersForChar should not throw when glyph index lookup throws', () => {
   assert.doesNotThrow(() => {
     const out = getColorLayersForChar('A', 0, {
       getGlyphIndexByChar() { throw new Error('glyph-index-boom'); },
@@ -90,7 +90,7 @@ test('round11 edge: getColorLayersForChar should not throw when glyph index look
   });
 });
 
-test('round11 edge: getColorLayersForChar should tolerate non-array getColorLayersForGlyph result', () => {
+test('parser API resilience: getColorLayersForChar should tolerate non-array getColorLayersForGlyph result', () => {
   const out = getColorLayersForChar('A', 0, {
     getGlyphIndexByChar() { return 1; },
     getColorLayersForGlyph() { return null; }
@@ -98,7 +98,7 @@ test('round11 edge: getColorLayersForChar should tolerate non-array getColorLaye
   assert.deepEqual(out, []);
 });
 
-test('round11 edge: layoutToPoints should keep finite result when getUnitsPerEm throws', () => {
+test('parser API resilience: layoutToPoints should keep finite result when getUnitsPerEm throws', () => {
   const out = layoutToPoints('A', { fontSize: 100 }, {
     layoutString() { return [{ glyphIndex: 1, xAdvance: 100, xOffset: 0, yOffset: 0 }]; },
     getGlyph() { return glyph([{ x: 1, y: 2, onCurve: true, endOfContour: true }]); },

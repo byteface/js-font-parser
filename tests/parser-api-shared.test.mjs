@@ -17,7 +17,7 @@ function makeGlyph(points) {
   };
 }
 
-test('round7 edge: ParserApiShared.measureText should keep finite width with NaN letterSpacing', () => {
+test('parser API shared: ParserApiShared.measureText should keep finite width with NaN letterSpacing', () => {
   const out = measureText('AB', { letterSpacing: Number.NaN }, () => [
     { glyphIndex: 1, xAdvance: 400, xOffset: 0, yOffset: 0 },
     { glyphIndex: 2, xAdvance: 500, xOffset: 0, yOffset: 0 }
@@ -26,7 +26,7 @@ test('round7 edge: ParserApiShared.measureText should keep finite width with NaN
   assert.equal(out.advanceWidth, 900);
 });
 
-test('round7 edge: ParserApiShared.measureText should coerce non-finite xAdvance values to 0', () => {
+test('parser API shared: ParserApiShared.measureText should coerce non-finite xAdvance values to 0', () => {
   const out = measureText('AB', {}, () => [
     { glyphIndex: 1, xAdvance: Number.NaN, xOffset: 0, yOffset: 0 },
     { glyphIndex: 2, xAdvance: Number.POSITIVE_INFINITY, xOffset: 0, yOffset: 0 }
@@ -35,7 +35,7 @@ test('round7 edge: ParserApiShared.measureText should coerce non-finite xAdvance
   assert.equal(out.advanceWidth, 0);
 });
 
-test('round7 edge: ParserApiShared.layoutToPoints should keep finite outputs with unitsPerEm=0 and NaN options', () => {
+test('parser API shared: ParserApiShared.layoutToPoints should keep finite outputs with unitsPerEm=0 and NaN options', () => {
   const out = layoutToPoints('A', {
     fontSize: Number.NaN,
     sampleStep: Number.NaN,
@@ -60,7 +60,7 @@ test('round7 edge: ParserApiShared.layoutToPoints should keep finite outputs wit
   assert.equal(Number.isFinite(out.points[0].y), true);
 });
 
-test('round7 edge: ParserApiShared.layoutToPoints should sample all points when sampleStep is NaN', () => {
+test('parser API shared: ParserApiShared.layoutToPoints should sample all points when sampleStep is NaN', () => {
   const out = layoutToPoints('A', { sampleStep: Number.NaN }, {
     layoutString() {
       return [{ glyphIndex: 1, xAdvance: 10, xOffset: 0, yOffset: 0 }];
@@ -80,7 +80,7 @@ test('round7 edge: ParserApiShared.layoutToPoints should sample all points when 
   assert.equal(out.points.length, 3);
 });
 
-test('round7 edge: ParserApiShared.getGlyphPointsByChar should sample all points when sampleStep is NaN', () => {
+test('parser API shared: ParserApiShared.getGlyphPointsByChar should sample all points when sampleStep is NaN', () => {
   const points = getGlyphPointsByChar('A', { sampleStep: Number.NaN }, () => makeGlyph([
     { x: 1, y: 1, onCurve: true, endOfContour: false },
     { x: 2, y: 2, onCurve: true, endOfContour: false },
@@ -90,7 +90,7 @@ test('round7 edge: ParserApiShared.getGlyphPointsByChar should sample all points
   assert.equal(points.length, 3);
 });
 
-test('round7 edge: ParserApiShared.getColorLayersForGlyph should not throw when palette getter returns null', () => {
+test('parser API shared: ParserApiShared.getColorLayersForGlyph should not throw when palette getter returns null', () => {
   assert.doesNotThrow(() => getColorLayersForGlyph(1, 0, {
     hasColr: true,
     getLayersForGlyph() {
@@ -114,7 +114,7 @@ test('round7 edge: ParserApiShared.getColorLayersForGlyph should not throw when 
   assert.deepEqual(out, [{ glyphId: 10, color: null, paletteIndex: 0 }]);
 });
 
-test('round7 edge: parser cmap format picker should ignore null entries in format list', () => {
+test('parser API shared: parser cmap format picker should ignore null entries in format list', () => {
   const parser = Object.create(FontParserTTF.prototype);
   assert.doesNotThrow(() => parser.pickBestFormat([
     null,
@@ -130,7 +130,7 @@ test('round7 edge: parser cmap format picker should ignore null entries in forma
   assert.equal(typeof fmt.mapCharCode, 'function');
 });
 
-test('round7 edge: ParserApiShared.layoutToPoints should keep finite advanceWidth with non-finite layout advances', () => {
+test('parser API shared: ParserApiShared.layoutToPoints should keep finite advanceWidth with non-finite layout advances', () => {
   const out = layoutToPoints('AB', {}, {
     layoutString() {
       return [
@@ -150,7 +150,7 @@ test('round7 edge: ParserApiShared.layoutToPoints should keep finite advanceWidt
   assert.equal(out.advanceWidth, 0);
 });
 
-test('round7 edge: ParserApiShared.computeVariationCoords should keep finite coords when axis bounds are NaN', () => {
+test('parser API shared: ParserApiShared.computeVariationCoords should keep finite coords when axis bounds are NaN', () => {
   const coords = computeVariationCoords([
     { name: 'wght', minValue: Number.NaN, defaultValue: Number.NaN, maxValue: Number.NaN }
   ], { wght: 700 });
@@ -159,7 +159,7 @@ test('round7 edge: ParserApiShared.computeVariationCoords should keep finite coo
   assert.equal(coords[0], 0);
 });
 
-test('round7 edge: ParserApiShared.layoutToPoints should treat NaN origin values as 0', () => {
+test('parser API shared: ParserApiShared.layoutToPoints should treat NaN origin values as 0', () => {
   const out = layoutToPoints('A', { x: Number.NaN, y: Number.NaN }, {
     layoutString() {
       return [{ glyphIndex: 1, xAdvance: 0, xOffset: 0, yOffset: 0 }];

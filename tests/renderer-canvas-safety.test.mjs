@@ -55,7 +55,7 @@ function withDrawSpy(fn) {
   }
 }
 
-test('round8 edge: drawString should keep finite glyph x positions when spacing is NaN', () => {
+test('canvas renderer safety: drawString should keep finite glyph x positions when spacing is NaN', () => {
   const glyph = makeGlyph(500);
   const font = {
     getGlyphByChar() { return glyph; },
@@ -71,7 +71,7 @@ test('round8 edge: drawString should keep finite glyph x positions when spacing 
   });
 });
 
-test('round8 edge: drawStringWithKerning should keep finite positions when kerning callback returns NaN', () => {
+test('canvas renderer safety: drawStringWithKerning should keep finite positions when kerning callback returns NaN', () => {
   const glyph = makeGlyph(500);
   const font = {
     getGlyphByChar() { return glyph; },
@@ -86,7 +86,7 @@ test('round8 edge: drawStringWithKerning should keep finite positions when kerni
   });
 });
 
-test('round8 edge: drawStringWithKerning should keep finite positions when kerning callback throws', () => {
+test('canvas renderer safety: drawStringWithKerning should keep finite positions when kerning callback throws', () => {
   const glyph = makeGlyph(500);
   const font = {
     getGlyphByChar() { return glyph; },
@@ -101,7 +101,7 @@ test('round8 edge: drawStringWithKerning should keep finite positions when kerni
   });
 });
 
-test('round8 edge: drawLayout should keep finite positions with non-finite advances/offsets', () => {
+test('canvas renderer safety: drawLayout should keep finite positions with non-finite advances/offsets', () => {
   const glyph = makeGlyph(500);
   const font = {
     getGlyphByChar() { return glyph; },
@@ -121,7 +121,7 @@ test('round8 edge: drawLayout should keep finite positions with non-finite advan
   });
 });
 
-test('round8 edge: drawStringWithKerning should treat astral chars as single glyph units', () => {
+test('canvas renderer safety: drawStringWithKerning should treat astral chars as single glyph units', () => {
   const glyph = makeGlyph(700);
   const astral = '😀';
   const font = {
@@ -138,7 +138,7 @@ test('round8 edge: drawStringWithKerning should treat astral chars as single gly
   });
 });
 
-test('round8 edge: drawString should treat astral chars as single glyph units', () => {
+test('canvas renderer safety: drawString should treat astral chars as single glyph units', () => {
   const glyph = makeGlyph(700);
   const astral = '😀';
   const font = {
@@ -154,7 +154,7 @@ test('round8 edge: drawString should treat astral chars as single glyph units', 
   });
 });
 
-test('round8 edge: drawColorString should keep finite positions when spacing is NaN', () => {
+test('canvas renderer safety: drawColorString should keep finite positions when spacing is NaN', () => {
   const glyph = makeGlyph(500);
   const font = {
     getGlyphByChar() { return glyph; },
@@ -170,7 +170,7 @@ test('round8 edge: drawColorString should keep finite positions when spacing is 
   });
 });
 
-test('round8 edge: drawColorGlyph should not throw when color layer getter throws', () => {
+test('canvas renderer safety: drawColorGlyph should not throw when color layer getter throws', () => {
   const glyph = makeGlyph(500);
   const font = {
     getGlyphByChar() { return glyph; },
@@ -182,7 +182,7 @@ test('round8 edge: drawColorGlyph should not throw when color layer getter throw
   assert.doesNotThrow(() => CanvasRenderer.drawColorGlyph(font, 1, makeCanvas(), { x: 0, y: 0, scale: 1 }));
 });
 
-test('round8 edge: drawGlyphIndices should keep finite x positions with NaN spacing', () => {
+test('canvas renderer safety: drawGlyphIndices should keep finite x positions with NaN spacing', () => {
   const glyph = makeGlyph(400);
   const font = {
     getGlyphByChar() { return glyph; },
@@ -198,7 +198,7 @@ test('round8 edge: drawGlyphIndices should keep finite x positions with NaN spac
   });
 });
 
-test('round8 edge: drawStringWithKerning should keep finite positions when scale is NaN', () => {
+test('canvas renderer safety: drawStringWithKerning should keep finite positions when scale is NaN', () => {
   const glyph = makeGlyph(500);
   const font = {
     getGlyphByChar() { return glyph; },

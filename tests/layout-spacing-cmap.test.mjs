@@ -60,7 +60,7 @@ function createSpacingFontMock() {
   };
 }
 
-test('round6 edge: TTF getGlyphIndexByChar should not throw for cmap formats missing map functions', () => {
+test('layout/cmap: TTF getGlyphIndexByChar should not throw for cmap formats missing map functions', () => {
   const parser = createTtfParserMock();
   parser.cmap = {
     formats: [{ getFormatType: () => 4 }],
@@ -70,7 +70,7 @@ test('round6 edge: TTF getGlyphIndexByChar should not throw for cmap formats mis
   assert.equal(parser.getGlyphIndexByChar('A'), null);
 });
 
-test('round6 edge: WOFF getGlyphIndexByChar should not throw for cmap formats missing map functions', () => {
+test('layout/cmap: WOFF getGlyphIndexByChar should not throw for cmap formats missing map functions', () => {
   const parser = createWoffParserMock();
   parser.cmap = {
     formats: [{ getFormatType: () => 4 }],
@@ -80,7 +80,7 @@ test('round6 edge: WOFF getGlyphIndexByChar should not throw for cmap formats mi
   assert.equal(parser.getGlyphIndexByChar('A'), null);
 });
 
-test('round6 edge: TTF getGlyphIndexByChar should tolerate throwing cmap format selection', () => {
+test('layout/cmap: TTF getGlyphIndexByChar should tolerate throwing cmap format selection', () => {
   const parser = createTtfParserMock();
   parser.cmap = {
     formats: [{ getFormatType: () => 4, mapCharCode: () => 1 }],
@@ -90,7 +90,7 @@ test('round6 edge: TTF getGlyphIndexByChar should tolerate throwing cmap format 
   assert.equal(parser.getGlyphIndexByChar('A'), 1);
 });
 
-test('round6 edge: WOFF getGlyphIndexByChar should tolerate throwing cmap format selection', () => {
+test('layout/cmap: WOFF getGlyphIndexByChar should tolerate throwing cmap format selection', () => {
   const parser = createWoffParserMock();
   parser.cmap = {
     formats: [{ getFormatType: () => 4, mapCharCode: () => 1 }],
@@ -100,7 +100,7 @@ test('round6 edge: WOFF getGlyphIndexByChar should tolerate throwing cmap format
   assert.equal(parser.getGlyphIndexByChar('A'), 1);
 });
 
-test('round6 edge: blank space glyphs still preserve advance width for TTF and WOFF', () => {
+test('layout/cmap: blank space glyphs still preserve advance width for TTF and WOFF', () => {
   const ttf = createTtfParserMock();
   ttf.maxp = { numGlyphs: 4 };
   ttf.variationCoords = [];
@@ -130,7 +130,7 @@ test('round6 edge: blank space glyphs still preserve advance width for TTF and W
   assert.equal(woffSpace.advanceWidth, 300);
 });
 
-test('round6 edge: collapseSpaces preserves NBSP while collapsing ASCII spaces', () => {
+test('layout/cmap: collapseSpaces preserves NBSP while collapsing ASCII spaces', () => {
   const font = createSpacingFontMock();
   const out = LayoutEngine.layoutText(font, 'A  B\u00A0\u00A0B', {
     collapseSpaces: true,
@@ -142,7 +142,7 @@ test('round6 edge: collapseSpaces preserves NBSP while collapsing ASCII spaces',
   assert.equal(out.lines[0].width, 500 + 250 + 500 + 250 + 250 + 500);
 });
 
-test('round6 edge: collapseSpaces can collapse NBSP when preserveNbsp is false', () => {
+test('layout/cmap: collapseSpaces can collapse NBSP when preserveNbsp is false', () => {
   const font = createSpacingFontMock();
   const out = LayoutEngine.layoutText(font, 'A \u00A0 \u00A0B', {
     collapseSpaces: true,
@@ -153,7 +153,7 @@ test('round6 edge: collapseSpaces can collapse NBSP when preserveNbsp is false',
   assert.equal(out.lines[0].width, 500 + 250 + 500);
 });
 
-test('round6 edge: zero-width format characters keep zero advance when mapped', () => {
+test('layout/cmap: zero-width format characters keep zero advance when mapped', () => {
   const font = createSpacingFontMock();
   const out = LayoutEngine.layoutText(font, `A\u200B\u200C\u200D\u200E\u200F\u061CB`);
   assert.equal(out.lines[0].glyphs.length, 8);
@@ -162,7 +162,7 @@ test('round6 edge: zero-width format characters keep zero advance when mapped', 
   assert.ok(zeroWidthChars.every((g) => g.advance === 0));
 });
 
-test('round6 edge: additional invisible controls stay zero-advance when mapped', () => {
+test('layout/cmap: additional invisible controls stay zero-advance when mapped', () => {
   const font = createSpacingFontMock();
   const out = LayoutEngine.layoutText(font, `A\u2060\uFE0F\uFEFFB`);
   assert.equal(out.lines[0].glyphs.length, 5);
@@ -171,13 +171,13 @@ test('round6 edge: additional invisible controls stay zero-advance when mapped',
   assert.ok(zeroWidthChars.every((g) => g.advance === 0));
 });
 
-test('round6 edge: named Unicode spacing characters keep their advances', () => {
+test('layout/cmap: named Unicode spacing characters keep their advances', () => {
   const font = createSpacingFontMock();
   const out = LayoutEngine.layoutText(font, `A\u2009\u2003\u3000B`);
   assert.equal(out.lines[0].width, 500 + 120 + 1000 + 1000 + 500);
 });
 
-test('round6 edge: tabs expand to configured spaces instead of becoming missing glyphs', () => {
+test('layout/cmap: tabs expand to configured spaces instead of becoming missing glyphs', () => {
   const font = createSpacingFontMock();
   const out = LayoutEngine.layoutText(font, 'A\tB', {
     tabSize: 3
@@ -187,7 +187,7 @@ test('round6 edge: tabs expand to configured spaces instead of becoming missing 
   assert.equal(out.lines[0].width, 500 + 250 + 250 + 250 + 500);
 });
 
-test('round6 edge: soft hyphen stays invisible when no line break is required', () => {
+test('layout/cmap: soft hyphen stays invisible when no line break is required', () => {
   const font = createSpacingFontMock();
   const out = LayoutEngine.layoutText(font, 'A\u00ADB');
   const chars = out.lines[0].glyphs.map((g) => g.char).join('');
@@ -195,7 +195,7 @@ test('round6 edge: soft hyphen stays invisible when no line break is required', 
   assert.equal(out.lines[0].width, 1000);
 });
 
-test('round6 edge: combining marks can remain zero-advance after spaces', () => {
+test('layout/cmap: combining marks can remain zero-advance after spaces', () => {
   const font = createSpacingFontMock();
   const out = LayoutEngine.layoutText(font, `A \u0301B`);
   const chars = out.lines[0].glyphs.map((g) => g.char);
@@ -203,7 +203,7 @@ test('round6 edge: combining marks can remain zero-advance after spaces', () => 
   assert.equal(out.lines[0].width, 500 + 250 + 0 + 500);
 });
 
-test('round6 edge: trailing spaces can remain in glyph stream while trimmed from line width', () => {
+test('layout/cmap: trailing spaces can remain in glyph stream while trimmed from line width', () => {
   const font = createSpacingFontMock();
   const out = LayoutEngine.layoutText(font, 'A  ', {
     trimTrailingSpaces: true
@@ -213,7 +213,7 @@ test('round6 edge: trailing spaces can remain in glyph stream while trimmed from
   assert.equal(out.lines[0].width, 500);
 });
 
-test('round6 edge: LayoutEngine should not throw if getTableByType callback throws', () => {
+test('layout/cmap: LayoutEngine should not throw if getTableByType callback throws', () => {
   const font = {
     getTableByType() { throw new Error('table-boom'); },
     getGlyphIndexByChar() { return 1; },
@@ -224,7 +224,7 @@ test('round6 edge: LayoutEngine should not throw if getTableByType callback thro
   assert.doesNotThrow(() => LayoutEngine.layoutText(font, 'AB'));
 });
 
-test('round6 edge: LayoutEngine should keep finite lineHeight when table metrics are NaN', () => {
+test('layout/cmap: LayoutEngine should keep finite lineHeight when table metrics are NaN', () => {
   const font = {
     getTableByType(tag) {
       if (tag === 0x68656164) return { unitsPerEm: Number.NaN };
@@ -241,7 +241,34 @@ test('round6 edge: LayoutEngine should keep finite lineHeight when table metrics
   assert.ok(Number.isFinite(out.height));
 });
 
-test('round6 edge: TTF measureText should keep finite width when letterSpacing is NaN', () => {
+test('layout/cmap: LayoutEngine should keep finite geometry if glyph advance is NaN', () => {
+  const font = {
+    getTableByType() { return null; },
+    getGlyphIndexByChar() { return 1; },
+    getGlyph() { return { advanceWidth: Number.NaN }; },
+    getGlyphByChar() { return { advanceWidth: Number.NaN }; },
+    getKerningValueByGlyphs() { return 0; }
+  };
+  const out = LayoutEngine.layoutText(font, 'AB');
+  assert.ok(Number.isFinite(out.width));
+  assert.ok(out.lines.every((line) => Number.isFinite(line.width)));
+});
+
+test('layout/cmap: LayoutEngine should ignore non-finite kerning values', () => {
+  const font = {
+    getTableByType() { return null; },
+    getGlyphIndexByChar() { return 1; },
+    getGlyph() { return { advanceWidth: 500 }; },
+    getGlyphByChar() { return { advanceWidth: 500 }; },
+    getKerningValueByGlyphs() { return Number.NaN; }
+  };
+  const out = LayoutEngine.layoutText(font, 'AB', { useKerning: true });
+  const width = out.lines[0].glyphs.reduce((sum, glyph) => sum + glyph.advance, 0);
+  assert.equal(Number.isFinite(width), true);
+  assert.equal(width, 1000);
+});
+
+test('layout/cmap: TTF measureText should keep finite width when letterSpacing is NaN', () => {
   const parser = createTtfParserMock();
   parser.layoutString = () => [
     { glyphIndex: 1, xAdvance: 400, xOffset: 0, yOffset: 0, yAdvance: 0 },
@@ -252,7 +279,7 @@ test('round6 edge: TTF measureText should keep finite width when letterSpacing i
   assert.equal(out.advanceWidth, 900);
 });
 
-test('round6 edge: WOFF measureText should keep finite width when letterSpacing is NaN', () => {
+test('layout/cmap: WOFF measureText should keep finite width when letterSpacing is NaN', () => {
   const parser = createWoffParserMock();
   parser.layoutString = () => [
     { glyphIndex: 1, xAdvance: 400, xOffset: 0, yOffset: 0, yAdvance: 0 },
@@ -270,7 +297,7 @@ function makePointGlyph() {
   };
 }
 
-test('round6 edge: TTF layoutToPoints should keep finite scale with unitsPerEm=0 and NaN options', () => {
+test('layout/cmap: TTF layoutToPoints should keep finite scale with unitsPerEm=0 and NaN options', () => {
   const parser = createTtfParserMock();
   parser.getUnitsPerEm = () => 0;
   parser.layoutString = () => [{ glyphIndex: 1, xAdvance: 400, xOffset: 0, yOffset: 0, yAdvance: 0 }];
@@ -282,7 +309,7 @@ test('round6 edge: TTF layoutToPoints should keep finite scale with unitsPerEm=0
   assert.ok(Number.isFinite(out.points[0].y));
 });
 
-test('round6 edge: WOFF layoutToPoints should keep finite scale with unitsPerEm=0 and NaN options', () => {
+test('layout/cmap: WOFF layoutToPoints should keep finite scale with unitsPerEm=0 and NaN options', () => {
   const parser = createWoffParserMock();
   parser.getUnitsPerEm = () => 0;
   parser.layoutString = () => [{ glyphIndex: 1, xAdvance: 400, xOffset: 0, yOffset: 0, yAdvance: 0 }];

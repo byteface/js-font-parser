@@ -47,7 +47,7 @@ function glyphFromPoints(points, advanceWidth = 500, isCubic = false) {
   };
 }
 
-test('round9 edge: applyCanvasStyles maps each style property', () => {
+test('canvas renderer branches: applyCanvasStyles maps each style property', () => {
   const { ctx } = makeContextWithOps();
   CanvasRenderer.applyCanvasStyles(ctx, {
     fillStyle: '#abc',
@@ -69,7 +69,7 @@ test('round9 edge: applyCanvasStyles maps each style property', () => {
   assert.equal(ctx.shadowOffsetY, 5);
 });
 
-test('round9 edge: addContourToShape covers quadratic branches and early return', () => {
+test('canvas renderer branches: addContourToShape covers quadratic branches and early return', () => {
   const { ctx, ops } = makeContextWithOps();
   const early = glyphFromPoints([{ x: 0, y: 0, onCurve: true, endOfContour: true }]);
   CanvasRenderer.addContourToShape(ctx, early, 0, 1);
@@ -111,7 +111,7 @@ test('round9 edge: addContourToShape covers quadratic branches and early return'
   assert.equal(ops.some((op) => op[0] === 'quadraticCurveTo'), true);
 });
 
-test('round9 edge: addContourToShape handles missing next points safely', () => {
+test('canvas renderer branches: addContourToShape handles missing next points safely', () => {
   const { ctx, ops } = makeContextWithOps();
   const missingP2 = glyphFromPoints([
     { x: 0, y: 0, onCurve: true, endOfContour: false },
@@ -121,7 +121,7 @@ test('round9 edge: addContourToShape handles missing next points safely', () => 
   assert.equal(ops.some((op) => op[0] === 'moveTo'), true);
 });
 
-test('round9 edge: addContourToShapeCubic covers all cubic fallbacks', () => {
+test('canvas renderer branches: addContourToShapeCubic covers all cubic fallbacks', () => {
   const { ctx, ops } = makeContextWithOps();
   const p1OnCurve = glyphFromPoints([
     { x: 0, y: 0, onCurve: true, endOfContour: false },
@@ -154,7 +154,7 @@ test('round9 edge: addContourToShapeCubic covers all cubic fallbacks', () => {
   assert.equal(ops.some((op) => op[0] === 'bezierCurveTo'), true);
 });
 
-test('round9 edge: drawGlyphToContext uses fillRule and cubic path branch', () => {
+test('canvas renderer branches: drawGlyphToContext uses fillRule and cubic path branch', () => {
   const { ctx, ops } = makeContextWithOps();
   const glyph = glyphFromPoints([
     { x: 0, y: 0, onCurve: true, endOfContour: false },
@@ -165,7 +165,7 @@ test('round9 edge: drawGlyphToContext uses fillRule and cubic path branch', () =
   assert.equal(ops.some((op) => op[0] === 'fill' && op[1] === 'evenodd'), true);
 });
 
-test('round9 edge: draw methods tolerate missing canvas context', () => {
+test('canvas renderer branches: draw methods tolerate missing canvas context', () => {
   const noCtxCanvas = makeCanvas(null);
   const glyph = glyphFromPoints([{ x: 0, y: 0, onCurve: true, endOfContour: true }]);
   const font = {
@@ -181,7 +181,7 @@ test('round9 edge: draw methods tolerate missing canvas context', () => {
   assert.doesNotThrow(() => CanvasRenderer.drawLayout(font, [{ glyphIndex: 1, xAdvance: 10 }], noCtxCanvas, {}));
 });
 
-test('round9 edge: drawColorGlyph uses fallback glyph path when no layers exist', () => {
+test('canvas renderer branches: drawColorGlyph uses fallback glyph path when no layers exist', () => {
   const { ctx } = makeContextWithOps();
   const glyph = glyphFromPoints([
     { x: 0, y: 0, onCurve: true, endOfContour: false },
@@ -210,7 +210,7 @@ test('round9 edge: drawColorGlyph uses fallback glyph path when no layers exist'
   assert.equal(calls[0].options.scale, 1.5);
 });
 
-test('round9 edge: drawColorGlyph fill fallback order and missing-layer glyph skip', () => {
+test('canvas renderer branches: drawColorGlyph fill fallback order and missing-layer glyph skip', () => {
   const { ctx } = makeContextWithOps();
   const glyph = glyphFromPoints([
     { x: 0, y: 0, onCurve: true, endOfContour: false },
@@ -244,7 +244,7 @@ test('round9 edge: drawColorGlyph fill fallback order and missing-layer glyph sk
   assert.deepEqual(fills, ['#f00', '#0f0']);
 });
 
-test('round9 edge: drawColorString uses fallbackAdvance for non-positive advances', () => {
+test('canvas renderer branches: drawColorString uses fallbackAdvance for non-positive advances', () => {
   const { ctx } = makeContextWithOps();
   const glyphZero = glyphFromPoints([
     { x: 0, y: 0, onCurve: true, endOfContour: false },

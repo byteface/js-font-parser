@@ -62,7 +62,7 @@ function createLayoutFont() {
   };
 }
 
-test('round4 edge: TTF GPOS kerning should stay finite when a pair subtable returns NaN', () => {
+test('woff/gpos/layout: TTF GPOS kerning should stay finite when a pair subtable returns NaN', () => {
   const parser = createTtfParserMock();
   parser.gpos = createPairLookupWithKerningValue(Number.NaN);
   const value = parser.getGposKerningValueByGlyphs(10, 11);
@@ -70,7 +70,7 @@ test('round4 edge: TTF GPOS kerning should stay finite when a pair subtable retu
   assert.equal(value, 0);
 });
 
-test('round4 edge: WOFF GPOS kerning should stay finite when a pair subtable returns NaN', () => {
+test('woff/gpos/layout: WOFF GPOS kerning should stay finite when a pair subtable returns NaN', () => {
   const parser = createWoffParserMock();
   parser.gpos = createPairLookupWithKerningValue(Number.NaN);
   const value = parser.getGposKerningValueByGlyphs(10, 11);
@@ -78,7 +78,7 @@ test('round4 edge: WOFF GPOS kerning should stay finite when a pair subtable ret
   assert.equal(value, 0);
 });
 
-test('round4 edge: TTF getKerningValue remains finite when GPOS kerning path returns NaN', () => {
+test('woff/gpos/layout: TTF getKerningValue remains finite when GPOS kerning path returns NaN', () => {
   const parser = createTtfParserMock();
   parser.kern = null;
   parser.gpos = createPairLookupWithKerningValue(Number.NaN);
@@ -88,7 +88,7 @@ test('round4 edge: TTF getKerningValue remains finite when GPOS kerning path ret
   assert.equal(value, 0);
 });
 
-test('round4 edge: WOFF getKerningValue remains finite when GPOS kerning path returns NaN', () => {
+test('woff/gpos/layout: WOFF getKerningValue remains finite when GPOS kerning path returns NaN', () => {
   const parser = createWoffParserMock();
   parser.kern = null;
   parser.gpos = createPairLookupWithKerningValue(Number.NaN);
@@ -98,35 +98,35 @@ test('round4 edge: WOFF getKerningValue remains finite when GPOS kerning path re
   assert.equal(value, 0);
 });
 
-test('round4 edge: LayoutEngine should keep finite widths when letterSpacing is NaN', () => {
+test('woff/gpos/layout: LayoutEngine should keep finite widths when letterSpacing is NaN', () => {
   const layout = LayoutEngine.layoutText(createLayoutFont(), 'TEST', { letterSpacing: Number.NaN });
   assert.ok(Number.isFinite(layout.width));
   assert.ok(layout.lines.every((line) => Number.isFinite(line.width)));
 });
 
-test('round4 edge: LayoutEngine should keep finite result when lineHeight is NaN', () => {
+test('woff/gpos/layout: LayoutEngine should keep finite result when lineHeight is NaN', () => {
   const layout = LayoutEngine.layoutText(createLayoutFont(), 'A\nB', { lineHeight: Number.NaN });
   assert.ok(Number.isFinite(layout.lineHeight));
   assert.ok(Number.isFinite(layout.height));
 });
 
-test('round4 edge: LayoutEngine should keep finite result when maxWidth is NaN', () => {
+test('woff/gpos/layout: LayoutEngine should keep finite result when maxWidth is NaN', () => {
   const layout = LayoutEngine.layoutText(createLayoutFont(), 'ABCD', { maxWidth: Number.NaN });
   assert.ok(Number.isFinite(layout.width));
   assert.ok(Number.isFinite(layout.height));
 });
 
-test('round4 edge: WOFF sync decode rejects too-small totalSfntSize', () => {
+test('woff/gpos/layout: WOFF sync decode rejects too-small totalSfntSize', () => {
   const woff = makeMinimalWoff({ totalSfntSize: 12 }); // smaller than sfnt directory
   assert.throws(() => FontParserWOFF.decodeWoffToSfntSync(woff), /totalSfntSize|too small|invalid/i);
 });
 
-test('round4 edge: WOFF async decode rejects too-small totalSfntSize', async () => {
+test('woff/gpos/layout: WOFF async decode rejects too-small totalSfntSize', async () => {
   const woff = makeMinimalWoff({ totalSfntSize: 12 });
   await assert.rejects(() => FontParserWOFF.decodeWoffToSfnt(woff.buffer), /totalSfntSize|too small|invalid/i);
 });
 
-test('round4 edge: WOFF sync decode accepts minimal valid totalSfntSize boundary', () => {
+test('woff/gpos/layout: WOFF sync decode accepts minimal valid totalSfntSize boundary', () => {
   // 12 + numTables*16 + tableData(8) = 36 for one table.
   const woff = makeMinimalWoff({ totalSfntSize: 36 });
   const out = FontParserWOFF.decodeWoffToSfntSync(woff);

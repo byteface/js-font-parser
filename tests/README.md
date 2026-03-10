@@ -14,6 +14,8 @@ The suite is grouped by concern rather than by discovery order.
   Canvas renderer branch and safety coverage.
 - `parser-api-*.test.mjs`
   Shared parser API finite-value and resilience coverage.
+- `parser-cmap-layout-regressions.test.mjs`
+  Parser, cmap, and low-level layout regressions that cross subsystem boundaries.
 - `woff-*.test.mjs`
   WOFF decode, diagnostics, and layout edge cases.
 - `layout-spacing-cmap.test.mjs`
@@ -29,5 +31,4 @@ The suite is grouped by concern rather than by discovery order.
 
 Files that still read like catch-alls and should be split later:
 
-- `edge-busters.test.mjs`
-- `edge-high-impact.test.mjs`
+- `coverage-extra.test.mjs`

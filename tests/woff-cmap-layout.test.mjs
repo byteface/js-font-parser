@@ -49,7 +49,7 @@ function makeMinimalWoffTwoTableBuffer(entryA, entryB, { length = 192, totalSfnt
   return new Uint8Array(buffer);
 }
 
-test('round2 edge: TTF emits multi-char diagnostic for two BMP characters', () => {
+test('woff/cmap: TTF emits multi-char diagnostic for two BMP characters', () => {
   const parser = createTtfParserMock();
   parser.cmap = { formats: [], getCmapFormats: () => [] };
 
@@ -58,7 +58,7 @@ test('round2 edge: TTF emits multi-char diagnostic for two BMP characters', () =
   assert.equal(warnings.length, 1);
 });
 
-test('round2 edge: WOFF emits multi-char diagnostic for two BMP characters', () => {
+test('woff/cmap: WOFF emits multi-char diagnostic for two BMP characters', () => {
   const parser = createWoffParserMock();
   parser.cmap = { formats: [], getCmapFormats: () => [] };
 
@@ -67,10 +67,10 @@ test('round2 edge: WOFF emits multi-char diagnostic for two BMP characters', () 
   assert.equal(warnings.length, 1);
 });
 
-test.todo('round2 known gap: TTF cmap should fallback to secondary format when primary misses');
-test.todo('round2 known gap: WOFF cmap should fallback to secondary format when primary misses');
+test.todo('woff/cmap known gap: TTF cmap should fallback to secondary format when primary misses');
+test.todo('woff/cmap known gap: WOFF cmap should fallback to secondary format when primary misses');
 
-test('round2 edge: LayoutEngine applies deterministic fallback kerning when glyph indices are unavailable', () => {
+test('woff/cmap: LayoutEngine applies deterministic fallback kerning when glyph indices are unavailable', () => {
   const font = {
     getTableByType() { return null; },
     getGlyphByChar() { return { advanceWidth: 500 }; },
@@ -84,7 +84,7 @@ test('round2 edge: LayoutEngine applies deterministic fallback kerning when glyp
   assert.equal(width, 800);
 });
 
-test('round2 edge: LayoutEngine useKerning:false keeps fixed advances with missing glyph indices', () => {
+test('woff/cmap: LayoutEngine useKerning:false keeps fixed advances with missing glyph indices', () => {
   const font = {
     getTableByType() { return null; },
     getGlyphByChar() { return { advanceWidth: 400 }; },
@@ -97,7 +97,7 @@ test('round2 edge: LayoutEngine useKerning:false keeps fixed advances with missi
   assert.equal(width, 800);
 });
 
-test('round2 edge: WOFF sync decode still rejects overlapping table byte ranges', () => {
+test('woff/cmap: WOFF sync decode still rejects overlapping table byte ranges', () => {
   const bytes = makeMinimalWoffTwoTableBuffer(
     { tag: 0x68656164, offset: 100, compLength: 30, origLength: 30 },
     { tag: 0x68686561, offset: 120, compLength: 30, origLength: 30 }
@@ -105,7 +105,7 @@ test('round2 edge: WOFF sync decode still rejects overlapping table byte ranges'
   assert.throws(() => FontParserWOFF.decodeWoffToSfntSync(bytes), /overlapping|invalid|offset|table/i);
 });
 
-test('round2 edge: WOFF sync decode accepts strictly non-overlapping table ranges', () => {
+test('woff/cmap: WOFF sync decode accepts strictly non-overlapping table ranges', () => {
   const bytes = makeMinimalWoffTwoTableBuffer(
     { tag: 0x68656164, offset: 100, compLength: 20, origLength: 20 },
     { tag: 0x68686561, offset: 120, compLength: 24, origLength: 24 }
@@ -114,13 +114,31 @@ test('round2 edge: WOFF sync decode accepts strictly non-overlapping table range
   assert.ok(sfnt instanceof Uint8Array);
 });
 
-test('round2 edge: diagnostics filter regex and phase matching stays strict', () => {
+test('woff/cmap: WOFF sync decode rejects table data offsets inside the header region', () => {
+  const bytes = makeMinimalWoffTwoTableBuffer(
+    { tag: 0x68656164, offset: 44, compLength: 8, origLength: 8 },
+    { tag: 0x68686561, offset: 100, compLength: 20, origLength: 20 },
+    { length: 160, totalSfntSize: 192 }
+  );
+  assert.throws(() => FontParserWOFF.decodeWoffToSfntSync(bytes), /offset|directory|header|invalid/i);
+});
+
+test('woff/cmap: WOFF async decode rejects table data offsets inside the header region', async () => {
+  const bytes = makeMinimalWoffTwoTableBuffer(
+    { tag: 0x68656164, offset: 44, compLength: 8, origLength: 8 },
+    { tag: 0x68686561, offset: 100, compLength: 20, origLength: 20 },
+    { length: 160, totalSfntSize: 192 }
+  );
+  await assert.rejects(() => FontParserWOFF.decodeWoffToSfnt(bytes.buffer), /offset|directory|header|invalid/i);
+});
+
+test('woff/cmap: diagnostics filter regex and phase matching stays strict', () => {
   const d = { code: 'MISSING_CMAP_FORMAT', level: 'warning', phase: 'parse', message: 'x' };
   assert.equal(matchesDiagnosticFilter(d, { code: /^MISSING_/ }), true);
   assert.equal(matchesDiagnosticFilter(d, { code: /^UNSUPPORTED_/ }), false);
   assert.equal(matchesDiagnosticFilter(d, { phase: 'layout' }), false);
 });
 
-test('round2 edge: FontParser.fromArrayBuffer rejects invalid tiny buffers', () => {
+test('woff/cmap: FontParser.fromArrayBuffer rejects invalid tiny buffers', () => {
   assert.throws(() => FontParser.fromArrayBuffer(new Uint8Array([1, 2, 3]).buffer), /Invalid font buffer/);
 });

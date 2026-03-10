@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { CanvasGlyph } from '../dist/render/CanvasGlyph.js';
 import { FontParser } from '../dist/data/FontParser.js';
 
-test('round10 edge: CanvasGlyph.drawGlyph should not throw for non-canvas DOM nodes', async () => {
+test('canvas glyph DOM: CanvasGlyph.drawGlyph should not throw for non-canvas DOM nodes', async () => {
   const originalLoad = FontParser.load;
   const originalDocument = globalThis.document;
   FontParser.load = async () => ({
@@ -24,7 +24,7 @@ test('round10 edge: CanvasGlyph.drawGlyph should not throw for non-canvas DOM no
   }
 });
 
-test('round10 edge: CanvasGlyph drawString variants should not throw for non-canvas DOM nodes', async () => {
+test('canvas glyph DOM: CanvasGlyph drawString variants should not throw for non-canvas DOM nodes', async () => {
   const originalLoad = FontParser.load;
   const originalDocument = globalThis.document;
   FontParser.load = async () => ({
@@ -56,7 +56,7 @@ test('round10 edge: CanvasGlyph drawString variants should not throw for non-can
   }
 });
 
-test('round10 edge: CanvasGlyph no longer exposes legacy jitter API surface', async () => {
+test('canvas glyph DOM: CanvasGlyph no longer exposes legacy jitter API surface', async () => {
   const originalLoad = FontParser.load;
   FontParser.load = async () => ({
     getGlyphIndexByChar: () => 1,
