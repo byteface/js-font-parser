@@ -1,117 +1,150 @@
 # JS Font Parser
 
-[![npm version](https://img.shields.io/npm/v/js-font-parser.svg)](https://www.npmjs.com/package/js-font-parser)
-[![npm downloads](https://img.shields.io/npm/dm/js-font-parser.svg)](https://www.npmjs.com/package/js-font-parser)
-[![license: ISC](https://img.shields.io/badge/license-ISC-blue.svg)](./LICENSE)
-[![repo](https://img.shields.io/badge/github-byteface%2Fjs--font--parser-black.svg)](https://github.com/byteface/js-font-parser)
+Parse and inspect font files in JavaScript, then render and experiment with glyph geometry.
 
-Parse TTF/OTF/WOFF fonts, inspect OpenType tables, shape/layout text, and render glyph paths to canvas/SVG for creative and tooling workflows.
+This project is for:
+- font parsing, outline/table inspection, shaping/layout experiments
+- demo/tooling workflows where you need direct access to points/contours/tables
 
-## Why This Library
+This project is not a full browser text engine replacement.
 
-- One package for parser, shaping, geometry extraction, and rendering helpers.
-- Useful for both production-like text layout checks and experimental visuals.
-- Works well for demos/tools while still exposing low-level table access.
-
-## Install
+## 30-Second Quick Start
 
 ```bash
-npm install js-font-parser
-```
-
-```js
-import { FontParser } from "js-font-parser";
-```
-
-## Quick Example
-
-```js
-import fs from "node:fs/promises";
-import { FontParser } from "js-font-parser";
-
-const bytes = await fs.readFile("./MyFont.ttf");
-const parser = new FontParser(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
-
-const text = "Hello world";
-const fontSize = 72;
-const width = parser.measureText(text, fontSize, { useKerning: true });
-const points = parser.layoutToPoints(text, fontSize, { useKerning: true });
-
-console.log({ width, pointCount: points.length });
-```
-
-## What You Get
-
-- Parse: TTF, OTF/CFF/CFF2, WOFF, WOFF2 (decoder required at runtime).
-- Access font metadata and parsed table structures.
-- Layout text with kerning, GSUB substitutions, and GPOS positioning support.
-- Extract glyph outlines/points for animation, physics, particles, and custom drawing.
-- Render via included helpers for canvas and SVG workflows.
-
-## Format Support Snapshot
-
-| Area | Status |
-| --- | --- |
-| TTF / glyf+loca parsing | Supported |
-| OTF / CFF and CFF2 parsing | Supported |
-| WOFF 1 parsing | Supported |
-| WOFF2 parsing | Supported (runtime decoder required) |
-| GSUB/GPOS shaping | Supported (broad coverage) |
-| TrueType hint VM execution | Not fully implemented |
-
-## Public API (high-level)
-
-- `FontParser`
-- `Table`
-- `CanvasGlyph`
-- `CanvasRenderer`
-- `SVGFont`
-- `setWoff2Decoder`
-
-See full API docs: [docs/API.md](docs/API.md).
-
-## WOFF2 Runtime Decoder
-
-WOFF2 decoding needs a decoder implementation at runtime. Provide one with `setWoff2Decoder(...)` or by exposing global `WOFF2.decode()`.
-
-## Demos and Tools
-
-Run locally:
-
-```bash
+nvm use
 npm install
 npm run build
+npm test
+```
+
+Run local pages:
+
+```bash
 python3 -m http.server 8080
 ```
 
 Open:
+- `http://localhost:8080/demos/index.html`
+- `http://localhost:8080/tools/index.html`
 
-- `http://localhost:8080` (landing page)
-- `http://localhost:8080/demos/`
-- `http://localhost:8080/tools/`
+## Install and Use
+
+### Node / Bundler
+
+```js
+import { FontParser, CanvasRenderer, SVGFont } from 'js-font-parser';
+
+const font = await FontParser.load('./font.ttf');
+const glyph = font.getGlyphByChar('A');
+const svg = SVGFont.exportStringSvg(font, 'Hello');
+```
+
+### Browser Script Tag
+
+```html
+<script src="./dist-build/fontparser.min.js"></script>
+<script>
+  const { FontParser } = window.FontParser;
+</script>
+```
+
+## Format Support
+
+- TTF: supported
+- OTF/CFF: supported
+- WOFF: supported
+- WOFF2: supported when a decoder is provided at runtime
+
+WOFF2 decoder hook:
+- `setWoff2Decoder(...)`, or
+- global `WOFF2.decode(...)`
+
+See: `tools/woff2.html`
+
+## Current Known Gaps
+
+Current top open items are tracked in `docs/WISHLIST.md`:
+- golden image CI enforcement
+- final GPOS sign-off across more real-script fixtures
+- default WOFF2 runtime packaging strategy
+
+## API by Task
+
+- Load/parse:
+  - `FontParser.load(url)`
+  - `FontParser.fromArrayBuffer(buffer)`
+- Glyph access:
+  - `getGlyph(index)`
+  - `getGlyphByChar(char)`
+  - `getGlyphIndexByChar(char)`
+- Layout/shaping:
+  - `layoutString(...)`
+  - `layoutStringAuto(...)`
+  - GSUB/GPOS paths via parser/layout options
+- Metrics/metadata:
+  - `getUnitsPerEm()`, `getAscent()`, `getDescent()`
+  - metadata convenience API (`name`, `OS/2`, `post`)
+- Rendering helpers:
+  - `CanvasRenderer`
+  - `SVGFont`
+
+Full API details: `docs/API.md`
+
+## Demos and Tools
+
+- Demos index: `demos/index.html` (creative showcases)
+- Tools index: `tools/index.html` (inspection/debug workflows)
+
+Examples:
+- `demos/glyph-playground.html`: deformable interactive glyph physics
+- `demos/path-runner.html`: path traversal + node pausing
+- `tools/metadata.html`: metadata inspection
+- `tools/unicode-coverage.html`: block coverage inspection
+- `tools/font-diff.html`: font diffing workflow
+
+## Diagnostics and Error Handling
+
+- Parser and helpers expose structured diagnostics for fallback/unsupported/error paths.
+- Repeated diagnostics are deduplicated where appropriate.
+- For WOFF2, missing decoder is a controlled runtime error, not silent corruption.
+
+## Performance Notes
+
+- Use cached font instances (`FontParser.load`) for repeated operations.
+- Prefer sampling/stride controls in heavy point-based visual demos.
+- For large animated point sets, use spatial partitioning or capped neighbor checks.
+
+## Development Workflow
+
+Node version:
+- `.nvmrc` and `package.json` engines currently target Node `>=22 <24`.
+
+Important TS import note:
+- Source intentionally keeps `.js` import specifiers in TS files for runtime module resolution after compile.
 
 ## Scripts
 
-- `npm test` fast test suite.
-- `npm run test:full` full suite (`FULL_SWEEP=1`).
-- `npm run test:coverage` coverage for fast suite.
-- `npm run test:coverage:full` coverage for full sweep.
-- `npm run test:perf` parse/layout performance report.
-- `npm run test:perf:enforce` performance budgets.
-- `npm run test:golden:capture` capture visual snapshots.
-- `npm run test:golden:compare` compare baseline vs current snapshots.
-- `npm run build:dist` compile TypeScript to `dist/`.
-- `npm run build:bundle` build `dist-build/fontparser.min.js`.
-- `npm run build` build dist + bundle.
+- `npm run build`: build `dist/` and `dist-build/fontparser.min.js`
+- `npm run build:dist`: compile TS to `dist/`
+- `npm run build:bundle`: webpack UMD bundle
+- `npm test`: fast default suite
+- `npm run test:full`: full fixture sweep
+- `npm run test:coverage`: coverage report
+- `npm run test:perf`: perf report
+- `npm run test:perf:enforce`: perf budget gate
+- `npm run test:golden:capture`: capture visual baseline candidate
+- `npm run test:golden:compare`: compare baseline vs current
+- `npm run test:golden:between -- --base <sha> --head <sha>`: visual compare between commits
 
-## Limits / Current Gaps
+## Package Contract
 
-- TrueType hint VM execution is not fully implemented (`fpgm`/`prep`/glyph instructions are read, not fully interpreted).
-- WOFF2 requires external runtime decoder binding.
-- Writing/subsetting currently focuses on TTF/glyf+loca workflows.
+- Supported npm entrypoint: `import { ... } from 'js-font-parser'`
+- Do not deep-import `dist/...` internals from npm consumers.
+- Browser demos in this repo use `dist-build/fontparser.min.js` intentionally.
 
-## Related Docs
+## Project Docs
 
-- [docs/WISHLIST.md](docs/WISHLIST.md) current roadmap and priorities.
-- [proj/fontparser/README.md](proj/fontparser/README.md) CLI usage and commands.
-- [tests/golden/README.md](tests/golden/README.md) visual regression flow.
+- `docs/API.md`
+- `docs/WISHLIST.md`
+- `proj/fontparser/README.md` (CLI)
+- `tests/golden/README.md`
