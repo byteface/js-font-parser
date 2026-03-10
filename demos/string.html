@@ -30,7 +30,7 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         block.style.marginBottom = "30px";
 
         const label = document.createElement("div");
-        label.textContent = file;
+        label.textContent = file.split("/").pop() || file;
         label.style.fontFamily = "Arial, sans-serif";
         label.style.marginBottom = "6px";
         block.appendChild(label);
@@ -48,7 +48,11 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 
         container.appendChild(block);
 
-        const url = `../truetypefonts/${encodeURIComponent(file)}`;
+        const safePath = file
+            .split("/")
+            .map((part) => encodeURIComponent(part))
+            .join("/");
+        const url = `../truetypefonts/${safePath}`;
         FontParser.load(url)
             .then(font => {
                 const hasGlyf = !!font.getTableByType(TABLE_TAGS.glyf);

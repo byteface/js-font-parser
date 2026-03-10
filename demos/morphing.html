@@ -83,11 +83,11 @@
         </label>
         <label>
             Word A
-            <input id="wordA" type="text" value="WAVE" />
+            <input id="wordA" type="text" value="ONE" />
         </label>
         <label>
             Word B
-            <input id="wordB" type="text" value="WORD" />
+            <input id="wordB" type="text" value="TWO" />
         </label>
         <label>
             Morph Speed
@@ -121,6 +121,8 @@
 <script type="module">
 const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/demo-scaffold.js";
+        import { collectGlyphPoints, splitContours as splitGlyphContours, sampleContour } from "./shared/glyph-helpers.js";
+        import { getFontList } from "../tools/shared/font-catalog.js";
 
         const fontSelect = document.getElementById("fontSelect");
         const wordAInput = document.getElementById("wordA");
@@ -135,13 +137,22 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         const canvas = document.getElementById("canvas");
         const ctx = canvas.getContext("2d");
 
-        const fonts = [
-            { name: "DiscoMo", url: "../truetypefonts/DiscoMo.ttf" },
-            { name: "DevilInside", url: "../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf" },
-            { name: "Augie", url: "../truetypefonts/AUGIE___.TTF" },
-            { name: "JoeJack", url: "../truetypefonts/JoeJack.ttf" },
-            { name: "Quill (script)", url: "../truetypefonts/Quill.ttf" }
-        ];
+        const dedupeFonts = (list) => {
+            const seen = new Set();
+            const out = [];
+            for (const item of list) {
+                if (!item || !item.url || seen.has(item.url)) continue;
+                seen.add(item.url);
+                out.push(item);
+            }
+            return out;
+        };
+
+        const fonts = dedupeFonts([
+            ...getFontList("demoCore"),
+            ...getFontList("kerning").slice(0, 8),
+            ...getFontList("allGlyphs").slice(0, 20)
+        ]);
         const loadFont = createFontLoader(FontParser.load);
         let font = null;
         let animId = null;
@@ -151,22 +162,122 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
             return sizePx / unitsPerEm;
         }
 
-        function samplePoints(glyph, targetCount) {
-            const count = glyph.getPointCount();
-            if (count === 0) return [];
-            const points = [];
+        function contourLength(points) {
+            if (!points || points.length < 2) return 0;
+            let len = 0;
+            for (let i = 0; i < points.length; i++) {
+                const a = points[i];
+                const b = points[(i + 1) % points.length];
+                len += Math.hypot(b.x - a.x, b.y - a.y);
+            }
+            return len;
+        }
+
+        function contourArea(points) {
+            if (!points || points.length < 3) return 0;
+            let area = 0;
+            for (let i = 0; i < points.length; i++) {
+                const a = points[i];
+                const b = points[(i + 1) % points.length];
+                area += (a.x * b.y) - (b.x * a.y);
+            }
+            return Math.abs(area) * 0.5;
+        }
+
+        function resampleClosedContour(points, targetCount) {
+            if (!points || points.length === 0 || targetCount <= 0) return [];
+            if (points.length === 1) {
+                return [{ x: points[0].x, y: points[0].y, onCurve: true, endOfContour: true }];
+            }
+
+            const cumulative = [0];
+            for (let i = 0; i < points.length; i++) {
+                const a = points[i];
+                const b = points[(i + 1) % points.length];
+                cumulative.push(cumulative[cumulative.length - 1] + Math.hypot(b.x - a.x, b.y - a.y));
+            }
+            const total = cumulative[cumulative.length - 1];
+            if (total <= 1e-6) {
+                return Array.from({ length: targetCount }, (_, i) => ({
+                    x: points[0].x,
+                    y: points[0].y,
+                    onCurve: true,
+                    endOfContour: i === targetCount - 1
+                }));
+            }
+
+            const out = [];
             for (let i = 0; i < targetCount; i++) {
-                const t = targetCount === 1 ? 0 : i / (targetCount - 1);
-                const idx = Math.min(count - 1, Math.round(t * (count - 1)));
-                const p = glyph.getPoint(idx);
-                points.push({
-                    x: p.x,
-                    y: p.y,
-                    onCurve: p.onCurve,
-                    endOfContour: p.endOfContour
+                const d = (i / targetCount) * total;
+                let seg = 0;
+                while (seg < points.length && cumulative[seg + 1] < d) seg++;
+                const a = points[seg % points.length];
+                const b = points[(seg + 1) % points.length];
+                const segStart = cumulative[seg];
+                const segLen = Math.max(1e-6, cumulative[seg + 1] - segStart);
+                const t = (d - segStart) / segLen;
+                out.push({
+                    x: a.x + (b.x - a.x) * t,
+                    y: a.y + (b.y - a.y) * t,
+                    onCurve: true,
+                    endOfContour: i === targetCount - 1
                 });
             }
-            return points;
+            return out;
+        }
+
+        function rotateArray(arr, shift) {
+            const n = arr.length;
+            if (!n) return arr;
+            const k = ((shift % n) + n) % n;
+            if (k === 0) return arr.slice();
+            return arr.slice(k).concat(arr.slice(0, k));
+        }
+
+        function bestShiftToMatch(a, b) {
+            const n = Math.min(a.length, b.length);
+            if (n <= 1) return 0;
+            const step = Math.max(1, Math.floor(n / 80));
+            let bestShift = 0;
+            let bestScore = Infinity;
+            for (let shift = 0; shift < n; shift += step) {
+                let score = 0;
+                for (let i = 0; i < n; i += step) {
+                    const bp = b[(i + shift) % n];
+                    const ap = a[i];
+                    const dx = bp.x - ap.x;
+                    const dy = bp.y - ap.y;
+                    score += dx * dx + dy * dy;
+                }
+                if (score < bestScore) {
+                    bestScore = score;
+                    bestShift = shift;
+                }
+            }
+            return bestShift;
+        }
+
+        function samplePoints(glyph, targetCount) {
+            const raw = collectGlyphPoints(glyph);
+            const contours = splitGlyphContours(raw);
+            if (!contours.length) return [];
+
+            const sampledContours = contours
+                .map((contour) => sampleContour(contour, 0.12))
+                .filter((contour) => contour.length >= 3);
+            if (!sampledContours.length) return [];
+
+            // Keep morph stable by targeting the dominant (outer) contour.
+            let dominant = sampledContours[0];
+            let best = contourArea(dominant);
+            for (let i = 1; i < sampledContours.length; i++) {
+                const area = contourArea(sampledContours[i]);
+                if (area > best) {
+                    best = area;
+                    dominant = sampledContours[i];
+                }
+            }
+            return resampleClosedContour(dominant, targetCount);
         }
 
         function lerp(a, b, t) {
@@ -207,15 +318,20 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
             ctx.restore();
         }
 
-        function buildMorphPoints(glyphA, glyphB, t, targetCount) {
-            const a = samplePoints(glyphA, targetCount);
-            const b = samplePoints(glyphB, targetCount);
-            return a.map((p, i) => ({
-                x: lerp(p.x, b[i].x, t),
-                y: lerp(p.y, b[i].y, t),
-                onCurve: p.onCurve,
-                endOfContour: p.endOfContour
-            }));
+        function buildMorphPoints(sampleA, sampleB, t) {
+            const n = Math.min(sampleA.length, sampleB.length);
+            const points = new Array(n);
+            for (let i = 0; i < n; i++) {
+                const a = sampleA[i];
+                const b = sampleB[i];
+                points[i] = {
+                    x: lerp(a.x, b.x, t),
+                    y: lerp(a.y, b.y, t),
+                    onCurve: true,
+                    endOfContour: i === n - 1
+                };
+            }
+            return points;
         }
 
         function clear() {
@@ -247,7 +363,16 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
                 const ga = font.getGlyphByChar(a[i]) || font.getGlyphByChar(" ");
                 const gb = font.getGlyphByChar(b[i]) || font.getGlyphByChar(" ");
                 if (!ga || !gb) continue;
-                glyphPairs.push({ ga, gb });
+                const sampleA = samplePoints(ga, targetPoints);
+                const sampleB = samplePoints(gb, targetPoints);
+                if (!sampleA.length || !sampleB.length) continue;
+                const shift = bestShiftToMatch(sampleA, sampleB);
+                const alignedB = rotateArray(sampleB, shift);
+                glyphPairs.push({
+                    sampleA,
+                    sampleB: alignedB,
+                    advance: (ga.advanceWidth + gb.advanceWidth) * 0.5 * scale
+                });
             }
 
             let t = 0;
@@ -260,10 +385,9 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
                 const color = "#3b2f60";
 
                 glyphPairs.forEach((pair) => {
-                    const points = buildMorphPoints(pair.ga, pair.gb, t, targetPoints);
+                    const points = buildMorphPoints(pair.sampleA, pair.sampleB, t);
                     drawPointGlyph(points, penX, baseline, scale, color);
-                    const advance = (pair.ga.advanceWidth + pair.gb.advanceWidth) * 0.5 * scale;
-                    penX += advance + 12;
+                    penX += pair.advance + 12;
                 });
 
                 t += dir * 0.008 * speed;

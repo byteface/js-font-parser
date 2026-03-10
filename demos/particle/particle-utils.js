@@ -22,22 +22,34 @@ export function setupParticleDemo(config) {
 
     FontParser.load(config.fontUrl)
         .then((font) => {
-            let glyph = null;
-            if (config.char) {
-                glyph = font.getGlyphByChar(config.char);
-            } else if (typeof config.glyphIndex === 'number') {
-                glyph = font.getGlyph(config.glyphIndex);
+            if (typeof config.text === 'string' && config.text.length > 0) {
+                state.particles = buildParticlesFromText(font, config.text, {
+                    scale: config.scale || 0.1,
+                    originX: config.originX ?? canvas.width * 0.5,
+                    originY: config.originY ?? canvas.height * 0.55,
+                    center: config.center !== false,
+                    letterSpacing: config.letterSpacing ?? 0,
+                    jitter: config.jitter || 0,
+                    maxParticles: config.maxParticles || 0
+                });
             } else {
-                const idx = Math.floor(Math.random() * (config.randomGlyphMax || 50));
-                glyph = font.getGlyph(idx);
+                let glyph = null;
+                if (config.char) {
+                    glyph = font.getGlyphByChar(config.char);
+                } else if (typeof config.glyphIndex === 'number') {
+                    glyph = font.getGlyph(config.glyphIndex);
+                } else {
+                    const idx = Math.floor(Math.random() * (config.randomGlyphMax || 50));
+                    glyph = font.getGlyph(idx);
+                }
+                state.particles = buildParticlesFromGlyph(glyph, {
+                    scale: config.scale || 0.1,
+                    originX: config.originX || canvas.width * 0.2,
+                    originY: config.originY || canvas.height * 0.6,
+                    jitter: config.jitter || 0,
+                    maxParticles: config.maxParticles || 0
+                });
             }
-            state.particles = buildParticlesFromGlyph(glyph, {
-                scale: config.scale || 0.1,
-                originX: config.originX || canvas.width * 0.2,
-                originY: config.originY || canvas.height * 0.6,
-                jitter: config.jitter || 0,
-                maxParticles: config.maxParticles || 0
-            });
             animate();
         })
         .catch((err) => console.error('Failed to load font', err));
@@ -86,6 +98,61 @@ function buildParticlesFromGlyph(glyph, opts) {
             vx: (Math.random() - 0.5) * 2,
             vy: (Math.random() - 0.5) * 2
         });
+    }
+
+    return particles;
+}
+
+function buildParticlesFromText(font, text, opts) {
+    const particles = [];
+    const scale = opts.scale || 0.1;
+    const letterSpacing = opts.letterSpacing || 0;
+    const glyphRuns = [];
+    let penX = 0;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const ch of Array.from(text)) {
+        const glyph = font.getGlyphByChar(ch);
+        if (!glyph) {
+            penX += letterSpacing;
+            continue;
+        }
+
+        glyphRuns.push({ glyph, penX });
+        for (let i = 0; i < glyph.getPointCount(); i++) {
+            const p = glyph.getPoint(i);
+            const gx = penX + p.x * scale;
+            const gy = -p.y * scale;
+            if (gx < minX) minX = gx;
+            if (gy < minY) minY = gy;
+            if (gx > maxX) maxX = gx;
+            if (gy > maxY) maxY = gy;
+        }
+        penX += (glyph.advanceWidth || 0) * scale + letterSpacing;
+    }
+
+    if (!glyphRuns.length) return particles;
+
+    const centerOffsetX = opts.center === false ? 0 : -((minX + maxX) * 0.5);
+    const centerOffsetY = opts.center === false ? 0 : -((minY + maxY) * 0.5);
+    const max = opts.maxParticles && opts.maxParticles > 0 ? opts.maxParticles : Infinity;
+
+    for (const run of glyphRuns) {
+        for (let i = 0; i < run.glyph.getPointCount(); i++) {
+            if (particles.length >= max) return particles;
+            const p = run.glyph.getPoint(i);
+            const x = (opts.originX || 0) + centerOffsetX + run.penX + p.x * scale + (Math.random() - 0.5) * (opts.jitter || 0);
+            const y = (opts.originY || 0) + centerOffsetY - p.y * scale + (Math.random() - 0.5) * (opts.jitter || 0);
+            particles.push({
+                x,
+                y,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2
+            });
+        }
     }
 
     return particles;

@@ -251,20 +251,20 @@ export const FONT_LISTS = {
     { name: 'Noto Sans Devanagari', url: PATHS.notoDevanagari }
   ],
   stringExplorer: [
-    '2006 Team.ttf',
-    '20FACES.TTF',
-    'AUGIE___.TTF',
-    'Aims in your Life normal.ttf',
-    'CARDS.TTF',
     'DiscoMo.ttf',
-    'devil-inside-font/DevilInside-G3xP.ttf',
-    'ELLO____.TTF',
     'GothamNarrow-Ultra.otf',
     'JoeJack.ttf',
     'Quill.ttf',
-    'RENAV___.TTF',
     'ZWISDOM.ttf',
-    'slkscr.ttf'
+    'slkscr.ttf',
+    'noto/NotoSans-Regular.ttf',
+    'noto/NotoSansHebrew-Regular.ttf',
+    'noto/NotoSansDevanagari-Regular.ttf',
+    'noto/NotoNaskhArabic-Regular.ttf',
+    'source-code-pro/SourceCodePro-Regular.otf',
+    'curated/Roboto-VF.ttf',
+    'curated/NotoSerif-VF.ttf',
+    'curated/SourceSerif4-Regular.otf'
   ]
 };
 
