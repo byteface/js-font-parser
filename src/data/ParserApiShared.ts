@@ -45,7 +45,13 @@ export function measureText(
     options: { letterSpacing?: number } | undefined,
     layoutString: (text: string, options: any) => LayoutItem[]
 ): { advanceWidth: number; glyphCount: number } {
-    const layout = layoutString(text, options ?? {});
+    let layout: LayoutItem[] = [];
+    try {
+        const resolved = layoutString(text, options ?? {});
+        layout = Array.isArray(resolved) ? resolved as LayoutItem[] : [];
+    } catch {
+        layout = [];
+    }
     const letterSpacing = Number.isFinite(options?.letterSpacing) ? (options!.letterSpacing as number) : 0;
     let advanceWidth = 0;
     for (let i = 0; i < layout.length; i++) {
@@ -72,10 +78,21 @@ export function layoutToPoints(
     }
 ): { points: LayoutPoint[]; advanceWidth: number; scale: number } {
     const safeOptions = options ?? {};
-    const layout = deps.layoutString(text, safeOptions);
+    let layout: LayoutItem[] = [];
+    try {
+        const resolved = deps.layoutString(text, safeOptions);
+        layout = Array.isArray(resolved) ? resolved as LayoutItem[] : [];
+    } catch {
+        layout = [];
+    }
     const sampleBase = Number.isFinite(safeOptions.sampleStep) ? (safeOptions.sampleStep as number) : 1;
     const sampleStep = Math.max(1, Math.floor(sampleBase));
-    const unitsPerEmRaw = deps.getUnitsPerEm();
+    let unitsPerEmRaw = 1000;
+    try {
+        unitsPerEmRaw = deps.getUnitsPerEm();
+    } catch {
+        unitsPerEmRaw = 1000;
+    }
     const unitsPerEm = Number.isFinite(unitsPerEmRaw) && unitsPerEmRaw > 0 ? unitsPerEmRaw : 1000;
     const fontSize = Number.isFinite(safeOptions.fontSize) && (safeOptions.fontSize as number) > 0
         ? (safeOptions.fontSize as number)
@@ -89,10 +106,26 @@ export function layoutToPoints(
     let penX = 0;
     for (let i = 0; i < layout.length; i++) {
         const item = layout[i];
-        const glyph = deps.getGlyph(item.glyphIndex);
+        let glyph: GlyphLike | null = null;
+        try {
+            glyph = deps.getGlyph(item.glyphIndex);
+        } catch {
+            glyph = null;
+        }
         if (glyph) {
-            for (let pIndex = 0; pIndex < glyph.getPointCount(); pIndex += sampleStep) {
-                const p = glyph.getPoint(pIndex);
+            let pointCount = 0;
+            try {
+                pointCount = glyph.getPointCount();
+            } catch {
+                pointCount = 0;
+            }
+            for (let pIndex = 0; pIndex < pointCount; pIndex += sampleStep) {
+                let p: SimplePoint | null | undefined = null;
+                try {
+                    p = glyph.getPoint(pIndex);
+                } catch {
+                    p = null;
+                }
                 if (!p) continue;
                 points.push({
                     x: originX + (penX + (Number.isFinite(item.xOffset) ? item.xOffset : 0) + p.x) * scale,
@@ -125,10 +158,21 @@ export function getColorLayersForGlyph(
     }
 ): ColorLayer[] {
     if (!deps.hasColr) return [];
-    const layers = deps.getLayersForGlyph(glyphId);
+    let layers: Array<{ glyphId: number; paletteIndex: number }> = [];
+    try {
+        const resolved = deps.getLayersForGlyph(glyphId);
+        layers = Array.isArray(resolved) ? resolved : [];
+    } catch {
+        layers = [];
+    }
     if (layers.length === 0) return [];
 
-    const paletteRaw = deps.getPalette(paletteIndex);
+    let paletteRaw: Array<{ red: number; green: number; blue: number; alpha: number }> | null = [];
+    try {
+        paletteRaw = deps.getPalette(paletteIndex);
+    } catch {
+        paletteRaw = [];
+    }
     const palette = Array.isArray(paletteRaw) ? paletteRaw : [];
     return layers.map(layer => {
         if (layer.paletteIndex === 0xffff) {
@@ -151,9 +195,19 @@ export function getColorLayersForChar(
         getColorLayersForGlyph: (glyphId: number, paletteIndex: number) => ColorLayer[];
     }
 ): ColorLayer[] {
-    const glyphId = deps.getGlyphIndexByChar(char);
+    let glyphId: number | null = null;
+    try {
+        glyphId = deps.getGlyphIndexByChar(char);
+    } catch {
+        glyphId = null;
+    }
     if (glyphId == null) return [];
-    return deps.getColorLayersForGlyph(glyphId, paletteIndex);
+    try {
+        const layers = deps.getColorLayersForGlyph(glyphId, paletteIndex);
+        return Array.isArray(layers) ? layers : [];
+    } catch {
+        return [];
+    }
 }
 
 export function computeVariationCoords(

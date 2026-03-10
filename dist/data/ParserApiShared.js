@@ -19,7 +19,14 @@ export function getGlyphPointsByChar(char, options, getGlyphByChar) {
     return points;
 }
 export function measureText(text, options, layoutString) {
-    var layout = layoutString(text, options !== null && options !== void 0 ? options : {});
+    var layout = [];
+    try {
+        var resolved = layoutString(text, options !== null && options !== void 0 ? options : {});
+        layout = Array.isArray(resolved) ? resolved : [];
+    }
+    catch (_a) {
+        layout = [];
+    }
     var letterSpacing = Number.isFinite(options === null || options === void 0 ? void 0 : options.letterSpacing) ? options.letterSpacing : 0;
     var advanceWidth = 0;
     for (var i = 0; i < layout.length; i++) {
@@ -32,10 +39,23 @@ export function measureText(text, options, layoutString) {
 }
 export function layoutToPoints(text, options, deps) {
     var safeOptions = options !== null && options !== void 0 ? options : {};
-    var layout = deps.layoutString(text, safeOptions);
+    var layout = [];
+    try {
+        var resolved = deps.layoutString(text, safeOptions);
+        layout = Array.isArray(resolved) ? resolved : [];
+    }
+    catch (_a) {
+        layout = [];
+    }
     var sampleBase = Number.isFinite(safeOptions.sampleStep) ? safeOptions.sampleStep : 1;
     var sampleStep = Math.max(1, Math.floor(sampleBase));
-    var unitsPerEmRaw = deps.getUnitsPerEm();
+    var unitsPerEmRaw = 1000;
+    try {
+        unitsPerEmRaw = deps.getUnitsPerEm();
+    }
+    catch (_b) {
+        unitsPerEmRaw = 1000;
+    }
     var unitsPerEm = Number.isFinite(unitsPerEmRaw) && unitsPerEmRaw > 0 ? unitsPerEmRaw : 1000;
     var fontSize = Number.isFinite(safeOptions.fontSize) && safeOptions.fontSize > 0
         ? safeOptions.fontSize
@@ -48,10 +68,29 @@ export function layoutToPoints(text, options, deps) {
     var penX = 0;
     for (var i = 0; i < layout.length; i++) {
         var item = layout[i];
-        var glyph = deps.getGlyph(item.glyphIndex);
+        var glyph = null;
+        try {
+            glyph = deps.getGlyph(item.glyphIndex);
+        }
+        catch (_c) {
+            glyph = null;
+        }
         if (glyph) {
-            for (var pIndex = 0; pIndex < glyph.getPointCount(); pIndex += sampleStep) {
-                var p = glyph.getPoint(pIndex);
+            var pointCount = 0;
+            try {
+                pointCount = glyph.getPointCount();
+            }
+            catch (_d) {
+                pointCount = 0;
+            }
+            for (var pIndex = 0; pIndex < pointCount; pIndex += sampleStep) {
+                var p = null;
+                try {
+                    p = glyph.getPoint(pIndex);
+                }
+                catch (_e) {
+                    p = null;
+                }
                 if (!p)
                     continue;
                 points.push({
@@ -77,10 +116,23 @@ export function layoutToPoints(text, options, deps) {
 export function getColorLayersForGlyph(glyphId, paletteIndex, deps) {
     if (!deps.hasColr)
         return [];
-    var layers = deps.getLayersForGlyph(glyphId);
+    var layers = [];
+    try {
+        var resolved = deps.getLayersForGlyph(glyphId);
+        layers = Array.isArray(resolved) ? resolved : [];
+    }
+    catch (_a) {
+        layers = [];
+    }
     if (layers.length === 0)
         return [];
-    var paletteRaw = deps.getPalette(paletteIndex);
+    var paletteRaw = [];
+    try {
+        paletteRaw = deps.getPalette(paletteIndex);
+    }
+    catch (_b) {
+        paletteRaw = [];
+    }
     var palette = Array.isArray(paletteRaw) ? paletteRaw : [];
     return layers.map(function (layer) {
         if (layer.paletteIndex === 0xffff) {
@@ -95,10 +147,22 @@ export function getColorLayersForGlyph(glyphId, paletteIndex, deps) {
     });
 }
 export function getColorLayersForChar(char, paletteIndex, deps) {
-    var glyphId = deps.getGlyphIndexByChar(char);
+    var glyphId = null;
+    try {
+        glyphId = deps.getGlyphIndexByChar(char);
+    }
+    catch (_a) {
+        glyphId = null;
+    }
     if (glyphId == null)
         return [];
-    return deps.getColorLayersForGlyph(glyphId, paletteIndex);
+    try {
+        var layers = deps.getColorLayersForGlyph(glyphId, paletteIndex);
+        return Array.isArray(layers) ? layers : [];
+    }
+    catch (_b) {
+        return [];
+    }
 }
 export function computeVariationCoords(axes, values) {
     var _a;

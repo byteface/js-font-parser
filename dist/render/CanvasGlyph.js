@@ -63,7 +63,7 @@ var CanvasGlyph = /** @class */ (function () {
         var SCALE = this.SCALE;
         var g = this.fontdata.getGlyph(index);
         var drawingCanvas = document.getElementById(canvasId);
-        if (!drawingCanvas) {
+        if (!drawingCanvas || typeof drawingCanvas.getContext !== 'function') {
             this.emitDiagnostic("CANVAS_NOT_FOUND", "warning", "render", "Canvas not found.", { canvasId: canvasId }, "CANVAS_NOT_FOUND:".concat(canvasId));
             return null;
         }
@@ -110,7 +110,7 @@ var CanvasGlyph = /** @class */ (function () {
                 else {
                     var p2 = glyph.getPoint(startIndex + (offset + 2) % count);
                     if (p2.onCurve) {
-                        context.quadraticCurveTo((p1.x + Math.random() * xShift) * scale, (p1.y + Math.random() * yShift) * scale, (p2.x + Math.random() * xShift) * scale, (p2.y + Math.random() * xShift) * scale);
+                        context.quadraticCurveTo((p1.x + Math.random() * xShift) * scale, (p1.y + Math.random() * yShift) * scale, (p2.x + Math.random() * xShift) * scale, (p2.y + Math.random() * yShift) * scale);
                     }
                     else {
                         context.quadraticCurveTo((p1.x + Math.random() * xShift) * scale, (p1.y + Math.random() * yShift) * scale, this.midValue((p1.x + Math.random() * xShift) * scale, (p2.x + Math.random() * xShift) * scale), this.midValue(p1.y * scale, p2.y * scale));
@@ -144,6 +144,8 @@ var CanvasGlyph = /** @class */ (function () {
         var canvas = document.getElementById(canvasId);
         if (!canvas)
             return;
+        if (typeof canvas.getContext !== 'function')
+            return;
         if (!this.fontdata)
             return;
         CanvasRenderer.drawString(this.fontdata, text, canvas, options);
@@ -153,6 +155,8 @@ var CanvasGlyph = /** @class */ (function () {
         var canvas = document.getElementById(canvasId);
         if (!canvas)
             return;
+        if (typeof canvas.getContext !== 'function')
+            return;
         if (!this.fontdata)
             return;
         CanvasRenderer.drawStringWithKerning(this.fontdata, text, canvas, options);
@@ -161,6 +165,8 @@ var CanvasGlyph = /** @class */ (function () {
         if (options === void 0) { options = {}; }
         var canvas = document.getElementById(canvasId);
         if (!canvas)
+            return;
+        if (typeof canvas.getContext !== 'function')
             return;
         if (!this.fontdata)
             return;
