@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hello World Demo</title>
+  <style>
+    :root {
+      --bg: #f1ece2;
+      --ink: #1a2430;
+      --muted: #6a6f78;
+      --panel: rgba(255, 252, 246, 0.86);
+      --line: rgba(25, 36, 48, 0.12);
+      --accent: #b64d2f;
+      --accent-2: #224f85;
+      --shadow: rgba(23, 29, 38, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Fraunces", "Georgia", serif;
+      background:
+        radial-gradient(circle at top left, rgba(224, 113, 54, 0.16), transparent 28%),
+        radial-gradient(circle at top right, rgba(44, 89, 146, 0.12), transparent 34%),
+        linear-gradient(180deg, #f7f2e9 0%, #ece3d4 100%);
+    }
+    .shell {
+      width: min(1200px, calc(100vw - 28px));
+      margin: 72px auto 36px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.7fr);
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+    .intro, .controls, .specimen {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 24px 70px var(--shadow);
+    }
+    .intro {
+      padding: 26px 28px;
+      min-height: 260px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      font: 700 12px/1.2 "IBM Plex Sans", sans-serif;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent-2);
+    }
+    .eyebrow::before {
+      content: "";
+      width: 24px;
+      height: 1px;
+      background: currentColor;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(38px, 5vw, 68px);
+      line-height: 0.92;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+    }
+    .lede {
+      max-width: 40rem;
+      margin: 0;
+      color: var(--muted);
+      font: 500 16px/1.6 "IBM Plex Sans", sans-serif;
+    }
+    .quote {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(25, 36, 48, 0.08);
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: end;
+    }
+    .quote-big {
+      font-size: clamp(28px, 4vw, 52px);
+      letter-spacing: -0.04em;
+      color: var(--accent);
+    }
+    .quote-small {
+      color: var(--muted);
+      font: 500 12px/1.5 "IBM Plex Sans", sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .controls {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+    .controls h2 {
+      margin: 0;
+      font: 700 16px/1.2 "IBM Plex Sans", sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .control-grid {
+      display: grid;
+      gap: 12px;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font: 600 12px/1.2 "IBM Plex Sans", sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    input, select {
+      width: 100%;
+      border: 1px solid rgba(25, 36, 48, 0.14);
+      border-radius: 12px;
+      padding: 11px 12px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.9);
+      font: 500 14px/1.2 "IBM Plex Sans", sans-serif;
+    }
+    input[type="range"] {
+      padding: 0;
+      accent-color: var(--accent);
+    }
+    .stats {
+      display: grid;
+      gap: 8px;
+    }
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.6);
+      font: 500 13px/1.4 "IBM Plex Sans", sans-serif;
+    }
+    .specimens {
+      display: grid;
+      gap: 16px;
+    }
+    .specimen {
+      padding: 18px 18px 14px;
+    }
+    .specimen-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+    .specimen-title {
+      font: 700 18px/1.2 "IBM Plex Sans", sans-serif;
+    }
+    .specimen-sub {
+      color: var(--muted);
+      font: 500 12px/1.4 "IBM Plex Sans", sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(252, 247, 239, 0.94)),
+        radial-gradient(circle at top right, rgba(182, 77, 47, 0.12), transparent 34%);
+      border: 1px solid rgba(25, 36, 48, 0.08);
+      display: block;
+    }
+    .status {
+      margin-top: 8px;
+      min-height: 18px;
+      color: var(--muted);
+      font: 500 12px/1.4 "IBM Plex Sans", sans-serif;
+    }
+    @media (max-width: 980px) {
+      .hero { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<main class="shell">
+  <section class="hero">
+    <div class="intro">
+      <div>
+        <div class="eyebrow">First Contact</div>
+        <h1>Hello world,<br />through real outlines.</h1>
+        <p class="lede">A simple browser-first specimen wall. Pick a phrase, scale it, adjust tracking, and compare how the parser renders the same words across a curated spread of real fonts.</p>
+      </div>
+      <div class="quote">
+        <div class="quote-big" id="heroPhrase">hello world</div>
+        <div class="quote-small">Typography engine specimen wall</div>
+      </div>
+    </div>
+    <aside class="controls">
+      <h2>Specimen Controls</h2>
+      <div class="control-grid">
+        <label>Phrase
+          <input id="phraseInput" value="hello world" />
+        </label>
+        <label>Scale
+          <input id="scaleInput" type="range" min="0.06" max="0.18" value="0.1" step="0.005" />
+        </label>
+        <label>Tracking
+          <input id="trackingInput" type="range" min="0" max="40" value="8" step="1" />
+        </label>
+      </div>
+      <div class="stats">
+        <div class="stat"><span>Visible specimens</span><strong id="fontCount">0</strong></div>
+        <div class="stat"><span>Outline-ready</span><strong id="outlineCount">0</strong></div>
+        <div class="stat"><span>Phrase length</span><strong id="phraseCount">0</strong></div>
+      </div>
+    </aside>
+  </section>
+
+  <section class="specimens" id="fontList"></section>
+</main>
+
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser, CanvasRenderer } = window.FontParser;
+import { getFontList } from "../tools/shared/font-catalog.js";
+
+const TABLE_TAGS = {
+  glyf: 0x676c7966,
+  CFF: 0x43464620,
+  CFF2: 0x43464632
+};
+
+const fontList = document.getElementById("fontList");
+const phraseInput = document.getElementById("phraseInput");
+const scaleInput = document.getElementById("scaleInput");
+const trackingInput = document.getElementById("trackingInput");
+const heroPhrase = document.getElementById("heroPhrase");
+const fontCount = document.getElementById("fontCount");
+const outlineCount = document.getElementById("outlineCount");
+const phraseCount = document.getElementById("phraseCount");
+
+const fontFiles = getFontList("stringExplorer");
+const cards = [];
+const fontCache = new Map();
+
+function getStyles() {
+  return {
+    fillStyle: "#224f85",
+    strokeStyle: "rgba(10, 18, 28, 0.82)",
+    globalAlpha: 1,
+    lineWidth: 1.35,
+    shadowColor: "rgba(21, 28, 37, 0.18)",
+    shadowBlur: 18,
+    shadowOffsetX: 0,
+    shadowOffsetY: 10
+  };
+}
+
+function updateStats() {
+  const phrase = phraseInput.value || "";
+  heroPhrase.textContent = phrase || "hello world";
+  fontCount.textContent = String(cards.length);
+  outlineCount.textContent = String(cards.filter((card) => card.outlineReady).length);
+  phraseCount.textContent = String(Array.from(phrase).length);
+}
+
+function redrawCard(card) {
+  const phrase = phraseInput.value || "hello world";
+  const scale = Number(scaleInput.value);
+  const tracking = Number(trackingInput.value);
+  const ctx = card.canvas.getContext("2d");
+  ctx.clearRect(0, 0, card.canvas.width, card.canvas.height);
+
+  if (!card.font) {
+    card.status.textContent = "Loading font…";
+    return;
+  }
+
+  const hasGlyf = !!card.font.getTableByType(TABLE_TAGS.glyf);
+  const hasCff = !!card.font.getTableByType(TABLE_TAGS.CFF);
+  const hasCff2 = !!card.font.getTableByType(TABLE_TAGS.CFF2);
+  card.outlineReady = hasGlyf || hasCff;
+  updateStats();
+
+  if (!card.outlineReady) {
+    card.status.textContent = hasCff2 ? "CFF2 outlines are present but not rendered in this specimen." : "No drawable glyph outlines found.";
+    return;
+  }
+
+  CanvasRenderer.drawStringWithKerning(card.font, phrase, card.canvas, {
+    x: 34,
+    y: 170,
+    scale,
+    spacing: tracking,
+    styles: getStyles()
+  });
+
+  const width = typeof card.font.measureText === "function"
+    ? card.font.measureText(phrase, { gpos: true, spacing: tracking }).width
+    : null;
+  const widthText = Number.isFinite(width) ? `${Math.round(width)} units` : "n/a";
+  card.status.textContent = `${card.label} • ${phrase.length} chars • ${widthText}`;
+}
+
+function redrawAll() {
+  updateStats();
+  for (const card of cards) redrawCard(card);
+}
+
+async function ensureFont(card) {
+  if (card.font) return;
+  try {
+    if (!fontCache.has(card.url)) {
+      fontCache.set(card.url, FontParser.load(card.url));
+    }
+    card.font = await fontCache.get(card.url);
+    redrawCard(card);
+  } catch (error) {
+    card.status.textContent = `Failed to load font: ${error?.message || error}`;
+  }
+}
+
+for (const file of fontFiles) {
+  const safePath = file.split("/").map((part) => encodeURIComponent(part)).join("/");
+  const url = `../truetypefonts/${safePath}`;
+  const label = file.split("/").pop() || file;
+
+  const card = {
+    url,
+    label,
+    font: null,
+    outlineReady: false
+  };
+
+  const article = document.createElement("article");
+  article.className = "specimen";
+  article.innerHTML = `
+    <div class="specimen-head">
+      <div class="specimen-title">${label}</div>
+      <div class="specimen-sub">${file}</div>
+    </div>
+  `;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 240;
+  article.appendChild(canvas);
+
+  const status = document.createElement("div");
+  status.className = "status";
+  status.textContent = "Loading font…";
+  article.appendChild(status);
+
+  card.canvas = canvas;
+  card.status = status;
+  article.dataset.font = label;
+  fontList.appendChild(article);
+  cards.push(card);
+  ensureFont(card);
+}
+
+phraseInput.addEventListener("input", redrawAll);
+scaleInput.addEventListener("input", redrawAll);
+trackingInput.addEventListener("input", redrawAll);
+updateStats();
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

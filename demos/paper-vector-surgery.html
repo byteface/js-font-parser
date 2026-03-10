@@ -5,70 +5,215 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Paper Vector Surgery</title>
   <style>
-    body{margin:0;background:#f5f7fa;color:#162032;font-family:"Palatino",serif}
-    #paper{width:100vw;height:100vh;display:block}
-    .ui{position:fixed;top:56px;left:12px;z-index:10;background:rgba(255,255,255,.86);border:1px solid #cdd8e7;border-radius:10px;padding:10px;display:flex;gap:8px;align-items:center}
-    select,input{padding:6px;border-radius:7px;border:1px solid #c4d2e3;background:#fff}
+    :root {
+      --bg: #eef2f7;
+      --ink: #162032;
+      --muted: #58708f;
+      --panel: rgba(255, 255, 255, 0.88);
+      --line: rgba(23, 38, 59, 0.12);
+      --accent: #d75e47;
+      --accent-2: #2a6cc2;
+    }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Cormorant Garamond", "Palatino", serif;
+      background:
+        radial-gradient(circle at top left, rgba(42, 108, 194, 0.1), transparent 28%),
+        radial-gradient(circle at top right, rgba(215, 94, 71, 0.12), transparent 24%),
+        linear-gradient(180deg, #f7f9fc 0%, #e8edf5 100%);
+    }
+    #paper { width: 100vw; height: 100vh; display: block; }
+    .ui {
+      position: fixed;
+      top: 64px;
+      left: 16px;
+      z-index: 10;
+      width: min(340px, calc(100vw - 32px));
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 24px 70px rgba(20, 35, 55, 0.14);
+    }
+    .title strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 24px;
+      letter-spacing: -0.03em;
+    }
+    .title span {
+      color: var(--muted);
+      font: 500 13px/1.5 "IBM Plex Sans", sans-serif;
+    }
+    .grid {
+      display: grid;
+      gap: 10px;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font: 600 11px/1.2 "IBM Plex Sans", sans-serif;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    input, select {
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.88);
+      color: var(--ink);
+      font: inherit;
+    }
+    input[type="range"] {
+      padding: 0;
+      accent-color: var(--accent);
+    }
+    .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--muted);
+      font: 500 12px/1.3 "IBM Plex Sans", sans-serif;
+    }
   </style>
 </head>
 <body>
 <div data-nav="main"></div>
 <div class="ui">
-  <label>Font <select id="font"></select></label>
-  <label>Glyph <input id="char" value="K" maxlength="2" size="2"></label>
+  <div class="title">
+    <strong>Vector Surgery</strong>
+    <span>Peel the contour into offset layers, seam cuts, and floating incision fragments. This should feel like working on the glyph, not just wiggling a path.</span>
+  </div>
+  <div class="grid">
+    <label>Font
+      <select id="font"></select>
+    </label>
+    <label>Glyph
+      <input id="char" value="K" maxlength="2" size="2" />
+    </label>
+    <label>Spread
+      <input id="spread" type="range" min="8" max="42" value="22" />
+    </label>
+  </div>
+  <div class="chips">
+    <div class="chip">Offset shell</div>
+    <div class="chip">Contour seams</div>
+    <div class="chip">Incision fragments</div>
+  </div>
 </div>
 <canvas id="paper" resize></canvas>
 <script src="https://cdn.jsdelivr.net/npm/paper@0.12.17/dist/paper-full.min.js"></script>
 <script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-  import { CREATIVE_FONTS, populateCreativeFonts, loadFontByUrl, getGlyphGeometry } from './shared/creative-kit.js';
+import { CREATIVE_FONTS, populateCreativeFonts, loadFontByUrl, getGlyphGeometry } from "./shared/creative-kit.js";
 
-  const fontSel = document.getElementById('font');
-  const charInput = document.getElementById('char');
-  populateCreativeFonts(fontSel);
+const fontSel = document.getElementById("font");
+const charInput = document.getElementById("char");
+const spreadInput = document.getElementById("spread");
+populateCreativeFonts(fontSel);
 
-  paper.setup(document.getElementById('paper'));
-  let groups = [];
+paper.setup(document.getElementById("paper"));
+let groups = [];
 
-  async function rebuild() {
-    for (const g of groups) g.remove();
-    groups = [];
-    const font = await loadFontByUrl(fontSel.value || CREATIVE_FONTS[0].url);
-    const geom = getGlyphGeometry(font, (charInput.value || 'K')[0], {
-      sizePx: Math.min(window.innerHeight * 0.62, 460),
-      centerX: window.innerWidth * 0.5,
-      centerY: window.innerHeight * 0.56
+function makePathFromContour(contour, options) {
+  const path = new paper.Path({ closed: true, ...options });
+  for (const point of contour) path.add(new paper.Point(point.x, point.y));
+  path.smooth({ type: "continuous" });
+  return path;
+}
+
+async function rebuild() {
+  for (const group of groups) group.remove();
+  groups = [];
+
+  const font = await loadFontByUrl(fontSel.value || CREATIVE_FONTS[0].url);
+  const geom = getGlyphGeometry(font, (charInput.value || "K")[0], {
+    sizePx: Math.min(window.innerHeight * 0.62, 520),
+    centerX: window.innerWidth * 0.58,
+    centerY: window.innerHeight * 0.58
+  });
+
+  const spread = Number(spreadInput.value);
+  for (let index = 0; index < geom.contours.length; index++) {
+    const contour = geom.contours[index];
+    const base = makePathFromContour(contour, {
+      strokeColor: "#15233a",
+      strokeWidth: 1.6,
+      fillColor: new paper.Color(1, 1, 1, 0.18)
     });
 
-    for (const contour of geom.contours) {
-      const path = new paper.Path({ strokeColor: '#102a4b', strokeWidth: 1.2, closed: true });
-      for (const p of contour) path.add(new paper.Point(p.x, p.y));
-      path.smooth({ type: 'continuous' });
+    const shell = base.clone();
+    shell.scale(1.035 + index * 0.015);
+    shell.strokeColor = new paper.Color("#2a6cc2");
+    shell.strokeWidth = 1.15;
+    shell.fillColor = new paper.Color(0.16, 0.42, 0.76, 0.08);
 
-      const offset = path.clone();
-      offset.scale(1.04);
-      offset.strokeColor = '#3e7cc2';
-      offset.strokeWidth = 1;
-      offset.opacity = 0.45;
+    const ghost = base.clone();
+    ghost.scale(0.965 - index * 0.008);
+    ghost.strokeColor = new paper.Color("#d75e47");
+    ghost.strokeWidth = 0.95;
+    ghost.dashArray = [8, 8];
+    ghost.opacity = 0.7;
 
-      const group = new paper.Group([offset, path]);
-      groups.push(group);
-    }
+    const seamStart = contour[Math.floor(contour.length * 0.18)] || contour[0];
+    const seamEnd = contour[Math.floor(contour.length * 0.62)] || contour[Math.floor(contour.length / 2)];
+    const incision = new paper.Path({
+      strokeColor: "#d75e47",
+      strokeWidth: 1.4,
+      dashArray: [7, 5]
+    });
+    incision.add(new paper.Point(seamStart.x - spread * 0.35, seamStart.y - spread * 0.55));
+    incision.add(new paper.Point(seamEnd.x + spread * 0.45, seamEnd.y + spread * 0.35));
+
+    const fragment = base.clone();
+    fragment.fillColor = new paper.Color(0.84, 0.37, 0.28, 0.09);
+    fragment.strokeColor = new paper.Color("#d75e47");
+    fragment.strokeWidth = 1;
+    fragment.scale(0.92);
+    fragment.translate(new paper.Point(spread * (0.16 + index * 0.04), -spread * (0.1 + index * 0.03)));
+
+    const cluster = new paper.Group([shell, fragment, ghost, base, incision]);
+    groups.push(cluster);
   }
+}
 
-  paper.view.onFrame = (ev) => {
-    for (let i = 0; i < groups.length; i++) {
-      const g = groups[i];
-      const t = ev.time * 0.9 + i * 0.6;
-      g.rotation = Math.sin(t) * 0.25;
-      g.scaling = new paper.Point(1 + Math.sin(t * 1.7) * 0.004, 1 + Math.cos(t * 1.5) * 0.004);
-    }
-  };
+paper.view.onFrame = (event) => {
+  const spread = Number(spreadInput.value);
+  for (let i = 0; i < groups.length; i++) {
+    const group = groups[i];
+    const t = event.time * 0.8 + i * 0.7;
+    group.rotation = Math.sin(t) * 0.22;
+    group.position.x += Math.sin(t * 1.35) * 0.08;
+    group.position.y += Math.cos(t * 1.15) * 0.07;
 
-  window.addEventListener('resize', rebuild);
-  fontSel.addEventListener('change', rebuild);
-  charInput.addEventListener('input', rebuild);
-  await rebuild();
+    const shell = group.children[0];
+    const fragment = group.children[1];
+    const ghost = group.children[2];
+    const incision = group.children[4];
+
+    shell.scale(1 + Math.sin(t * 1.2) * 0.0007);
+    ghost.position.x = group.position.x - Math.cos(t * 1.1) * spread * 0.04;
+    fragment.position.y = group.position.y - Math.sin(t * 1.45) * spread * 0.06;
+    incision.opacity = 0.48 + Math.sin(t * 2.3) * 0.16;
+  }
+};
+
+window.addEventListener("resize", rebuild);
+fontSel.addEventListener("change", rebuild);
+charInput.addEventListener("input", rebuild);
+spreadInput.addEventListener("input", rebuild);
+await rebuild();
 </script>
 <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>

@@ -110,6 +110,8 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
   let pointsMesh = null;
   let lineMesh = null;
   let basePointPositions = null;
+  let baseLinePositions = null;
+  let rebuildQueued = false;
 
   function splitContours(glyph) {
     return splitGlyphContours(collectGlyphPoints(glyph)).filter((contour) => contour.length > 1);
@@ -142,9 +144,11 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     pointsMesh = null;
     lineMesh = null;
     basePointPositions = null;
+    baseLinePositions = null;
   }
 
   function buildSceneFromGlyphs() {
+    rebuildQueued = false;
     disposeGroup();
     if (!font) return;
 
@@ -221,12 +225,22 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     group.add(lineMesh);
 
     basePointPositions = { data: pointPositions.slice(), meta: pointMeta };
+    baseLinePositions = linePositions.slice();
 
     const box = new THREE.Box3().setFromObject(group);
     const center = box.getCenter(new THREE.Vector3());
-    group.position.set(-center.x, -center.y + 26, 0);
+    const size = box.getSize(new THREE.Vector3());
+    const leftEdge = Number.isFinite(box.min.x) ? box.min.x : 0;
+    const baselineY = Number.isFinite(box.min.y) ? box.min.y : 0;
+    group.position.set(-(leftEdge + size.x * 0.5), -baselineY - size.y * 0.15, 0);
 
     applyPointFilters();
+  }
+
+  function scheduleRebuild() {
+    if (rebuildQueued) return;
+    rebuildQueued = true;
+    requestAnimationFrame(buildSceneFromGlyphs);
   }
 
   function applyPointFilters() {
@@ -272,22 +286,26 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     if (pointsMesh && lineMesh && basePointPositions) {
       const posAttr = pointsMesh.geometry.getAttribute("position");
       const linePos = lineMesh.geometry.getAttribute("position");
-      const base = basePointPositions.data;
+      const basePointData = basePointPositions.data;
       const meta = basePointPositions.meta;
 
       for (let i = 0; i < meta.length; i++) {
         const ix = i * 3;
         const wobble = Math.sin(t * 2.2 + meta[i].phase) * motion;
-        posAttr.array[ix] = base[ix];
-        posAttr.array[ix + 1] = base[ix + 1] + wobble * 0.25;
+        posAttr.array[ix] = basePointData[ix];
+        posAttr.array[ix + 1] = basePointData[ix + 1] + wobble * 0.25;
         posAttr.array[ix + 2] = meta[i].baseZ + wobble;
       }
       posAttr.needsUpdate = true;
 
-      // mirror point motion to line endpoints (line array is pairs in same sampled order)
+      // Start from the original line positions each frame so the mesh doesn't drift.
       for (let i = 0; i < linePos.array.length; i += 6) {
-        linePos.array[i + 2] += Math.sin(t * 1.9 + i * 0.004) * motion * 0.22;
-        linePos.array[i + 5] += Math.sin(t * 1.9 + (i + 3) * 0.004) * motion * 0.22;
+        linePos.array[i] = baseLinePositions[i];
+        linePos.array[i + 1] = baseLinePositions[i + 1];
+        linePos.array[i + 2] = baseLinePositions[i + 2] + Math.sin(t * 1.9 + i * 0.004) * motion * 0.22;
+        linePos.array[i + 3] = baseLinePositions[i + 3];
+        linePos.array[i + 4] = baseLinePositions[i + 4];
+        linePos.array[i + 5] = baseLinePositions[i + 5] + Math.sin(t * 1.9 + (i + 3) * 0.004) * motion * 0.22;
       }
       linePos.needsUpdate = true;
     }
@@ -302,10 +320,10 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
   }
 
   fontSelect.addEventListener("change", boot);
-  textInput.addEventListener("input", buildSceneFromGlyphs);
-  sizeInput.addEventListener("input", buildSceneFromGlyphs);
-  depthInput.addEventListener("input", buildSceneFromGlyphs);
-  densityInput.addEventListener("input", buildSceneFromGlyphs);
+  textInput.addEventListener("input", scheduleRebuild);
+  sizeInput.addEventListener("input", scheduleRebuild);
+  depthInput.addEventListener("input", scheduleRebuild);
+  densityInput.addEventListener("input", scheduleRebuild);
   onCurveToggle.addEventListener("change", applyPointFilters);
   offCurveToggle.addEventListener("change", applyPointFilters);
 
