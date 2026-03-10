@@ -267,9 +267,15 @@ function runBenchmark() {
 }
 
 async function boot() {
-  const selected = getSelectedFont(fontSelect, fonts);
-  font = await loadFont(selected.url);
-  redraw();
+  try {
+    const selected = getSelectedFont(fontSelect, fonts);
+    font = await loadFont(selected.url);
+    redraw();
+  } catch (err) {
+    console.error("Failed to load font for render-speed demo:", err);
+    mBenchMs.textContent = "load failed";
+    mGps.textContent = "-";
+  }
 }
 
 redrawBtn.addEventListener("click", redraw);

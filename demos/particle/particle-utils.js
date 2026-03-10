@@ -1,6 +1,9 @@
-import { FontParser } from '../../dist/data/FontParser.js';
-
 export function setupParticleDemo(config) {
+    const FontParser = window.FontParser?.FontParser;
+    if (!FontParser) {
+        console.error('Particle demo requires ../dist-build/fontparser.min.js to be loaded first.');
+        return;
+    }
     const canvas = document.getElementById(config.canvasId || 'myDrawing');
     const ctx = canvas.getContext('2d');
     const state = {

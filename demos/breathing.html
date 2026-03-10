@@ -281,8 +281,12 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         }
 
         async function boot() {
-            font = await loadFont(getSelectedFont(fontSelect, fonts).url);
-            render();
+            try {
+                font = await loadFont(getSelectedFont(fontSelect, fonts).url);
+                render();
+            } catch (err) {
+                console.error("Failed to load font for breathing demo:", err);
+            }
         }
 
         renderBtn.addEventListener("click", render);

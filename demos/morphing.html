@@ -401,9 +401,13 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         }
 
         async function boot() {
-            const selected = getSelectedFont(fontSelect, fonts);
-            font = await loadFont(selected.url);
-            render();
+            try {
+                const selected = getSelectedFont(fontSelect, fonts);
+                font = await loadFont(selected.url);
+                render();
+            } catch (err) {
+                console.error("Failed to load font for morphing demo:", err);
+            }
         }
 
         renderBtn.addEventListener("click", render);

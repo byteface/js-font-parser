@@ -154,6 +154,20 @@ function drawBackground(time) {
   }
 }
 
+function buildSpatialGrid(points, cellSize) {
+  const grid = new Map();
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const cx = Math.floor(p.x / cellSize);
+    const cy = Math.floor(p.y / cellSize);
+    const key = `${cx}:${cy}`;
+    const bucket = grid.get(key);
+    if (bucket) bucket.push(i);
+    else grid.set(key, [i]);
+  }
+  return grid;
+}
+
 function animate(time) {
   drawBackground(time);
 
@@ -182,22 +196,37 @@ function animate(time) {
   }
 
   const radius = Number(radiusInput.value);
+  const cellSize = Math.max(8, radius);
+  const grid = buildSpatialGrid(particles, cellSize);
+  const offsets = [
+    [0, 0], [1, 0], [0, 1], [1, 1], [-1, 1]
+  ];
   ctx.lineWidth = 1;
-  for (let i = 0; i < particles.length; i++) {
-    const a = particles[i];
-    for (let j = i + 1; j < particles.length; j++) {
-      const b = particles[j];
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const d2 = dx * dx + dy * dy;
-      if (d2 > radius * radius) continue;
-      const d = Math.sqrt(d2);
-      const alpha = (1 - d / radius) * (0.08 + assembly * 0.42);
-      ctx.strokeStyle = `rgba(120, 200, 255, ${alpha})`;
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
+  for (const [key, listA] of grid.entries()) {
+    const [cx, cy] = key.split(":").map(Number);
+    for (const [ox, oy] of offsets) {
+      const listB = grid.get(`${cx + ox}:${cy + oy}`);
+      if (!listB) continue;
+      for (let ia = 0; ia < listA.length; ia++) {
+        const i = listA[ia];
+        const a = particles[i];
+        for (let ib = 0; ib < listB.length; ib++) {
+          const j = listB[ib];
+          if (j <= i) continue;
+          const b = particles[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 > radius * radius) continue;
+          const d = Math.sqrt(d2);
+          const alpha = (1 - d / radius) * (0.08 + assembly * 0.42);
+          ctx.strokeStyle = `rgba(120, 200, 255, ${alpha})`;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
     }
   }
 
@@ -218,9 +247,14 @@ function animate(time) {
 }
 
 async function boot() {
-  const selected = getSelectedFont(fontSelect, fontOptions);
-  font = await loadFont(selected.url);
-  setSentence(sentences[sentenceIndex]);
+  try {
+    const selected = getSelectedFont(fontSelect, fontOptions);
+    font = await loadFont(selected.url);
+    setSentence(sentences[sentenceIndex]);
+  } catch (err) {
+    console.error("Failed to load font for constellation-sentence demo:", err);
+    status.textContent = `Failed to load font: ${err?.message || err}`;
+  }
 }
 
 nextBtn.addEventListener("click", () => {
@@ -235,9 +269,7 @@ sentenceInput.addEventListener("change", () => {
 });
 
 populateFontSelect(fontSelect, fontOptions);
-boot().then(() => requestAnimationFrame(animate)).catch(err => {
-  status.textContent = `Failed to load font: ${err.message}`;
-});
+boot().then(() => requestAnimationFrame(animate));
 </script>
 <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>

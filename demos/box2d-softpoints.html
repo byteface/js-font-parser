@@ -44,9 +44,10 @@
   </div>
   <canvas id="stage" width="1200" height="600"></canvas>
 
-  <script src="https://unpkg.com/planck-js@0.3.0/dist/planck.min.js"></script>
-  <script src="../dist-build/fontparser.min.js"></script>
+<script src="https://unpkg.com/planck-js@0.3.0/dist/planck.min.js"></script>
+<script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
+import { collectGlyphPoints, splitContours as splitGlyphContours } from "./shared/glyph-helpers.js";
 const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     const planck = window.planck;
 
@@ -70,17 +71,8 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     function worldToPx(v) { return v * scale; }
 
     function splitContours(glyph) {
-      const pts = glyph.points.slice(0, Math.max(0, glyph.getPointCount() - 2));
-      const contours = [];
-      let current = [];
-      for (const p of pts) {
-        current.push(p);
-        if (p.endOfContour) {
-          if (current.length > 2) contours.push(current);
-          current = [];
-        }
-      }
-      return contours;
+      const pts = collectGlyphPoints(glyph);
+      return splitGlyphContours(pts).filter((contour) => contour.length > 2);
     }
 
     function setupWorld() {
@@ -160,9 +152,13 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     }
 
     async function boot() {
-      font = await FontParser.load(fontSelect.value);
-      setupWorld();
-      buildSoftGlyph();
+      try {
+        font = await FontParser.load(fontSelect.value);
+        setupWorld();
+        buildSoftGlyph();
+      } catch (err) {
+        console.error("Failed to load font for box2d-softpoints demo:", err);
+      }
     }
 
     function reset() {

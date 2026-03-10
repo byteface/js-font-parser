@@ -65,7 +65,7 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     function worldToPx(v) { return v * scale; }
 
     function glyphBounds(glyph) {
-      const pts = glyph.points.slice(0, Math.max(0, glyph.getPointCount() - 2));
+      const pts = collectGlyphPoints(glyph);
       const xs = pts.map(p => p.x);
       const ys = pts.map(p => p.y);
       return {
@@ -236,9 +236,13 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     }
 
     async function boot() {
-      font = await FontParser.load(fontSelect.value);
-      setupWorld();
-      buildPile();
+      try {
+        font = await FontParser.load(fontSelect.value);
+        setupWorld();
+        buildPile();
+      } catch (err) {
+        console.error("Failed to load font for box2d-pile demo:", err);
+      }
     }
 
     function reset() {

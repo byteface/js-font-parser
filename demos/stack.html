@@ -80,33 +80,37 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     }
 
     async function render() {
-      const font = await loadFont(getSelectedFont(fontSelect, fonts).url);
-      const text = textInput.value || '';
-      const sizePx = Number(sizeInput.value);
-      const depth = Number(depthInput.value);
-      const angle = (Number(angleInput.value) * Math.PI) / 180;
-      const spread = Number(spreadInput.value);
+      try {
+        const font = await loadFont(getSelectedFont(fontSelect, fonts).url);
+        const text = textInput.value || '';
+        const sizePx = Number(sizeInput.value);
+        const depth = Number(depthInput.value);
+        const angle = (Number(angleInput.value) * Math.PI) / 180;
+        const spread = Number(spreadInput.value);
 
-      const unitsPerEm = typeof font.getUnitsPerEm === 'function' ? font.getUnitsPerEm() : 1000;
-      const scale = sizePx / unitsPerEm;
+        const unitsPerEm = typeof font.getUnitsPerEm === 'function' ? font.getUnitsPerEm() : 1000;
+        const scale = sizePx / unitsPerEm;
 
-      clear();
+        clear();
 
-      const baseX = 40;
-      const baseY = canvas.height * 0.7;
-      const dx = Math.cos(angle) * spread;
-      const dy = Math.sin(angle) * spread;
+        const baseX = 40;
+        const baseY = canvas.height * 0.7;
+        const dx = Math.cos(angle) * spread;
+        const dy = Math.sin(angle) * spread;
 
-      for (let i = depth; i >= 0; i--) {
-        const shade = Math.floor(30 + (1 - i / Math.max(depth, 1)) * 160);
-        const color = `rgb(${shade}, ${shade}, ${shade})`;
-        CanvasRenderer.drawString(font, text, canvas, {
-          x: baseX + dx * i,
-          y: baseY + dy * i,
-          scale,
-          spacing: 6,
-          styles: { fillStyle: color, strokeStyle: color, lineWidth: 1 }
-        });
+        for (let i = depth; i >= 0; i--) {
+          const shade = Math.floor(30 + (1 - i / Math.max(depth, 1)) * 160);
+          const color = `rgb(${shade}, ${shade}, ${shade})`;
+          CanvasRenderer.drawString(font, text, canvas, {
+            x: baseX + dx * i,
+            y: baseY + dy * i,
+            scale,
+            spacing: 6,
+            styles: { fillStyle: color, strokeStyle: color, lineWidth: 1 }
+          });
+        }
+      } catch (err) {
+        console.error("Failed to render stack demo:", err);
       }
     }
 

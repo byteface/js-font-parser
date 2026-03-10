@@ -207,15 +207,20 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         }
 
         async function render() {
-            const fontUrl = getSelectedFont(fontSelect, fonts).url;
-            const text = textInput.value || "";
-            const sizePx = Number(sizeInput.value);
-            const traceSeconds = Number(speedInput.value);
-            const stroke = strokeInput.value;
-            const strokeWidth = Number(widthInput.value);
+            try {
+                const fontUrl = getSelectedFont(fontSelect, fonts).url;
+                const text = textInput.value || "";
+                const sizePx = Number(sizeInput.value);
+                const traceSeconds = Number(speedInput.value);
+                const stroke = strokeInput.value;
+                const strokeWidth = Number(widthInput.value);
 
-            const font = await loadFont(fontUrl);
-            renderSvg(font, text, sizePx, stroke, strokeWidth, traceSeconds);
+                const font = await loadFont(fontUrl);
+                renderSvg(font, text, sizePx, stroke, strokeWidth, traceSeconds);
+            } catch (err) {
+                console.error("Failed to render path-tracing demo:", err);
+                clearSvg();
+            }
         }
 
         function replay() {
