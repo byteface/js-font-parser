@@ -631,7 +631,12 @@ export class FontParserTTF {
     // Get a glyph description by index
     public getGlyph(i: number): GlyphData | null {
         if (!this.glyphCache) this.glyphCache = new Map<string, GlyphData | null>();
-        const cacheKey = `${this.variationCoords.join(",")}::${i}`;
+        const glyphCount = this.maxp?.numGlyphs;
+        if (i < 0 || (typeof glyphCount === 'number' && i >= glyphCount)) {
+            return null;
+        }
+        const coords = this.variationCoords ?? [];
+        const cacheKey = `${coords.join(",")}::${i}`;
         if (this.glyphCache.has(cacheKey)) {
             return this.glyphCache.get(cacheKey) ?? null;
         }
@@ -869,8 +874,36 @@ export class FontParserTTF {
                 return glyphData;
             }
         }
+        const emptyGlyph = this.createEmptyGlyphData(i);
+        if (emptyGlyph) {
+            this.glyphCache.set(cacheKey, emptyGlyph);
+            return emptyGlyph;
+        }
         this.glyphCache.set(cacheKey, null);
         return null;
+    }
+
+    private createEmptyGlyphData(i: number): GlyphData | null {
+        const advance = this.hmtx?.getAdvanceWidth(i);
+        const lsb = this.hmtx?.getLeftSideBearing(i);
+        if (typeof advance !== 'number' || typeof lsb !== 'number') {
+            return null;
+        }
+        const emptyDescription: IGlyphDescription = {
+            getEndPtOfContours: () => -1,
+            getFlags: () => 0,
+            getXCoordinate: () => 0,
+            getYCoordinate: () => 0,
+            getXMaximum: () => 0,
+            getXMinimum: () => 0,
+            getYMaximum: () => 0,
+            getYMinimum: () => 0,
+            isComposite: () => false,
+            getPointCount: () => 0,
+            getContourCount: () => 0,
+            resolve: () => {}
+        };
+        return new GlyphData(emptyDescription, lsb, advance);
     }
 
     // Get the number of glyphs

@@ -5,5 +5,8 @@
   "layout-urdu-gpos": 15,
   "layout-deva-gpos": 12,
   "layout-beng-gpos": 10,
-  "variation-source-serif": 2
+  "variation-source-serif": 2,
+  "render-svg-string": 25,
+  "render-layout-points": 20,
+  "render-canvas-string": 20
 }

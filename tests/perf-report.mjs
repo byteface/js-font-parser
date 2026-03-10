@@ -5,6 +5,8 @@ import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 
 import { FontParser } from '../dist/data/FontParser.js';
+import { SVGFont } from '../dist/render/SVGFont.js';
+import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,6 +66,44 @@ const urduFont = FontParser.fromArrayBuffer(toArrayBuffer(urduBytes));
 const devaFont = FontParser.fromArrayBuffer(toArrayBuffer(devaBytes));
 const bengFont = FontParser.fromArrayBuffer(toArrayBuffer(bengBytes));
 const serifVarFont = FontParser.fromArrayBuffer(toArrayBuffer(serifVarBytes));
+const notoFont = FontParser.fromArrayBuffer(toArrayBuffer(parseNotoBytes));
+
+function createMockContext() {
+  return {
+    save() {},
+    restore() {},
+    translate() {},
+    scale() {},
+    beginPath() {},
+    moveTo() {},
+    lineTo() {},
+    quadraticCurveTo() {},
+    bezierCurveTo() {},
+    closePath() {},
+    stroke() {},
+    fill() {},
+    clearRect() {},
+    fillStyle: '#000',
+    strokeStyle: '#000',
+    globalAlpha: 1,
+    lineWidth: 1,
+    shadowColor: '#000',
+    shadowBlur: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0
+  };
+}
+
+function createMockCanvas(context) {
+  return {
+    getContext(kind) {
+      return kind === '2d' ? context : null;
+    }
+  };
+}
+
+const renderContext = createMockContext();
+const renderCanvas = createMockCanvas(renderContext);
 
 const operations = [
   {
@@ -126,6 +166,36 @@ const operations = [
       serifVarFont.getGlyph(36);
       serifVarFont.setVariationByAxes({ wght: 900 });
       return serifVarFont.getGlyph(36);
+    }
+  },
+  {
+    name: 'render-svg-string',
+    description: 'Export SVG path data for a representative Latin string',
+    budgetMs: budgets['render-svg-string'],
+    run: () => SVGFont.exportStringSvg(notoFont, 'Sphinx of black quartz, judge my vow', { scale: 0.08 }).length > 0
+  },
+  {
+    name: 'render-layout-points',
+    description: 'Convert a shaped string into positioned outline points',
+    budgetMs: budgets['render-layout-points'],
+    run: () => notoFont.layoutToPoints('AVATAR office affine', {
+      fontSize: 72,
+      gsubFeatures: ['liga'],
+      gpos: true
+    }).points.length > 0
+  },
+  {
+    name: 'render-canvas-string',
+    description: 'Draw a kerned string through CanvasRenderer with a mock 2D context',
+    budgetMs: budgets['render-canvas-string'],
+    run: () => {
+      CanvasRenderer.drawStringWithKerning(
+        notoFont,
+        'Sphinx of black quartz',
+        renderCanvas,
+        { scale: 0.12, x: 0, y: 120, spacing: 1 }
+      );
+      return true;
     }
   }
 ];

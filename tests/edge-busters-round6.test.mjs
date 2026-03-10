@@ -59,6 +59,34 @@ test('round6 edge: WOFF getGlyphIndexByChar should tolerate throwing cmap format
   assert.equal(parser.getGlyphIndexByChar('A'), 1);
 });
 
+test('round6 edge: blank space glyphs still preserve advance width for TTF and WOFF', () => {
+  const ttf = createTtfParserMock();
+  ttf.maxp = { numGlyphs: 4 };
+  ttf.hmtx = {
+    getAdvanceWidth: () => 300,
+    getLeftSideBearing: () => 0
+  };
+  ttf.glyf = {
+    getDescription: () => null
+  };
+  const ttfSpace = ttf.getGlyph(3);
+  assert.ok(ttfSpace, 'expected blank TTF glyph object');
+  assert.equal(ttfSpace.advanceWidth, 300);
+
+  const woff = createWoffParserMock();
+  woff.maxp = { numGlyphs: 4 };
+  woff.hmtx = {
+    getAdvanceWidth: () => 300,
+    getLeftSideBearing: () => 0
+  };
+  woff.glyf = {
+    getDescription: () => null
+  };
+  const woffSpace = woff.getGlyph(3);
+  assert.ok(woffSpace, 'expected blank WOFF glyph object');
+  assert.equal(woffSpace.advanceWidth, 300);
+});
+
 test('round6 edge: LayoutEngine should not throw if getTableByType callback throws', () => {
   const font = {
     getTableByType() { throw new Error('table-boom'); },
