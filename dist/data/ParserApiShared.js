@@ -1,9 +1,9 @@
 export function getGlyphPointsByChar(char, options, getGlyphByChar) {
-    var _a;
     var glyph = getGlyphByChar(char);
     if (!glyph)
         return [];
-    var sampleStep = Math.max(1, Math.floor((_a = options === null || options === void 0 ? void 0 : options.sampleStep) !== null && _a !== void 0 ? _a : 1));
+    var sampleBase = Number.isFinite(options === null || options === void 0 ? void 0 : options.sampleStep) ? options.sampleStep : 1;
+    var sampleStep = Math.max(1, Math.floor(sampleBase));
     var points = [];
     for (var i = 0; i < glyph.getPointCount(); i += sampleStep) {
         var p = glyph.getPoint(i);
@@ -19,28 +19,31 @@ export function getGlyphPointsByChar(char, options, getGlyphByChar) {
     return points;
 }
 export function measureText(text, options, layoutString) {
-    var _a;
     var layout = layoutString(text, options !== null && options !== void 0 ? options : {});
-    var letterSpacing = (_a = options === null || options === void 0 ? void 0 : options.letterSpacing) !== null && _a !== void 0 ? _a : 0;
+    var letterSpacing = Number.isFinite(options === null || options === void 0 ? void 0 : options.letterSpacing) ? options.letterSpacing : 0;
     var advanceWidth = 0;
     for (var i = 0; i < layout.length; i++) {
-        advanceWidth += layout[i].xAdvance;
+        var xAdvance = Number.isFinite(layout[i].xAdvance) ? layout[i].xAdvance : 0;
+        advanceWidth += xAdvance;
         if (letterSpacing !== 0 && i < layout.length - 1)
             advanceWidth += letterSpacing;
     }
-    return { advanceWidth: advanceWidth, glyphCount: layout.length };
+    return { advanceWidth: Number.isFinite(advanceWidth) ? advanceWidth : 0, glyphCount: layout.length };
 }
 export function layoutToPoints(text, options, deps) {
-    var _a, _b, _c, _d, _e;
     var safeOptions = options !== null && options !== void 0 ? options : {};
     var layout = deps.layoutString(text, safeOptions);
-    var sampleStep = Math.max(1, Math.floor((_a = safeOptions.sampleStep) !== null && _a !== void 0 ? _a : 1));
-    var unitsPerEm = deps.getUnitsPerEm();
-    var fontSize = (_b = safeOptions.fontSize) !== null && _b !== void 0 ? _b : unitsPerEm;
+    var sampleBase = Number.isFinite(safeOptions.sampleStep) ? safeOptions.sampleStep : 1;
+    var sampleStep = Math.max(1, Math.floor(sampleBase));
+    var unitsPerEmRaw = deps.getUnitsPerEm();
+    var unitsPerEm = Number.isFinite(unitsPerEmRaw) && unitsPerEmRaw > 0 ? unitsPerEmRaw : 1000;
+    var fontSize = Number.isFinite(safeOptions.fontSize) && safeOptions.fontSize > 0
+        ? safeOptions.fontSize
+        : unitsPerEm;
     var scale = fontSize / unitsPerEm;
-    var originX = (_c = safeOptions.x) !== null && _c !== void 0 ? _c : 0;
-    var originY = (_d = safeOptions.y) !== null && _d !== void 0 ? _d : 0;
-    var letterSpacing = (_e = safeOptions.letterSpacing) !== null && _e !== void 0 ? _e : 0;
+    var originX = Number.isFinite(safeOptions.x) ? safeOptions.x : 0;
+    var originY = Number.isFinite(safeOptions.y) ? safeOptions.y : 0;
+    var letterSpacing = Number.isFinite(safeOptions.letterSpacing) ? safeOptions.letterSpacing : 0;
     var points = [];
     var penX = 0;
     for (var i = 0; i < layout.length; i++) {
@@ -52,8 +55,8 @@ export function layoutToPoints(text, options, deps) {
                 if (!p)
                     continue;
                 points.push({
-                    x: originX + (penX + item.xOffset + p.x) * scale,
-                    y: originY - (item.yOffset + p.y) * scale,
+                    x: originX + (penX + (Number.isFinite(item.xOffset) ? item.xOffset : 0) + p.x) * scale,
+                    y: originY - ((Number.isFinite(item.yOffset) ? item.yOffset : 0) + p.y) * scale,
                     onCurve: p.onCurve,
                     endOfContour: p.endOfContour,
                     glyphIndex: item.glyphIndex,
@@ -61,11 +64,15 @@ export function layoutToPoints(text, options, deps) {
                 });
             }
         }
-        penX += item.xAdvance;
+        penX += Number.isFinite(item.xAdvance) ? item.xAdvance : 0;
         if (letterSpacing !== 0 && i < layout.length - 1)
             penX += letterSpacing;
     }
-    return { points: points, advanceWidth: penX, scale: scale };
+    return {
+        points: points,
+        advanceWidth: Number.isFinite(penX) ? penX : 0,
+        scale: Number.isFinite(scale) ? scale : 1
+    };
 }
 export function getColorLayersForGlyph(glyphId, paletteIndex, deps) {
     if (!deps.hasColr)
@@ -73,7 +80,8 @@ export function getColorLayersForGlyph(glyphId, paletteIndex, deps) {
     var layers = deps.getLayersForGlyph(glyphId);
     if (layers.length === 0)
         return [];
-    var palette = deps.getPalette(paletteIndex);
+    var paletteRaw = deps.getPalette(paletteIndex);
+    var palette = Array.isArray(paletteRaw) ? paletteRaw : [];
     return layers.map(function (layer) {
         if (layer.paletteIndex === 0xffff) {
             return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
