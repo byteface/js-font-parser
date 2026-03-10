@@ -42,7 +42,10 @@ export class FontParserTTF extends BaseFontParser {
             variationCoords: this.variationCoords,
             cff: this.cff,
             cff2: this.cff2,
-            cffIncludePhantoms: false
+            cffIncludePhantoms: false,
+            cvt: this.cvt,
+            fpgm: this.fpgm,
+            prep: this.prep
         });
     }
 

@@ -11,6 +11,7 @@ export interface IGlyphDescription {
 	getPointCount(): number;
 	getContourCount(): number;
 	resolve(): void;
+	getInstructions?(): number[] | null;
 
 	// Uncomment these if needed
 	// getComponentIndex(c: number): number;

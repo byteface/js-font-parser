@@ -244,7 +244,10 @@ export class FontParserWOFF extends BaseFontParser {
             gvar: this.gvar,
             variationCoords: this.variationCoords,
             cff: this.cff,
-            cffIncludePhantoms: true
+            cffIncludePhantoms: true,
+            cvt: this.cvt,
+            fpgm: this.fpgm,
+            prep: this.prep
         });
     }
     applyIupDeltas(base, dx, dy, touched) {

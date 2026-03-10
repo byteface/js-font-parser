@@ -133,6 +133,9 @@ export class GlyfSimpleDescript {
     resolve() {
         // Implement resolve logic here if needed
     }
+    getInstructions() {
+        return this.instructions;
+    }
     getXMaximum() {
         return this.xMax;
     }

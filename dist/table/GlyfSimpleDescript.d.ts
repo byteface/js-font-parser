@@ -34,6 +34,7 @@ export declare class GlyfSimpleDescript implements IGlyphDescription {
     private readCoords;
     private readFlags;
     resolve(): void;
+    getInstructions(): number[] | null;
     getXMaximum(): number;
     getXMinimum(): number;
     getYMaximum(): number;

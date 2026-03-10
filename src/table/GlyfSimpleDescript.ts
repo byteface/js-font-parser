@@ -160,6 +160,10 @@ export class GlyfSimpleDescript implements IGlyphDescription {
         // Implement resolve logic here if needed
     }
 
+    public getInstructions(): number[] | null {
+        return this.instructions;
+    }
+
 
     public getXMaximum(): number {
         return this.xMax;

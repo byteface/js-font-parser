@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hint VM Preview</title>
+  <style>
+    :root {
+      --bg:#f4f0ea;
+      --ink:#1f2733;
+      --muted:#5f6977;
+      --panel:#ffffff;
+      --line:#ded9d0;
+      --left:#232833;
+      --right:#2f855a;
+      --accent:#225ea8;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Merriweather", serif; background:var(--bg); color:var(--ink); }
+    .wrap { width:min(1180px, 96vw); margin:16px auto 26px; }
+    h1 { margin:0 0 8px; font-size:26px; }
+    .sub { margin:0 0 14px; color:var(--muted); font-size:14px; }
+    .controls {
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0,1fr));
+      gap:8px;
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:10px;
+      margin-bottom:10px;
+    }
+    label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); }
+    input, select {
+      border:1px solid #cfc8be;
+      border-radius:8px;
+      padding:7px 8px;
+      font:inherit;
+      color:var(--ink);
+      background:#fff;
+    }
+    input[type="range"] { padding:0; }
+    .statline { display:flex; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin:0 0 8px; }
+    .chip { background:#fff; border:1px solid var(--line); border-radius:999px; padding:4px 9px; }
+    canvas {
+      width:100%;
+      height:auto;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:10px;
+      display:block;
+    }
+    .legend { display:flex; gap:10px; margin-top:8px; font-size:12px; color:var(--muted); }
+    .swatch { width:12px; height:12px; border-radius:3px; display:inline-block; margin-right:4px; }
+    @media (max-width:900px){ .controls{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
+  </style>
+</head>
+<body>
+  <div data-nav="main"></div>
+  <div class="wrap">
+    <h1>Hint VM Preview</h1>
+    <p class="sub">Real parser mode comparison: left uses hinting disabled, right enables <code>vm-experimental</code> for <code>fpgm/prep/glyph</code> instruction execution.</p>
+
+    <div class="controls">
+      <label>Font
+        <select id="fontSelect"></select>
+      </label>
+      <label>Text
+        <input id="textInput" value="Hamburgefonts AV" />
+      </label>
+      <label>Font px
+        <input id="sizeInput" type="range" min="8" max="64" value="18" step="1" />
+      </label>
+      <label>Grid
+        <select id="gridSelect">
+          <option value="on">Show grid</option>
+          <option value="off">Hide grid</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="statline">
+      <span class="chip" id="fontInfo">font: -</span>
+      <span class="chip" id="sizeInfo">size: -</span>
+      <span class="chip" id="diagInfo">diag: -</span>
+      <span class="chip" id="status">loading…</span>
+    </div>
+
+    <canvas id="canvas" width="1160" height="430"></canvas>
+    <div class="legend">
+      <span><span class="swatch" style="background:#232833"></span>Hinting off</span>
+      <span><span class="swatch" style="background:#2f855a"></span>Hinting on (vm-experimental)</span>
+      <span><span class="swatch" style="background:#225ea8"></span>Shared baseline</span>
+    </div>
+  </div>
+
+  <script src="../dist-build/fontparser.min.js"></script>
+  <script>
+    const { FontParser, CanvasRenderer } = window.FontParser || {};
+
+    const FONT_OPTIONS = [
+      { name: 'Noto Sans (TTF)', url: '../truetypefonts/noto/NotoSans-Regular.ttf', text: 'Hamburgefonts AVATAR' },
+      { name: 'Roboto VF (TTF)', url: '../truetypefonts/curated/Roboto-VF.ttf', text: 'Hamburgefonts AV' },
+      { name: 'Minecraft (TTF)', url: '../truetypefonts/Minecraft.ttf', text: 'PIXEL GRID TEST' },
+      { name: 'Noto Sans Hebrew (TTF)', url: '../truetypefonts/noto/NotoSansHebrew-Regular.ttf', text: 'שלום עולם' },
+      { name: 'Noto Naskh Arabic (TTF)', url: '../truetypefonts/noto/NotoNaskhArabic-Regular.ttf', text: 'مرحبا عالم' }
+    ];
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const fontSelect = document.getElementById('fontSelect');
+    const textInput = document.getElementById('textInput');
+    const sizeInput = document.getElementById('sizeInput');
+    const gridSelect = document.getElementById('gridSelect');
+    const fontInfo = document.getElementById('fontInfo');
+    const sizeInfo = document.getElementById('sizeInfo');
+    const diagInfo = document.getElementById('diagInfo');
+    const status = document.getElementById('status');
+
+    const fontCache = new Map();
+    let activeFont = null;
+
+    FONT_OPTIONS.forEach((f, i) => {
+      const opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = f.name;
+      fontSelect.appendChild(opt);
+    });
+
+    [textInput, sizeInput, gridSelect].forEach((el) => {
+      el.addEventListener('input', render);
+      el.addEventListener('change', render);
+    });
+
+    fontSelect.addEventListener('change', async () => {
+      const selected = FONT_OPTIONS[Number(fontSelect.value)] || FONT_OPTIONS[0];
+      textInput.value = selected.text;
+      await loadSelectedFont();
+      render();
+    });
+
+    function updateStats() {
+      const selected = FONT_OPTIONS[Number(fontSelect.value)] || FONT_OPTIONS[0];
+      fontInfo.textContent = `font: ${selected.name}`;
+      sizeInfo.textContent = `size: ${sizeInput.value}px`;
+    }
+
+    async function loadSelectedFont() {
+      if (!FontParser) {
+        status.textContent = 'error: dist-build bundle not loaded';
+        return;
+      }
+      const selected = FONT_OPTIONS[Number(fontSelect.value)] || FONT_OPTIONS[0];
+      if (fontCache.has(selected.url)) {
+        activeFont = fontCache.get(selected.url);
+        status.textContent = 'loaded from cache';
+        return;
+      }
+
+      status.textContent = `loading ${selected.name}...`;
+      try {
+        const font = await FontParser.load(selected.url);
+        fontCache.set(selected.url, font);
+        activeFont = font;
+        status.textContent = 'ready';
+      } catch (err) {
+        activeFont = null;
+        status.textContent = `load failed: ${err?.message || err}`;
+      }
+    }
+
+    function layoutRun(font, text) {
+      try {
+        if (typeof font.layoutStringAuto === 'function') {
+          return font.layoutStringAuto(text, { gpos: true });
+        }
+        return font.layoutString(text, { gpos: true });
+      } catch {
+        return [];
+      }
+    }
+
+    function drawGrid(x0, x1, y0, y1, step = 12) {
+      ctx.save();
+      ctx.strokeStyle = '#edf0f4';
+      ctx.lineWidth = 1;
+      for (let x = x0; x <= x1; x += step) {
+        ctx.beginPath();
+        ctx.moveTo(Math.round(x) + 0.5, y0);
+        ctx.lineTo(Math.round(x) + 0.5, y1);
+        ctx.stroke();
+      }
+      for (let y = y0; y <= y1; y += step) {
+        ctx.beginPath();
+        ctx.moveTo(x0, Math.round(y) + 0.5);
+        ctx.lineTo(x1, Math.round(y) + 0.5);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawPanel({ font, layout, panelX, panelW, baselineY, scale, color }) {
+      let cursorX = panelX + 22;
+      for (const item of layout) {
+        const glyph = font.getGlyph(item.glyphIndex);
+        if (!glyph) continue;
+
+        const xOffset = Number.isFinite(item.xOffset) ? item.xOffset : 0;
+        const yOffset = Number.isFinite(item.yOffset) ? item.yOffset : 0;
+        const xAdvance = Number.isFinite(item.xAdvance) ? item.xAdvance : glyph.advanceWidth;
+
+        CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+          x: cursorX + (xOffset * scale),
+          y: baselineY + (yOffset * scale),
+          scale,
+          styles: {
+            fillStyle: color,
+            strokeStyle: color,
+            lineWidth: 1,
+            globalAlpha: 1
+          }
+        });
+
+        cursorX += xAdvance * scale;
+        if (cursorX > panelX + panelW - 20) break;
+      }
+    }
+
+    function render() {
+      updateStats();
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const mid = canvas.width / 2;
+      const topPad = 26;
+      const baselineY = Math.round(canvas.height * 0.60);
+
+      if (gridSelect.value === 'on') {
+        drawGrid(0, mid, 0, canvas.height, 12);
+        drawGrid(mid, canvas.width, 0, canvas.height, 12);
+      }
+
+      ctx.strokeStyle = '#d8dce3';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(mid + 0.5, 0);
+      ctx.lineTo(mid + 0.5, canvas.height);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#225ea8';
+      ctx.beginPath();
+      ctx.moveTo(0, baselineY + 0.5);
+      ctx.lineTo(canvas.width, baselineY + 0.5);
+      ctx.stroke();
+
+      ctx.fillStyle = '#4d5867';
+      ctx.font = '600 13px Merriweather, serif';
+      ctx.fillText('Hinting OFF', 16, topPad);
+      ctx.fillText('Hinting ON (vm-experimental)', mid + 16, topPad);
+
+      if (!activeFont) return;
+
+      const text = textInput.value || '';
+      const sizePx = Number(sizeInput.value);
+      const upm = Number(activeFont.getUnitsPerEm?.()) || 1000;
+      const scale = sizePx / upm;
+
+      if (typeof activeFont.clearDiagnostics === 'function') {
+        activeFont.clearDiagnostics();
+      }
+
+      if (typeof activeFont.setHintingOptions === 'function') {
+        activeFont.setHintingOptions({ enabled: false, mode: 'none', ppem: sizePx });
+      }
+      const leftLayout = layoutRun(activeFont, text);
+      drawPanel({
+        font: activeFont,
+        layout: leftLayout,
+        panelX: 0,
+        panelW: mid,
+        baselineY,
+        scale,
+        color: '#232833'
+      });
+
+      if (typeof activeFont.setHintingOptions === 'function') {
+        activeFont.setHintingOptions({ enabled: true, mode: 'vm-experimental', ppem: sizePx });
+      }
+      const rightLayout = layoutRun(activeFont, text);
+      drawPanel({
+        font: activeFont,
+        layout: rightLayout,
+        panelX: mid,
+        panelW: mid,
+        baselineY,
+        scale,
+        color: '#2f855a'
+      });
+
+      const diags = typeof activeFont.getDiagnostics === 'function' ? activeFont.getDiagnostics({ code: 'HINT_VM_UNSUPPORTED_OPCODE' }) : [];
+      diagInfo.textContent = `hint vm diag: ${Array.isArray(diags) ? diags.length : 0}`;
+    }
+
+    (async function boot() {
+      fontSelect.value = '0';
+      textInput.value = FONT_OPTIONS[0].text;
+      await loadSelectedFont();
+      render();
+    })();
+  </script>
+
+  <script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

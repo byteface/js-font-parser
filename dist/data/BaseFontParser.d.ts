@@ -3,6 +3,7 @@ import type { IGlyphDescription } from '../table/IGlyphDescription.js';
 import { ByteArray } from '../utils/ByteArray.js';
 import { TableDirectory } from '../table/TableDirectory.js';
 import { GlyphData } from './GlyphData.js';
+import { TrueTypeHintVM, HintingMode, HintingOptions } from '../hint/TrueTypeHintVM.js';
 type PositionedGlyph = {
     glyphIndex: number;
     xAdvance: number;
@@ -27,6 +28,9 @@ type GlyphBuildOptions = {
     cff?: any | null;
     cff2?: any | null;
     cffIncludePhantoms?: boolean;
+    cvt?: any | null;
+    fpgm?: any | null;
+    prep?: any | null;
 };
 export declare abstract class BaseFontParser {
     private diagnostics;
@@ -57,7 +61,14 @@ export declare abstract class BaseFontParser {
     protected fvar: any | null;
     protected svg: any | null;
     protected gvar: any | null;
+    protected cvt: any | null;
+    protected fpgm: any | null;
+    protected prep: any | null;
     protected variationCoords: number[];
+    protected hintingEnabled: boolean;
+    protected hintingMode: HintingMode;
+    protected hintingPpem: number;
+    protected hintVm: TrueTypeHintVM;
     protected emitDiagnostic(code: string, level: 'warning' | 'info', phase: 'parse' | 'layout', message: string, context?: Record<string, unknown>, onceKey?: string): void;
     getDiagnostics(filter?: DiagnosticFilter): FontDiagnostic[];
     clearDiagnostics(): void;
@@ -85,8 +96,19 @@ export declare abstract class BaseFontParser {
     protected getUnitsPerEmForShared(): number;
     protected setVariationCoordsInternal(coords: number[]): void;
     protected onVariationCoordsUpdated(coords: number[]): void;
+    setHintingOptions(options?: HintingOptions): void;
+    getHintingOptions(): {
+        enabled: boolean;
+        mode: HintingMode;
+        ppem: number;
+    };
     abstract getGlyph(i: number): GlyphData | null;
     protected getGlyphShared(i: number, options: GlyphBuildOptions): GlyphData | null;
+    protected applyHintingIfEnabled(glyph: GlyphData, desc: IGlyphDescription, tables: {
+        cvt?: any | null;
+        fpgm?: any | null;
+        prep?: any | null;
+    }): void;
     protected applyIupDeltasShared(base: IGlyphDescription, dx: number[], dy: number[], touched: boolean[]): void;
     protected interpolateShared(aCoord: number, bCoord: number, aDelta: number, bDelta: number, pCoord: number): number;
     protected getGposAttachmentAnchors(glyphId: number, subtables?: Array<any>): MarkAnchor[];

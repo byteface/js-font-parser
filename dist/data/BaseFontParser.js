@@ -13,6 +13,7 @@ import { detectScriptTags } from '../utils/ScriptDetector.js';
 import { TableDirectory } from '../table/TableDirectory.js';
 import { TableFactory } from '../table/TableFactory.js';
 import { GlyphData } from './GlyphData.js';
+import { TrueTypeHintVM } from '../hint/TrueTypeHintVM.js';
 export class BaseFontParser {
     diagnostics = [];
     diagnosticKeys = new Set();
@@ -38,7 +39,14 @@ export class BaseFontParser {
     fvar = null;
     svg = null;
     gvar = null;
+    cvt = null;
+    fpgm = null;
+    prep = null;
     variationCoords = [];
+    hintingEnabled = false;
+    hintingMode = 'none';
+    hintingPpem = 16;
+    hintVm = new TrueTypeHintVM();
     emitDiagnostic(code, level, phase, message, context, onceKey) {
         if (onceKey) {
             if (this.diagnosticKeys.has(onceKey))
@@ -175,6 +183,24 @@ export class BaseFontParser {
             this.colr.setVariationCoords(coords);
         }
     }
+    setHintingOptions(options = {}) {
+        if (typeof options.enabled === 'boolean') {
+            this.hintingEnabled = options.enabled;
+        }
+        if (options.mode === 'none' || options.mode === 'vm-experimental') {
+            this.hintingMode = options.mode;
+        }
+        if (Number.isFinite(options.ppem)) {
+            this.hintingPpem = Math.max(1, Math.round(options.ppem));
+        }
+    }
+    getHintingOptions() {
+        return {
+            enabled: this.hintingEnabled,
+            mode: this.hintingMode,
+            ppem: this.hintingPpem
+        };
+    }
     getGlyphShared(i, options) {
         const maxGlyphs = options.maxGlyphs ?? null;
         if (i < 0 || (maxGlyphs != null && i >= maxGlyphs))
@@ -186,6 +212,9 @@ export class BaseFontParser {
         const cff = options.cff ?? null;
         const cff2 = options.cff2 ?? null;
         const cffIncludePhantoms = options.cffIncludePhantoms ?? true;
+        const cvt = options.cvt ?? null;
+        const fpgm = options.fpgm ?? null;
+        const prep = options.prep ?? null;
         const description = glyf?.getDescription?.(i) ?? null;
         if (description != null) {
             let desc = description;
@@ -390,11 +419,16 @@ export class BaseFontParser {
                         getYMaximum: () => (maxY !== -Infinity ? maxY : base.getYMaximum()),
                         getYMinimum: () => (minY !== Infinity ? minY : base.getYMinimum()),
                         isComposite: () => base.isComposite(),
-                        resolve: () => base.resolve()
+                        resolve: () => base.resolve(),
+                        getInstructions: () => (typeof base.getInstructions === 'function'
+                            ? base.getInstructions?.() ?? null
+                            : null)
                     };
                 }
             }
-            return new GlyphData(desc, lsb, advance);
+            const glyph = new GlyphData(desc, lsb, advance);
+            this.applyHintingIfEnabled(glyph, desc, { cvt, fpgm, prep });
+            return glyph;
         }
         if (cff2) {
             const cff2Desc = cff2.getGlyphDescription(i);
@@ -423,11 +457,27 @@ export class BaseFontParser {
                 getYMaximum: () => 0,
                 getYMinimum: () => 0,
                 isComposite: () => false,
-                resolve: () => { }
+                resolve: () => { },
+                getInstructions: () => []
             };
             return new GlyphData(emptyDesc, lsb, advance);
         }
         return null;
+    }
+    applyHintingIfEnabled(glyph, desc, tables) {
+        if (!this.hintingEnabled || this.hintingMode !== 'vm-experimental')
+            return;
+        const glyphProgram = typeof desc.getInstructions === 'function' ? desc.getInstructions() : null;
+        const fpgmProgram = typeof tables.fpgm?.getInstructions === 'function' ? tables.fpgm.getInstructions() : null;
+        const prepProgram = typeof tables.prep?.getInstructions === 'function' ? tables.prep.getInstructions() : null;
+        const cvtValues = typeof tables.cvt?.getValues === 'function' ? tables.cvt.getValues() : [];
+        const result = this.hintVm.runPrograms(glyph, [fpgmProgram, prepProgram, glyphProgram], {
+            cvtValues,
+            ppem: this.hintingPpem
+        });
+        if (result.executed && result.unsupportedOpcodeCount > 0) {
+            this.emitDiagnostic("HINT_VM_UNSUPPORTED_OPCODE", "info", "parse", "Hint VM ran with unsupported opcodes in vm-experimental mode.", { unsupportedOpcodeCount: result.unsupportedOpcodeCount, opCount: result.opCount }, "HINT_VM_UNSUPPORTED_OPCODE");
+        }
     }
     applyIupDeltasShared(base, dx, dy, touched) {
         const pointCount = base.getPointCount();
@@ -763,6 +813,9 @@ export class BaseFontParser {
         this.svg = this.getTable(Table.SVG);
         this.fvar = this.getTable(Table.fvar);
         this.gvar = this.getTable(Table.gvar);
+        this.cvt = this.getTable(Table.cvt);
+        this.fpgm = this.getTable(Table.fpgm);
+        this.prep = this.getTable(Table.prep);
         const maybeGsubWithGdef = this.gsub;
         if (this.gsub && this.gdef && typeof maybeGsubWithGdef?.setGdef === 'function') {
             maybeGsubWithGdef.setGdef(this.gdef);

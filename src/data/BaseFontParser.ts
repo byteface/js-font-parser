@@ -16,6 +16,7 @@ import { ByteArray } from '../utils/ByteArray.js';
 import { TableDirectory } from '../table/TableDirectory.js';
 import { TableFactory } from '../table/TableFactory.js';
 import { GlyphData } from './GlyphData.js';
+import { TrueTypeHintVM, HintingMode, HintingOptions } from '../hint/TrueTypeHintVM.js';
 
 type PositionedGlyph = { glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number };
 type MarkAnchorType = 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit';
@@ -29,6 +30,9 @@ type GlyphBuildOptions = {
     cff?: any | null;
     cff2?: any | null;
     cffIncludePhantoms?: boolean;
+    cvt?: any | null;
+    fpgm?: any | null;
+    prep?: any | null;
 };
 
 type CmapFormatLike = {
@@ -68,7 +72,14 @@ export abstract class BaseFontParser {
     protected fvar: any | null = null;
     protected svg: any | null = null;
     protected gvar: any | null = null;
+    protected cvt: any | null = null;
+    protected fpgm: any | null = null;
+    protected prep: any | null = null;
     protected variationCoords: number[] = [];
+    protected hintingEnabled = false;
+    protected hintingMode: HintingMode = 'none';
+    protected hintingPpem = 16;
+    protected hintVm = new TrueTypeHintVM();
 
     protected emitDiagnostic(
         code: string,
@@ -240,6 +251,26 @@ export abstract class BaseFontParser {
         }
     }
 
+    public setHintingOptions(options: HintingOptions = {}): void {
+        if (typeof options.enabled === 'boolean') {
+            this.hintingEnabled = options.enabled;
+        }
+        if (options.mode === 'none' || options.mode === 'vm-experimental') {
+            this.hintingMode = options.mode;
+        }
+        if (Number.isFinite(options.ppem)) {
+            this.hintingPpem = Math.max(1, Math.round(options.ppem as number));
+        }
+    }
+
+    public getHintingOptions(): { enabled: boolean; mode: HintingMode; ppem: number } {
+        return {
+            enabled: this.hintingEnabled,
+            mode: this.hintingMode,
+            ppem: this.hintingPpem
+        };
+    }
+
     public abstract getGlyph(i: number): GlyphData | null;
 
     protected getGlyphShared(i: number, options: GlyphBuildOptions): GlyphData | null {
@@ -252,6 +283,9 @@ export abstract class BaseFontParser {
         const cff = options.cff ?? null;
         const cff2 = options.cff2 ?? null;
         const cffIncludePhantoms = options.cffIncludePhantoms ?? true;
+        const cvt = options.cvt ?? null;
+        const fpgm = options.fpgm ?? null;
+        const prep = options.prep ?? null;
 
         const description = glyf?.getDescription?.(i) ?? null;
         if (description != null) {
@@ -449,11 +483,16 @@ export abstract class BaseFontParser {
                         getYMaximum: () => (maxY !== -Infinity ? maxY : base.getYMaximum()),
                         getYMinimum: () => (minY !== Infinity ? minY : base.getYMinimum()),
                         isComposite: () => base.isComposite(),
-                        resolve: () => base.resolve()
+                        resolve: () => base.resolve(),
+                        getInstructions: () => (typeof (base as IGlyphDescription).getInstructions === 'function'
+                            ? (base as IGlyphDescription).getInstructions?.() ?? null
+                            : null)
                     };
                 }
             }
-            return new GlyphData(desc, lsb, advance);
+            const glyph = new GlyphData(desc, lsb, advance);
+            this.applyHintingIfEnabled(glyph, desc, { cvt, fpgm, prep });
+            return glyph;
         }
 
         if (cff2) {
@@ -493,11 +532,39 @@ export abstract class BaseFontParser {
                 getYMaximum: () => 0,
                 getYMinimum: () => 0,
                 isComposite: () => false,
-                resolve: () => { /* no-op for empty glyph */ }
+                resolve: () => { /* no-op for empty glyph */ },
+                getInstructions: () => []
             };
             return new GlyphData(emptyDesc, lsb, advance);
         }
         return null;
+    }
+
+    protected applyHintingIfEnabled(
+        glyph: GlyphData,
+        desc: IGlyphDescription,
+        tables: { cvt?: any | null; fpgm?: any | null; prep?: any | null }
+    ): void {
+        if (!this.hintingEnabled || this.hintingMode !== 'vm-experimental') return;
+
+        const glyphProgram = typeof desc.getInstructions === 'function' ? desc.getInstructions() : null;
+        const fpgmProgram = typeof tables.fpgm?.getInstructions === 'function' ? tables.fpgm.getInstructions() : null;
+        const prepProgram = typeof tables.prep?.getInstructions === 'function' ? tables.prep.getInstructions() : null;
+        const cvtValues = typeof tables.cvt?.getValues === 'function' ? tables.cvt.getValues() : [];
+        const result = this.hintVm.runPrograms(glyph, [fpgmProgram, prepProgram, glyphProgram], {
+            cvtValues,
+            ppem: this.hintingPpem
+        });
+        if (result.executed && result.unsupportedOpcodeCount > 0) {
+            this.emitDiagnostic(
+                "HINT_VM_UNSUPPORTED_OPCODE",
+                "info",
+                "parse",
+                "Hint VM ran with unsupported opcodes in vm-experimental mode.",
+                { unsupportedOpcodeCount: result.unsupportedOpcodeCount, opCount: result.opCount },
+                "HINT_VM_UNSUPPORTED_OPCODE"
+            );
+        }
     }
 
     protected applyIupDeltasShared(base: IGlyphDescription, dx: number[], dy: number[], touched: boolean[]): void {
@@ -869,6 +936,9 @@ export abstract class BaseFontParser {
         this.svg = this.getTable(Table.SVG);
         this.fvar = this.getTable(Table.fvar);
         this.gvar = this.getTable(Table.gvar);
+        this.cvt = this.getTable(Table.cvt);
+        this.fpgm = this.getTable(Table.fpgm);
+        this.prep = this.getTable(Table.prep);
 
         const maybeGsubWithGdef = this.gsub as { setGdef?: (gdef: { getGlyphClass?: (glyphId: number) => number } | null) => void } | null;
         if (this.gsub && this.gdef && typeof maybeGsubWithGdef?.setGdef === 'function') {

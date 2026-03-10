@@ -77,9 +77,7 @@ Known-good WOFF2 smoke fixture path:
 ## Current Known Gaps
 
 Current top open items are tracked in `docs/WISHLIST.md`:
-- golden image CI enforcement
-- final GPOS sign-off across more real-script fixtures
-- broader WOFF2 fixture coverage across scripts/variations
+- support and limitations are documented in `docs/SUPPORT.md`
 
 ## API by Task
 
@@ -102,6 +100,7 @@ Current top open items are tracked in `docs/WISHLIST.md`:
   - `SVGFont`
 
 Full API details: `docs/API.md`
+Support matrix: `docs/SUPPORT.md`
 
 ## Demos and Tools
 
@@ -113,7 +112,6 @@ Examples:
 - `demos/path-runner.html`: path traversal + node pausing
 - `tools/metadata.html`: metadata inspection
 - `tools/unicode-coverage.html`: block coverage inspection
-- `tools/font-diff.html`: font diffing workflow
 
 ## Diagnostics and Error Handling
 
@@ -121,16 +119,10 @@ Examples:
 - Repeated diagnostics are deduplicated where appropriate.
 - For WOFF2, missing decoder is a controlled runtime error, not silent corruption.
 
-## Performance Notes
-
-- Use cached font instances (`FontParser.load`) for repeated operations.
-- Prefer sampling/stride controls in heavy point-based visual demos.
-- For large animated point sets, use spatial partitioning or capped neighbor checks.
-
 ## Development Workflow
 
 Node version:
-- `.nvmrc` and `package.json` engines currently target Node `>=22 <24`.
+- `.nvmrc` and `package.json` engines currently target Node `>=20` (CI verifies `20.x`, `22.x`, `24.x`).
 
 Important TS import note:
 - Source intentionally keeps `.js` import specifiers in TS files for runtime module resolution after compile.
@@ -143,29 +135,6 @@ Important TS import note:
 - `npm test`: fast default suite
 - `npm run test:full`: full fixture sweep
 - `npm run test:coverage`: coverage report
-- `npm run test:perf`: perf report
-- `npm run test:perf:enforce`: perf budget gate
-- `npm run test:golden:capture`: capture visual baseline candidate
-- `npm run test:golden:compare`: compare baseline vs current
-- `npm run test:golden:validate`: validate locked golden target list
-- `npm run test:golden:between -- --base <sha> --head <sha>`: visual compare between commits
-
-## Golden Image Gate
-
-The repo has a visual-regression workflow at `.github/workflows/golden-images.yml`.
-
-How it works:
-- validates `tests/golden/targets.json` (required page set),
-- resolves base/head commits,
-- runs heavy Playwright capture+compare only if visual-risk paths changed,
-- uploads diff artifacts (`tests/golden/diff`) when compare runs.
-
-Local commands:
-- `npm run test:golden:validate`
-- `npm run test:golden:between -- --base <sha> --head <sha> --targets tests/golden/targets.json`
-
-To enforce as a hard gate in GitHub, set branch protection to require check
-`Golden Images / visual-regression`.
 
 ## Package Contract
 
@@ -176,6 +145,7 @@ To enforce as a hard gate in GitHub, set branch protection to require check
 ## Project Docs
 
 - `docs/API.md`
+- `docs/SUPPORT.md`
 - `docs/WISHLIST.md`
-- `proj/fontparser/README.md` (CLI)
+- `proj/fontparser/README.md` (CLI in development)
 - `tests/golden/README.md`
