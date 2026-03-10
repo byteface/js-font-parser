@@ -50,7 +50,7 @@ node proj/fontparser/index.mjs coverage --font truetypefonts/DiscoMo.ttf --suppo
   - `--json`: JSON output for coverage/supported/missing modes
 
 - `inspect`
-  - Consolidated report: metadata, glyph stats, table list, supported languages, kerning sample stats
+  - Consolidated report: metadata, glyph stats, table list, scripts (GSUB/GPOS), supported languages, variation axes, color-table summary, diagnostics summary, kerning sample stats
   - Options: `--min-coverage`, `--kerning-chars`, `--kerning-limit`
 
 - `svg`

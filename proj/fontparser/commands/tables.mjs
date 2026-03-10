@@ -74,7 +74,7 @@ export function printGlyphStats(buffer, font, asJson = false) {
   if (asJson) {
     console.log(JSON.stringify(stats, null, 2));
     return;
-  };
+  }
   console.log("Glyph stats");
   console.log(`  glyphCount: ${stats.glyphCount}`);
   console.log(`  simpleGlyphs: ${stats.simpleGlyphs}`);
@@ -133,7 +133,7 @@ export function printKerningStats(font, chars, limit = 20, asJson = false) {
   if (asJson) {
     console.log(JSON.stringify(stats, null, 2));
     return;
-  };
+  }
 
   console.log("Kerning stats");
   console.log(`  sampleCharCount: ${stats.sampleCharCount}`);
