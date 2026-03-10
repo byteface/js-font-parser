@@ -76,6 +76,22 @@ Additional fixtures for broader demo/test coverage across scripts and formats:
   - Coverage: Korean CJK OpenType/CFF fixture
   - Source: https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/Korean/NotoSansCJKkr-Regular.otf
   - SHA256: `6bcb2a0703aa137e874fc2dffa85f6c21ba9a67fa329e81b8c801663af7e992a`
+- `NotoSansCJKsc-Regular.otf`
+  - Coverage: Simplified Chinese CJK OpenType/CFF fixture
+  - Source: https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf
+  - SHA256: `2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b`
+- `NotoSerifCJKsc-Regular.otf`
+  - Coverage: Simplified Chinese serif CJK OpenType/CFF fixture
+  - Source: https://raw.githubusercontent.com/notofonts/noto-cjk/main/Serif/OTF/SimplifiedChinese/NotoSerifCJKsc-Regular.otf
+  - SHA256: `2a2eae2628df83556c54018c41e20fa532c1b862c5256ae8b3f23feb918d12ca`
+- `NotoSerifCJKjp-Regular.otf`
+  - Coverage: Japanese serif CJK OpenType/CFF fixture
+  - Source: https://raw.githubusercontent.com/notofonts/noto-cjk/main/Serif/OTF/Japanese/NotoSerifCJKjp-Regular.otf
+  - SHA256: `d9854c7a8ef170b5a7932558856fd64eb8de0b007cd823fed6f9f514ad2803d3`
+- `NotoSerifCJKkr-Regular.otf`
+  - Coverage: Korean serif CJK OpenType/CFF fixture
+  - Source: https://raw.githubusercontent.com/notofonts/noto-cjk/main/Serif/OTF/Korean/NotoSerifCJKkr-Regular.otf
+  - SHA256: `77b4b741f864d27f15e90f275b17106dde90b2ad28f82bab72dc95805db5fb42`
 - `FontAwesome-4.7.0.ttf`
   - Coverage: icon-focused TrueType font fixture
   - Source: https://raw.githubusercontent.com/FortAwesome/Font-Awesome/v4.7.0/fonts/fontawesome-webfont.ttf
