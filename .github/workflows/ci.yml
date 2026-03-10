@@ -6,7 +6,35 @@ on:
 
 jobs:
   test:
-    name: Build and Test (Node 20)
+    name: Test (Node ${{ matrix.node-version }} on ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [22.x, 23.x]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
+  package-smoke:
+    name: Package Smoke (Node 22)
     runs-on: ubuntu-latest
 
     steps:
@@ -16,14 +44,26 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.x
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build dist
-        run: npm run build:dist
+      - name: Build and pack
+        run: |
+          npm run build
+          npm pack
 
-      - name: Run tests
-        run: npm test
+      - name: Install packed tarball in clean project
+        run: |
+          PKG_TGZ="$(ls -1 js-font-parser-*.tgz | head -n 1)"
+          mkdir -p /tmp/js-font-parser-smoke
+          rm -rf /tmp/js-font-parser-smoke/*
+          cd /tmp/js-font-parser-smoke
+          npm init -y
+          npm install "$GITHUB_WORKSPACE/$PKG_TGZ"
+
+      - name: Import package entrypoint
+        run: |
+          node --input-type=module -e "import('js-font-parser').then((m)=>{ if(!m || !m.FontParser) process.exit(1); }).catch(()=>process.exit(1));"
