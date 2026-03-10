@@ -544,18 +544,16 @@ test('hint vm experimental: INSTCTRL-like controls consume two args', () => {
   const vm = new TrueTypeHintVM();
   const glyph = makeGlyph([
     { x: 0, y: 0, onCurve: true, endOfContour: false },
-    { x: 0, y: 0, onCurve: true, endOfContour: false },
     { x: 0, y: 0, onCurve: true, endOfContour: true }
   ]);
 
-  // INSTCTRL(1,1), OP87(2,3), then write depth into p2. Only point-index push remains => depth 1.
+  // INSTCTRL(1,1), then write depth into p1. Only point-index push remains => depth 1.
   const program = [
     0xB0, 0x01, 0xB0, 0x01, 0x8E,
-    0xB0, 0x02, 0xB0, 0x03, 0x87,
-    0xB0, 0x02, 0x24, 0x48
+    0xB0, 0x01, 0x24, 0x48
   ];
   vm.runPrograms(glyph, [program], { cvtValues: [] });
-  assert.equal(glyph.points[2].x, 1);
+  assert.equal(glyph.points[1].x, 1);
 });
 
 test('hint vm experimental: UTP clears touched state so IUP re-interpolates from remaining touched points', () => {
@@ -633,6 +631,44 @@ test('hint vm experimental: top-level ENDF is treated as no-op', () => {
   const result = vm.runPrograms(glyph, [[0x2D]], { cvtValues: [] });
   assert.equal(result.executed, true);
   assert.equal(result.unsupportedOpcodeCount, 0);
+});
+
+test('hint vm experimental: SDPVTL[1] uses original-point line and rotates projection axis', () => {
+  const vm = new TrueTypeHintVM();
+  const glyph = makeGlyph([
+    { x: 0, y: 0, onCurve: true, endOfContour: false },
+    { x: 20, y: 0, onCurve: true, endOfContour: true }
+  ]);
+
+  // First move p1 in current space, then set projection from ORIGINAL p0->p1 rotated (0x87),
+  // and read GC current/projection into p0.y. Rotated axis should be y, so p0.y stays 0.
+  const program = [
+    0x01,
+    0xB0, 0x01, 0xB0, 0x1E, 0x48,
+    0xB0, 0x00, 0xB0, 0x01, 0x87,
+    0x00,
+    0xB0, 0x00, 0xB0, 0x00, 0x46, 0x48
+  ];
+  vm.runPrograms(glyph, [program], { cvtValues: [] });
+  assert.equal(glyph.points[1].x, 30);
+  assert.equal(glyph.points[0].y, 0);
+});
+
+test('hint vm experimental: ISECT moves point to intersection of two lines', () => {
+  const vm = new TrueTypeHintVM();
+  const glyph = makeGlyph([
+    { x: 0, y: 0, onCurve: true, endOfContour: false },   // a0
+    { x: 10, y: 10, onCurve: true, endOfContour: false }, // a1
+    { x: 0, y: 10, onCurve: true, endOfContour: false },  // b0
+    { x: 10, y: 0, onCurve: true, endOfContour: false },  // b1
+    { x: 99, y: 99, onCurve: true, endOfContour: true }   // p
+  ]);
+
+  // ISECT p=4, b0=2, b1=3, a0=0, a1=1
+  const program = [0xB0, 0x04, 0xB0, 0x02, 0xB0, 0x03, 0xB0, 0x00, 0xB0, 0x01, 0x0F];
+  vm.runPrograms(glyph, [program], { cvtValues: [] });
+  assert.equal(Math.abs(glyph.points[4].x - 5) < 1e-6, true);
+  assert.equal(Math.abs(glyph.points[4].y - 5) < 1e-6, true);
 });
 
 test('hint vm experimental: IDEF can define and execute a custom opcode body', () => {

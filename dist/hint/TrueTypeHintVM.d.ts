@@ -60,4 +60,5 @@ export declare class TrueTypeHintVM {
     private interpolatePointByRefs;
     private roundSuper;
     private safePositive;
+    private lineIntersection;
 }

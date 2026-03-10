@@ -454,6 +454,22 @@ export class TrueTypeHintVM {
                 ip += 1;
                 continue;
             }
+            if (opcode === 0x86 || opcode === 0x87) {
+                // SDPVTL[a]: set (dual) projection vector from ORIGINAL points.
+                const p2 = this.pop(state);
+                const p1 = this.pop(state);
+                const x1 = this.getPointAxisOriginal(state, state.zp1, p1, 'x');
+                const y1 = this.getPointAxisOriginal(state, state.zp1, p1, 'y');
+                const x2 = this.getPointAxisOriginal(state, state.zp2, p2, 'x');
+                const y2 = this.getPointAxisOriginal(state, state.zp2, p2, 'y');
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                let axis: Axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+                if (opcode === 0x87) axis = axis === 'x' ? 'y' : 'x';
+                state.projectionAxis = axis;
+                ip += 1;
+                continue;
+            }
             if (opcode === 0x0c) {
                 this.pushVector(state, state.freedomAxis);
                 ip += 1;
@@ -687,7 +703,7 @@ export class TrueTypeHintVM {
                 ip += 1;
                 continue;
             }
-            if (opcode === 0x8e || opcode === 0x87) {
+            if (opcode === 0x8e) {
                 // INSTCTRL and related execution controls: consume args, no geometry effect.
                 this.pop(state);
                 this.pop(state);
@@ -750,6 +766,8 @@ export class TrueTypeHintVM {
                 state.rp0Zone = state.zp0;
                 state.rp1 = pointIndex;
                 state.rp1Zone = state.zp0;
+                state.rp2 = pointIndex;
+                state.rp2Zone = state.zp0;
                 ip += 1;
                 continue;
             }
@@ -765,6 +783,8 @@ export class TrueTypeHintVM {
                 state.rp0Zone = state.zp0;
                 state.rp1 = pointIndex;
                 state.rp1Zone = state.zp0;
+                state.rp2 = pointIndex;
+                state.rp2Zone = state.zp0;
                 ip += 1;
                 continue;
             }
@@ -849,6 +869,30 @@ export class TrueTypeHintVM {
             if (opcode === 0x29) {
                 const pointIndex = this.pop(state);
                 this.clearTouchedPoint(state, state.zp0, pointIndex);
+                ip += 1;
+                continue;
+            }
+            if (opcode === 0x0f) {
+                // ISECT: move p (zp2) to intersection of lines (a0-a1 in zp0) and (b0-b1 in zp1).
+                const a1 = this.pop(state);
+                const a0 = this.pop(state);
+                const b1 = this.pop(state);
+                const b0 = this.pop(state);
+                const p = this.pop(state);
+                const a0p = this.getZonePoint(state, state.zp0, a0);
+                const a1p = this.getZonePoint(state, state.zp0, a1);
+                const b0p = this.getZonePoint(state, state.zp1, b0);
+                const b1p = this.getZonePoint(state, state.zp1, b1);
+                const tp = this.getZonePoint(state, state.zp2, p);
+                if (a0p && a1p && b0p && b1p && tp) {
+                    const hit = this.lineIntersection(a0p, a1p, b0p, b1p);
+                    if (hit) {
+                        tp.x = hit.x;
+                        tp.y = hit.y;
+                        this.markTouched(state, state.zp2, 'x', p);
+                        this.markTouched(state, state.zp2, 'y', p);
+                    }
+                }
                 ip += 1;
                 continue;
             }
@@ -1343,5 +1387,31 @@ export class TrueTypeHintVM {
 
     private safePositive(value: number): number {
         return Number.isFinite(value) && value > 0 ? value : 1;
+    }
+
+    private lineIntersection(
+        a0: { x: number; y: number },
+        a1: { x: number; y: number },
+        b0: { x: number; y: number },
+        b1: { x: number; y: number }
+    ): { x: number; y: number } | null {
+        const x1 = a0.x;
+        const y1 = a0.y;
+        const x2 = a1.x;
+        const y2 = a1.y;
+        const x3 = b0.x;
+        const y3 = b0.y;
+        const x4 = b1.x;
+        const y4 = b1.y;
+
+        const den = ((x1 - x2) * (y3 - y4)) - ((y1 - y2) * (x3 - x4));
+        if (!Number.isFinite(den) || Math.abs(den) < 1e-9) return null;
+
+        const d1 = (x1 * y2) - (y1 * x2);
+        const d2 = (x3 * y4) - (y3 * x4);
+        const px = ((d1 * (x3 - x4)) - ((x1 - x2) * d2)) / den;
+        const py = ((d1 * (y3 - y4)) - ((y1 - y2) * d2)) / den;
+        if (!Number.isFinite(px) || !Number.isFinite(py)) return null;
+        return { x: px, y: py };
     }
 }

@@ -43,6 +43,7 @@ export class TrueTypeHintVM {
             zp1: 1,
             zp2: 1,
             functions: new Map(),
+            instructionDefs: new Map(),
             callDepth: 0,
             deltaBase: 9,
             deltaShift: 3
@@ -105,6 +106,19 @@ export class TrueTypeHintVM {
                 if (end >= 0) {
                     const body = program.slice(ip + 1, end);
                     state.functions.set(fnId, body);
+                    ip = end + 1;
+                    continue;
+                }
+                state.unsupportedOpcodeCount++;
+                ip += 1;
+                continue;
+            }
+            if (opcode === 0x89) {
+                const opId = this.pop(state) & 0xff;
+                const end = this.findEndf(program, ip + 1);
+                if (end >= 0) {
+                    const body = program.slice(ip + 1, end);
+                    state.instructionDefs.set(opId, body);
                     ip = end + 1;
                     continue;
                 }
@@ -384,6 +398,23 @@ export class TrueTypeHintVM {
                 ip += 1;
                 continue;
             }
+            if (opcode === 0x86 || opcode === 0x87) {
+                // SDPVTL[a]: set (dual) projection vector from ORIGINAL points.
+                const p2 = this.pop(state);
+                const p1 = this.pop(state);
+                const x1 = this.getPointAxisOriginal(state, state.zp1, p1, 'x');
+                const y1 = this.getPointAxisOriginal(state, state.zp1, p1, 'y');
+                const x2 = this.getPointAxisOriginal(state, state.zp2, p2, 'x');
+                const y2 = this.getPointAxisOriginal(state, state.zp2, p2, 'y');
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                let axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+                if (opcode === 0x87)
+                    axis = axis === 'x' ? 'y' : 'x';
+                state.projectionAxis = axis;
+                ip += 1;
+                continue;
+            }
             if (opcode === 0x0c) {
                 this.pushVector(state, state.freedomAxis);
                 ip += 1;
@@ -489,6 +520,12 @@ export class TrueTypeHintVM {
             }
             if (opcode === 0x7a) {
                 state.roundMode = 'off';
+                ip += 1;
+                continue;
+            }
+            if (opcode === 0x7e || opcode === 0x7f) {
+                // SANGW / AA rasterization controls: consume selector, no geometry effect in this VM.
+                this.pop(state);
                 ip += 1;
                 continue;
             }
@@ -605,7 +642,7 @@ export class TrueTypeHintVM {
                 ip += 1;
                 continue;
             }
-            if (opcode === 0x8e || opcode === 0x87) {
+            if (opcode === 0x8e) {
                 // INSTCTRL and related execution controls: consume args, no geometry effect.
                 this.pop(state);
                 this.pop(state);
@@ -668,6 +705,8 @@ export class TrueTypeHintVM {
                 state.rp0Zone = state.zp0;
                 state.rp1 = pointIndex;
                 state.rp1Zone = state.zp0;
+                state.rp2 = pointIndex;
+                state.rp2Zone = state.zp0;
                 ip += 1;
                 continue;
             }
@@ -683,6 +722,8 @@ export class TrueTypeHintVM {
                 state.rp0Zone = state.zp0;
                 state.rp1 = pointIndex;
                 state.rp1Zone = state.zp0;
+                state.rp2 = pointIndex;
+                state.rp2Zone = state.zp0;
                 ip += 1;
                 continue;
             }
@@ -767,6 +808,30 @@ export class TrueTypeHintVM {
                 ip += 1;
                 continue;
             }
+            if (opcode === 0x0f) {
+                // ISECT: move p (zp2) to intersection of lines (a0-a1 in zp0) and (b0-b1 in zp1).
+                const a1 = this.pop(state);
+                const a0 = this.pop(state);
+                const b1 = this.pop(state);
+                const b0 = this.pop(state);
+                const p = this.pop(state);
+                const a0p = this.getZonePoint(state, state.zp0, a0);
+                const a1p = this.getZonePoint(state, state.zp0, a1);
+                const b0p = this.getZonePoint(state, state.zp1, b0);
+                const b1p = this.getZonePoint(state, state.zp1, b1);
+                const tp = this.getZonePoint(state, state.zp2, p);
+                if (a0p && a1p && b0p && b1p && tp) {
+                    const hit = this.lineIntersection(a0p, a1p, b0p, b1p);
+                    if (hit) {
+                        tp.x = hit.x;
+                        tp.y = hit.y;
+                        this.markTouched(state, state.zp2, 'x', p);
+                        this.markTouched(state, state.zp2, 'y', p);
+                    }
+                }
+                ip += 1;
+                continue;
+            }
             // MSIRP[0/1]
             if (opcode === 0x3a || opcode === 0x3b) {
                 const pointIndex = this.pop(state);
@@ -798,6 +863,14 @@ export class TrueTypeHintVM {
                 const pointIndex = this.pop(state);
                 const cvtIndex = this.pop(state);
                 this.moveRelativePoint(state, pointIndex, cvtIndex, opcode, state.zp1);
+                ip += 1;
+                continue;
+            }
+            const idef = state.instructionDefs.get(opcode);
+            if (idef && state.callDepth < MAX_CALL_DEPTH) {
+                state.callDepth++;
+                this.executeProgram(idef, state);
+                state.callDepth--;
                 ip += 1;
                 continue;
             }
@@ -963,14 +1036,19 @@ export class TrueTypeHintVM {
         const refValue = this.getPointAxis(state, state.rp0Zone, state.rp0, state.projectionAxis);
         const current = this.getPointAxis(state, pointZone, pointIndex, state.projectionAxis);
         const signedDist = current - refValue;
-        const sign = signedDist < 0 ? -1 : 1;
+        const originalSign = signedDist < 0 ? -1 : 1;
+        let sign = originalSign;
         const roundFlag = (opcode & 0x04) !== 0;
         const minDistFlag = (opcode & 0x08) !== 0;
         const setRp0Flag = (opcode & 0x10) !== 0;
         const originalAbsDistance = Math.abs(signedDist);
         let targetAbsDistance = originalAbsDistance;
         if (cvtIndex != null) {
-            const cvtValue = Math.abs(this.getCvt(state, cvtIndex));
+            const rawCvtValue = this.getCvt(state, cvtIndex);
+            const cvtValue = Math.abs(rawCvtValue);
+            if (!state.autoFlip && rawCvtValue !== 0) {
+                sign = rawCvtValue < 0 ? -1 : 1;
+            }
             targetAbsDistance = Math.abs(cvtValue - originalAbsDistance) > state.cvtCutIn ? originalAbsDistance : cvtValue;
             if (Math.abs(targetAbsDistance - state.singleWidthValue) < state.singleWidthCutIn) {
                 targetAbsDistance = Math.abs(state.singleWidthValue);
@@ -1252,5 +1330,25 @@ export class TrueTypeHintVM {
     }
     safePositive(value) {
         return Number.isFinite(value) && value > 0 ? value : 1;
+    }
+    lineIntersection(a0, a1, b0, b1) {
+        const x1 = a0.x;
+        const y1 = a0.y;
+        const x2 = a1.x;
+        const y2 = a1.y;
+        const x3 = b0.x;
+        const y3 = b0.y;
+        const x4 = b1.x;
+        const y4 = b1.y;
+        const den = ((x1 - x2) * (y3 - y4)) - ((y1 - y2) * (x3 - x4));
+        if (!Number.isFinite(den) || Math.abs(den) < 1e-9)
+            return null;
+        const d1 = (x1 * y2) - (y1 * x2);
+        const d2 = (x3 * y4) - (y3 * x4);
+        const px = ((d1 * (x3 - x4)) - ((x1 - x2) * d2)) / den;
+        const py = ((d1 * (y3 - y4)) - ((y1 - y2) * d2)) / den;
+        if (!Number.isFinite(px) || !Number.isFinite(py))
+            return null;
+        return { x: px, y: py };
     }
 }
