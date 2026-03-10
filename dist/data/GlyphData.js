@@ -1,38 +1,42 @@
 import { Point } from './Point.js';
-var GlyphData = /** @class */ (function () {
-    function GlyphData(gd, lsb, advance, options) {
-        var _a, _b;
+export class GlyphData {
+    leftSideBearing;
+    advanceWidth;
+    points;
+    isCubic;
+    includePhantoms;
+    constructor(gd, lsb, advance, options) {
         this.leftSideBearing = lsb;
         this.advanceWidth = advance;
         this.points = null;
-        this.isCubic = (_a = options === null || options === void 0 ? void 0 : options.isCubic) !== null && _a !== void 0 ? _a : false;
-        this.includePhantoms = (_b = options === null || options === void 0 ? void 0 : options.includePhantoms) !== null && _b !== void 0 ? _b : true;
+        this.isCubic = options?.isCubic ?? false;
+        this.includePhantoms = options?.includePhantoms ?? true;
         this.describe(gd);
     }
-    GlyphData.prototype.getPoint = function (i) {
+    getPoint(i) {
         return this.points ? this.points[i] : undefined;
-    };
-    GlyphData.prototype.getPointCount = function () {
+    }
+    getPointCount() {
         return this.points ? this.points.length : 0;
-    };
-    GlyphData.prototype.reset = function () {
+    }
+    reset() {
         // Implement reset logic if needed
-    };
-    GlyphData.prototype.scale = function (factor) {
+    }
+    scale(factor) {
         if (!this.points)
             return;
-        for (var i = 0; i < this.points.length; i++) {
+        for (let i = 0; i < this.points.length; i++) {
             this.points[i].x = ((this.points[i].x << 10) * factor) >> 26;
             this.points[i].y = ((this.points[i].y << 10) * factor) >> 26;
         }
         this.leftSideBearing = (this.leftSideBearing * factor) >> 6;
         this.advanceWidth = (this.advanceWidth * factor) >> 6;
-    };
-    GlyphData.prototype.describe = function (gd) {
-        var endPtIndex = 0;
+    }
+    describe(gd) {
+        let endPtIndex = 0;
         this.points = [];
-        for (var i = 0; i < gd.getPointCount(); i++) {
-            var endPt = gd.getEndPtOfContours(endPtIndex) === i;
+        for (let i = 0; i < gd.getPointCount(); i++) {
+            const endPt = gd.getEndPtOfContours(endPtIndex) === i;
             if (endPt) {
                 endPtIndex++;
             }
@@ -43,7 +47,5 @@ var GlyphData = /** @class */ (function () {
             this.points.push(new Point(0, 0, true, true));
             this.points.push(new Point(this.advanceWidth, 0, true, true));
         }
-    };
-    return GlyphData;
-}());
-export { GlyphData };
+    }
+}

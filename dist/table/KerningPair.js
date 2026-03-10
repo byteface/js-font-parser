@@ -1,19 +1,20 @@
 // UNTESTED
-var KerningPair = /** @class */ (function () {
-    function KerningPair(byte_ar) {
+export class KerningPair {
+    left;
+    right;
+    value;
+    constructor(byte_ar) {
         this.left = byte_ar.readUnsignedShort();
         this.right = byte_ar.readUnsignedShort();
         this.value = byte_ar.readShort();
     }
-    KerningPair.prototype.getLeft = function () {
+    getLeft() {
         return this.left;
-    };
-    KerningPair.prototype.getRight = function () {
+    }
+    getRight() {
         return this.right;
-    };
-    KerningPair.prototype.getValue = function () {
+    }
+    getValue() {
         return this.value;
-    };
-    return KerningPair;
-}());
-export { KerningPair };
+    }
+}

@@ -1,6 +1,10 @@
-var DirectoryEntry = /** @class */ (function () {
-    function DirectoryEntry(byteAr) {
-        this.table = null;
+export class DirectoryEntry {
+    tag;
+    checksum;
+    offset;
+    length;
+    table = null;
+    constructor(byteAr) {
         // console.log("Initial byteAr offset:", byteAr.offset);
         this.tag = byteAr.readInt();
         // console.log("Read tag:", this.tag, "New byteAr offset:", byteAr.offset);
@@ -12,8 +16,8 @@ var DirectoryEntry = /** @class */ (function () {
         // console.log("Read length:", this.length, "New byteAr offset:", byteAr.offset);
         // console.log("DE:", this.tag, this.offset, this.length);
     }
-    DirectoryEntry.prototype.toString = function () {
-        var str = "";
+    toString() {
+        let str = "";
         // str += ((this.tag >> 24) & 0xff) + ",";
         // str += ((this.tag >> 16) & 0xff) + ",";
         // str += ((this.tag >> 8) & 0xff) + ",";
@@ -28,11 +32,9 @@ var DirectoryEntry = /** @class */ (function () {
         else {
             str += "tag: null,";
         }
-        str += " offset: ".concat(this.offset, ",");
-        str += " length: ".concat(this.length, ",");
-        str += " checksum: 0x".concat(this.checksum.toString(16)); // Using ! to assert checksum is not null
+        str += ` offset: ${this.offset},`;
+        str += ` length: ${this.length},`;
+        str += ` checksum: 0x${this.checksum.toString(16)}`; // Using ! to assert checksum is not null
         return str;
-    };
-    return DirectoryEntry;
-}());
-export { DirectoryEntry };
+    }
+}

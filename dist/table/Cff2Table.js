@@ -3,57 +3,57 @@ import { CffIndex } from './CffIndex.js';
 import { CffDict } from './CffDict.js';
 import { CffGlyphDescription } from './CffGlyphDescription.js';
 import { Debug } from '../utils/Debug.js';
-var Cff2Table = /** @class */ (function () {
-    function Cff2Table(de, byte_ar) {
-        var _this = this;
-        this.charStrings = [];
-        this.globalSubrs = [];
-        this.fdSelect = [];
-        this.privateInfos = [];
-        this.vstoreRegionCounts = [];
-        this.vstoreRegionIndices = [];
-        this.vstoreRegions = [];
-        this.vstoreAxisCount = 0;
-        this.variationCoords = [];
+export class Cff2Table {
+    baseOffset;
+    charStrings = [];
+    globalSubrs = [];
+    fdSelect = [];
+    privateInfos = [];
+    vstoreRegionCounts = [];
+    vstoreRegionIndices = [];
+    vstoreRegions = [];
+    vstoreAxisCount = 0;
+    variationCoords = [];
+    constructor(de, byte_ar) {
         this.baseOffset = de.offset;
         byte_ar.offset = de.offset;
-        var major = byte_ar.readUnsignedByte();
-        var minor = byte_ar.readUnsignedByte();
-        var hdrSize = byte_ar.readUnsignedByte();
-        var topDictLength = byte_ar.readUnsignedShort();
+        const major = byte_ar.readUnsignedByte();
+        const minor = byte_ar.readUnsignedByte();
+        const hdrSize = byte_ar.readUnsignedByte();
+        const topDictLength = byte_ar.readUnsignedShort();
         if (major !== 2) {
             return;
         }
-        var topDictStart = this.baseOffset + hdrSize;
+        const topDictStart = this.baseOffset + hdrSize;
         byte_ar.offset = topDictStart;
-        var topDictData = byte_ar.readBytes(topDictLength);
-        var topDict = CffDict.parse(topDictData);
-        var globalSubrIndex = CffIndex.readCff2(byte_ar, topDictStart + topDictLength);
+        const topDictData = byte_ar.readBytes(topDictLength);
+        const topDict = CffDict.parse(topDictData);
+        const globalSubrIndex = CffIndex.readCff2(byte_ar, topDictStart + topDictLength);
         this.globalSubrs = globalSubrIndex.objects;
-        var charStringsOffset = topDict.getNumber('charStrings', 0);
+        const charStringsOffset = topDict.getNumber('charStrings', 0);
         if (charStringsOffset > 0) {
-            var charStringsIndex = CffIndex.readCff2(byte_ar, this.baseOffset + charStringsOffset);
+            const charStringsIndex = CffIndex.readCff2(byte_ar, this.baseOffset + charStringsOffset);
             this.charStrings = charStringsIndex.objects;
         }
-        var fdArrayOffset = topDict.getNumber('fdArray', 0);
-        var fdSelectOffset = topDict.getNumber('fdSelect', 0);
-        var vstoreOffset = topDict.getNumber('vstore', 0);
+        const fdArrayOffset = topDict.getNumber('fdArray', 0);
+        const fdSelectOffset = topDict.getNumber('fdSelect', 0);
+        const vstoreOffset = topDict.getNumber('vstore', 0);
         if (fdArrayOffset > 0) {
-            var fdArrayIndex = CffIndex.readCff2(byte_ar, this.baseOffset + fdArrayOffset);
-            var fdDicts = fdArrayIndex.objects.map(function (bytes) { return CffDict.parse(bytes); });
-            this.privateInfos = fdDicts.map(function (dict) {
-                var info = dict.getArray('private');
+            const fdArrayIndex = CffIndex.readCff2(byte_ar, this.baseOffset + fdArrayOffset);
+            const fdDicts = fdArrayIndex.objects.map(bytes => CffDict.parse(bytes));
+            this.privateInfos = fdDicts.map(dict => {
+                const info = dict.getArray('private');
                 if (!info || info.length < 2)
                     return { subrs: [] };
-                var size = info[0];
-                var offset = info[1];
-                var privateStart = _this.baseOffset + offset;
+                const size = info[0];
+                const offset = info[1];
+                const privateStart = this.baseOffset + offset;
                 byte_ar.offset = privateStart;
-                var privateBytes = byte_ar.readBytes(size);
-                var privateDict = CffDict.parse(privateBytes);
-                var subrsOffset = privateDict.getNumber('subrs', 0);
+                const privateBytes = byte_ar.readBytes(size);
+                const privateDict = CffDict.parse(privateBytes);
+                const subrsOffset = privateDict.getNumber('subrs', 0);
                 if (subrsOffset > 0) {
-                    var subrsIndex = CffIndex.readCff2(byte_ar, privateStart + subrsOffset);
+                    const subrsIndex = CffIndex.readCff2(byte_ar, privateStart + subrsOffset);
                     return { subrs: subrsIndex.objects };
                 }
                 return { subrs: [] };
@@ -69,82 +69,81 @@ var Cff2Table = /** @class */ (function () {
             this.readVariationStore(byte_ar, this.baseOffset + vstoreOffset);
         }
     }
-    Cff2Table.prototype.getType = function () {
+    getType() {
         return Table.CFF2;
-    };
-    Cff2Table.prototype.getGlyphDescription = function (glyphId) {
-        var _a, _b, _c;
-        var charString = this.charStrings[glyphId];
+    }
+    getGlyphDescription(glyphId) {
+        const charString = this.charStrings[glyphId];
         if (!charString)
             return null;
-        var fdIndex = (_a = this.fdSelect[glyphId]) !== null && _a !== void 0 ? _a : 0;
-        var localSubrs = (_c = (_b = this.privateInfos[fdIndex]) === null || _b === void 0 ? void 0 : _b.subrs) !== null && _c !== void 0 ? _c : [];
-        var _d = this.parseCharString(charString, localSubrs), points = _d.points, endPts = _d.endPts;
+        const fdIndex = this.fdSelect[glyphId] ?? 0;
+        const localSubrs = this.privateInfos[fdIndex]?.subrs ?? [];
+        const { points, endPts } = this.parseCharString(charString, localSubrs);
         return new CffGlyphDescription(points, endPts);
-    };
-    Cff2Table.prototype.setVariationCoords = function (coords) {
+    }
+    setVariationCoords(coords) {
         this.variationCoords = coords.slice();
-    };
-    Cff2Table.prototype.readFdSelect = function (byte_ar, offset, numGlyphs) {
-        var prev = byte_ar.offset;
+    }
+    readFdSelect(byte_ar, offset, numGlyphs) {
+        const prev = byte_ar.offset;
         byte_ar.offset = offset;
-        var format = byte_ar.readUnsignedByte();
-        var fdSelect = new Array(numGlyphs).fill(0);
+        const format = byte_ar.readUnsignedByte();
+        const fdSelect = new Array(numGlyphs).fill(0);
         if (format === 0) {
-            for (var i = 0; i < numGlyphs; i++) {
+            for (let i = 0; i < numGlyphs; i++) {
                 fdSelect[i] = byte_ar.readUnsignedByte();
             }
         }
         else if (format === 3) {
-            var nRanges = byte_ar.readUnsignedShort();
-            var ranges = [];
-            for (var i = 0; i < nRanges; i++) {
+            const nRanges = byte_ar.readUnsignedShort();
+            const ranges = [];
+            for (let i = 0; i < nRanges; i++) {
                 ranges.push({ first: byte_ar.readUnsignedShort(), fd: byte_ar.readUnsignedShort() });
             }
-            var sentinel = byte_ar.readUnsignedShort();
-            for (var i = 0; i < ranges.length; i++) {
-                var start = ranges[i].first;
-                var end = (i + 1 < ranges.length ? ranges[i + 1].first : sentinel) - 1;
-                for (var g = start; g <= end && g < numGlyphs; g++) {
+            const sentinel = byte_ar.readUnsignedShort();
+            for (let i = 0; i < ranges.length; i++) {
+                const start = ranges[i].first;
+                const end = (i + 1 < ranges.length ? ranges[i + 1].first : sentinel) - 1;
+                for (let g = start; g <= end && g < numGlyphs; g++) {
                     fdSelect[g] = ranges[i].fd;
                 }
             }
         }
         else if (format === 4) {
-            var nRanges = byte_ar.readUnsignedInt();
-            var ranges = [];
-            for (var i = 0; i < nRanges; i++) {
+            const nRanges = byte_ar.readUnsignedInt();
+            const ranges = [];
+            for (let i = 0; i < nRanges; i++) {
                 ranges.push({ first: byte_ar.readUnsignedInt(), fd: byte_ar.readUnsignedShort() });
             }
-            var sentinel = byte_ar.readUnsignedInt();
-            for (var i = 0; i < ranges.length; i++) {
-                var start = ranges[i].first;
-                var end = (i + 1 < ranges.length ? ranges[i + 1].first : sentinel) - 1;
-                for (var g = start; g <= end && g < numGlyphs; g++) {
+            const sentinel = byte_ar.readUnsignedInt();
+            for (let i = 0; i < ranges.length; i++) {
+                const start = ranges[i].first;
+                const end = (i + 1 < ranges.length ? ranges[i + 1].first : sentinel) - 1;
+                for (let g = start; g <= end && g < numGlyphs; g++) {
                     fdSelect[g] = ranges[i].fd;
                 }
             }
         }
         byte_ar.offset = prev;
         return fdSelect;
-    };
-    Cff2Table.prototype.getSubrBias = function (subrs) {
-        var n = subrs.length;
+    }
+    getSubrBias(subrs) {
+        const n = subrs.length;
         if (n < 1240)
             return 107;
         if (n < 33900)
             return 1131;
         return 32768;
-    };
-    Cff2Table.prototype.readVariationStore = function (byte_ar, offset) {
-        var prev = byte_ar.offset;
-        var storeOffset = offset;
+    }
+    readVariationStore(byte_ar, offset) {
+        const prev = byte_ar.offset;
+        let storeOffset = offset;
         byte_ar.offset = storeOffset;
-        var format = byte_ar.readUnsignedShort();
+        let format = byte_ar.readUnsignedShort();
         if (format !== 1) {
             // Some fonts appear to prefix the variation store with a 16-bit length.
             byte_ar.offset = storeOffset + 2;
-            var altFormat = byte_ar.readUnsignedShort();
+            const altFormat = byte_ar.readUnsignedShort();
             if (altFormat === 1) {
                 storeOffset += 2;
                 format = altFormat;
@@ -154,105 +153,103 @@ var Cff2Table = /** @class */ (function () {
                 return;
             }
         }
-        var regionListOffset = byte_ar.readUnsignedInt();
-        var ivdCount = byte_ar.readUnsignedShort();
-        var ivdOffsets = [];
-        for (var i = 0; i < ivdCount; i++) {
+        const regionListOffset = byte_ar.readUnsignedInt();
+        const ivdCount = byte_ar.readUnsignedShort();
+        const ivdOffsets = [];
+        for (let i = 0; i < ivdCount; i++) {
             ivdOffsets.push(byte_ar.readUnsignedInt());
         }
-        var regionListPos = storeOffset + regionListOffset;
+        const regionListPos = storeOffset + regionListOffset;
         byte_ar.offset = regionListPos;
-        var axisCount = byte_ar.readUnsignedShort();
-        var regionCount = byte_ar.readUnsignedShort();
+        const axisCount = byte_ar.readUnsignedShort();
+        const regionCount = byte_ar.readUnsignedShort();
         this.vstoreAxisCount = axisCount;
         this.vstoreRegions = [];
-        for (var r = 0; r < regionCount; r++) {
-            var region = [];
-            for (var a = 0; a < axisCount; a++) {
-                var start = byte_ar.readShort() / 16384;
-                var peak = byte_ar.readShort() / 16384;
-                var end = byte_ar.readShort() / 16384;
-                region.push({ start: start, peak: peak, end: end });
+        for (let r = 0; r < regionCount; r++) {
+            const region = [];
+            for (let a = 0; a < axisCount; a++) {
+                const start = byte_ar.readShort() / 16384;
+                const peak = byte_ar.readShort() / 16384;
+                const end = byte_ar.readShort() / 16384;
+                region.push({ start, peak, end });
             }
             this.vstoreRegions.push(region);
         }
         this.vstoreRegionCounts = new Array(ivdCount).fill(0);
-        this.vstoreRegionIndices = new Array(ivdCount).fill(null).map(function () { return []; });
-        for (var i = 0; i < ivdCount; i++) {
-            var ivdPos = storeOffset + ivdOffsets[i];
+        this.vstoreRegionIndices = new Array(ivdCount).fill(null).map(() => []);
+        for (let i = 0; i < ivdCount; i++) {
+            const ivdPos = storeOffset + ivdOffsets[i];
             byte_ar.offset = ivdPos;
             byte_ar.readUnsignedShort(); // itemCount
             byte_ar.readUnsignedShort(); // shortDeltaCount
-            var regionIndexCount = byte_ar.readUnsignedShort();
+            const regionIndexCount = byte_ar.readUnsignedShort();
             this.vstoreRegionCounts[i] = regionIndexCount;
-            var indices = [];
-            for (var r = 0; r < regionIndexCount; r++) {
+            const indices = [];
+            for (let r = 0; r < regionIndexCount; r++) {
                 indices.push(byte_ar.readUnsignedShort());
             }
             this.vstoreRegionIndices[i] = indices;
         }
         byte_ar.offset = prev;
-    };
-    Cff2Table.prototype.parseCharString = function (charString, localSubrs) {
-        var _this = this;
-        var points = [];
-        var endPts = [];
-        var x = 0;
-        var y = 0;
-        var contourOpen = false;
-        var stemCount = 0;
-        var vsIndex = 0;
-        var stack = [];
-        var gsubrs = this.globalSubrs;
-        var lsubrs = localSubrs;
-        var gBias = this.getSubrBias(gsubrs);
-        var lBias = this.getSubrBias(lsubrs);
-        var addPoint = function (dx, dy, onCurve) {
+    }
+    parseCharString(charString, localSubrs) {
+        const points = [];
+        const endPts = [];
+        let x = 0;
+        let y = 0;
+        let contourOpen = false;
+        let stemCount = 0;
+        let vsIndex = 0;
+        const stack = [];
+        const gsubrs = this.globalSubrs;
+        const lsubrs = localSubrs;
+        const gBias = this.getSubrBias(gsubrs);
+        const lBias = this.getSubrBias(lsubrs);
+        const addPoint = (dx, dy, onCurve) => {
             x += dx;
             y += dy;
-            points.push({ x: x, y: y, onCurve: onCurve, endOfContour: false });
+            points.push({ x, y, onCurve, endOfContour: false });
         };
-        var closeContour = function () {
+        const closeContour = () => {
             if (!contourOpen || points.length === 0)
                 return;
             points[points.length - 1].endOfContour = true;
             endPts.push(points.length - 1);
             contourOpen = false;
         };
-        var ensureMove = function () {
+        const ensureMove = () => {
             if (!contourOpen) {
-                points.push({ x: x, y: y, onCurve: true, endOfContour: false });
+                points.push({ x, y, onCurve: true, endOfContour: false });
                 contourOpen = true;
             }
         };
-        var applyBlendToStack = function (stack, vsIndexValue) {
-            var _a, _b, _c, _d, _e;
-            var n = stack.pop();
+        const applyBlendToStack = (stack, vsIndexValue) => {
+            const n = stack.pop();
             if (n == null)
                 return;
-            var regionCount = (_a = _this.vstoreRegionCounts[vsIndexValue]) !== null && _a !== void 0 ? _a : 0;
-            var regionIndices = (_b = _this.vstoreRegionIndices[vsIndexValue]) !== null && _b !== void 0 ? _b : [];
-            var blendCount = n * (regionCount + 1);
+            const regionCount = this.vstoreRegionCounts[vsIndexValue] ?? 0;
+            const regionIndices = this.vstoreRegionIndices[vsIndexValue] ?? [];
+            const blendCount = n * (regionCount + 1);
             if (n <= 0 || stack.length < blendCount)
                 return;
-            var start = stack.length - blendCount;
-            var blendArgs = stack.splice(start, blendCount);
-            var base = blendArgs.slice(0, n);
-            var deltas = blendArgs.slice(n);
-            var coords = _this.variationCoords;
-            var regionScalars = [];
-            for (var r = 0; r < regionCount; r++) {
-                var regionIndex = (_c = regionIndices[r]) !== null && _c !== void 0 ? _c : r;
-                var region = _this.vstoreRegions[regionIndex];
+            const start = stack.length - blendCount;
+            const blendArgs = stack.splice(start, blendCount);
+            const base = blendArgs.slice(0, n);
+            const deltas = blendArgs.slice(n);
+            const coords = this.variationCoords;
+            const regionScalars = [];
+            for (let r = 0; r < regionCount; r++) {
+                const regionIndex = regionIndices[r] ?? r;
+                const region = this.vstoreRegions[regionIndex];
                 if (!region) {
                     regionScalars.push(0);
                     continue;
                 }
-                var scalar = 1;
-                for (var a = 0; a < region.length; a++) {
-                    var coord = (_d = coords[a]) !== null && _d !== void 0 ? _d : 0;
-                    var _f = region[a], start_1 = _f.start, peak = _f.peak, end = _f.end;
-                    if (start_1 === 0 && peak === 0 && end === 0) {
+                let scalar = 1;
+                for (let a = 0; a < region.length; a++) {
+                    const coord = coords[a] ?? 0;
+                    const { start, peak, end } = region[a];
+                    if (start === 0 && peak === 0 && end === 0) {
                         continue;
                     }
                     if (coord === 0) {
@@ -262,33 +259,33 @@ var Cff2Table = /** @class */ (function () {
                         }
                         continue;
                     }
-                    if (coord < start_1 || coord > end) {
+                    if (coord < start || coord > end) {
                         scalar = 0;
                         break;
                     }
                     if (coord < peak)
-                        scalar *= (coord - start_1) / (peak - start_1);
+                        scalar *= (coord - start) / (peak - start);
                     else if (coord > peak)
                         scalar *= (end - coord) / (end - peak);
                 }
                 regionScalars.push(scalar);
             }
-            var out = base.slice();
-            for (var r = 0; r < regionCount; r++) {
-                var s = (_e = regionScalars[r]) !== null && _e !== void 0 ? _e : 0;
+            const out = base.slice();
+            for (let r = 0; r < regionCount; r++) {
+                const s = regionScalars[r] ?? 0;
                 if (!s)
                     continue;
-                for (var i = 0; i < n; i++) {
+                for (let i = 0; i < n; i++) {
                     // CFF2 blend deltas are argument-major: [arg0 r0..rN, arg1 r0..rN, ...]
                     out[i] += deltas[i * regionCount + r] * s;
                 }
             }
-            stack.push.apply(stack, out);
-            if (globalThis === null || globalThis === void 0 ? void 0 : globalThis.__CFF2_TRACE) {
+            stack.push(...out);
+            if (globalThis?.__CFF2_TRACE) {
                 globalThis.__CFF2_TRACE.push({
                     type: 'blend',
                     vsIndex: vsIndexValue,
-                    n: n,
+                    n,
                     coords: coords.slice(),
                     regionIndices: regionIndices.slice(),
                     regionScalars: regionScalars.slice(),
@@ -298,19 +295,17 @@ var Cff2Table = /** @class */ (function () {
                 });
             }
         };
-        var MAX_SUBR_DEPTH = 64;
-        var parse = function (bytes, depth) {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20;
-            if (depth === void 0) { depth = 0; }
+        const MAX_SUBR_DEPTH = 64;
+        const parse = (bytes, depth = 0) => {
             if (depth > MAX_SUBR_DEPTH) {
                 return;
             }
-            var i = 0;
-            var blendCount = 0;
+            let i = 0;
+            let blendCount = 0;
             while (i < bytes.length) {
-                var b0 = bytes[i++];
+                const b0 = bytes[i++];
                 if (b0 >= 32 || b0 === 28 || b0 === 255) {
-                    var _21 = _this.readCharStringNumber(bytes, i - 1), num = _21[0], next = _21[1];
+                    const [num, next] = this.readCharStringNumber(bytes, i - 1);
                     stack.push(num);
                     i = next;
                     continue;
@@ -318,7 +313,7 @@ var Cff2Table = /** @class */ (function () {
                 if (b0 === 11) {
                     return;
                 }
-                var args = stack.splice(0, stack.length);
+                const args = stack.splice(0, stack.length);
                 switch (b0) {
                     case 1:
                     case 3:
@@ -329,23 +324,23 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 4: {
                         closeContour();
-                        var dy = (_a = args.pop()) !== null && _a !== void 0 ? _a : 0;
+                        const dy = args.pop() ?? 0;
                         y += dy;
-                        points.push({ x: x, y: y, onCurve: true, endOfContour: false });
+                        points.push({ x, y, onCurve: true, endOfContour: false });
                         contourOpen = true;
                         break;
                     }
                     case 5: {
                         ensureMove();
-                        for (var j = 0; j < args.length; j += 2) {
-                            addPoint((_b = args[j]) !== null && _b !== void 0 ? _b : 0, (_c = args[j + 1]) !== null && _c !== void 0 ? _c : 0, true);
+                        for (let j = 0; j < args.length; j += 2) {
+                            addPoint(args[j] ?? 0, args[j + 1] ?? 0, true);
                         }
                         break;
                     }
                     case 6: {
                         ensureMove();
-                        var horizontal = true;
-                        for (var j = 0; j < args.length; j++) {
+                        let horizontal = true;
+                        for (let j = 0; j < args.length; j++) {
                             if (horizontal)
                                 addPoint(args[j], 0, true);
                             else
@@ -356,8 +351,8 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 7: {
                         ensureMove();
-                        var vertical = true;
-                        for (var j = 0; j < args.length; j++) {
+                        let vertical = true;
+                        for (let j = 0; j < args.length; j++) {
                             if (vertical)
                                 addPoint(0, args[j], true);
                             else
@@ -368,18 +363,18 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 8: {
                         ensureMove();
-                        for (var j = 0; j < args.length; j += 6) {
-                            addPoint((_d = args[j]) !== null && _d !== void 0 ? _d : 0, (_e = args[j + 1]) !== null && _e !== void 0 ? _e : 0, false);
-                            addPoint((_f = args[j + 2]) !== null && _f !== void 0 ? _f : 0, (_g = args[j + 3]) !== null && _g !== void 0 ? _g : 0, false);
-                            addPoint((_h = args[j + 4]) !== null && _h !== void 0 ? _h : 0, (_j = args[j + 5]) !== null && _j !== void 0 ? _j : 0, true);
+                        for (let j = 0; j < args.length; j += 6) {
+                            addPoint(args[j] ?? 0, args[j + 1] ?? 0, false);
+                            addPoint(args[j + 2] ?? 0, args[j + 3] ?? 0, false);
+                            addPoint(args[j + 4] ?? 0, args[j + 5] ?? 0, true);
                         }
                         break;
                     }
                     case 10: {
-                        var subrIndex = ((_k = args.pop()) !== null && _k !== void 0 ? _k : 0) + lBias;
+                        const subrIndex = (args.pop() ?? 0) + lBias;
                         if (args.length)
-                            stack.push.apply(stack, args);
-                        var subr = lsubrs[subrIndex];
+                            stack.push(...args);
+                        const subr = lsubrs[subrIndex];
                         if (subr)
                             parse(subr, depth + 1);
                         break;
@@ -391,36 +386,36 @@ var Cff2Table = /** @class */ (function () {
                     case 19:
                     case 20: {
                         stemCount += Math.floor(args.length / 2);
-                        var maskBytes = Math.ceil(stemCount / 8);
+                        const maskBytes = Math.ceil(stemCount / 8);
                         i += Math.min(maskBytes, bytes.length - i);
                         break;
                     }
                     case 21: {
                         closeContour();
-                        var dy = (_l = args.pop()) !== null && _l !== void 0 ? _l : 0;
-                        var dx = (_m = args.pop()) !== null && _m !== void 0 ? _m : 0;
+                        const dy = args.pop() ?? 0;
+                        const dx = args.pop() ?? 0;
                         x += dx;
                         y += dy;
-                        points.push({ x: x, y: y, onCurve: true, endOfContour: false });
+                        points.push({ x, y, onCurve: true, endOfContour: false });
                         contourOpen = true;
                         break;
                     }
                     case 22: {
                         closeContour();
-                        var dx = (_o = args.pop()) !== null && _o !== void 0 ? _o : 0;
+                        const dx = args.pop() ?? 0;
                         x += dx;
-                        points.push({ x: x, y: y, onCurve: true, endOfContour: false });
+                        points.push({ x, y, onCurve: true, endOfContour: false });
                         contourOpen = true;
                         break;
                     }
                     case 24: {
                         ensureMove();
-                        var lineArgs = args.slice(-2);
-                        var curveArgs = args.slice(0, -2);
-                        for (var j = 0; j < curveArgs.length; j += 6) {
-                            addPoint((_p = curveArgs[j]) !== null && _p !== void 0 ? _p : 0, (_q = curveArgs[j + 1]) !== null && _q !== void 0 ? _q : 0, false);
-                            addPoint((_r = curveArgs[j + 2]) !== null && _r !== void 0 ? _r : 0, (_s = curveArgs[j + 3]) !== null && _s !== void 0 ? _s : 0, false);
-                            addPoint((_t = curveArgs[j + 4]) !== null && _t !== void 0 ? _t : 0, (_u = curveArgs[j + 5]) !== null && _u !== void 0 ? _u : 0, true);
+                        const lineArgs = args.slice(-2);
+                        const curveArgs = args.slice(0, -2);
+                        for (let j = 0; j < curveArgs.length; j += 6) {
+                            addPoint(curveArgs[j] ?? 0, curveArgs[j + 1] ?? 0, false);
+                            addPoint(curveArgs[j + 2] ?? 0, curveArgs[j + 3] ?? 0, false);
+                            addPoint(curveArgs[j + 4] ?? 0, curveArgs[j + 5] ?? 0, true);
                         }
                         if (lineArgs.length === 2) {
                             addPoint(lineArgs[0], lineArgs[1], true);
@@ -429,10 +424,10 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 25: {
                         ensureMove();
-                        var curveArgs = args.slice(-6);
-                        var lineArgs = args.slice(0, -6);
-                        for (var j = 0; j < lineArgs.length; j += 2) {
-                            addPoint((_v = lineArgs[j]) !== null && _v !== void 0 ? _v : 0, (_w = lineArgs[j + 1]) !== null && _w !== void 0 ? _w : 0, true);
+                        const curveArgs = args.slice(-6);
+                        const lineArgs = args.slice(0, -6);
+                        for (let j = 0; j < lineArgs.length; j += 2) {
+                            addPoint(lineArgs[j] ?? 0, lineArgs[j + 1] ?? 0, true);
                         }
                         if (curveArgs.length === 6) {
                             addPoint(curveArgs[0], curveArgs[1], false);
@@ -443,16 +438,16 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 26: {
                         ensureMove();
-                        var idx = 0;
-                        var dx1 = 0;
+                        let idx = 0;
+                        let dx1 = 0;
                         if (args.length % 4 === 1) {
-                            dx1 = (_x = args[idx++]) !== null && _x !== void 0 ? _x : 0;
+                            dx1 = args[idx++] ?? 0;
                         }
                         while (idx + 3 < args.length) {
-                            var dy1 = (_y = args[idx++]) !== null && _y !== void 0 ? _y : 0;
-                            var dx2 = (_z = args[idx++]) !== null && _z !== void 0 ? _z : 0;
-                            var dy2 = (_0 = args[idx++]) !== null && _0 !== void 0 ? _0 : 0;
-                            var dy3 = (_1 = args[idx++]) !== null && _1 !== void 0 ? _1 : 0;
+                            const dy1 = args[idx++] ?? 0;
+                            const dx2 = args[idx++] ?? 0;
+                            const dy2 = args[idx++] ?? 0;
+                            const dy3 = args[idx++] ?? 0;
                             addPoint(dx1, dy1, false);
                             addPoint(dx2, dy2, false);
                             addPoint(0, dy3, true);
@@ -462,16 +457,16 @@ var Cff2Table = /** @class */ (function () {
                     }
                     case 27: {
                         ensureMove();
-                        var idx = 0;
-                        var dy1 = 0;
+                        let idx = 0;
+                        let dy1 = 0;
                         if (args.length % 4 === 1) {
-                            dy1 = (_2 = args[idx++]) !== null && _2 !== void 0 ? _2 : 0;
+                            dy1 = args[idx++] ?? 0;
                         }
                         while (idx + 3 < args.length) {
-                            var dx1 = (_3 = args[idx++]) !== null && _3 !== void 0 ? _3 : 0;
-                            var dx2 = (_4 = args[idx++]) !== null && _4 !== void 0 ? _4 : 0;
-                            var dy2 = (_5 = args[idx++]) !== null && _5 !== void 0 ? _5 : 0;
-                            var dx3 = (_6 = args[idx++]) !== null && _6 !== void 0 ? _6 : 0;
+                            const dx1 = args[idx++] ?? 0;
+                            const dx2 = args[idx++] ?? 0;
+                            const dy2 = args[idx++] ?? 0;
+                            const dx3 = args[idx++] ?? 0;
                             addPoint(dx1, dy1, false);
                             addPoint(dx2, dy2, false);
                             addPoint(dx3, 0, true);
@@ -480,27 +475,26 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 15: { // vsindex (CFF2 single-byte)
-                        vsIndex = (_7 = args.pop()) !== null && _7 !== void 0 ? _7 : 0;
+                        vsIndex = args.pop() ?? 0;
                         if (args.length)
-                            stack.push.apply(stack, args);
+                            stack.push(...args);
                         // debug
-                        if (globalThis === null || globalThis === void 0 ? void 0 : globalThis.__CFF2_DEBUG) {
+                        if (globalThis?.__CFF2_DEBUG) {
                             Debug.log('CFF2 vsindex', vsIndex);
                         }
                         break;
                     }
                     case 16: { // blend (CFF2 single-byte)
-                        stack.push.apply(// blend (CFF2 single-byte)
-                        stack, args);
+                        stack.push(...args);
                         applyBlendToStack(stack, vsIndex);
                         blendCount++;
                         break;
                     }
                     case 29: {
-                        var subrIndex = ((_8 = args.pop()) !== null && _8 !== void 0 ? _8 : 0) + gBias;
+                        const subrIndex = (args.pop() ?? 0) + gBias;
                         if (args.length)
-                            stack.push.apply(stack, args);
-                        var subr = gsubrs[subrIndex];
+                            stack.push(...args);
+                        const subr = gsubrs[subrIndex];
                         if (subr)
                             parse(subr, depth + 1);
                         break;
@@ -508,30 +502,30 @@ var Cff2Table = /** @class */ (function () {
                     case 30:
                     case 31: {
                         ensureMove();
-                        var idx = 0;
-                        var horizontal = b0 === 31;
+                        let idx = 0;
+                        let horizontal = b0 === 31;
                         while (idx + 3 < args.length) {
                             if (horizontal) {
-                                var dx1 = (_9 = args[idx++]) !== null && _9 !== void 0 ? _9 : 0;
-                                var dx2 = (_10 = args[idx++]) !== null && _10 !== void 0 ? _10 : 0;
-                                var dy2 = (_11 = args[idx++]) !== null && _11 !== void 0 ? _11 : 0;
-                                var dy3 = (_12 = args[idx++]) !== null && _12 !== void 0 ? _12 : 0;
-                                var dx3 = 0;
+                                const dx1 = args[idx++] ?? 0;
+                                const dx2 = args[idx++] ?? 0;
+                                const dy2 = args[idx++] ?? 0;
+                                const dy3 = args[idx++] ?? 0;
+                                let dx3 = 0;
                                 if (idx === args.length - 1) {
-                                    dx3 = (_13 = args[idx++]) !== null && _13 !== void 0 ? _13 : 0;
+                                    dx3 = args[idx++] ?? 0;
                                 }
                                 addPoint(dx1, 0, false);
                                 addPoint(dx2, dy2, false);
                                 addPoint(dx3, dy3, true);
                             }
                             else {
-                                var dy1 = (_14 = args[idx++]) !== null && _14 !== void 0 ? _14 : 0;
-                                var dx2 = (_15 = args[idx++]) !== null && _15 !== void 0 ? _15 : 0;
-                                var dy2 = (_16 = args[idx++]) !== null && _16 !== void 0 ? _16 : 0;
-                                var dx3 = (_17 = args[idx++]) !== null && _17 !== void 0 ? _17 : 0;
-                                var dy3 = 0;
+                                const dy1 = args[idx++] ?? 0;
+                                const dx2 = args[idx++] ?? 0;
+                                const dy2 = args[idx++] ?? 0;
+                                const dx3 = args[idx++] ?? 0;
+                                let dy3 = 0;
                                 if (idx === args.length - 1) {
-                                    dy3 = (_18 = args[idx++]) !== null && _18 !== void 0 ? _18 : 0;
+                                    dy3 = args[idx++] ?? 0;
                                 }
                                 addPoint(0, dy1, false);
                                 addPoint(dx2, dy2, false);
@@ -542,25 +536,24 @@ var Cff2Table = /** @class */ (function () {
                         break;
                     }
                     case 12: {
-                        var op = bytes[i++];
+                        const op = bytes[i++];
                         if (op === 16) { // vsindex
-                            vsIndex = (_19 = args.pop()) !== null && _19 !== void 0 ? _19 : 0;
+                            vsIndex = args.pop() ?? 0;
                             if (args.length)
-                                stack.push.apply(stack, args);
-                            if (globalThis === null || globalThis === void 0 ? void 0 : globalThis.__CFF2_DEBUG) {
+                                stack.push(...args);
+                            if (globalThis?.__CFF2_DEBUG) {
                                 Debug.log('CFF2 vsindex (esc)', vsIndex);
                             }
                             break;
                         }
                         if (op === 17) { // blend
-                            stack.push.apply(// blend
-                            stack, args);
+                            stack.push(...args);
                             applyBlendToStack(stack, vsIndex);
                             blendCount++;
                             break;
                         }
                         if (op === 34 && args.length >= 7) { // hflex
-                            var dx1 = args[0], dx2 = args[1], dy2 = args[2], dx3 = args[3], dx4 = args[4], dx5 = args[5], dx6 = args[6];
+                            const [dx1, dx2, dy2, dx3, dx4, dx5, dx6] = args;
                             addPoint(dx1, 0, false);
                             addPoint(dx2, dy2, false);
                             addPoint(dx3, 0, true);
@@ -569,7 +562,7 @@ var Cff2Table = /** @class */ (function () {
                             addPoint(dx6, 0, true);
                         }
                         else if (op === 35 && args.length >= 12) { // flex
-                            var flexArgs = args.length >= 13 ? args.slice(0, 12) : args;
+                            const flexArgs = args.length >= 13 ? args.slice(0, 12) : args;
                             addPoint(flexArgs[0], flexArgs[1], false);
                             addPoint(flexArgs[2], flexArgs[3], false);
                             addPoint(flexArgs[4], flexArgs[5], true);
@@ -578,10 +571,10 @@ var Cff2Table = /** @class */ (function () {
                             addPoint(flexArgs[10], flexArgs[11], true);
                         }
                         else if (op === 36 && args.length >= 9) { // hflex1
-                            var dx1 = args[0], dy1 = args[1], dx2 = args[2], dy2 = args[3], dx3 = args[4], dx4 = args[5], dx5 = args[6], dy5 = args[7], dx6 = args[8];
-                            var dy3 = 0;
-                            var dy4 = 0;
-                            var dy6 = -(dy1 + dy2 + dy3 + dy4 + dy5);
+                            const [dx1, dy1, dx2, dy2, dx3, dx4, dx5, dy5, dx6] = args;
+                            const dy3 = 0;
+                            const dy4 = 0;
+                            const dy6 = -(dy1 + dy2 + dy3 + dy4 + dy5);
                             addPoint(dx1, dy1, false);
                             addPoint(dx2, dy2, false);
                             addPoint(dx3, dy3, true);
@@ -590,11 +583,11 @@ var Cff2Table = /** @class */ (function () {
                             addPoint(dx6, dy6, true);
                         }
                         else if (op === 37 && args.length >= 11) { // flex1
-                            var dx1 = args[0], dy1 = args[1], dx2 = args[2], dy2 = args[3], dx3 = args[4], dy3 = args[5], dx4 = args[6], dy4 = args[7], dx5 = args[8], dy5 = args[9], d6 = args[10];
-                            var sumdx = dx1 + dx2 + dx3 + dx4 + dx5;
-                            var sumdy = dy1 + dy2 + dy3 + dy4 + dy5;
-                            var dx6 = 0;
-                            var dy6 = 0;
+                            const [dx1, dy1, dx2, dy2, dx3, dy3, dx4, dy4, dx5, dy5, d6] = args;
+                            const sumdx = dx1 + dx2 + dx3 + dx4 + dx5;
+                            const sumdy = dy1 + dy2 + dy3 + dy4 + dy5;
+                            let dx6 = 0;
+                            let dy6 = 0;
                             if (Math.abs(sumdx) > Math.abs(sumdy)) {
                                 dx6 = d6;
                                 dy6 = -sumdy;
@@ -615,7 +608,7 @@ var Cff2Table = /** @class */ (function () {
                     default:
                         break;
                 }
-                if (globalThis === null || globalThis === void 0 ? void 0 : globalThis.__CFF2_TRACE) {
+                if (globalThis?.__CFF2_TRACE) {
                     globalThis.__CFF2_TRACE.push({
                         type: 'op',
                         op: b0,
@@ -623,17 +616,17 @@ var Cff2Table = /** @class */ (function () {
                     });
                 }
             }
-            if ((globalThis === null || globalThis === void 0 ? void 0 : globalThis.__CFF2_DEBUG) && blendCount) {
-                var regionIndices = (_20 = _this.vstoreRegionIndices[vsIndex]) !== null && _20 !== void 0 ? _20 : [];
+            if (globalThis?.__CFF2_DEBUG && blendCount) {
+                const regionIndices = this.vstoreRegionIndices[vsIndex] ?? [];
                 Debug.log('CFF2 blends', blendCount, 'vsindex', vsIndex, 'regions', regionIndices);
             }
         };
         parse(charString, 0);
         closeContour();
-        return { points: points, endPts: endPts };
-    };
-    Cff2Table.prototype.readCharStringNumber = function (bytes, start) {
-        var b0 = bytes[start];
+        return { points, endPts };
+    }
+    readCharStringNumber(bytes, start) {
+        const b0 = bytes[start];
         if (b0 >= 32 && b0 <= 246)
             return [b0 - 139, start + 1];
         if (b0 >= 247 && b0 <= 250)
@@ -641,15 +634,13 @@ var Cff2Table = /** @class */ (function () {
         if (b0 >= 251 && b0 <= 254)
             return [-(b0 - 251) * 256 - bytes[start + 1] - 108, start + 2];
         if (b0 === 28) {
-            var v = (bytes[start + 1] << 8) | bytes[start + 2];
+            const v = (bytes[start + 1] << 8) | bytes[start + 2];
             return [v & 0x8000 ? v - 0x10000 : v, start + 3];
         }
         if (b0 === 255) {
-            var v = (bytes[start + 1] << 24) | (bytes[start + 2] << 16) | (bytes[start + 3] << 8) | bytes[start + 4];
+            const v = (bytes[start + 1] << 24) | (bytes[start + 2] << 16) | (bytes[start + 3] << 8) | bytes[start + 4];
             return [v / 65536, start + 5];
         }
         return [0, start + 1];
-    };
-    return Cff2Table;
-}());
-export { Cff2Table };
+    }
+}

@@ -5,40 +5,33 @@ export function emitDiagnostic(state, code, level, phase, message, context, once
             return;
         state.diagnosticKeys.add(onceKey);
     }
-    state.diagnostics.push({ code: code, level: level, phase: phase, message: message, context: context });
+    state.diagnostics.push({ code, level, phase, message, context });
 }
 export function getDiagnostics(state, filter) {
-    return state.diagnostics.filter(function (d) { return matchesDiagnosticFilter(d, filter); }).slice();
+    return state.diagnostics.filter((d) => matchesDiagnosticFilter(d, filter)).slice();
 }
 export function clearDiagnostics(state) {
     state.diagnostics = [];
     state.diagnosticKeys.clear();
 }
-export function pickBestCmapFormat(formats, order) {
-    if (order === void 0) { order = [4, 12, 10, 8, 6, 2, 0]; }
+export function pickBestCmapFormat(formats, order = [4, 12, 10, 8, 6, 2, 0]) {
     if (formats.length === 0)
         return null;
-    var safeFormats = formats.filter(function (f) { return !!f && typeof f === 'object'; });
+    const safeFormats = formats.filter((f) => !!f && typeof f === 'object');
     if (safeFormats.length === 0)
         return null;
-    var _loop_1 = function (fmt) {
-        var found = safeFormats.find(function (f) { return (typeof f.getFormatType === 'function' ? f.getFormatType() : f.format) === fmt; });
+    for (const fmt of order) {
+        const found = safeFormats.find((f) => (typeof f.getFormatType === 'function' ? f.getFormatType() : f.format) === fmt);
         if (found)
-            return { value: found };
-    };
-    for (var _i = 0, order_1 = order; _i < order_1.length; _i++) {
-        var fmt = order_1[_i];
-        var state_1 = _loop_1(fmt);
-        if (typeof state_1 === "object")
-            return state_1.value;
+            return found;
     }
     return safeFormats[0];
 }
 export function getBestCmapFormatFor(cmap, codePoint) {
     if (!cmap)
         return null;
-    var prefersUcs4 = codePoint > 0xffff;
-    var preferred = prefersUcs4
+    const prefersUcs4 = codePoint > 0xffff;
+    const preferred = prefersUcs4
         ? [
             { platformId: 3, encodingId: 10 },
             { platformId: 0, encodingId: 4 },
@@ -55,21 +48,20 @@ export function getBestCmapFormatFor(cmap, codePoint) {
             { platformId: 0, encodingId: 4 },
             { platformId: 1, encodingId: 0 }
         ];
-    for (var _i = 0, preferred_1 = preferred; _i < preferred_1.length; _i++) {
-        var pref = preferred_1[_i];
-        var formats = [];
+    for (const pref of preferred) {
+        let formats = [];
         try {
-            var resolved = cmap.getCmapFormats(pref.platformId, pref.encodingId);
+            const resolved = cmap.getCmapFormats(pref.platformId, pref.encodingId);
             formats = Array.isArray(resolved) ? resolved : [];
         }
-        catch (_a) {
+        catch {
             formats = [];
         }
         if (formats.length > 0) {
             return pickBestCmapFormat(formats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0]);
         }
     }
-    var fallbackFormats = Array.isArray(cmap.formats) ? cmap.formats : [];
+    const fallbackFormats = Array.isArray(cmap.formats) ? cmap.formats : [];
     return fallbackFormats.length > 0
         ? pickBestCmapFormat(fallbackFormats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0])
         : null;

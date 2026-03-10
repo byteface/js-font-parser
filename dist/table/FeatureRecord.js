@@ -1,15 +1,15 @@
 // UNTESTED
-var FeatureRecord = /** @class */ (function () {
-    function FeatureRecord(byte_ar) {
+export class FeatureRecord {
+    tag;
+    offset;
+    constructor(byte_ar) {
         this.tag = byte_ar.readInt();
         this.offset = byte_ar.readUnsignedShort();
     }
-    FeatureRecord.prototype.getTag = function () {
+    getTag() {
         return this.tag;
-    };
-    FeatureRecord.prototype.getOffset = function () {
+    }
+    getOffset() {
         return this.offset;
-    };
-    return FeatureRecord;
-}());
-export { FeatureRecord };
+    }
+}

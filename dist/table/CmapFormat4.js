@@ -1,13 +1,23 @@
 import { Debug } from "../utils/Debug.js";
-var CmapFormat4 = /** @class */ (function () {
-    function CmapFormat4(byteArray) {
-        this.format = 4;
-        this.length = 0;
-        this.language = 0;
-        this.idRangeOffsetStart = 0;
-        this.glyphIdArrayStart = 0;
-        this.first = 0;
-        this.last = 0;
+export class CmapFormat4 {
+    format = 4;
+    length = 0;
+    language = 0;
+    segCountX2;
+    searchRange;
+    entrySelector;
+    rangeShift;
+    endCode;
+    startCode;
+    idDelta;
+    idRangeOffset;
+    glyphIdArray;
+    idRangeOffsetStart = 0;
+    glyphIdArrayStart = 0;
+    segCount;
+    first = 0;
+    last = 0;
+    constructor(byteArray) {
         // Parse basic information
         this.length = byteArray.readUnsignedShort(); // Length of this table
         this.language = byteArray.readUnsignedShort(); // Language code
@@ -28,7 +38,7 @@ var CmapFormat4 = /** @class */ (function () {
         Debug.log("Parsing end codes:");
         this.last = -1;
         for (var i = 0; i < this.segCount; i++) {
-            var endCodeValue = byteArray.readUnsignedShort();
+            const endCodeValue = byteArray.readUnsignedShort();
             this.endCode.push(endCodeValue);
             if (endCodeValue > this.last) {
                 this.last = endCodeValue;
@@ -44,7 +54,7 @@ var CmapFormat4 = /** @class */ (function () {
         for (var j = 0; j < this.segCount; j++) {
             this.startCode.push(byteArray.readUnsignedShort());
         }
-        this.first = Math.min.apply(Math, this.startCode); // Find the minimum startCode
+        this.first = Math.min(...this.startCode); // Find the minimum startCode
         // console.log(this.startCode);
         // NOTE -  If the last startcode is 65535.
         // then this is likely correct . and the last segment is empty signalling the end of the parse
@@ -62,87 +72,85 @@ var CmapFormat4 = /** @class */ (function () {
         Debug.log(this.idRangeOffset);
         this.glyphIdArrayStart = byteArray.offset;
         // Read glyphIdArray (remaining bytes in this subtable)
-        var glyphIdArrayLength = (this.length - (16 + 8 * this.segCount)) / 2;
+        const glyphIdArrayLength = (this.length - (16 + 8 * this.segCount)) / 2;
         this.glyphIdArray = [];
-        for (var i_1 = 0; i_1 < glyphIdArrayLength; i_1++) {
+        for (let i = 0; i < glyphIdArrayLength; i++) {
             this.glyphIdArray.push(byteArray.readUnsignedShort());
         }
         Debug.log("glyphIdArray length:", this.glyphIdArray.length);
         Debug.log("Finished parsing cmapFormat");
     }
-    CmapFormat4.prototype.getFirst = function () {
+    getFirst() {
         return this.first;
-    };
-    CmapFormat4.prototype.getLast = function () {
+    }
+    getLast() {
         return this.last;
-    };
-    CmapFormat4.prototype.mapCharCode = function (charCode) {
+    }
+    mapCharCode(charCode) {
         Debug.log("mapCharCode", charCode);
         // Handle out-of-bounds
         if (charCode < 0 || charCode >= 0xFFFE)
             return 0;
-        for (var i = 0; i < this.segCount; i++) {
+        for (let i = 0; i < this.segCount; i++) {
             if (this.endCode[i] < charCode) {
                 continue;
             }
             if (this.startCode[i] > charCode) {
                 break;
             }
-            var idRangeOffset = this.idRangeOffset[i];
+            const idRangeOffset = this.idRangeOffset[i];
             if (idRangeOffset === 0) {
                 return (this.idDelta[i] + charCode) & 0xffff;
             }
-            var glyphOffset = idRangeOffset + 2 * (charCode - this.startCode[i]);
-            var absOffset = this.idRangeOffsetStart + (i * 2) + glyphOffset;
+            const glyphOffset = idRangeOffset + 2 * (charCode - this.startCode[i]);
+            const absOffset = this.idRangeOffsetStart + (i * 2) + glyphOffset;
             if (absOffset < this.glyphIdArrayStart) {
                 return 0;
             }
-            var index = (absOffset - this.glyphIdArrayStart) / 2;
+            const index = (absOffset - this.glyphIdArrayStart) / 2;
             if (index < 0 || index >= this.glyphIdArray.length) {
                 return 0;
             }
-            var glyphId = this.glyphIdArray[index];
+            const glyphId = this.glyphIdArray[index];
             if (glyphId === 0) {
                 return 0;
             }
             return (glyphId + this.idDelta[i]) & 0xffff;
         }
         return 0;
-    };
-    CmapFormat4.prototype.generateMappingTable = function () {
+    }
+    generateMappingTable() {
         Debug.log("generateMappingTable");
-        var mappingTable = [];
-        for (var i = 0; i < this.segCount; i++) {
-            var startCode = this.startCode[i];
-            var endCode = this.endCode[i];
-            for (var charCode = startCode; charCode <= endCode; charCode++) {
-                var glyphIndex = this.mapCharCode(charCode);
-                mappingTable.push({ charCode: charCode, glyphIndex: glyphIndex });
+        const mappingTable = [];
+        for (let i = 0; i < this.segCount; i++) {
+            const startCode = this.startCode[i];
+            const endCode = this.endCode[i];
+            for (let charCode = startCode; charCode <= endCode; charCode++) {
+                const glyphIndex = this.mapCharCode(charCode);
+                mappingTable.push({ charCode, glyphIndex });
             }
         }
         Debug.table(mappingTable);
         return mappingTable;
-    };
-    CmapFormat4.prototype.getGlyphIndex = function (codePoint) {
+    }
+    getGlyphIndex(codePoint) {
         // Ensure codePoint is within valid range
         if (codePoint < this.first || codePoint > this.last) {
             return null; // Out of range
         }
         Debug.log("Looking for codePoint", codePoint);
-        var glyphId = this.mapCharCode(codePoint); // Use existing mapping logic
+        const glyphId = this.mapCharCode(codePoint); // Use existing mapping logic
         Debug.log("Which is apparently called", glyphId);
         return glyphId;
-    };
-    CmapFormat4.prototype.getFormatType = function () {
+    }
+    getFormatType() {
         return this.format; // Return format type
-    };
-    CmapFormat4.prototype.toString = function () {
-        return "format: ".concat(this.format, ", length: ").concat(this.length, ", language: ").concat(this.language, ", ") +
-            "segCountX2: ".concat(this.segCountX2, ", searchRange: ").concat(this.searchRange, ", ") +
-            "entrySelector: ".concat(this.entrySelector, ", rangeShift: ").concat(this.rangeShift, ", ") +
-            "endCode: ".concat(this.endCode, ", startCode: ").concat(this.startCode, ", ") +
-            "idDelta: ".concat(this.idDelta, ", idRangeOffset: ").concat(this.idRangeOffset);
-    };
-    return CmapFormat4;
-}());
-export { CmapFormat4 };
+    }
+    toString() {
+        return `format: ${this.format}, length: ${this.length}, language: ${this.language}, ` +
+            `segCountX2: ${this.segCountX2}, searchRange: ${this.searchRange}, ` +
+            `entrySelector: ${this.entrySelector}, rangeShift: ${this.rangeShift}, ` +
+            `endCode: ${this.endCode}, startCode: ${this.startCode}, ` +
+            `idDelta: ${this.idDelta}, idRangeOffset: ${this.idRangeOffset}`;
+    }
+}

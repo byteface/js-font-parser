@@ -17,6 +17,7 @@ import {
   CanvasRenderer,
   CanvasGlyph,
   LayoutEngine,
+  Table,
   getSupportedLanguages,
   supportsLanguage,
   listLanguages,
@@ -171,7 +172,7 @@ font.getMarkAnchorsForGlyph(glyphId);
 ## Table Access
 
 ```js
-import { Table } from "./dist/table/Table.js";
+import { Table } from "js-font-parser";
 
 font.getTableByType(Table.GSUB);
 font.getTableByType(Table.GPOS);

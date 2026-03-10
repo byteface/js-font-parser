@@ -1,27 +1,33 @@
-var CmapFormat2 = /** @class */ (function () {
-    function CmapFormat2(byteArray) {
+export class CmapFormat2 {
+    subHeaderKeys;
+    subHeaders; // Define a specific type for subHeaders if available
+    glyphIndexArray;
+    format;
+    length;
+    version;
+    constructor(byteArray) {
         this.length = byteArray.readUnsignedShort();
         this.version = byteArray.readUnsignedShort();
         this.format = 2;
         // Parse subHeaderKeys
         this.subHeaderKeys = [];
-        for (var i = 0; i < 256; i++) {
+        for (let i = 0; i < 256; i++) {
             this.subHeaderKeys[i] = byteArray.readUnsignedShort();
         }
         // Parse subHeaders based on the keys
         this.subHeaders = [];
-        for (var i = 0; i < this.subHeaderKeys.length; i++) {
+        for (let i = 0; i < this.subHeaderKeys.length; i++) {
             if (this.subHeaderKeys[i] !== 0) {
                 this.subHeaders.push(this.parseSubHeader(byteArray));
             }
         }
         // Parse glyphIndexArray, based on subHeader data
         this.glyphIndexArray = [];
-        for (var i = 0; i < this.length - byteArray.offset; i++) {
+        for (let i = 0; i < this.length - byteArray.offset; i++) {
             this.glyphIndexArray.push(byteArray.readUnsignedShort());
         }
     }
-    CmapFormat2.prototype.parseSubHeader = function (byteArray) {
+    parseSubHeader(byteArray) {
         // Define parsing logic based on the specific structure of subHeaders.
         return {
             firstCode: byteArray.readUnsignedShort(),
@@ -29,37 +35,35 @@ var CmapFormat2 = /** @class */ (function () {
             idDelta: byteArray.readShort(),
             idRangeOffset: byteArray.readUnsignedShort(),
         };
-    };
-    CmapFormat2.prototype.getFormatType = function () {
+    }
+    getFormatType() {
         return this.format;
-    };
-    CmapFormat2.prototype.getGlyphIndex = function (codePoint) {
-        var subHeaderIndex = this.subHeaderKeys[codePoint >> 8];
-        var subHeader = this.subHeaders[subHeaderIndex];
+    }
+    getGlyphIndex(codePoint) {
+        const subHeaderIndex = this.subHeaderKeys[codePoint >> 8];
+        const subHeader = this.subHeaders[subHeaderIndex];
         if (!subHeader) {
             return null;
         }
-        var lowByte = codePoint & 0xFF;
-        var glyphIndexOffset = subHeader.idRangeOffset / 2 + (lowByte - subHeader.firstCode);
+        const lowByte = codePoint & 0xFF;
+        const glyphIndexOffset = subHeader.idRangeOffset / 2 + (lowByte - subHeader.firstCode);
         if (lowByte < subHeader.firstCode || lowByte >= subHeader.firstCode + subHeader.entryCount) {
             return null;
         }
-        var glyphIndex = this.glyphIndexArray[glyphIndexOffset];
+        const glyphIndex = this.glyphIndexArray[glyphIndexOffset];
         return glyphIndex === 0 ? null : (glyphIndex + subHeader.idDelta) % 65536;
-    };
-    CmapFormat2.prototype.getFirst = function () {
-        return Math.min.apply(Math, this.subHeaderKeys);
-    };
-    CmapFormat2.prototype.getLast = function () {
-        return Math.max.apply(Math, this.subHeaderKeys);
-    };
-    CmapFormat2.prototype.mapCharCode = function (charCode) {
-        var glyphIndex = this.getGlyphIndex(charCode);
-        return glyphIndex !== null && glyphIndex !== void 0 ? glyphIndex : 0;
-    };
-    CmapFormat2.prototype.toString = function () {
-        return "format: ".concat(this.format, ", length: ").concat(this.length, ", version: ").concat(this.version);
-    };
-    return CmapFormat2;
-}());
-export { CmapFormat2 };
+    }
+    getFirst() {
+        return Math.min(...this.subHeaderKeys);
+    }
+    getLast() {
+        return Math.max(...this.subHeaderKeys);
+    }
+    mapCharCode(charCode) {
+        const glyphIndex = this.getGlyphIndex(charCode);
+        return glyphIndex ?? 0;
+    }
+    toString() {
+        return `format: ${this.format}, length: ${this.length}, version: ${this.version}`;
+    }
+}

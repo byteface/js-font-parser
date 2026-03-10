@@ -19,7 +19,7 @@
     "LICENSE"
   ],
   "engines": {
-    "node": ">=22 <24"
+    "node": ">=20"
   },
   "scripts": {
     "audit:tables": "node scripts/audit-table-coverage.mjs",

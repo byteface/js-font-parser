@@ -1,5 +1,11 @@
-var CmapFormat6 = /** @class */ (function () {
-    function CmapFormat6(byteArray) {
+export class CmapFormat6 {
+    format;
+    length;
+    version;
+    firstCode;
+    entryCount;
+    glyphIdArray;
+    constructor(byteArray) {
         this.length = byteArray.readUnsignedShort();
         this.version = byteArray.readUnsignedShort();
         this.format = 6;
@@ -7,38 +13,36 @@ var CmapFormat6 = /** @class */ (function () {
         this.entryCount = byteArray.readUnsignedShort(); // Read entryCount from the ByteArray
         this.glyphIdArray = [];
         // Populate glyphIdArray with the glyph IDs
-        for (var i = 0; i < this.entryCount; i++) {
+        for (let i = 0; i < this.entryCount; i++) {
             this.glyphIdArray.push(byteArray.readUnsignedShort());
         }
     }
-    CmapFormat6.prototype.getFirst = function () {
+    getFirst() {
         return this.firstCode; // Return the first character code
-    };
-    CmapFormat6.prototype.getFormatType = function () {
+    }
+    getFormatType() {
         return this.format;
-    };
-    CmapFormat6.prototype.getGlyphIndex = function (codePoint) {
-        var value = this.mapCharCode(codePoint);
+    }
+    getGlyphIndex(codePoint) {
+        const value = this.mapCharCode(codePoint);
         return value === 0 ? null : value;
-    };
-    CmapFormat6.prototype.getLast = function () {
+    }
+    getLast() {
         // Calculate the last code based on firstCode and entryCount
         return this.firstCode + this.entryCount - 1;
-    };
-    CmapFormat6.prototype.mapCharCode = function (charCode) {
+    }
+    mapCharCode(charCode) {
         // Check if charCode falls within the range of firstCode and lastCode
         if (charCode < this.firstCode || charCode > this.getLast()) {
             return 0; // Out of bounds
         }
         // Calculate index in glyphIdArray
-        var index = charCode - this.firstCode;
+        const index = charCode - this.firstCode;
         return this.glyphIdArray[index] || 0; // Return glyph ID or 0 if not found
-    };
-    CmapFormat6.prototype.toString = function () {
-        return "format: ".concat(this.format, ", length: ").concat(this.length, ", version: ").concat(this.version, ", ") +
-            "firstCode: ".concat(this.firstCode, ", entryCount: ").concat(this.entryCount, ", ") +
-            "glyphIdArray: ".concat(this.glyphIdArray);
-    };
-    return CmapFormat6;
-}());
-export { CmapFormat6 };
+    }
+    toString() {
+        return `format: ${this.format}, length: ${this.length}, version: ${this.version}, ` +
+            `firstCode: ${this.firstCode}, entryCount: ${this.entryCount}, ` +
+            `glyphIdArray: ${this.glyphIdArray}`;
+    }
+}

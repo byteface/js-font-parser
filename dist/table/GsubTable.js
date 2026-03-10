@@ -9,16 +9,21 @@ import { ChainingSubst } from "./ChainingSubst.js";
 import { LigatureSubstFormat1 } from "./LigatureSubstFormat1.js";
 import { MultipleSubst } from "./MultipleSubst.js";
 import { AlternateSubst } from "./AlternateSubst.js";
-var GsubTable = /** @class */ (function () {
-    function GsubTable(de, byte_ar) {
-        this.gdef = null;
-        this.featureOrderCache = new Map();
-        this.applyFeaturesCache = new Map();
+export class GsubTable {
+    static FEATURE_ORDER_CACHE_LIMIT = 128;
+    static APPLY_FEATURES_CACHE_LIMIT = 128;
+    scriptList;
+    featureList;
+    lookupList;
+    gdef = null;
+    featureOrderCache = new Map();
+    applyFeaturesCache = new Map();
+    constructor(de, byte_ar) {
         byte_ar.offset = de.offset;
         byte_ar.readInt();
-        var scriptListOffset = byte_ar.readUnsignedShort();
-        var featureListOffset = byte_ar.readUnsignedShort();
-        var lookupListOffset = byte_ar.readUnsignedShort();
+        const scriptListOffset = byte_ar.readUnsignedShort();
+        const featureListOffset = byte_ar.readUnsignedShort();
+        const lookupListOffset = byte_ar.readUnsignedShort();
         // Script List
         this.scriptList = new ScriptList(byte_ar, de.offset + scriptListOffset);
         // Feature List
@@ -26,9 +31,9 @@ var GsubTable = /** @class */ (function () {
         // Lookup List
         this.lookupList = new LookupList(byte_ar, de.offset + lookupListOffset, this);
     }
-    GsubTable.prototype.setGdef = function (gdef) {
+    setGdef(gdef) {
         this.gdef = gdef;
-    };
+    }
     /**
      * 1 - Single - Replace one glyph with one glyph
      * 2 - Multiple - Replace one glyph with more than one glyph
@@ -37,8 +42,8 @@ var GsubTable = /** @class */ (function () {
      * 5 - Context - Replace one or more glyphs in context
      * 6 - Chaining - Context Replace one or more glyphs in chained context
      */
-    GsubTable.prototype.read = function (type, byte_ar, offset) {
-        var s = null;
+    read(type, byte_ar, offset) {
+        let s = null;
         switch (type) {
             case 1:
                 s = SingleSubst.read(byte_ar, offset);
@@ -60,15 +65,14 @@ var GsubTable = /** @class */ (function () {
                 break;
         }
         return s;
-    };
-    GsubTable.prototype.applyLookupAt = function (lookupIndex, glyphs, index) {
-        var _a, _b;
-        var lookup = (_b = (_a = this.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)[lookupIndex];
+    }
+    applyLookupAt(lookupIndex, glyphs, index) {
+        const lookup = this.lookupList?.getLookups?.()[lookupIndex];
         if (!lookup)
             return glyphs;
-        var out = glyphs.slice();
-        for (var s = 0; s < lookup.getSubtableCount(); s++) {
-            var st = lookup.getSubtable(s);
+        let out = glyphs.slice();
+        for (let s = 0; s < lookup.getSubtableCount(); s++) {
+            const st = lookup.getSubtable(s);
             if (!st)
                 continue;
             if (index < 0 || index >= out.length)
@@ -76,150 +80,142 @@ var GsubTable = /** @class */ (function () {
             if (this.isGlyphIgnored(lookup, out[index]))
                 continue;
             if (typeof st.applyAt === "function") {
-                var nextGlyphs = st.applyAt(out, index);
+                const nextGlyphs = st.applyAt(out, index);
                 if (nextGlyphs)
                     return nextGlyphs;
             }
             if (typeof st.substitute === "function") {
-                var original = out[index];
-                var next = st.substitute(original);
+                const original = out[index];
+                const next = st.substitute(original);
                 if (next != null && next !== original) {
                     out[index] = next;
                     return out;
                 }
             }
             if (st instanceof LigatureSubstFormat1) {
-                var lig = st;
-                var match = lig.tryLigature(out, index);
+                const lig = st;
+                const match = lig.tryLigature(out, index);
                 if (match) {
-                    var replaced = out.slice(0, index).concat([match.glyphId], out.slice(index + match.length));
+                    const replaced = out.slice(0, index).concat([match.glyphId], out.slice(index + match.length));
                     return replaced;
                 }
             }
         }
         return out;
-    };
-    GsubTable.prototype.getScriptList = function () {
+    }
+    getScriptList() {
         return this.scriptList;
-    };
-    GsubTable.prototype.getFeatureList = function () {
+    }
+    getFeatureList() {
         return this.featureList;
-    };
-    GsubTable.prototype.getLookupList = function () {
+    }
+    getLookupList() {
         return this.lookupList;
-    };
-    GsubTable.prototype.findPreferredScript = function (tags) {
-        if (tags === void 0) { tags = ["DFLT", "latn"]; }
-        for (var _i = 0, tags_1 = tags; _i < tags_1.length; _i++) {
-            var tag = tags_1[_i];
-            var script = this.scriptList.findScript(tag);
+    }
+    findPreferredScript(tags = ["DFLT", "latn"]) {
+        for (const tag of tags) {
+            const script = this.scriptList.findScript(tag);
             if (script)
                 return script;
         }
-        var records = this.scriptList.getScriptRecords();
+        const records = this.scriptList.getScriptRecords();
         if (records.length > 0) {
-            var fallbackTag = String.fromCharCode((records[0].tag >> 24) & 0xff, (records[0].tag >> 16) & 0xff, (records[0].tag >> 8) & 0xff, records[0].tag & 0xff);
+            const fallbackTag = String.fromCharCode((records[0].tag >> 24) & 0xff, (records[0].tag >> 16) & 0xff, (records[0].tag >> 8) & 0xff, records[0].tag & 0xff);
             return this.scriptList.findScript(fallbackTag);
         }
         return null;
-    };
-    GsubTable.prototype.getDefaultLangSys = function (script) {
-        var _a;
+    }
+    getDefaultLangSys(script) {
         if (!script)
             return null;
-        return (_a = script.getDefaultLangSys()) !== null && _a !== void 0 ? _a : script.getFirstLangSys();
-    };
-    GsubTable.prototype.getSubtablesForFeatures = function (featureTags, scriptTags) {
-        if (scriptTags === void 0) { scriptTags = ["DFLT", "latn"]; }
-        var script = this.findPreferredScript(scriptTags);
-        var langSys = this.getDefaultLangSys(script);
+        return script.getDefaultLangSys() ?? script.getFirstLangSys();
+    }
+    getSubtablesForFeatures(featureTags, scriptTags = ["DFLT", "latn"]) {
+        const script = this.findPreferredScript(scriptTags);
+        const langSys = this.getDefaultLangSys(script);
         if (!langSys)
             return [];
-        var subtables = [];
-        for (var _i = 0, featureTags_1 = featureTags; _i < featureTags_1.length; _i++) {
-            var tag = featureTags_1[_i];
-            var feature = this.featureList.findFeature(langSys, tag);
+        const subtables = [];
+        for (const tag of featureTags) {
+            const feature = this.featureList.findFeature(langSys, tag);
             if (!feature)
                 continue;
-            for (var i = 0; i < feature.getLookupCount(); i++) {
-                var lookup = this.lookupList.getLookup(feature, i);
+            for (let i = 0; i < feature.getLookupCount(); i++) {
+                const lookup = this.lookupList.getLookup(feature, i);
                 if (!lookup)
                     continue;
-                for (var j = 0; j < lookup.getSubtableCount(); j++) {
-                    var st = lookup.getSubtable(j);
+                for (let j = 0; j < lookup.getSubtableCount(); j++) {
+                    const st = lookup.getSubtable(j);
                     if (st)
                         subtables.push(st);
                 }
             }
         }
         return subtables;
-    };
-    GsubTable.prototype.applyFeatures = function (glyphs, featureTags, scriptTags) {
-        var _a, _b;
-        if (scriptTags === void 0) { scriptTags = ["DFLT", "latn"]; }
-        var featureOrder = this.getFeatureOrder(featureTags, scriptTags);
+    }
+    applyFeatures(glyphs, featureTags, scriptTags = ["DFLT", "latn"]) {
+        const featureOrder = this.getFeatureOrder(featureTags, scriptTags);
         if (!featureOrder || featureOrder.length === 0)
             return glyphs;
         if (!this.applyFeaturesCache) {
             this.applyFeaturesCache = new Map();
         }
-        var cacheKey = this.getApplyFeaturesCacheKey(featureOrder, glyphs);
-        var cached = this.applyFeaturesCache.get(cacheKey);
+        const cacheKey = this.getApplyFeaturesCacheKey(featureOrder, glyphs);
+        const cached = this.applyFeaturesCache.get(cacheKey);
         if (cached) {
             return cached.slice();
         }
-        var out = glyphs.slice();
-        for (var _i = 0, featureOrder_1 = featureOrder; _i < featureOrder_1.length; _i++) {
-            var featureIndex = featureOrder_1[_i];
-            var featureListAny = this.featureList;
-            var feature = (_b = (_a = featureListAny.features) === null || _a === void 0 ? void 0 : _a[featureIndex]) !== null && _b !== void 0 ? _b : (typeof featureListAny.getFeatureByIndex === "function"
-                ? featureListAny.getFeatureByIndex(featureIndex)
-                : null);
+        let out = glyphs.slice();
+        for (const featureIndex of featureOrder) {
+            const featureListAny = this.featureList;
+            const feature = featureListAny.features?.[featureIndex]
+                ?? (typeof featureListAny.getFeatureByIndex === "function"
+                    ? featureListAny.getFeatureByIndex(featureIndex)
+                    : null);
             if (!feature)
                 continue;
-            for (var i = 0; i < feature.getLookupCount(); i++) {
-                var lookupIndex = feature.getLookupListIndex(i);
+            for (let i = 0; i < feature.getLookupCount(); i++) {
+                const lookupIndex = feature.getLookupListIndex(i);
                 out = this.applyLookup(lookupIndex, out);
             }
         }
         this.cacheAppliedFeatures(cacheKey, out);
         return out;
-    };
-    GsubTable.prototype.applyLookup = function (lookupIndex, glyphs) {
-        var _a, _b, _c, _d, _e, _f;
-        var lookup = (_b = (_a = this.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)[lookupIndex];
+    }
+    applyLookup(lookupIndex, glyphs) {
+        const lookup = this.lookupList?.getLookups?.()[lookupIndex];
         if (!lookup)
             return glyphs;
-        var out = glyphs.slice();
-        var _loop_1 = function (s) {
-            var st = lookup.getSubtable(s);
+        let out = glyphs.slice();
+        for (let s = 0; s < lookup.getSubtableCount(); s++) {
+            const st = lookup.getSubtable(s);
             if (!st)
-                return "continue";
+                continue;
             if (typeof st.applyToGlyphsWithContext === "function") {
                 out = st.applyToGlyphsWithContext(out, {
-                    gdef: this_1.gdef,
-                    lookupFlag: (_d = (_c = lookup.getFlag) === null || _c === void 0 ? void 0 : _c.call(lookup)) !== null && _d !== void 0 ? _d : 0,
-                    markFilteringSet: (_f = (_e = lookup.getMarkFilteringSet) === null || _e === void 0 ? void 0 : _e.call(lookup)) !== null && _f !== void 0 ? _f : null
+                    gdef: this.gdef,
+                    lookupFlag: lookup.getFlag?.() ?? 0,
+                    markFilteringSet: lookup.getMarkFilteringSet?.() ?? null
                 });
-                return "continue";
+                continue;
             }
             if (typeof st.applyToGlyphs === "function") {
                 out = st.applyToGlyphs(out);
-                return "continue";
+                continue;
             }
             if (typeof st.substitute === "function") {
-                out = out.map(function (g) {
-                    var sub = st.substitute(g);
+                out = out.map(g => {
+                    const sub = st.substitute(g);
                     return (sub == null || sub === 0) ? g : sub;
                 });
-                return "continue";
+                continue;
             }
             if (st instanceof LigatureSubstFormat1) {
-                var lig = st;
-                var next = [];
-                var i = 0;
+                const lig = st;
+                const next = [];
+                let i = 0;
                 while (i < out.length) {
-                    var match = lig.tryLigature(out, i);
+                    const match = lig.tryLigature(out, i);
                     if (match) {
                         next.push(match.glyphId);
                         i += match.length;
@@ -231,24 +227,18 @@ var GsubTable = /** @class */ (function () {
                 }
                 out = next;
             }
-        };
-        var this_1 = this;
-        for (var s = 0; s < lookup.getSubtableCount(); s++) {
-            _loop_1(s);
         }
         return out;
-    };
-    GsubTable.prototype.hasIgnoreFlags = function (lookup) {
-        var _a, _b;
-        var flag = (_b = (_a = lookup === null || lookup === void 0 ? void 0 : lookup.getFlag) === null || _a === void 0 ? void 0 : _a.call(lookup)) !== null && _b !== void 0 ? _b : 0;
+    }
+    hasIgnoreFlags(lookup) {
+        const flag = lookup?.getFlag?.() ?? 0;
         return (flag & 0x0002) !== 0 || (flag & 0x0004) !== 0 || (flag & 0x0008) !== 0;
-    };
-    GsubTable.prototype.isGlyphIgnored = function (lookup, glyphId) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+    }
+    isGlyphIgnored(lookup, glyphId) {
         if (!this.gdef)
             return false;
-        var flag = (_b = (_a = lookup === null || lookup === void 0 ? void 0 : lookup.getFlag) === null || _a === void 0 ? void 0 : _a.call(lookup)) !== null && _b !== void 0 ? _b : 0;
-        var glyphClass = (_e = (_d = (_c = this.gdef).getGlyphClass) === null || _d === void 0 ? void 0 : _d.call(_c, glyphId)) !== null && _e !== void 0 ? _e : 0;
+        const flag = lookup?.getFlag?.() ?? 0;
+        const glyphClass = this.gdef.getGlyphClass?.(glyphId) ?? 0;
         if ((flag & 0x0002) && glyphClass === 1)
             return true;
         if ((flag & 0x0004) && glyphClass === 2)
@@ -256,76 +246,76 @@ var GsubTable = /** @class */ (function () {
         if ((flag & 0x0008) && glyphClass === 3)
             return true;
         if ((flag & 0x0010) && glyphClass === 3) {
-            var setIndex = (_g = (_f = lookup === null || lookup === void 0 ? void 0 : lookup.getMarkFilteringSet) === null || _f === void 0 ? void 0 : _f.call(lookup)) !== null && _g !== void 0 ? _g : 0;
-            if (!((_j = (_h = this.gdef).isGlyphInMarkSet) === null || _j === void 0 ? void 0 : _j.call(_h, setIndex, glyphId)))
+            const setIndex = lookup?.getMarkFilteringSet?.() ?? 0;
+            if (!this.gdef.isGlyphInMarkSet?.(setIndex, glyphId))
                 return true;
         }
-        var markAttachType = (flag & 0xff00) >> 8;
+        const markAttachType = (flag & 0xff00) >> 8;
         if (markAttachType && glyphClass === 3) {
-            var cls = (_m = (_l = (_k = this.gdef).getMarkAttachmentClass) === null || _l === void 0 ? void 0 : _l.call(_k, glyphId)) !== null && _m !== void 0 ? _m : 0;
+            const cls = this.gdef.getMarkAttachmentClass?.(glyphId) ?? 0;
             if (cls !== markAttachType)
                 return true;
         }
         return false;
-    };
-    GsubTable.prototype.tagToString = function (tag) {
+    }
+    tagToString(tag) {
         return String.fromCharCode((tag >> 24) & 0xff, (tag >> 16) & 0xff, (tag >> 8) & 0xff, tag & 0xff);
-    };
-    GsubTable.prototype.getFeatureOrder = function (featureTags, scriptTags) {
+    }
+    getFeatureOrder(featureTags, scriptTags) {
         if (!this.featureOrderCache) {
             this.featureOrderCache = new Map();
         }
-        var cacheKey = "".concat(scriptTags.join(","), "::").concat(featureTags.join(","));
-        var cached = this.featureOrderCache.get(cacheKey);
+        const cacheKey = `${scriptTags.join(",")}::${featureTags.join(",")}`;
+        const cached = this.featureOrderCache.get(cacheKey);
         if (cached !== undefined)
             return cached;
-        var script = this.findPreferredScript(scriptTags);
-        var langSys = this.getDefaultLangSys(script);
+        const script = this.findPreferredScript(scriptTags);
+        const langSys = this.getDefaultLangSys(script);
         if (!langSys) {
-            this.featureOrderCache.set(cacheKey, null);
+            this.setBoundedCacheEntry(this.featureOrderCache, cacheKey, null, GsubTable.FEATURE_ORDER_CACHE_LIMIT);
             return null;
         }
-        var tagSet = new Set(featureTags);
-        var featureRecords = this.featureList.getFeatureRecords();
-        var requiredIndex = langSys.getRequiredFeatureIndex();
-        var orderedFeatureIndices = langSys.getFeatureIndices();
-        var featureOrder = [];
+        const tagSet = new Set(featureTags);
+        const featureRecords = this.featureList.getFeatureRecords();
+        const requiredIndex = langSys.getRequiredFeatureIndex();
+        const orderedFeatureIndices = langSys.getFeatureIndices();
+        const featureOrder = [];
         if (requiredIndex != null && requiredIndex !== 0xffff) {
             featureOrder.push(requiredIndex);
         }
-        for (var _i = 0, orderedFeatureIndices_1 = orderedFeatureIndices; _i < orderedFeatureIndices_1.length; _i++) {
-            var idx = orderedFeatureIndices_1[_i];
+        for (const idx of orderedFeatureIndices) {
             if (idx === requiredIndex)
                 continue;
-            var record = featureRecords[idx];
+            const record = featureRecords[idx];
             if (!record)
                 continue;
-            var tag = this.tagToString(record.getTag());
+            const tag = this.tagToString(record.getTag());
             if (!tagSet.has(tag))
                 continue;
             featureOrder.push(idx);
         }
-        this.featureOrderCache.set(cacheKey, featureOrder);
+        this.setBoundedCacheEntry(this.featureOrderCache, cacheKey, featureOrder, GsubTable.FEATURE_ORDER_CACHE_LIMIT);
         return featureOrder;
-    };
-    GsubTable.prototype.getApplyFeaturesCacheKey = function (featureOrder, glyphs) {
-        return "".concat(featureOrder.join(","), "::").concat(glyphs.join(","));
-    };
-    GsubTable.prototype.cacheAppliedFeatures = function (cacheKey, glyphs) {
+    }
+    getApplyFeaturesCacheKey(featureOrder, glyphs) {
+        return `${featureOrder.join(",")}::${glyphs.join(",")}`;
+    }
+    cacheAppliedFeatures(cacheKey, glyphs) {
         if (!this.applyFeaturesCache) {
             this.applyFeaturesCache = new Map();
         }
-        if (this.applyFeaturesCache.size >= 128) {
-            var firstKey = this.applyFeaturesCache.keys().next().value;
-            if (firstKey) {
-                this.applyFeaturesCache.delete(firstKey);
+        this.setBoundedCacheEntry(this.applyFeaturesCache, cacheKey, glyphs.slice(), GsubTable.APPLY_FEATURES_CACHE_LIMIT);
+    }
+    setBoundedCacheEntry(cache, key, value, limit) {
+        if (cache.size >= limit && !cache.has(key)) {
+            const firstKey = cache.keys().next().value;
+            if (firstKey != null) {
+                cache.delete(firstKey);
             }
         }
-        this.applyFeaturesCache.set(cacheKey, glyphs.slice());
-    };
-    GsubTable.prototype.getType = function () {
+        cache.set(key, value);
+    }
+    getType() {
         return Table.GSUB;
-    };
-    return GsubTable;
-}());
-export { GsubTable };
+    }
+}

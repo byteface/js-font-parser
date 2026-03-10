@@ -1,41 +1,43 @@
 import { Table } from './Table.js';
-var GvarTable = /** @class */ (function () {
-    function GvarTable(de, byte_ar) {
-        this.axisCount = 0;
-        this.glyphCount = 0;
-        this.sharedTuples = [];
-        this.offsets = [];
-        this.dataOffset = 0;
+export class GvarTable {
+    start;
+    view;
+    axisCount = 0;
+    glyphCount = 0;
+    sharedTuples = [];
+    offsets = [];
+    dataOffset = 0;
+    constructor(de, byte_ar) {
         this.start = de.offset;
         this.view = byte_ar.dataView;
         byte_ar.seek(this.start);
         byte_ar.readFixed(); // version
         this.axisCount = byte_ar.readUnsignedShort();
-        var sharedTupleCount = byte_ar.readUnsignedShort();
-        var sharedTupleOffset = byte_ar.readUnsignedInt();
+        const sharedTupleCount = byte_ar.readUnsignedShort();
+        const sharedTupleOffset = byte_ar.readUnsignedInt();
         this.glyphCount = byte_ar.readUnsignedShort();
-        var flags = byte_ar.readUnsignedShort();
-        var glyphVariationDataArrayOffset = byte_ar.readUnsignedInt();
+        const flags = byte_ar.readUnsignedShort();
+        const glyphVariationDataArrayOffset = byte_ar.readUnsignedInt();
         this.dataOffset = this.start + glyphVariationDataArrayOffset;
-        var offsetCount = this.glyphCount + 1;
+        const offsetCount = this.glyphCount + 1;
         this.offsets = [];
         if ((flags & 0x0001) === 0) {
-            for (var i = 0; i < offsetCount; i++) {
-                var val = byte_ar.readUnsignedShort();
+            for (let i = 0; i < offsetCount; i++) {
+                const val = byte_ar.readUnsignedShort();
                 this.offsets.push(val * 2);
             }
         }
         else {
-            for (var i = 0; i < offsetCount; i++) {
+            for (let i = 0; i < offsetCount; i++) {
                 this.offsets.push(byte_ar.readUnsignedInt());
             }
         }
         this.sharedTuples = [];
         if (sharedTupleCount > 0) {
-            var cursor = this.start + sharedTupleOffset;
-            for (var i = 0; i < sharedTupleCount; i++) {
-                var tuple = [];
-                for (var a = 0; a < this.axisCount; a++) {
+            let cursor = this.start + sharedTupleOffset;
+            for (let i = 0; i < sharedTupleCount; i++) {
+                const tuple = [];
+                for (let a = 0; a < this.axisCount; a++) {
                     tuple.push(this.readF2Dot14(cursor));
                     cursor += 2;
                 }
@@ -43,40 +45,39 @@ var GvarTable = /** @class */ (function () {
             }
         }
     }
-    GvarTable.prototype.getType = function () {
+    getType() {
         return Table.gvar;
-    };
-    GvarTable.prototype.getDeltasForGlyph = function (glyphId, coords, pointCount) {
-        var _a, _b;
+    }
+    getDeltasForGlyph(glyphId, coords, pointCount) {
         if (glyphId < 0 || glyphId >= this.glyphCount)
             return null;
-        var start = this.dataOffset + this.offsets[glyphId];
-        var end = this.dataOffset + this.offsets[glyphId + 1];
+        const start = this.dataOffset + this.offsets[glyphId];
+        const end = this.dataOffset + this.offsets[glyphId + 1];
         if (start === end)
             return null;
-        var cursor = start;
-        var tupleVariationCount = this.view.getUint16(cursor, false);
+        let cursor = start;
+        const tupleVariationCount = this.view.getUint16(cursor, false);
         cursor += 2;
-        var offsetToData = this.view.getUint16(cursor, false);
+        const offsetToData = this.view.getUint16(cursor, false);
         cursor += 2;
-        var hasSharedPoints = (tupleVariationCount & 0x8000) !== 0;
-        var count = tupleVariationCount & 0x0fff;
-        var tuples = [];
-        for (var i = 0; i < count; i++) {
-            var dataSize = this.view.getUint16(cursor, false);
-            var tupleIndex = this.view.getUint16(cursor + 2, false);
+        const hasSharedPoints = (tupleVariationCount & 0x8000) !== 0;
+        const count = tupleVariationCount & 0x0fff;
+        const tuples = [];
+        for (let i = 0; i < count; i++) {
+            const dataSize = this.view.getUint16(cursor, false);
+            const tupleIndex = this.view.getUint16(cursor + 2, false);
             cursor += 4;
-            var hasEmbeddedPeak = (tupleIndex & 0x8000) !== 0;
-            var hasIntermediate = (tupleIndex & 0x4000) !== 0;
-            var hasPrivatePoints = (tupleIndex & 0x2000) !== 0;
-            var sharedIndex = tupleIndex & 0x0fff;
-            var peak = hasEmbeddedPeak
+            const hasEmbeddedPeak = (tupleIndex & 0x8000) !== 0;
+            const hasIntermediate = (tupleIndex & 0x4000) !== 0;
+            const hasPrivatePoints = (tupleIndex & 0x2000) !== 0;
+            const sharedIndex = tupleIndex & 0x0fff;
+            const peak = hasEmbeddedPeak
                 ? this.readTuple(cursor)
-                : ((_b = (_a = this.sharedTuples[sharedIndex]) !== null && _a !== void 0 ? _a : this.sharedTuples[0]) !== null && _b !== void 0 ? _b : new Array(this.axisCount).fill(0));
+                : (this.sharedTuples[sharedIndex] ?? this.sharedTuples[0] ?? new Array(this.axisCount).fill(0));
             if (hasEmbeddedPeak)
                 cursor += this.axisCount * 2;
-            var startTuple = void 0;
-            var endTuple = void 0;
+            let startTuple;
+            let endTuple;
             if (hasIntermediate) {
                 startTuple = this.readTuple(cursor);
                 cursor += this.axisCount * 2;
@@ -85,71 +86,67 @@ var GvarTable = /** @class */ (function () {
             }
             tuples.push({
                 dataOffset: 0,
-                dataSize: dataSize,
-                peak: peak,
+                dataSize,
+                peak,
                 start: startTuple,
                 end: endTuple,
-                hasPrivatePoints: hasPrivatePoints
+                hasPrivatePoints
             });
         }
-        var sharedPoints = null;
-        var dataCursor = start + offsetToData;
+        let sharedPoints = null;
+        let dataCursor = start + offsetToData;
         if (hasSharedPoints) {
-            var result = this.readPointNumbers(dataCursor, pointCount);
+            const result = this.readPointNumbers(dataCursor, pointCount);
             sharedPoints = result.points;
             dataCursor += result.size;
         }
-        for (var _i = 0, tuples_1 = tuples; _i < tuples_1.length; _i++) {
-            var tuple = tuples_1[_i];
+        for (const tuple of tuples) {
             tuple.dataOffset = dataCursor;
             dataCursor += tuple.dataSize;
         }
-        var dx = new Array(pointCount).fill(0);
-        var dy = new Array(pointCount).fill(0);
-        var touched = new Array(pointCount).fill(false);
-        for (var _c = 0, tuples_2 = tuples; _c < tuples_2.length; _c++) {
-            var tuple = tuples_2[_c];
-            var scalar = this.computeScalar(coords, tuple.peak, tuple.start, tuple.end);
+        const dx = new Array(pointCount).fill(0);
+        const dy = new Array(pointCount).fill(0);
+        const touched = new Array(pointCount).fill(false);
+        for (const tuple of tuples) {
+            const scalar = this.computeScalar(coords, tuple.peak, tuple.start, tuple.end);
             if (scalar === 0)
                 continue;
-            var pCursor = tuple.dataOffset;
-            var points = null;
+            let pCursor = tuple.dataOffset;
+            let points = null;
             if (tuple.hasPrivatePoints) {
-                var result = this.readPointNumbers(pCursor, pointCount);
+                const result = this.readPointNumbers(pCursor, pointCount);
                 points = result.points;
                 pCursor += result.size;
             }
             else if (sharedPoints) {
                 points = sharedPoints;
             }
-            var indices = points !== null && points !== void 0 ? points : this.rangePoints(pointCount);
-            for (var _d = 0, indices_1 = indices; _d < indices_1.length; _d++) {
-                var idx = indices_1[_d];
+            const indices = points ?? this.rangePoints(pointCount);
+            for (const idx of indices) {
                 if (idx >= 0 && idx < pointCount)
                     touched[idx] = true;
             }
-            var deltasX = this.readPackedDeltas(pCursor, indices.length);
+            const deltasX = this.readPackedDeltas(pCursor, indices.length);
             pCursor += deltasX.size;
-            var deltasY = this.readPackedDeltas(pCursor, indices.length);
-            for (var i = 0; i < indices.length; i++) {
-                var idx = indices[i];
+            const deltasY = this.readPackedDeltas(pCursor, indices.length);
+            for (let i = 0; i < indices.length; i++) {
+                const idx = indices[i];
                 if (idx >= 0 && idx < pointCount) {
                     dx[idx] += deltasX.values[i] * scalar;
                     dy[idx] += deltasY.values[i] * scalar;
                 }
             }
         }
-        return { dx: dx, dy: dy, touched: touched };
-    };
-    GvarTable.prototype.rangePoints = function (count) {
-        return Array.from({ length: count }, function (_, i) { return i; });
-    };
-    GvarTable.prototype.computeScalar = function (coords, peak, start, end) {
-        var _a, _b, _c, _d;
-        var scalar = 1;
-        for (var i = 0; i < this.axisCount; i++) {
-            var coord = (_a = coords[i]) !== null && _a !== void 0 ? _a : 0;
-            var peakVal = (_b = peak[i]) !== null && _b !== void 0 ? _b : 0;
+        return { dx, dy, touched };
+    }
+    rangePoints(count) {
+        return Array.from({ length: count }, (_, i) => i);
+    }
+    computeScalar(coords, peak, start, end) {
+        let scalar = 1;
+        for (let i = 0; i < this.axisCount; i++) {
+            const coord = coords[i] ?? 0;
+            const peakVal = peak[i] ?? 0;
             if (peakVal === 0) {
                 continue;
             }
@@ -158,8 +155,8 @@ var GvarTable = /** @class */ (function () {
                 break;
             }
             if (start && end) {
-                var s = (_c = start[i]) !== null && _c !== void 0 ? _c : 0;
-                var e = (_d = end[i]) !== null && _d !== void 0 ? _d : 0;
+                const s = start[i] ?? 0;
+                const e = end[i] ?? 0;
                 if (coord < s || coord > e)
                     return 0;
                 if (coord < peakVal)
@@ -174,75 +171,73 @@ var GvarTable = /** @class */ (function () {
             }
         }
         return scalar;
-    };
-    GvarTable.prototype.readTuple = function (offset) {
-        var tuple = [];
-        for (var i = 0; i < this.axisCount; i++) {
+    }
+    readTuple(offset) {
+        const tuple = [];
+        for (let i = 0; i < this.axisCount; i++) {
             tuple.push(this.readF2Dot14(offset + i * 2));
         }
         return tuple;
-    };
-    GvarTable.prototype.readF2Dot14 = function (offset) {
-        var raw = this.view.getInt16(offset, false);
+    }
+    readF2Dot14(offset) {
+        const raw = this.view.getInt16(offset, false);
         return raw / 16384;
-    };
-    GvarTable.prototype.readPointNumbers = function (offset, pointCount) {
-        var cursor = offset;
-        var count = this.view.getUint8(cursor++);
+    }
+    readPointNumbers(offset, pointCount) {
+        let cursor = offset;
+        let count = this.view.getUint8(cursor++);
         if (count === 0) {
             return { points: this.rangePoints(pointCount), size: 1 };
         }
         if (count & 0x80) {
             count = ((count & 0x7f) << 8) | this.view.getUint8(cursor++);
         }
-        var points = [];
-        var last = 0;
+        const points = [];
+        let last = 0;
         while (points.length < count) {
-            var control = this.view.getUint8(cursor++);
-            var runCount = (control & 0x7f) + 1;
+            const control = this.view.getUint8(cursor++);
+            const runCount = (control & 0x7f) + 1;
             if (control & 0x80) {
-                for (var i = 0; i < runCount; i++) {
+                for (let i = 0; i < runCount; i++) {
                     last += this.view.getUint16(cursor, false);
                     cursor += 2;
                     points.push(last);
                 }
             }
             else {
-                for (var i = 0; i < runCount; i++) {
+                for (let i = 0; i < runCount; i++) {
                     last += this.view.getUint8(cursor++);
                     points.push(last);
                 }
             }
         }
-        return { points: points, size: cursor - offset };
-    };
-    GvarTable.prototype.readPackedDeltas = function (offset, count) {
-        var cursor = offset;
-        var values = [];
+        return { points, size: cursor - offset };
+    }
+    readPackedDeltas(offset, count) {
+        let cursor = offset;
+        const values = [];
         while (values.length < count) {
-            var control = this.view.getUint8(cursor++);
-            var runCount = (control & 0x3f) + 1;
+            const control = this.view.getUint8(cursor++);
+            const runCount = (control & 0x3f) + 1;
             if (control & 0x80) {
                 // 0x80 = zero run
-                for (var i = 0; i < runCount; i++)
+                for (let i = 0; i < runCount; i++)
                     values.push(0);
             }
             else if (control & 0x40) {
                 // 0x40 = 16-bit signed deltas
-                for (var i = 0; i < runCount; i++) {
+                for (let i = 0; i < runCount; i++) {
                     values.push(this.view.getInt16(cursor, false));
                     cursor += 2;
                 }
             }
             else {
                 // 0x00 = 8-bit signed deltas
-                for (var i = 0; i < runCount; i++) {
+                for (let i = 0; i < runCount; i++) {
                     values.push(this.view.getInt8(cursor++));
                 }
             }
         }
-        return { values: values, size: cursor - offset };
-    };
-    return GvarTable;
-}());
-export { GvarTable };
+        return { values, size: cursor - offset };
+    }
+}

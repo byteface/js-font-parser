@@ -1,15 +1,15 @@
-var Panose = /** @class */ (function () {
-    function Panose(panose) {
-        this.bFamilyType = 0;
-        this.bSerifStyle = 0;
-        this.bWeight = 0;
-        this.bProportion = 0;
-        this.bContrast = 0;
-        this.bStrokeVariation = 0;
-        this.bArmStyle = 0;
-        this.bLetterform = 0;
-        this.bMidline = 0;
-        this.bXHeight = 0;
+export class Panose {
+    bFamilyType = 0;
+    bSerifStyle = 0;
+    bWeight = 0;
+    bProportion = 0;
+    bContrast = 0;
+    bStrokeVariation = 0;
+    bArmStyle = 0;
+    bLetterform = 0;
+    bMidline = 0;
+    bXHeight = 0;
+    constructor(panose) {
         this.bFamilyType = panose[0];
         this.bSerifStyle = panose[1];
         this.bWeight = panose[2];
@@ -23,12 +23,10 @@ var Panose = /** @class */ (function () {
         // Optional: Uncomment to log values
         // console.log("Panose::", this.toString());
     }
-    Panose.prototype.toString = function () {
-        return "".concat(this.bFamilyType, " ").concat(this.bSerifStyle, " ").concat(this.bWeight, " ").concat(this.bProportion, " ").concat(this.bContrast, " ").concat(this.bStrokeVariation, " ").concat(this.bArmStyle, " ").concat(this.bLetterform, " ").concat(this.bMidline, " ").concat(this.bXHeight);
-    };
-    return Panose;
-}());
-export { Panose };
+    toString() {
+        return `${this.bFamilyType} ${this.bSerifStyle} ${this.bWeight} ${this.bProportion} ${this.bContrast} ${this.bStrokeVariation} ${this.bArmStyle} ${this.bLetterform} ${this.bMidline} ${this.bXHeight}`;
+    }
+}
 /*
 
 

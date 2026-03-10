@@ -17,11 +17,7 @@ export class FontParserTTF extends BaseFontParser {
                 return response.arrayBuffer();
             })
             .then(arrayBuffer => new ByteArray(new Uint8Array(arrayBuffer))) // Wrap in ByteArray
-            .then(byteArray => new FontParserTTF(byteArray)) // Create and initialize FontParserTTF
-            .catch(error => {
-                console.error('Error loading font:', error);
-                throw error; // Propagate error for further handling if needed
-            });
+            .then(byteArray => new FontParserTTF(byteArray)); // Create and initialize FontParserTTF
     }
 
     constructor(byteData: ByteArray) {

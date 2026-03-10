@@ -1,24 +1,25 @@
-var Ligature = /** @class */ (function () {
-    function Ligature(byteAr) {
+export class Ligature {
+    ligGlyph;
+    compCount;
+    components;
+    constructor(byteAr) {
         this.ligGlyph = byteAr.readUnsignedShort();
         this.compCount = byteAr.readUnsignedShort();
         this.components = new Array(this.compCount - 1);
-        for (var i = 0; i < this.compCount - 1; i++) {
+        for (let i = 0; i < this.compCount - 1; i++) {
             this.components[i] = byteAr.readUnsignedShort();
         }
     }
-    Ligature.prototype.getGlyphCount = function () {
+    getGlyphCount() {
         return this.compCount;
-    };
-    Ligature.prototype.getLigatureGlyph = function () {
+    }
+    getLigatureGlyph() {
         return this.ligGlyph;
-    };
-    Ligature.prototype.getGlyphId = function (i) {
+    }
+    getGlyphId(i) {
         return (i === 0) ? this.ligGlyph : this.components[i - 1];
-    };
-    Ligature.prototype.getComponents = function () {
+    }
+    getComponents() {
         return this.components.slice();
-    };
-    return Ligature;
-}());
-export { Ligature };
+    }
+}

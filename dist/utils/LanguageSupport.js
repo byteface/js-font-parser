@@ -1,4 +1,4 @@
-var LANGUAGES = [
+const LANGUAGES = [
     { code: 'en', name: 'English', required: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz' },
     { code: 'es', name: 'Spanish', required: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzáéíóúüñÁÉÍÓÚÜÑ' },
     { code: 'fr', name: 'French', required: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzàâçéèêëîïôùûüÿœæÀÂÇÉÈÊËÎÏÔÙÛÜŸŒÆ' },
@@ -26,23 +26,23 @@ function uniqueChars(str) {
     return Array.from(new Set(Array.from(str)));
 }
 export function supportsLanguage(font, code) {
-    var lang = LANGUAGES.find(function (l) { return l.code === code; });
+    const lang = LANGUAGES.find(l => l.code === code);
     if (!lang)
         return null;
-    var requiredChars = uniqueChars(lang.required);
-    var missing = requiredChars.filter(function (ch) { return !font.getGlyphIndexByChar(ch); });
-    var coverage = requiredChars.length === 0 ? 1 : (requiredChars.length - missing.length) / requiredChars.length;
+    const requiredChars = uniqueChars(lang.required);
+    const missing = requiredChars.filter(ch => !font.getGlyphIndexByChar(ch));
+    const coverage = requiredChars.length === 0 ? 1 : (requiredChars.length - missing.length) / requiredChars.length;
     return {
         code: lang.code,
         name: lang.name,
         supported: missing.length === 0,
-        missing: missing,
-        coverage: coverage,
+        missing,
+        coverage,
         notes: lang.notes
     };
 }
 export function getSupportedLanguages(font) {
-    return LANGUAGES.map(function (lang) { return supportsLanguage(font, lang.code); }).filter(Boolean);
+    return LANGUAGES.map(lang => supportsLanguage(font, lang.code)).filter(Boolean);
 }
 export function listLanguages() {
     return LANGUAGES.slice();

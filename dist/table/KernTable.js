@@ -2,20 +2,23 @@ import { KernSubtableFormat0 } from "./KernSubtableFormat0.js";
 import { KernSubtableFormat2 } from "./KernSubtableFormat2.js";
 import { Table } from "./Table.js";
 import { Debug } from "../utils/Debug.js";
-var KernTable = /** @class */ (function () {
-    function KernTable(de, byte_ar) {
+export class KernTable {
+    version;
+    nTables;
+    tables;
+    constructor(de, byte_ar) {
         byte_ar.offset = de.offset;
         this.version = byte_ar.readUnsignedShort();
         this.nTables = byte_ar.readUnsignedShort();
         this.tables = new Array(this.nTables);
-        for (var i = 0; i < this.nTables; i++) {
-            var start = byte_ar.offset;
+        for (let i = 0; i < this.nTables; i++) {
+            const start = byte_ar.offset;
             // subtable header
             byte_ar.readUnsignedShort(); // version
-            var length_1 = byte_ar.readUnsignedShort();
-            var coverage = byte_ar.readUnsignedShort();
-            var format = coverage >> 8;
-            var table = null;
+            const length = byte_ar.readUnsignedShort();
+            const coverage = byte_ar.readUnsignedShort();
+            const format = coverage >> 8;
+            let table = null;
             switch (format) {
                 case 0:
                     table = new KernSubtableFormat0(byte_ar);
@@ -24,37 +27,34 @@ var KernTable = /** @class */ (function () {
                     table = new KernSubtableFormat2(byte_ar);
                     break;
                 default:
-                    Debug.warn("Unsupported KernSubtable format: ".concat(format));
+                    Debug.warn(`Unsupported KernSubtable format: ${format}`);
                     break;
             }
             // Ensure we move to the end of the subtable
-            var expectedEnd = start + length_1;
+            const expectedEnd = start + length;
             if (byte_ar.offset < expectedEnd) {
                 byte_ar.offset = expectedEnd;
             }
             this.tables[i] = table;
         }
     }
-    KernTable.prototype.getSubtableCount = function () {
+    getSubtableCount() {
         return this.nTables;
-    };
-    KernTable.prototype.getSubtable = function (i) {
+    }
+    getSubtable(i) {
         return this.tables[i];
-    };
-    KernTable.prototype.getKerningValue = function (leftGlyph, rightGlyph) {
-        for (var _i = 0, _a = this.tables; _i < _a.length; _i++) {
-            var subtable = _a[_i];
+    }
+    getKerningValue(leftGlyph, rightGlyph) {
+        for (const subtable of this.tables) {
             if (subtable && subtable instanceof KernSubtableFormat0) {
-                var value = subtable.getKerningValue(leftGlyph, rightGlyph);
+                const value = subtable.getKerningValue(leftGlyph, rightGlyph);
                 if (value !== 0)
                     return value;
             }
         }
         return 0;
-    };
-    KernTable.prototype.getType = function () {
+    }
+    getType() {
         return Table.kern;
-    };
-    return KernTable;
-}());
-export { KernTable };
+    }
+}

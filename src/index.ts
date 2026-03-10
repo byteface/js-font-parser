@@ -7,6 +7,7 @@ export { SVGFont } from './render/SVGFont.js';
 export { CanvasRenderer } from './render/CanvasRenderer.js';
 export { CanvasGlyph } from './render/CanvasGlyph.js';
 export { LayoutEngine } from './layout/LayoutEngine.js';
+export { Table } from './table/Table.js';
 export { getSupportedLanguages, supportsLanguage, listLanguages } from './utils/LanguageSupport.js';
 export { setWoff2Decoder } from './utils/Woff2Decoder.js';
 export { detectScriptTags } from './utils/ScriptDetector.js';

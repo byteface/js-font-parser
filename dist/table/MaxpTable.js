@@ -1,6 +1,21 @@
 import { Table } from "./Table.js";
-var MaxpTable = /** @class */ (function () {
-    function MaxpTable(de, byte_ar) {
+export class MaxpTable {
+    versionNumber;
+    numGlyphs;
+    maxPoints;
+    maxContours;
+    maxCompositePoints;
+    maxCompositeContours;
+    maxZones;
+    maxTwilightPoints;
+    maxStorage;
+    maxFunctionDefs;
+    maxInstructionDefs;
+    maxStackElements;
+    maxSizeOfInstructions;
+    maxComponentElements;
+    maxComponentDepth;
+    constructor(de, byte_ar) {
         byte_ar.offset = de.offset;
         // console.log( "maxp offset",  byte_ar.offset);
         // Read properties from the ByteArray
@@ -23,9 +38,7 @@ var MaxpTable = /** @class */ (function () {
         this.maxComponentElements = byte_ar.readUnsignedShort();
         this.maxComponentDepth = byte_ar.readUnsignedShort();
     }
-    MaxpTable.prototype.getType = function () {
+    getType() {
         return Table.maxp;
-    };
-    return MaxpTable;
-}());
-export { MaxpTable };
+    }
+}

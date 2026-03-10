@@ -1,9 +1,13 @@
-var Device = /** @class */ (function () {
-    function Device(byte_ar) {
+export class Device {
+    startSize;
+    endSize;
+    deltaFormat;
+    deltaValues;
+    constructor(byte_ar) {
         this.startSize = byte_ar.readUnsignedShort();
         this.endSize = byte_ar.readUnsignedShort();
         this.deltaFormat = byte_ar.readUnsignedShort();
-        var size = this.startSize - this.endSize;
+        let size = this.startSize - this.endSize;
         switch (this.deltaFormat) {
             case 1:
                 size = (size % 8 === 0) ? size / 8 : Math.floor(size / 8) + 1;
@@ -16,10 +20,8 @@ var Device = /** @class */ (function () {
                 break;
         }
         this.deltaValues = new Array(size);
-        for (var i = 0; i < size; i++) {
+        for (let i = 0; i < size; i++) {
             this.deltaValues[i] = byte_ar.readUnsignedShort();
         }
     }
-    return Device;
-}());
-export { Device };
+}

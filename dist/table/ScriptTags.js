@@ -1,1 +1,1 @@
-export var ScriptTags = {};
+export const ScriptTags = {};

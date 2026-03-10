@@ -1,12 +1,15 @@
-var CmapIndexEntry = /** @class */ (function () {
-    function CmapIndexEntry(byteArray) {
+export class CmapIndexEntry {
+    platformId;
+    encodingId;
+    offset;
+    constructor(byteArray) {
         this.platformId = byteArray.readUnsignedShort();
         this.encodingId = byteArray.readUnsignedShort();
         this.offset = byteArray.readInt();
     }
-    CmapIndexEntry.prototype.toString = function () {
-        var platform = "";
-        var encoding = "";
+    toString() {
+        let platform = "";
+        let encoding = "";
         switch (this.platformId) {
             case 1:
                 platform = " (Macintosh)";
@@ -45,8 +48,6 @@ var CmapIndexEntry = /** @class */ (function () {
                     encoding = "";
             }
         }
-        return "platform id: ".concat(this.platformId).concat(platform, ", encoding id: ").concat(this.encodingId).concat(encoding, ", offset: ").concat(this.offset);
-    };
-    return CmapIndexEntry;
-}());
-export { CmapIndexEntry };
+        return `platform id: ${this.platformId}${platform}, encoding id: ${this.encodingId}${encoding}, offset: ${this.offset}`;
+    }
+}

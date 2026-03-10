@@ -1,92 +1,7 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { Table } from "./Table.js";
-var PostTable = /** @class */ (function () {
-    function PostTable(de, byte_ar) {
-        this.version = 0;
-        this.italicAngle = 0;
-        this.underlinePosition = 0;
-        this.underlineThickness = 0;
-        this.isFixedPitch = 0;
-        this.minMemType42 = 0;
-        this.maxMemType42 = 0;
-        this.minMemType1 = 0;
-        this.maxMemType1 = 0;
-        this.numGlyphs = 0;
-        this.glyphNameIndex = null;
-        this.psGlyphName = null;
-        this.glyphNamesOffset = 0;
-        this.glyphNamesLoaded = false;
-        this.data = new Uint8Array(byte_ar.dataView.buffer, byte_ar.dataView.byteOffset, byte_ar.dataView.byteLength);
-        byte_ar.offset = de.offset;
-        this.version = byte_ar.readInt();
-        this.italicAngle = byte_ar.readInt();
-        this.underlinePosition = byte_ar.readShort();
-        this.underlineThickness = byte_ar.readShort();
-        this.isFixedPitch = byte_ar.readInt();
-        this.minMemType42 = byte_ar.readInt();
-        this.maxMemType42 = byte_ar.readInt();
-        this.minMemType1 = byte_ar.readInt();
-        this.maxMemType1 = byte_ar.readInt();
-        if (this.version === 0x00020000) {
-            this.glyphNamesOffset = byte_ar.offset;
-        }
-        else if (this.version === 0x00020005) {
-            // Handle version 0x00020005 if needed
-        }
-    }
-    PostTable.prototype.highestGlyphNameIndex = function () {
-        this.ensureGlyphNamesLoaded();
-        var high = 0;
-        for (var i = 0; i < this.numGlyphs; i++) {
-            if (high < this.glyphNameIndex[i]) {
-                high = this.glyphNameIndex[i];
-            }
-        }
-        return high;
-    };
-    PostTable.prototype.getGlyphName = function (i) {
-        this.ensureGlyphNamesLoaded();
-        if (this.version === 0x00020000 && this.glyphNameIndex) {
-            if (this.glyphNameIndex[i] > 257) {
-                return this.psGlyphName ? this.psGlyphName[this.glyphNameIndex[i] - 258] : null;
-            }
-            return PostTable.MAC_GLYPH_NAMES[this.glyphNameIndex[i]];
-        }
-        return null;
-    };
-    PostTable.prototype.getType = function () {
-        return Table.post;
-    };
-    PostTable.prototype.ensureGlyphNamesLoaded = function () {
-        if (this.glyphNamesLoaded || this.version !== 0x00020000 || this.glyphNamesOffset === 0) {
-            return;
-        }
-        var byte_ar = new ByteArray(this.data);
-        byte_ar.offset = this.glyphNamesOffset;
-        this.numGlyphs = byte_ar.readUnsignedShort();
-        this.glyphNameIndex = new Array(this.numGlyphs);
-        var high = 0;
-        for (var i = 0; i < this.numGlyphs; i++) {
-            var glyphNameIndex = byte_ar.readUnsignedShort();
-            this.glyphNameIndex[i] = glyphNameIndex;
-            if (glyphNameIndex > high) {
-                high = glyphNameIndex;
-            }
-        }
-        if (high > 257) {
-            var customNameCount = high - 257;
-            this.psGlyphName = new Array(customNameCount);
-            for (var j = 0; j < customNameCount; j++) {
-                var len = byte_ar.readUnsignedByte();
-                this.psGlyphName[j] = PostTable.TEXT_DECODER.decode(byte_ar.readBytes(len));
-            }
-        }
-        else {
-            this.psGlyphName = [];
-        }
-        this.glyphNamesLoaded = true;
-    };
-    PostTable.MAC_GLYPH_NAMES = [
+export class PostTable {
+    static MAC_GLYPH_NAMES = [
         ".notdef", // 0
         "null", // 1
         "CR", // 2
@@ -346,7 +261,91 @@ var PostTable = /** @class */ (function () {
         "ccaron", // 256
         "" // 257
     ];
-    PostTable.TEXT_DECODER = new TextDecoder('utf-8');
-    return PostTable;
-}());
-export { PostTable };
+    static TEXT_DECODER = new TextDecoder('utf-8');
+    version = 0;
+    italicAngle = 0;
+    underlinePosition = 0;
+    underlineThickness = 0;
+    isFixedPitch = 0;
+    minMemType42 = 0;
+    maxMemType42 = 0;
+    minMemType1 = 0;
+    maxMemType1 = 0;
+    numGlyphs = 0;
+    glyphNameIndex = null;
+    psGlyphName = null;
+    data;
+    glyphNamesOffset = 0;
+    glyphNamesLoaded = false;
+    constructor(de, byte_ar) {
+        this.data = new Uint8Array(byte_ar.dataView.buffer, byte_ar.dataView.byteOffset, byte_ar.dataView.byteLength);
+        byte_ar.offset = de.offset;
+        this.version = byte_ar.readInt();
+        this.italicAngle = byte_ar.readInt();
+        this.underlinePosition = byte_ar.readShort();
+        this.underlineThickness = byte_ar.readShort();
+        this.isFixedPitch = byte_ar.readInt();
+        this.minMemType42 = byte_ar.readInt();
+        this.maxMemType42 = byte_ar.readInt();
+        this.minMemType1 = byte_ar.readInt();
+        this.maxMemType1 = byte_ar.readInt();
+        if (this.version === 0x00020000) {
+            this.glyphNamesOffset = byte_ar.offset;
+        }
+        else if (this.version === 0x00020005) {
+            // Handle version 0x00020005 if needed
+        }
+    }
+    highestGlyphNameIndex() {
+        this.ensureGlyphNamesLoaded();
+        let high = 0;
+        for (let i = 0; i < this.numGlyphs; i++) {
+            if (high < this.glyphNameIndex[i]) {
+                high = this.glyphNameIndex[i];
+            }
+        }
+        return high;
+    }
+    getGlyphName(i) {
+        this.ensureGlyphNamesLoaded();
+        if (this.version === 0x00020000 && this.glyphNameIndex) {
+            if (this.glyphNameIndex[i] > 257) {
+                return this.psGlyphName ? this.psGlyphName[this.glyphNameIndex[i] - 258] : null;
+            }
+            return PostTable.MAC_GLYPH_NAMES[this.glyphNameIndex[i]];
+        }
+        return null;
+    }
+    getType() {
+        return Table.post;
+    }
+    ensureGlyphNamesLoaded() {
+        if (this.glyphNamesLoaded || this.version !== 0x00020000 || this.glyphNamesOffset === 0) {
+            return;
+        }
+        const byte_ar = new ByteArray(this.data);
+        byte_ar.offset = this.glyphNamesOffset;
+        this.numGlyphs = byte_ar.readUnsignedShort();
+        this.glyphNameIndex = new Array(this.numGlyphs);
+        let high = 0;
+        for (let i = 0; i < this.numGlyphs; i++) {
+            const glyphNameIndex = byte_ar.readUnsignedShort();
+            this.glyphNameIndex[i] = glyphNameIndex;
+            if (glyphNameIndex > high) {
+                high = glyphNameIndex;
+            }
+        }
+        if (high > 257) {
+            const customNameCount = high - 257;
+            this.psGlyphName = new Array(customNameCount);
+            for (let j = 0; j < customNameCount; j++) {
+                const len = byte_ar.readUnsignedByte();
+                this.psGlyphName[j] = PostTable.TEXT_DECODER.decode(byte_ar.readBytes(len));
+            }
+        }
+        else {
+            this.psGlyphName = [];
+        }
+        this.glyphNamesLoaded = true;
+    }
+}

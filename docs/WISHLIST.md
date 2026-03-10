@@ -1,69 +1,44 @@
 # Wishlist
 
-1. **Golden-image tests**
-   - Why still needed: harness exists, but baseline coverage is not yet enforced in CI and not all key demos/tools are locked.
-   - Needed to close: define stable baseline set, run compare in CI, and gate regressions on changed targets.
+Prioritized by impact on parser correctness, release confidence, and npm usability.
 
-2. **Full GPOS positioning across scripts**
-   - Why still needed: major mark/base/mark/ligature paths are in, but script coverage confidence is still test-driven rather than sign-off complete.
-   - Needed to close: expand real-font fixture matrix and add explicit expected outputs for complex mark+ligature combinations per script family.
+## P0 (Do Next)
 
-3. **WOFF2 support (runtime packaging)**
-   - Why still needed: parser + decoder hook exist, but decoder strategy is still external/injected.
-   - Needed to close: publish a default decoder packaging approach (or official integration guide) and validate with real WOFF2 fixtures end-to-end.
+1. **GPOS script sign-off**
+   - Current status: broad paths work, but confidence still comes mainly from generic/fuzz coverage.
+   - Do next:
+     - Add explicit real-font expected outputs for tricky cases (mark+ligature+mark, stacked marks, mixed scripts).
+     - Lock at least one canonical fixture per major script family used in demos/tools.
 
-## Quality Gates (Definition of Done)
+2. **Golden-image regression as a required gate**
+   - Current status: golden workflow exists and runs, but should be treated as a hard release guard.
+   - Do next:
+     - Define required page set for visual lock.
+     - Ensure CI/branch protection treats golden compare as a required check for high-risk visual/layout changes.
 
-- **Table coverage gate**
-  - Run `npm run audit:tables`.
-  - Target: `Missing from factory: 0`.
-  - If non-zero, each missing tag must be classified in this wishlist as `implement`, `intentionally unsupported`, or `defer` with rationale.
+3. **WOFF2 runtime story (ship-ready)**
+   - Current status: WOFF2 parse path exists via injected decoder hook.
+   - Do next:
+     - Provide one official default integration path (documented and tested end-to-end).
+     - Add a single “known good” WOFF2 smoke fixture path in CI/docs.
 
-- **Behavioral test gate**
-  - Keep `npm test` green for default CI/local fast coverage.
-  - Run `npm run test:full` before release/high-risk merges to include full fixture sweeps.
-  - For each new parser capability, add:
-    - one happy-path test with a real fixture
-    - one unhappy-path test (truncated/invalid/missing table)
+## P1 (Important, After P0)
 
-- **Rendering/layout confidence gate**
-  - Major paths should have an inspectable demo/tool surface:
-    - GSUB/GPOS shaping
-    - Kerning
-    - Variable interpolation (gvar/CFF2)
-    - Color fonts (COLR/CPAL/SVG)
-  - For high-risk visual changes, run golden capture/compare.
+4. **TrueType hint VM execution (explicitly scoped)**
+   - Keep this as a deliberate long-track item.
+   - Scope clearly: `fpgm`/`prep`/glyph instruction execution goals, non-goals, and milestones.
 
-- **Subsystem done criteria**
-  - Parsed and exposed through public API.
-  - At least one real fixture exercises it.
-  - Invalid/truncated handling is tested.
-  - Demo/tool can visualize or inspect it.
-  - Diagnostics exist for fallback/unsupported behavior.
+## P2 (Nice-to-have / later)
 
+5. **Docs tightening for release cadence**
+   - Keep API + README + CLI docs aligned whenever behavior changes.
+   - Add a short “release checklist” doc section for version bump, dry-run, and publish validation.
 
+---
 
-Top next byte-cut steps, in order:
+## Done Recently (Removed from active wishlist)
 
-Move the remaining duplicated TTF/WOFF convenience layer into base
-
-Big overlap still exists in FontParserTTF.ts and FontParserWOFF.ts: metadata (getFontNames/getOs2Metrics/getPostMetrics/getMetadata), color helpers, measureText/layoutToPoints, variation helpers.
-Expected gain: ~4–10 KB minified.
-Share the big getGlyph variation/composite logic between TTF and WOFF
-
-This is still one of the largest duplicated blocks in both parser files.
-Expected gain: ~3–8 KB minified.
-Tighten webpack minification settings
-
-Current config is minimal in webpack.config.cjs. Add explicit Terser options (compress.passes=2, pure_getters, module, toplevel where safe).
-Expected gain: ~1–3 KB minified.
-Remove dead compatibility/public aliases once tests are updated
-
-Keep only one public path for GPOS/apply helpers if legacy direct calls are no longer required.
-Expected gain: ~0.5–2 KB.
-Clean tiny dead imports/legacy branches
-
-Small wins (hundreds of bytes each), but worth doing after the big dedupe items.
-
-
-
+- **Table coverage closure**: `npm run audit:tables` now reports `Missing from factory: 0`.
+- **NPM package metadata hardening**: `types`, `exports`, `repository`, `homepage`, `bugs`, license file, and dry-run publish checks are in place.
+- **CI Node coverage expansion**: matrix now verifies Node `20.x`, `22.x`, and `24.x`.
+- **Structured diagnostics cleanup**: remaining runtime parser console fallback logging removed from `FontParserTTF.load`.

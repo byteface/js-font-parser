@@ -1,54 +1,54 @@
-var CffGlyphDescription = /** @class */ (function () {
-    function CffGlyphDescription(points, endPts) {
+export class CffGlyphDescription {
+    points;
+    endPts;
+    xMin;
+    yMin;
+    xMax;
+    yMax;
+    constructor(points, endPts) {
         this.points = points;
         this.endPts = endPts;
-        var xs = points.map(function (p) { return p.x; });
-        var ys = points.map(function (p) { return p.y; });
-        this.xMin = xs.length ? Math.min.apply(Math, xs) : 0;
-        this.yMin = ys.length ? Math.min.apply(Math, ys) : 0;
-        this.xMax = xs.length ? Math.max.apply(Math, xs) : 0;
-        this.yMax = ys.length ? Math.max.apply(Math, ys) : 0;
+        const xs = points.map(p => p.x);
+        const ys = points.map(p => p.y);
+        this.xMin = xs.length ? Math.min(...xs) : 0;
+        this.yMin = ys.length ? Math.min(...ys) : 0;
+        this.xMax = xs.length ? Math.max(...xs) : 0;
+        this.yMax = ys.length ? Math.max(...ys) : 0;
     }
-    CffGlyphDescription.prototype.getEndPtOfContours = function (i) {
-        var _a;
-        return (_a = this.endPts[i]) !== null && _a !== void 0 ? _a : 0;
-    };
-    CffGlyphDescription.prototype.getFlags = function (i) {
-        var _a;
-        return ((_a = this.points[i]) === null || _a === void 0 ? void 0 : _a.onCurve) ? 0x01 : 0x00;
-    };
-    CffGlyphDescription.prototype.getXCoordinate = function (i) {
-        var _a, _b;
-        return (_b = (_a = this.points[i]) === null || _a === void 0 ? void 0 : _a.x) !== null && _b !== void 0 ? _b : 0;
-    };
-    CffGlyphDescription.prototype.getYCoordinate = function (i) {
-        var _a, _b;
-        return (_b = (_a = this.points[i]) === null || _a === void 0 ? void 0 : _a.y) !== null && _b !== void 0 ? _b : 0;
-    };
-    CffGlyphDescription.prototype.getXMaximum = function () {
+    getEndPtOfContours(i) {
+        return this.endPts[i] ?? 0;
+    }
+    getFlags(i) {
+        return this.points[i]?.onCurve ? 0x01 : 0x00;
+    }
+    getXCoordinate(i) {
+        return this.points[i]?.x ?? 0;
+    }
+    getYCoordinate(i) {
+        return this.points[i]?.y ?? 0;
+    }
+    getXMaximum() {
         return this.xMax;
-    };
-    CffGlyphDescription.prototype.getXMinimum = function () {
+    }
+    getXMinimum() {
         return this.xMin;
-    };
-    CffGlyphDescription.prototype.getYMaximum = function () {
+    }
+    getYMaximum() {
         return this.yMax;
-    };
-    CffGlyphDescription.prototype.getYMinimum = function () {
+    }
+    getYMinimum() {
         return this.yMin;
-    };
-    CffGlyphDescription.prototype.isComposite = function () {
+    }
+    isComposite() {
         return false;
-    };
-    CffGlyphDescription.prototype.getPointCount = function () {
+    }
+    getPointCount() {
         return this.points.length;
-    };
-    CffGlyphDescription.prototype.getContourCount = function () {
+    }
+    getContourCount() {
         return this.endPts.length;
-    };
-    CffGlyphDescription.prototype.resolve = function () {
+    }
+    resolve() {
         // no-op
-    };
-    return CffGlyphDescription;
-}());
-export { CffGlyphDescription };
+    }
+}

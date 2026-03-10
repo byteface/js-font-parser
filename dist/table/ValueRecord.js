@@ -1,8 +1,6 @@
-var ValueRecord = /** @class */ (function () {
-    function ValueRecord() {
-    }
-    ValueRecord.read = function (byte_ar, valueFormat) {
-        var record = {};
+export class ValueRecord {
+    static read(byte_ar, valueFormat) {
+        const record = {};
         if (valueFormat & 0x0001)
             record.xPlacement = byte_ar.readShort();
         if (valueFormat & 0x0002)
@@ -20,7 +18,5 @@ var ValueRecord = /** @class */ (function () {
         if (valueFormat & 0x0080)
             byte_ar.readUnsignedShort();
         return record;
-    };
-    return ValueRecord;
-}());
-export { ValueRecord };
+    }
+}

@@ -1,10 +1,11 @@
 {
     "compilerOptions": {
-      "target": "es5",                   // Set the ECMAScript target version
+      "target": "es2022",                // Emit modern JS for Node 22 and current browsers
       "module": "es6",                   // Use ES6 module syntax
       "moduleResolution": "bundler",     // Allow .js import specifiers to resolve to .ts sources
       "rootDir": "./src",
       "outDir": "./dist",                // Output directory for compiled files
+      "declaration": true,               // Emit declaration files for npm consumers
       "strict": true,                    // Enable strict type checking options
       "esModuleInterop": true,           // Enables emit interoperability between CommonJS and ES Modules
       "skipLibCheck": true,              // Skip type checking of declaration files

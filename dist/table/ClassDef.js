@@ -1,12 +1,8 @@
-var ClassDef = /** @class */ (function () {
-    function ClassDef() {
+export class ClassDef {
+    getFormat() {
+        return 0;
     }
-    ClassDef.prototype.getFormat = function () {
+    getGlyphClass(_glyphId) {
         return 0;
-    };
-    ClassDef.prototype.getGlyphClass = function (_glyphId) {
-        return 0;
-    };
-    return ClassDef;
-}());
-export { ClassDef };
+    }
+}

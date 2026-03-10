@@ -1,37 +1,21 @@
-var Debug = /** @class */ (function () {
-    function Debug() {
+export class Debug {
+    static enabled = false;
+    static log(...args) {
+        if (!Debug.enabled)
+            return;
+        // eslint-disable-next-line no-console
+        console.log(...args);
     }
-    Debug.log = function () {
-        var args = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            args[_i] = arguments[_i];
-        }
+    static table(...args) {
         if (!Debug.enabled)
             return;
         // eslint-disable-next-line no-console
-        console.log.apply(console, args);
-    };
-    Debug.table = function () {
-        var args = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            args[_i] = arguments[_i];
-        }
+        console.table(...args);
+    }
+    static warn(...args) {
         if (!Debug.enabled)
             return;
         // eslint-disable-next-line no-console
-        console.table.apply(console, args);
-    };
-    Debug.warn = function () {
-        var args = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            args[_i] = arguments[_i];
-        }
-        if (!Debug.enabled)
-            return;
-        // eslint-disable-next-line no-console
-        console.warn.apply(console, args);
-    };
-    Debug.enabled = false;
-    return Debug;
-}());
-export { Debug };
+        console.warn(...args);
+    }
+}

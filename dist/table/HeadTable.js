@@ -1,6 +1,23 @@
 import { Table } from "./Table.js";
-var HeadTable = /** @class */ (function () {
-    function HeadTable(de, byte_ar) {
+export class HeadTable {
+    versionNumber;
+    fontRevision;
+    checkSumAdjustment;
+    magicNumber;
+    flags;
+    unitsPerEm;
+    created;
+    modified;
+    xMin;
+    yMin;
+    xMax;
+    yMax;
+    macStyle;
+    lowestRecPPEM;
+    fontDirectionHint;
+    indexToLocFormat;
+    glyphDataFormat;
+    constructor(de, byte_ar) {
         // console.log('HEAD TABLE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
         byte_ar.offset = de.offset;
         this.versionNumber = byte_ar.readInt();
@@ -28,26 +45,39 @@ var HeadTable = /** @class */ (function () {
      * @param b The byte array.
      * @return The long value.
      */
-    HeadTable.prototype.readLong = function (b) {
-        var high = (b.readUnsignedByte() << 24) |
+    readLong(b) {
+        const high = (b.readUnsignedByte() << 24) |
             (b.readUnsignedByte() << 16) |
             (b.readUnsignedByte() << 8) |
             b.readUnsignedByte();
-        var low = (b.readUnsignedByte() << 24) |
+        const low = (b.readUnsignedByte() << 24) |
             (b.readUnsignedByte() << 16) |
             (b.readUnsignedByte() << 8) |
             b.readUnsignedByte();
         // Combine the two 32-bit values into a 64-bit number
         // Shift `high` by 32 bits and add the `low` part
-        var num = (high * Math.pow(2, 32)) + (low >>> 0); // Use `>>> 0` to ensure low is treated as unsigned
+        const num = (high * 2 ** 32) + (low >>> 0); // Use `>>> 0` to ensure low is treated as unsigned
         return num;
-    };
-    HeadTable.prototype.getType = function () {
+    }
+    getType() {
         return Table.head;
-    };
-    HeadTable.prototype.toString = function () {
-        return "head\n\tversionNumber: ".concat(this.versionNumber, "\n\tfontRevision: ").concat(this.fontRevision, "\n\tcheckSumAdjustment: ").concat(this.checkSumAdjustment, "\n\tmagicNumber: ").concat(this.magicNumber, "\n\tflags: ").concat(this.flags, "\n\tunitsPerEm: ").concat(this.unitsPerEm, "\n\tcreated: ").concat(this.created, "\n\tmodified: ").concat(this.modified, "\n\txMin: ").concat(this.xMin, ", yMin: ").concat(this.yMin, "\n\txMax: ").concat(this.xMax, ", yMax: ").concat(this.yMax, "\n\tmacStyle: ").concat(this.macStyle, "\n\tlowestRecPPEM: ").concat(this.lowestRecPPEM, "\n\tfontDirectionHint: ").concat(this.fontDirectionHint, "\n\tindexToLocFormat: ").concat(this.indexToLocFormat, "\n\tglyphDataFormat: ").concat(this.glyphDataFormat);
-    };
-    return HeadTable;
-}());
-export { HeadTable };
+    }
+    toString() {
+        return `head
+\tversionNumber: ${this.versionNumber}
+\tfontRevision: ${this.fontRevision}
+\tcheckSumAdjustment: ${this.checkSumAdjustment}
+\tmagicNumber: ${this.magicNumber}
+\tflags: ${this.flags}
+\tunitsPerEm: ${this.unitsPerEm}
+\tcreated: ${this.created}
+\tmodified: ${this.modified}
+\txMin: ${this.xMin}, yMin: ${this.yMin}
+\txMax: ${this.xMax}, yMax: ${this.yMax}
+\tmacStyle: ${this.macStyle}
+\tlowestRecPPEM: ${this.lowestRecPPEM}
+\tfontDirectionHint: ${this.fontDirectionHint}
+\tindexToLocFormat: ${this.indexToLocFormat}
+\tglyphDataFormat: ${this.glyphDataFormat}`;
+    }
+}

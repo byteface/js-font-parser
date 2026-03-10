@@ -1,15 +1,15 @@
 // UNTESTED
-var LangSysRecord = /** @class */ (function () {
-    function LangSysRecord(byte_ar) {
+export class LangSysRecord {
+    tag;
+    offset;
+    constructor(byte_ar) {
         this.tag = byte_ar.readInt();
         this.offset = byte_ar.readUnsignedShort();
     }
-    LangSysRecord.prototype.getTag = function () {
+    getTag() {
         return this.tag;
-    };
-    LangSysRecord.prototype.getOffset = function () {
+    }
+    getOffset() {
         return this.offset;
-    };
-    return LangSysRecord;
-}());
-export { LangSysRecord };
+    }
+}

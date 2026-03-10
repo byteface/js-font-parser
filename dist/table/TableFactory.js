@@ -24,11 +24,10 @@ import { FvarTable } from './FvarTable.js';
 import { GvarTable } from './GvarTable.js';
 import { PrepTable } from './PrepTable.js';
 import { RawTable } from './RawTable.js';
-var TableFactory = /** @class */ (function () {
-    function TableFactory() {
-    }
-    TableFactory.prototype.create = function (de, byte_ar) {
-        var t = null;
+export class TableFactory {
+    constructor() { }
+    create(de, byte_ar) {
+        let t = null;
         switch (de.tag) {
             case Table.GSUB:
                 return new GsubTable(de, byte_ar);
@@ -111,7 +110,5 @@ var TableFactory = /** @class */ (function () {
             default:
                 return t;
         }
-    };
-    return TableFactory;
-}());
-export { TableFactory };
+    }
+}

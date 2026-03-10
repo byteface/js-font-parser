@@ -1,4 +1,4 @@
-var SCRIPT_FEATURES = {
+const SCRIPT_FEATURES = {
     arab: ['ccmp', 'locl', 'init', 'medi', 'fina', 'isol', 'rlig', 'liga', 'calt'],
     deva: ['ccmp', 'locl', 'rlig', 'liga', 'calt'],
     hebr: ['ccmp', 'locl', 'rlig', 'liga'],
@@ -8,11 +8,9 @@ var SCRIPT_FEATURES = {
     latn: ['ccmp', 'locl', 'liga', 'calt']
 };
 export function detectScriptTags(text) {
-    var _a;
-    var scripts = new Set();
-    for (var _i = 0, text_1 = text; _i < text_1.length; _i++) {
-        var ch = text_1[_i];
-        var cp = (_a = ch.codePointAt(0)) !== null && _a !== void 0 ? _a : 0;
+    const scripts = new Set();
+    for (const ch of text) {
+        const cp = ch.codePointAt(0) ?? 0;
         if (cp >= 0x0600 && cp <= 0x06FF)
             scripts.add('arab');
         else if (cp >= 0x0750 && cp <= 0x077F)
@@ -34,9 +32,9 @@ export function detectScriptTags(text) {
     }
     if (scripts.size === 0)
         scripts.add('DFLT');
-    var ordered = Array.from(scripts);
-    var features = ordered
-        .flatMap(function (tag) { var _a; return (_a = SCRIPT_FEATURES[tag]) !== null && _a !== void 0 ? _a : []; })
-        .filter(function (v, i, arr) { return arr.indexOf(v) === i; });
+    const ordered = Array.from(scripts);
+    const features = ordered
+        .flatMap(tag => SCRIPT_FEATURES[tag] ?? [])
+        .filter((v, i, arr) => arr.indexOf(v) === i);
     return { scripts: ordered.length ? ordered : ['DFLT'], features: features.length ? features : ['liga'] };
 }

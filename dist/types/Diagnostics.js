@@ -12,8 +12,8 @@ export function matchesDiagnosticFilter(diagnostic, filter) {
         }
         else {
             // Avoid stateful behavior for global/sticky regex filters.
-            var flags = filter.code.flags.replace(/g|y/g, '');
-            var safe = new RegExp(filter.code.source, flags);
+            const flags = filter.code.flags.replace(/g|y/g, '');
+            const safe = new RegExp(filter.code.source, flags);
             if (!safe.test(diagnostic.code))
                 return false;
         }

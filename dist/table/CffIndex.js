@@ -1,50 +1,50 @@
-var CffIndex = /** @class */ (function () {
-    function CffIndex(count, objects) {
+export class CffIndex {
+    count;
+    objects;
+    constructor(count, objects) {
         this.count = count;
         this.objects = objects;
     }
-    CffIndex.read = function (byte_ar, offset) {
+    static read(byte_ar, offset) {
         return this.readWithCountSize(byte_ar, offset, 2);
-    };
-    CffIndex.readCff2 = function (byte_ar, offset) {
+    }
+    static readCff2(byte_ar, offset) {
         return this.readWithCountSize(byte_ar, offset, 4);
-    };
-    CffIndex.readWithCountSize = function (byte_ar, offset, countSize) {
-        var prev = byte_ar.offset;
+    }
+    static readWithCountSize(byte_ar, offset, countSize) {
+        const prev = byte_ar.offset;
         if (offset != null) {
             byte_ar.offset = offset;
         }
-        var count = countSize === 2 ? byte_ar.readUnsignedShort() : byte_ar.readUnsignedInt();
+        const count = countSize === 2 ? byte_ar.readUnsignedShort() : byte_ar.readUnsignedInt();
         if (count === 0) {
             return new CffIndex(0, []);
         }
-        var offSize = byte_ar.readUnsignedByte();
-        var offsets = new Array(count + 1);
-        for (var i = 0; i < offsets.length; i++) {
-            var value = 0;
-            for (var j = 0; j < offSize; j++) {
+        const offSize = byte_ar.readUnsignedByte();
+        const offsets = new Array(count + 1);
+        for (let i = 0; i < offsets.length; i++) {
+            let value = 0;
+            for (let j = 0; j < offSize; j++) {
                 value = (value << 8) | byte_ar.readUnsignedByte();
             }
             offsets[i] = value;
         }
-        var dataStart = byte_ar.offset;
-        var objects = [];
-        var data = new Uint8Array(byte_ar.dataView.buffer, byte_ar.dataView.byteOffset, byte_ar.dataView.byteLength);
-        for (var i = 0; i < count; i++) {
-            var start = dataStart + offsets[i] - 1;
-            var end = dataStart + offsets[i + 1] - 1;
+        const dataStart = byte_ar.offset;
+        const objects = [];
+        const data = new Uint8Array(byte_ar.dataView.buffer, byte_ar.dataView.byteOffset, byte_ar.dataView.byteLength);
+        for (let i = 0; i < count; i++) {
+            const start = dataStart + offsets[i] - 1;
+            const end = dataStart + offsets[i + 1] - 1;
             objects.push(data.subarray(start, end));
         }
         byte_ar.offset = dataStart + offsets[count] - 1;
         if (offset != null) {
-            var end = byte_ar.offset;
+            const end = byte_ar.offset;
             byte_ar.offset = end;
             if (prev != null) {
                 // keep current offset for caller
             }
         }
         return new CffIndex(count, objects);
-    };
-    return CffIndex;
-}());
-export { CffIndex };
+    }
+}

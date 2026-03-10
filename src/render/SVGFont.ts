@@ -91,14 +91,30 @@ export class SVGFont {
 
         let penX = 0;
         let combinedPath = "";
-
-        for (const ch of text) {
-            const glyph = font.getGlyphByChar(ch);
-            if (glyph) {
-                combinedPath += this.glyphToPath(glyph, scale, penX, 0);
-                penX += (glyph.advanceWidth * scale) + letterSpacing;
-            } else {
-                penX += letterSpacing;
+        if (typeof (font as FontParserTTF & { layoutString?: (text: string, options?: Record<string, unknown>) => Array<{ glyphIndex: number; xAdvance: number; xOffset?: number; yOffset?: number }> }).layoutString === 'function') {
+            const layout = font.layoutString(text, { gpos: true });
+            for (let i = 0; i < layout.length; i++) {
+                const item = layout[i];
+                const glyph = font.getGlyph(item.glyphIndex);
+                if (glyph) {
+                    const offsetX = penX + ((item.xOffset ?? 0) * scale);
+                    const offsetY = (item.yOffset ?? 0) * scale;
+                    combinedPath += this.glyphToPath(glyph, scale, offsetX, offsetY);
+                }
+                penX += (item.xAdvance * scale);
+                if (letterSpacing !== 0 && i < layout.length - 1) {
+                    penX += letterSpacing;
+                }
+            }
+        } else {
+            for (const ch of text) {
+                const glyph = font.getGlyphByChar(ch);
+                if (glyph) {
+                    combinedPath += this.glyphToPath(glyph, scale, penX, 0);
+                    penX += (glyph.advanceWidth * scale) + letterSpacing;
+                } else {
+                    penX += letterSpacing;
+                }
             }
         }
 

@@ -1,25 +1,27 @@
-var RawTable = /** @class */ (function () {
-    function RawTable(type, de, byte_ar) {
+export class RawTable {
+    type;
+    offset;
+    length;
+    bytes;
+    constructor(type, de, byte_ar) {
         this.type = type;
         this.offset = de.offset;
         this.length = de.length;
-        var prev = byte_ar.offset;
+        const prev = byte_ar.offset;
         byte_ar.offset = de.offset;
         this.bytes = byte_ar.readBytes(de.length).slice();
         byte_ar.offset = prev;
     }
-    RawTable.prototype.getType = function () {
+    getType() {
         return this.type;
-    };
-    RawTable.prototype.getOffset = function () {
+    }
+    getOffset() {
         return this.offset;
-    };
-    RawTable.prototype.getLength = function () {
+    }
+    getLength() {
         return this.length;
-    };
-    RawTable.prototype.getBytes = function () {
+    }
+    getBytes() {
         return this.bytes.slice();
-    };
-    return RawTable;
-}());
-export { RawTable };
+    }
+}

@@ -1,50 +1,34 @@
 // UNTESTED
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
 import { KerningPair } from './KerningPair.js';
 import { KernSubtable } from './KernSubtable.js';
-var KernSubtableFormat0 = /** @class */ (function (_super) {
-    __extends(KernSubtableFormat0, _super);
-    function KernSubtableFormat0(byte_ar) {
-        var _this = _super.call(this) || this;
-        _this.nPairs = byte_ar.readUnsignedShort();
-        _this.searchRange = byte_ar.readUnsignedShort();
-        _this.entrySelector = byte_ar.readUnsignedShort();
-        _this.rangeShift = byte_ar.readUnsignedShort();
-        _this.kerningPairs = Array.from({ length: _this.nPairs }, function () { return new KerningPair(byte_ar); });
-        _this.pairMap = new Map();
-        for (var _i = 0, _a = _this.kerningPairs; _i < _a.length; _i++) {
-            var pair = _a[_i];
-            var key = (pair.getLeft() << 16) | pair.getRight();
-            _this.pairMap.set(key, pair.getValue());
+export class KernSubtableFormat0 extends KernSubtable {
+    nPairs;
+    searchRange;
+    entrySelector;
+    rangeShift;
+    kerningPairs;
+    pairMap;
+    constructor(byte_ar) {
+        super();
+        this.nPairs = byte_ar.readUnsignedShort();
+        this.searchRange = byte_ar.readUnsignedShort();
+        this.entrySelector = byte_ar.readUnsignedShort();
+        this.rangeShift = byte_ar.readUnsignedShort();
+        this.kerningPairs = Array.from({ length: this.nPairs }, () => new KerningPair(byte_ar));
+        this.pairMap = new Map();
+        for (const pair of this.kerningPairs) {
+            const key = (pair.getLeft() << 16) | pair.getRight();
+            this.pairMap.set(key, pair.getValue());
         }
-        return _this;
     }
-    KernSubtableFormat0.prototype.getKerningPairCount = function () {
+    getKerningPairCount() {
         return this.nPairs;
-    };
-    KernSubtableFormat0.prototype.getKerningPair = function (i) {
-        var _a;
-        return (_a = this.kerningPairs[i]) !== null && _a !== void 0 ? _a : null;
-    };
-    KernSubtableFormat0.prototype.getKerningValue = function (leftGlyph, rightGlyph) {
-        var _a;
-        var key = (leftGlyph << 16) | rightGlyph;
-        return (_a = this.pairMap.get(key)) !== null && _a !== void 0 ? _a : 0;
-    };
-    return KernSubtableFormat0;
-}(KernSubtable));
-export { KernSubtableFormat0 };
+    }
+    getKerningPair(i) {
+        return this.kerningPairs[i] ?? null;
+    }
+    getKerningValue(leftGlyph, rightGlyph) {
+        const key = (leftGlyph << 16) | rightGlyph;
+        return this.pairMap.get(key) ?? 0;
+    }
+}

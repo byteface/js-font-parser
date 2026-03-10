@@ -1,7 +1,21 @@
 // UNTESTED
-var Lookup = /** @class */ (function () {
-    function Lookup(factory, byte_ar, offset) {
-        this.markFilteringSet = null;
+export class Lookup {
+    // LookupFlag bit enumeration
+    static IGNORE_BASE_GLYPHS = 0x0002;
+    static IGNORE_BASE_LIGATURES = 0x0004;
+    static IGNORE_BASE_MARKS = 0x0008;
+    static MARK_ATTACHMENT_TYPE = 0xFF00;
+    type;
+    flag;
+    subTableCount;
+    subTableOffsets;
+    subTables;
+    loadedSubtables;
+    factory;
+    byteArray;
+    offset;
+    markFilteringSet = null;
+    constructor(factory, byte_ar, offset) {
         this.factory = factory;
         this.byteArray = byte_ar;
         this.offset = offset;
@@ -12,37 +26,30 @@ var Lookup = /** @class */ (function () {
         this.subTableOffsets = new Array(this.subTableCount);
         this.subTables = new Array(this.subTableCount);
         this.loadedSubtables = new Array(this.subTableCount).fill(false);
-        for (var i = 0; i < this.subTableCount; i++) {
+        for (let i = 0; i < this.subTableCount; i++) {
             this.subTableOffsets[i] = byte_ar.readUnsignedShort();
         }
         if (this.flag & 0x0010) {
             this.markFilteringSet = byte_ar.readUnsignedShort();
         }
     }
-    Lookup.prototype.getType = function () {
+    getType() {
         return this.type;
-    };
-    Lookup.prototype.getFlag = function () {
+    }
+    getFlag() {
         return this.flag;
-    };
-    Lookup.prototype.getSubtableCount = function () {
+    }
+    getSubtableCount() {
         return this.subTableCount;
-    };
-    Lookup.prototype.getSubtable = function (i) {
+    }
+    getSubtable(i) {
         if (!this.loadedSubtables[i]) {
             this.subTables[i] = this.factory.read(this.type, this.byteArray, this.offset + this.subTableOffsets[i]);
             this.loadedSubtables[i] = true;
         }
         return this.subTables[i];
-    };
-    Lookup.prototype.getMarkFilteringSet = function () {
+    }
+    getMarkFilteringSet() {
         return this.markFilteringSet;
-    };
-    // LookupFlag bit enumeration
-    Lookup.IGNORE_BASE_GLYPHS = 0x0002;
-    Lookup.IGNORE_BASE_LIGATURES = 0x0004;
-    Lookup.IGNORE_BASE_MARKS = 0x0008;
-    Lookup.MARK_ATTACHMENT_TYPE = 0xFF00;
-    return Lookup;
-}());
-export { Lookup };
+    }
+}

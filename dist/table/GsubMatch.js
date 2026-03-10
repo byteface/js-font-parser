@@ -1,11 +1,10 @@
 export function isIgnoredGlyph(ctx, glyphId) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
     if (!ctx || !ctx.gdef)
         return false;
-    var flag = (_a = ctx.lookupFlag) !== null && _a !== void 0 ? _a : 0;
+    const flag = ctx.lookupFlag ?? 0;
     if (!flag)
         return false;
-    var glyphClass = (_d = (_c = (_b = ctx.gdef).getGlyphClass) === null || _c === void 0 ? void 0 : _c.call(_b, glyphId)) !== null && _d !== void 0 ? _d : 0;
+    const glyphClass = ctx.gdef.getGlyphClass?.(glyphId) ?? 0;
     if ((flag & 0x0002) && glyphClass === 1)
         return true; // ignore base
     if ((flag & 0x0004) && glyphClass === 2)
@@ -13,22 +12,22 @@ export function isIgnoredGlyph(ctx, glyphId) {
     if ((flag & 0x0008) && glyphClass === 3)
         return true; // ignore marks
     if ((flag & 0x0010) && glyphClass === 3) {
-        var setIndex = (_e = ctx.markFilteringSet) !== null && _e !== void 0 ? _e : 0;
-        if (!((_g = (_f = ctx.gdef).isGlyphInMarkSet) === null || _g === void 0 ? void 0 : _g.call(_f, setIndex, glyphId)))
+        const setIndex = ctx.markFilteringSet ?? 0;
+        if (!ctx.gdef.isGlyphInMarkSet?.(setIndex, glyphId))
             return true;
     }
-    var markAttachType = (flag & 0xff00) >> 8;
+    const markAttachType = (flag & 0xff00) >> 8;
     if (markAttachType && glyphClass === 3) {
-        var cls = (_k = (_j = (_h = ctx.gdef).getMarkAttachmentClass) === null || _j === void 0 ? void 0 : _j.call(_h, glyphId)) !== null && _k !== void 0 ? _k : 0;
+        const cls = ctx.gdef.getMarkAttachmentClass?.(glyphId) ?? 0;
         if (cls !== markAttachType)
             return true;
     }
     return false;
 }
 export function matchInputSequence(glyphs, startIndex, expected, matchFn, ctx) {
-    var indices = [startIndex];
-    var cursor = startIndex + 1;
-    for (var i = 0; i < expected.length; i++) {
+    const indices = [startIndex];
+    let cursor = startIndex + 1;
+    for (let i = 0; i < expected.length; i++) {
         while (cursor < glyphs.length && isIgnoredGlyph(ctx, glyphs[cursor]))
             cursor++;
         if (cursor >= glyphs.length)
@@ -41,25 +40,25 @@ export function matchInputSequence(glyphs, startIndex, expected, matchFn, ctx) {
     return indices;
 }
 export function nextNonIgnoredIndex(glyphs, startIndex, ctx) {
-    var i = startIndex;
+    let i = startIndex;
     while (i < glyphs.length && isIgnoredGlyph(ctx, glyphs[i]))
         i++;
     return i;
 }
 export function prevNonIgnoredIndex(glyphs, startIndex, ctx) {
-    var i = startIndex;
+    let i = startIndex;
     while (i >= 0 && isIgnoredGlyph(ctx, glyphs[i]))
         i--;
     return i;
 }
 export function matchBacktrackSequence(glyphs, startIndex, expected, matchFn, ctx) {
-    var cursor = startIndex - 1;
-    for (var b = 0; b < expected.length; b++) {
+    let cursor = startIndex - 1;
+    for (let b = 0; b < expected.length; b++) {
         while (cursor >= 0 && isIgnoredGlyph(ctx, glyphs[cursor]))
             cursor--;
         if (cursor < 0)
             return false;
-        var want = expected[expected.length - 1 - b];
+        const want = expected[expected.length - 1 - b];
         if (!matchFn(want, glyphs[cursor]))
             return false;
         cursor--;
@@ -67,8 +66,8 @@ export function matchBacktrackSequence(glyphs, startIndex, expected, matchFn, ct
     return true;
 }
 export function matchLookaheadSequence(glyphs, startIndex, expected, matchFn, ctx) {
-    var cursor = startIndex + 1;
-    for (var l = 0; l < expected.length; l++) {
+    let cursor = startIndex + 1;
+    for (let l = 0; l < expected.length; l++) {
         while (cursor < glyphs.length && isIgnoredGlyph(ctx, glyphs[cursor]))
             cursor++;
         if (cursor >= glyphs.length)
