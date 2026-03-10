@@ -50,6 +50,8 @@ import { SvgTable } from '../dist/table/SvgTable.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const FULL_SWEEP = process.env.FULL_SWEEP === '1';
+const testSweep = FULL_SWEEP ? test : test.skip;
 
 function toArrayBuffer(view) {
   return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
@@ -324,7 +326,7 @@ test('curated fixture fonts parse and expose stable core metadata', () => {
   }
 });
 
-test('all local truetypefonts fixtures are wired into parse smoke coverage', () => {
+testSweep('all local truetypefonts fixtures are wired into parse smoke coverage', () => {
   const fixtures = listLocalFontFixtures();
   assert.ok(fixtures.length > 0, 'expected local font fixtures under truetypefonts');
 
@@ -2783,7 +2785,7 @@ test('FontParserWOFF kerning and glyph index helpers cover warning and fallback 
   assert.equal(parser.getKerningValue('a', 'b'), 7);
 });
 
-test('getTableByType known tags are null-or-object across TTF/OTF/WOFF fixtures', () => {
+testSweep('getTableByType known tags are null-or-object across TTF/OTF/WOFF fixtures', () => {
   const ttf = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/noto/NotoSans-Regular.ttf')));
   const otf = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/curated/SourceSerif4-Regular.otf')));
   const woff = FontParser.fromArrayBuffer(toArrayBuffer(readBytes('truetypefonts/ubuntu.woff')));

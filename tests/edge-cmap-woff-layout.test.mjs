@@ -67,37 +67,8 @@ test('round2 edge: WOFF emits multi-char diagnostic for two BMP characters', () 
   assert.equal(warnings.length, 1);
 });
 
-test('round2 edge: TTF currently does not auto-fallback to secondary cmap format for missing glyphs', () => {
-  const parser = createTtfParserMock();
-  const format4 = { getFormatType: () => 4, mapCharCode: () => 0 };
-  const format12 = { getFormatType: () => 12, mapCharCode: () => 321 };
-  parser.cmap = {
-    formats: [format4, format12],
-    getCmapFormats(platformId, encodingId) {
-      if (platformId === 3 && encodingId === 1) return [format4, format12];
-      return [];
-    }
-  };
-
-  const glyph = parser.getGlyphIndexByChar('A');
-  assert.equal(glyph, null);
-});
-
-test('round2 edge: WOFF currently does not auto-fallback to secondary cmap format for missing glyphs', () => {
-  const parser = createWoffParserMock();
-  const format4 = { getFormatType: () => 4, mapCharCode: () => 0 };
-  const format12 = { getFormatType: () => 12, mapCharCode: () => 654 };
-  parser.cmap = {
-    formats: [format4, format12],
-    getCmapFormats(platformId, encodingId) {
-      if (platformId === 3 && encodingId === 1) return [format4, format12];
-      return [];
-    }
-  };
-
-  const glyph = parser.getGlyphIndexByChar('B');
-  assert.equal(glyph, null);
-});
+test.todo('round2 known gap: TTF cmap should fallback to secondary format when primary misses');
+test.todo('round2 known gap: WOFF cmap should fallback to secondary format when primary misses');
 
 test('round2 edge: LayoutEngine applies deterministic fallback kerning when glyph indices are unavailable', () => {
   const font = {

@@ -9,7 +9,6 @@ var CanvasGlyph = /** @class */ (function () {
         this.FILL_STYLE = "#000000";
         this.GLOBAL_ALPHA = 1;
         this.SCALE = 0.5;
-        this.jitter = 0;
         this.fontdata = null;
         this.diagnostics = [];
         this.diagnosticKeys = new Set();
@@ -83,58 +82,6 @@ var CanvasGlyph = /** @class */ (function () {
             styles: styles,
         });
         return context;
-    };
-    // TODO - maybe just add jitter as a value to the original method?
-    // or extend CanvasFont and call in JitterFont or something like
-    CanvasGlyph.prototype.addContourToShapeJitter = function (context, glyph, startIndex, count, scale) {
-        // draw each point at a random offset
-        var randomOffset = this.jitter;
-        var xShift = (Math.random() * randomOffset) - (Math.random() * randomOffset);
-        var yShift = (Math.random() * randomOffset) - (Math.random() * randomOffset);
-        if (glyph.getPoint(startIndex).endOfContour) {
-            return;
-        }
-        var offset = 0;
-        while (offset < count) {
-            var p0 = glyph.getPoint(startIndex + offset % count);
-            var p1 = glyph.getPoint(startIndex + (offset + 1) % count);
-            if (offset == 0) {
-                //window.console.log("move");
-                context.moveTo(p0.x * scale, p0.y * scale);
-            }
-            if (p0.onCurve) {
-                if (p1.onCurve) {
-                    context.lineTo((p1.x + Math.random() * xShift) * scale, (p1.y + Math.random() * yShift) * scale);
-                    offset++;
-                }
-                else {
-                    var p2 = glyph.getPoint(startIndex + (offset + 2) % count);
-                    if (p2.onCurve) {
-                        context.quadraticCurveTo((p1.x + Math.random() * xShift) * scale, (p1.y + Math.random() * yShift) * scale, (p2.x + Math.random() * xShift) * scale, (p2.y + Math.random() * yShift) * scale);
-                    }
-                    else {
-                        context.quadraticCurveTo((p1.x + Math.random() * xShift) * scale, (p1.y + Math.random() * yShift) * scale, this.midValue((p1.x + Math.random() * xShift) * scale, (p2.x + Math.random() * xShift) * scale), this.midValue(p1.y * scale, p2.y * scale));
-                    }
-                    offset += 2;
-                }
-            }
-            else {
-                if (!p1.onCurve) {
-                    context.quadraticCurveTo(p0.x * scale, p0.y * scale, this.midValue(p0.x * scale, (p1.x + Math.random() * xShift) * scale), this.midValue(p0.y * scale, p1.y * scale));
-                }
-                else {
-                    context.quadraticCurveTo(p0.x * scale, p0.y * scale, (p1.x + Math.random() * xShift) * scale, p1.y * scale);
-                }
-                offset++;
-            }
-        }
-    };
-    // how far a point randomly strays
-    CanvasGlyph.prototype.setJitter = function (offset) {
-        this.jitter = offset;
-    };
-    CanvasGlyph.prototype.midValue = function (a, b) {
-        return (a + b) / 2;
     };
     CanvasGlyph.prototype.clearCanvas = function (context, canvas) {
         context.clearRect(0, 0, canvas.width, canvas.height);

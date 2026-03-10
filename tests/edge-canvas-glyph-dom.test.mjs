@@ -56,7 +56,7 @@ test('round10 edge: CanvasGlyph drawString variants should not throw for non-can
   }
 });
 
-test('round10 edge: CanvasGlyph jitter uses yShift for p2.y in quadratic segment', async () => {
+test('round10 edge: CanvasGlyph no longer exposes legacy jitter API surface', async () => {
   const originalLoad = FontParser.load;
   FontParser.load = async () => ({
     getGlyphIndexByChar: () => 1,
@@ -66,38 +66,8 @@ test('round10 edge: CanvasGlyph jitter uses yShift for p2.y in quadratic segment
   try {
     const canvasGlyph = new CanvasGlyph('/synthetic.ttf');
     await canvasGlyph.onFontLoaded();
-    canvasGlyph.setJitter(10);
-
-    const calls = [];
-    const context = {
-      moveTo() {},
-      lineTo() {},
-      quadraticCurveTo(...args) { calls.push(args); }
-    };
-    const glyph = {
-      getPoint(i) {
-        const points = [
-          { x: 0, y: 0, onCurve: true, endOfContour: false },
-          { x: 10, y: 20, onCurve: false, endOfContour: false },
-          { x: 30, y: 40, onCurve: true, endOfContour: true }
-        ];
-        return points[i] ?? null;
-      }
-    };
-
-    const originalRandom = Math.random;
-    const seq = [1, 0, 0, 1, 0, 0, 0, 1];
-    let idx = 0;
-    Math.random = () => seq[idx++] ?? 0;
-    try {
-      canvasGlyph.addContourToShapeJitter(context, glyph, 0, 3, 1);
-    } finally {
-      Math.random = originalRandom;
-    }
-
-    assert.equal(calls.length > 0, true);
-    const [, , , endY] = calls[0];
-    assert.equal(endY, 30);
+    assert.equal(typeof canvasGlyph.setJitter, 'undefined');
+    assert.equal(typeof canvasGlyph.addContourToShapeJitter, 'undefined');
   } finally {
     FontParser.load = originalLoad;
   }

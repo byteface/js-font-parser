@@ -42,29 +42,29 @@ function createThrowingPairLookup() {
 test('round5 edge: TTF kern accessor should not throw if kern subtable throws', () => {
   const parser = createTtfParserMock();
   parser.kern = { getKerningValue: () => { throw new Error('kern-boom'); } };
-  assert.doesNotThrow(() => parser.getKerningValueByGlyphs(1, 2));
-  assert.equal(parser.getKerningValueByGlyphs(1, 2), 0);
+  const value = parser.getKerningValueByGlyphs(1, 2);
+  assert.equal(value, 0);
 });
 
 test('round5 edge: WOFF kern accessor should not throw if kern subtable throws', () => {
   const parser = createWoffParserMock();
   parser.kern = { getKerningValue: () => { throw new Error('kern-boom'); } };
-  assert.doesNotThrow(() => parser.getKerningValueByGlyphs(1, 2));
-  assert.equal(parser.getKerningValueByGlyphs(1, 2), 0);
+  const value = parser.getKerningValueByGlyphs(1, 2);
+  assert.equal(value, 0);
 });
 
 test('round5 edge: TTF GPOS kerning accessor should not throw when pair subtables throw', () => {
   const parser = createTtfParserMock();
   parser.gpos = createThrowingPairLookup();
-  assert.doesNotThrow(() => parser.getGposKerningValueByGlyphs(10, 20));
-  assert.equal(parser.getGposKerningValueByGlyphs(10, 20), 0);
+  const value = parser.getGposKerningValueByGlyphs(10, 20);
+  assert.equal(value, 0);
 });
 
 test('round5 edge: WOFF GPOS kerning accessor should not throw when pair subtables throw', () => {
   const parser = createWoffParserMock();
   parser.gpos = createThrowingPairLookup();
-  assert.doesNotThrow(() => parser.getGposKerningValueByGlyphs(10, 20));
-  assert.equal(parser.getGposKerningValueByGlyphs(10, 20), 0);
+  const value = parser.getGposKerningValueByGlyphs(10, 20);
+  assert.equal(value, 0);
 });
 
 test('round5 edge: TTF getKerningValue should stay safe when cmap returns non-numeric glyph index', () => {
@@ -74,8 +74,8 @@ test('round5 edge: TTF getKerningValue should stay safe when cmap returns non-nu
     getCmapFormats: () => [{ getFormatType: () => 4, mapCharCode: () => 'oops' }]
   };
   parser.kern = { getKerningValue: () => 0 };
-  assert.doesNotThrow(() => parser.getKerningValue('A', 'V'));
-  assert.equal(parser.getKerningValue('A', 'V'), 0);
+  const value = parser.getKerningValue('A', 'V');
+  assert.equal(value, 0);
 });
 
 test('round5 edge: WOFF getKerningValue should stay safe when cmap returns non-numeric glyph index', () => {
@@ -85,8 +85,8 @@ test('round5 edge: WOFF getKerningValue should stay safe when cmap returns non-n
     getCmapFormats: () => [{ getFormatType: () => 4, mapCharCode: () => 'oops' }]
   };
   parser.kern = { getKerningValue: () => 0 };
-  assert.doesNotThrow(() => parser.getKerningValue('A', 'V'));
-  assert.equal(parser.getKerningValue('A', 'V'), 0);
+  const value = parser.getKerningValue('A', 'V');
+  assert.equal(value, 0);
 });
 
 test('round5 edge: LayoutEngine should not throw if getGlyph throws for one char', () => {

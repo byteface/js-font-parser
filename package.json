@@ -18,8 +18,10 @@
   "scripts": {
     "audit:tables": "node scripts/audit-table-coverage.mjs",
     "test": "node --test tests/*.test.mjs",
+    "test:full": "FULL_SWEEP=1 node --test tests/*.test.mjs",
     "test:font": "node scripts/test-font.mjs",
     "test:coverage": "node --test --experimental-test-coverage tests/*.test.mjs",
+    "test:coverage:full": "FULL_SWEEP=1 node --test --experimental-test-coverage tests/*.test.mjs",
     "test:perf": "node tests/perf-report.mjs",
     "test:perf:enforce": "node tests/perf-report.mjs --enforce",
     "test:perf:profile": "node tests/perf-profile.mjs",

@@ -17,9 +17,13 @@ Open:
 ## Scripts
 
 - `npm test`  
-  Run the checked-in `tests/*.test.mjs` suite with Node's built-in test runner.
+  Run the default fast suite (`tests/*.test.mjs`) with heavy fixture sweeps skipped.
+- `npm run test:full`  
+  Run the full suite including broad fixture sweeps (`FULL_SWEEP=1`).
 - `npm run test:coverage`  
-  Run tests with coverage output (`--experimental-test-coverage`).
+  Run coverage for the default fast suite.
+- `npm run test:coverage:full`  
+  Run coverage including broad fixture sweeps (`FULL_SWEEP=1`).
 - `npm run test:perf`  
   Run the local performance report against representative parse/layout workloads.
 - `npm run test:perf:enforce`  

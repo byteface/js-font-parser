@@ -72,15 +72,22 @@ test('gsub ligature mapping does not expand glyph count', () => {
 
 test('kerning API returns a number', () => {
   const font = loadFont('truetypefonts/noto/NotoSans-Regular.ttf');
-  const value = font.getKerningValue('A', 'V');
-  assert.ok(typeof value === 'number', 'expected kerning value to be a number');
+  const av = font.getKerningValue('A', 'V');
+  const aa = font.getKerningValue('A', 'A');
+  assert.equal(Number.isFinite(av), true, 'expected finite kerning value for AV');
+  assert.equal(Number.isFinite(aa), true, 'expected finite kerning value for AA');
+  assert.notEqual(av, aa, 'expected pair-sensitive kerning differences');
 });
 
 test('layout returns positioned glyphs', () => {
   const font = loadFont('truetypefonts/noto/NotoSans-Regular.ttf');
   const layout = font.layoutString('AVATAR', { gsubFeatures: ['liga'] });
   assert.ok(layout.length > 0, 'expected layout entries');
-  assert.ok(typeof layout[0].xAdvance === 'number', 'expected xAdvance');
+  for (const item of layout) {
+    assert.equal(Number.isFinite(item.xAdvance), true, 'expected finite xAdvance');
+    assert.equal(Number.isFinite(item.xOffset), true, 'expected finite xOffset');
+    assert.equal(Number.isFinite(item.yOffset), true, 'expected finite yOffset');
+  }
 });
 
 test('CanvasGlyph emits FONT_LOAD_FAILED diagnostic when font loading fails', async () => {
