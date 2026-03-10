@@ -1,0 +1,42 @@
+import { ByteArray } from "../utils/ByteArray.js";
+import { IGlyphDescription } from "./IGlyphDescription.js";
+type GlyfParentTable = {
+    getDescription: (index: number) => IGlyphDescription | null;
+};
+export declare class GlyfSimpleDescript implements IGlyphDescription {
+    private instructions;
+    private parentTable;
+    private numberOfContours;
+    private xMin;
+    private yMin;
+    private xMax;
+    private yMax;
+    private endPtsOfContours;
+    private flags;
+    private xCoordinates;
+    private yCoordinates;
+    private count;
+    private onCurve;
+    private xShortVector;
+    private yShortVector;
+    private repeat;
+    private xDual;
+    private yDual;
+    constructor(parentTable: GlyfParentTable, numberOfContours: number, bais: ByteArray);
+    private readInstructions;
+    getEndPtOfContours(i: number): number;
+    getFlags(i: number): number;
+    getXCoordinate(i: number): number;
+    getYCoordinate(i: number): number;
+    isComposite(): boolean;
+    getPointCount(): number;
+    getContourCount(): number;
+    private readCoords;
+    private readFlags;
+    resolve(): void;
+    getXMaximum(): number;
+    getXMinimum(): number;
+    getYMaximum(): number;
+    getYMinimum(): number;
+}
+export {};

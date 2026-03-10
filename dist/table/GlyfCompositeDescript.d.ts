@@ -1,0 +1,47 @@
+import { ByteArray } from "../utils/ByteArray.js";
+import { GlyfCompositeComp } from './GlyfCompositeComp.js';
+import { IGlyphDescription } from "./IGlyphDescription.js";
+type GlyfParentTable = {
+    getDescription: (index: number) => IGlyphDescription | null;
+};
+export declare class GlyfCompositeDescript implements IGlyphDescription {
+    instructions: number[] | null;
+    static onCurve: number;
+    static xShortVector: number;
+    static yShortVector: number;
+    static repeat: number;
+    static xDual: number;
+    static yDual: number;
+    parentTable: GlyfParentTable;
+    numberOfContours: number;
+    xMin: number;
+    yMin: number;
+    xMax: number;
+    yMax: number;
+    components: GlyfCompositeComp[];
+    beingResolved: boolean;
+    resolved: boolean;
+    private pointCount;
+    private contourCount;
+    constructor(parentTable: GlyfParentTable, bais: ByteArray);
+    private init;
+    private readInstructions;
+    resolve(): void;
+    getEndPtOfContours(i: number): number;
+    getFlags(i: number): number;
+    getXCoordinate(i: number): number;
+    getYCoordinate(i: number): number;
+    getComponentForPointIndex(i: number): GlyfCompositeComp | null;
+    private getCompositeComp;
+    private getCompositeCompEndPt;
+    getInstructions(): number[] | null;
+    isComposite(): boolean;
+    getPointCount(): number;
+    getContourCount(): number;
+    getComponentCount(): number;
+    getXMaximum(): number;
+    getXMinimum(): number;
+    getYMaximum(): number;
+    getYMinimum(): number;
+}
+export {};
