@@ -19,13 +19,9 @@ Only active, unresolved work is listed here.
      - current non-goals such as hinting/raster parity with native text engines
    - Why it matters: the project is now stronger than its support story. Users still need a clear statement of what is solid, partial, or intentionally out of scope.
 
-3. **Add a release checklist**
-   - Cover version bump, build/test/golden checks, `npm pack`/dry-run validation, and publish sanity checks.
-   - Why it matters: packaging is much healthier now, but release confidence still depends too much on memory.
-
 ## P2
 
-4. **TrueType hint VM execution**
+3. **TrueType hint VM execution**
    - Keep this explicitly scoped as long-track work.
    - Add opcode milestone checklist:
      - `M1`: stack/math/control-flow completeness.

@@ -38,7 +38,7 @@
     "test:golden:compare": "node tests/golden/scripts/compare.mjs --base tests/golden/baseline --head tests/golden/current --out tests/golden/diff",
     "test:golden:between": "node tests/golden/scripts/between-commits.mjs --targets tests/golden/targets.json",
     "test:golden:approve": "node tests/golden/scripts/approve-baseline.mjs --from tests/golden/current --to tests/golden/baseline",
-    "build:dist": "tsc",
+    "build:dist": "node scripts/clean-dist.mjs && tsc",
     "build:bundle": "webpack",
     "build": "npm run build:dist && npm run build:bundle"
   },

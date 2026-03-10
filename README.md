@@ -143,6 +143,7 @@ Important TS import note:
 ## Project Docs
 
 - `docs/API.md`
+- `docs/RELEASE.md`
 - `docs/WISHLIST.md`
 - `proj/fontparser/README.md` (CLI in development)
 - `tests/golden/README.md`
