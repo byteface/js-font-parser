@@ -21,6 +21,8 @@ export class GsubTable implements ITable {
     featureList: FeatureList;
     lookupList: LookupList;
     private gdef: any | null = null;
+    private featureOrderCache = new Map<string, number[] | null>();
+    private applyFeaturesCache = new Map<string, number[]>();
 
     constructor(de: DirectoryEntry, byte_ar: ByteArray) {
         byte_ar.offset = de.offset;
@@ -171,38 +173,31 @@ export class GsubTable implements ITable {
     }
 
     applyFeatures(glyphs: number[], featureTags: string[], scriptTags: string[] = ["DFLT", "latn"]): number[] {
-        const script = this.findPreferredScript(scriptTags);
-        const langSys = this.getDefaultLangSys(script);
-        if (!langSys) return glyphs;
-
-        const tagSet = new Set(featureTags);
-        const featureRecords = this.featureList.getFeatureRecords();
-        const requiredIndex = langSys.getRequiredFeatureIndex();
-        const orderedFeatureIndices = langSys.getFeatureIndices();
-        const featureOrder: number[] = [];
-
-        if (requiredIndex != null && requiredIndex !== 0xffff) {
-            featureOrder.push(requiredIndex);
+        const featureOrder = this.getFeatureOrder(featureTags, scriptTags);
+        if (!featureOrder || featureOrder.length === 0) return glyphs;
+        if (!this.applyFeaturesCache) {
+            this.applyFeaturesCache = new Map<string, number[]>();
         }
-        for (const idx of orderedFeatureIndices) {
-            if (idx === requiredIndex) continue;
-            featureOrder.push(idx);
+        const cacheKey = this.getApplyFeaturesCacheKey(featureOrder, glyphs);
+        const cached = this.applyFeaturesCache.get(cacheKey);
+        if (cached) {
+            return cached.slice();
         }
 
         let out = glyphs.slice();
         for (const featureIndex of featureOrder) {
-            const record = featureRecords[featureIndex];
-            if (!record) continue;
-            const tag = this.tagToString(record.getTag());
-            const isRequired = featureIndex === requiredIndex;
-            if (!isRequired && !tagSet.has(tag)) continue;
-            const feature = this.featureList.features[featureIndex];
+            const featureListAny = this.featureList as any;
+            const feature = featureListAny.features?.[featureIndex]
+                ?? (typeof featureListAny.getFeatureByIndex === "function"
+                    ? featureListAny.getFeatureByIndex(featureIndex)
+                    : null);
             if (!feature) continue;
             for (let i = 0; i < feature.getLookupCount(); i++) {
                 const lookupIndex = feature.getLookupListIndex(i);
                 out = this.applyLookup(lookupIndex, out);
             }
         }
+        this.cacheAppliedFeatures(cacheKey, out);
         return out;
     }
 
@@ -283,6 +278,60 @@ export class GsubTable implements ITable {
             (tag >> 8) & 0xff,
             tag & 0xff
         );
+    }
+
+    private getFeatureOrder(featureTags: string[], scriptTags: string[]): number[] | null {
+        if (!this.featureOrderCache) {
+            this.featureOrderCache = new Map<string, number[] | null>();
+        }
+        const cacheKey = `${scriptTags.join(",")}::${featureTags.join(",")}`;
+        const cached = this.featureOrderCache.get(cacheKey);
+        if (cached !== undefined) return cached;
+
+        const script = this.findPreferredScript(scriptTags);
+        const langSys = this.getDefaultLangSys(script);
+        if (!langSys) {
+            this.featureOrderCache.set(cacheKey, null);
+            return null;
+        }
+
+        const tagSet = new Set(featureTags);
+        const featureRecords = this.featureList.getFeatureRecords();
+        const requiredIndex = langSys.getRequiredFeatureIndex();
+        const orderedFeatureIndices = langSys.getFeatureIndices();
+        const featureOrder: number[] = [];
+
+        if (requiredIndex != null && requiredIndex !== 0xffff) {
+            featureOrder.push(requiredIndex);
+        }
+        for (const idx of orderedFeatureIndices) {
+            if (idx === requiredIndex) continue;
+            const record = featureRecords[idx];
+            if (!record) continue;
+            const tag = this.tagToString(record.getTag());
+            if (!tagSet.has(tag)) continue;
+            featureOrder.push(idx);
+        }
+
+        this.featureOrderCache.set(cacheKey, featureOrder);
+        return featureOrder;
+    }
+
+    private getApplyFeaturesCacheKey(featureOrder: number[], glyphs: number[]): string {
+        return `${featureOrder.join(",")}::${glyphs.join(",")}`;
+    }
+
+    private cacheAppliedFeatures(cacheKey: string, glyphs: number[]): void {
+        if (!this.applyFeaturesCache) {
+            this.applyFeaturesCache = new Map<string, number[]>();
+        }
+        if (this.applyFeaturesCache.size >= 128) {
+            const firstKey = this.applyFeaturesCache.keys().next().value;
+            if (firstKey) {
+                this.applyFeaturesCache.delete(firstKey);
+            }
+        }
+        this.applyFeaturesCache.set(cacheKey, glyphs.slice());
     }
 
     getType(): number {

@@ -87,8 +87,12 @@
             </select>
         </label>
         <label>
-            Text
-            <input id="textInput" type="text" value="Breathe" />
+            Word / Mode
+            <select id="modeSelect">
+                <option value="breathing">Breathing</option>
+                <option value="scared">Scared</option>
+                <option value="floating">Floating</option>
+            </select>
         </label>
         <label>
             Size
@@ -107,7 +111,7 @@
     <div id="stage">
         <canvas id="canvas" width="1200" height="360"></canvas>
     </div>
-    <div class="hint">Contours are displaced along their radial vectors, giving a living, organic wobble.</div>
+    <div class="hint">Switch Word / Mode to compare different deformation profiles and pick the keepers.</div>
 
     <script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
@@ -116,7 +120,7 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         import { getFontList } from "../tools/shared/font-catalog.js";
 
         const fontSelect = document.getElementById("fontSelect");
-        const textInput = document.getElementById("textInput");
+        const modeSelect = document.getElementById("modeSelect");
         const sizeInput = document.getElementById("sizeInput");
         const ampInput = document.getElementById("ampInput");
         const speedInput = document.getElementById("speedInput");
@@ -128,6 +132,11 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         const loadFont = createFontLoader(FontParser.load);
         let font = null;
         let animId = null;
+        const EFFECTS = {
+            breathing: { word: "BREATHING", fill: "rgba(45, 105, 78, 0.08)", stroke: "#2f6b52", speedStep: 0.020 },
+            scared: { word: "SCARED", fill: "rgba(120, 44, 44, 0.09)", stroke: "#8f3d3d", speedStep: 0.042 },
+            floating: { word: "FLOATING", fill: "rgba(56, 84, 148, 0.08)", stroke: "#365494", speedStep: 0.018 }
+        };
 
         function getScale(font, sizePx) {
             const unitsPerEm = typeof font.getUnitsPerEm === "function" ? font.getUnitsPerEm() : 1000;
@@ -148,7 +157,7 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        function deformPoints(points, amp, time) {
+        function getPointStats(points) {
             let cx = 0;
             let cy = 0;
             for (const p of points) {
@@ -157,7 +166,18 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
             }
             cx /= points.length || 1;
             cy /= points.length || 1;
+            let maxDist = 1;
+            for (const p of points) {
+                const dx = p.x - cx;
+                const dy = p.y - cy;
+                const d = Math.sqrt(dx * dx + dy * dy);
+                if (d > maxDist) maxDist = d;
+            }
+            return { cx, cy, maxDist };
+        }
 
+        function deformPointsBreathing(points, amp, time) {
+            const { cx, cy } = getPointStats(points);
             return points.map((p, i) => {
                 const dx = p.x - cx;
                 const dy = p.y - cy;
@@ -172,9 +192,51 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
             });
         }
 
+        function deformPointsScared(points, amp, time) {
+            const { cx, cy } = getPointStats(points);
+            const tremorX = Math.sin(time * 1.9) * amp * 0.18;
+            const tremorY = Math.cos(time * 2.2) * amp * 0.12;
+
+            return points.map((p, i) => {
+                const dx = p.x - cx;
+                const dy = p.y - cy;
+                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                const radial = Math.sin(time * 3.2 + i * 0.93) * amp * 0.16;
+                const jitterX = Math.sin(time * 8.8 + i * 1.7) * amp * 0.42;
+                const jitterY = Math.cos(time * 9.6 + i * 1.31) * amp * 0.42;
+                return {
+                    x: p.x + tremorX + jitterX + (dx / dist) * radial,
+                    y: p.y + tremorY + jitterY + (dy / dist) * radial,
+                    onCurve: p.onCurve,
+                    endOfContour: p.endOfContour
+                };
+            });
+        }
+
+        function deformPointsFloating(points, amp, time) {
+            const { cy } = getPointStats(points);
+            return points.map((p, i) => ({
+                x: p.x + Math.cos(time * 0.95 + (p.y - cy) * 0.03) * amp * 0.18,
+                y: p.y + Math.sin(time * 1.25 + i * 0.09 + (p.x * 0.018)) * amp * 0.55,
+                onCurve: p.onCurve,
+                endOfContour: p.endOfContour
+            }));
+        }
+
+        function deformByMode(mode, points, amp, time) {
+            switch (mode) {
+                case "scared": return deformPointsScared(points, amp, time);
+                case "floating": return deformPointsFloating(points, amp, time);
+                case "breathing":
+                default: return deformPointsBreathing(points, amp, time);
+            }
+        }
+
         function render() {
             if (!font) return;
-            const text = textInput.value || "";
+            const mode = EFFECTS[modeSelect.value] ? modeSelect.value : "breathing";
+            const effect = EFFECTS[mode];
+            const text = effect.word;
             const sizePx = Number(sizeInput.value);
             const amp = Number(ampInput.value);
             const speed = Number(speedInput.value);
@@ -196,21 +258,21 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
                     for (let i = 0; i < g.getPointCount(); i++) {
                         points.push(g.getPoint(i));
                     }
-                    const warped = deformPoints(points, amp, t);
+                    const warped = deformByMode(mode, points, amp, t);
                     const glyph = makeGlyph(warped);
                     CanvasRenderer.drawGlyphToContext(ctx, glyph, {
                         x: penX,
                         y: baseline,
                         scale,
                         styles: {
-                            fillStyle: "rgba(45, 105, 78, 0.08)",
-                            strokeStyle: "#2f6b52",
+                            fillStyle: effect.fill,
+                            strokeStyle: effect.stroke,
                             lineWidth: 2
                         }
                     });
                     penX += g.advanceWidth * scale + 14;
                 }
-                t += 0.02 * speed;
+                t += effect.speedStep * speed;
                 animId = requestAnimationFrame(draw);
             };
 
@@ -225,7 +287,7 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 
         renderBtn.addEventListener("click", render);
         fontSelect.addEventListener("change", boot);
-        textInput.addEventListener("change", render);
+        modeSelect.addEventListener("change", render);
         sizeInput.addEventListener("input", render);
         ampInput.addEventListener("input", render);
         speedInput.addEventListener("input", render);

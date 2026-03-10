@@ -48,7 +48,7 @@ export class CffIndex {
         for (let i = 0; i < count; i++) {
             const start = dataStart + offsets[i] - 1;
             const end = dataStart + offsets[i + 1] - 1;
-            objects.push(data.slice(start, end));
+            objects.push(data.subarray(start, end));
         }
 
         byte_ar.offset = dataStart + offsets[count] - 1;

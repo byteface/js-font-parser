@@ -7,21 +7,23 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     }
     return to.concat(ar || Array.prototype.slice.call(from));
 };
+import { ByteArray } from '../utils/ByteArray.js';
 import { Table } from './Table.js';
 import { CffIndex } from './CffIndex.js';
 import { CffDict } from './CffDict.js';
 import { CffGlyphDescription } from './CffGlyphDescription.js';
 var CffTable = /** @class */ (function () {
     function CffTable(de, byte_ar) {
-        var _this = this;
         this.charStrings = [];
         this.globalSubrs = [];
         this.localSubrs = [];
         this.fdSelect = [];
         this.privateInfos = [];
+        this.privateInfoSources = [];
         this.nominalWidthX = 0;
         this.defaultWidthX = 0;
         this.baseOffset = de.offset;
+        this.data = new Uint8Array(byte_ar.dataView.buffer, byte_ar.dataView.byteOffset, byte_ar.dataView.byteLength);
         byte_ar.offset = de.offset;
         var major = byte_ar.readUnsignedByte();
         var minor = byte_ar.readUnsignedByte();
@@ -64,26 +66,8 @@ var CffTable = /** @class */ (function () {
         // CID-keyed CFF: use FDArray/FDSelect
         if (ros && fdArrayOffset > 0) {
             var fdArrayIndex = CffIndex.read(byte_ar, this.baseOffset + fdArrayOffset);
-            this.privateInfos = fdArrayIndex.objects.map(function (bytes) {
-                var fdDict = CffDict.parse(bytes);
-                var info = fdDict.getArray('private');
-                if (!info || info.length < 2)
-                    return { subrs: [], nominalWidthX: 0, defaultWidthX: 0 };
-                var size = info[0];
-                var offset = info[1];
-                var privateStart = _this.baseOffset + offset;
-                byte_ar.offset = privateStart;
-                var privateBytes = byte_ar.readBytes(size);
-                var privateDict = CffDict.parse(privateBytes);
-                var nominalWidthX = privateDict.getNumber('nominalWidthX', 0);
-                var defaultWidthX = privateDict.getNumber('defaultWidthX', 0);
-                var subrsOffset = privateDict.getNumber('subrs', 0);
-                if (subrsOffset > 0) {
-                    var subrsIndex = CffIndex.read(byte_ar, privateStart + subrsOffset);
-                    return { subrs: subrsIndex.objects, nominalWidthX: nominalWidthX, defaultWidthX: defaultWidthX };
-                }
-                return { subrs: [], nominalWidthX: nominalWidthX, defaultWidthX: defaultWidthX };
-            });
+            this.privateInfoSources = fdArrayIndex.objects.map(function (fdDictBytes) { return ({ fdDictBytes: fdDictBytes }); });
+            this.privateInfos = new Array(this.privateInfoSources.length).fill(null);
         }
         if (charStringsOffset > 0) {
             var charStringsIndex = CffIndex.read(byte_ar, this.baseOffset + charStringsOffset);
@@ -100,13 +84,11 @@ var CffTable = /** @class */ (function () {
         return Table.CFF;
     };
     CffTable.prototype.getGlyphDescription = function (glyphId) {
-        var _a, _b, _c;
         var charString = this.charStrings[glyphId];
         if (!charString)
             return null;
-        var fdIndex = (_a = this.fdSelect[glyphId]) !== null && _a !== void 0 ? _a : 0;
-        var localSubrs = (_c = (_b = this.privateInfos[fdIndex]) === null || _b === void 0 ? void 0 : _b.subrs) !== null && _c !== void 0 ? _c : this.localSubrs;
-        var _d = this.parseCharString(charString, localSubrs), points = _d.points, endPts = _d.endPts;
+        var localSubrs = this.getLocalSubrsForGlyph(glyphId);
+        var _a = this.parseCharString(charString, localSubrs), points = _a.points, endPts = _a.endPts;
         return new CffGlyphDescription(points, endPts);
     };
     CffTable.prototype.getDefaultWidthX = function () {
@@ -114,12 +96,10 @@ var CffTable = /** @class */ (function () {
     };
     CffTable.prototype.debugCharString = function (glyphId) {
         var _this = this;
-        var _a, _b, _c;
         var charString = this.charStrings[glyphId];
         if (!charString)
             return null;
-        var fdIndex = (_a = this.fdSelect[glyphId]) !== null && _a !== void 0 ? _a : 0;
-        var localSubrs = (_c = (_b = this.privateInfos[fdIndex]) === null || _b === void 0 ? void 0 : _b.subrs) !== null && _c !== void 0 ? _c : this.localSubrs;
+        var localSubrs = this.getLocalSubrsForGlyph(glyphId);
         var gBias = this.getSubrBias(this.globalSubrs);
         var lBias = this.getSubrBias(localSubrs);
         var ops = [];
@@ -226,6 +206,51 @@ var CffTable = /** @class */ (function () {
         };
         parse(charString, 0);
         return ops;
+    };
+    CffTable.prototype.getLocalSubrsForGlyph = function (glyphId) {
+        var _a, _b, _c;
+        var fdIndex = (_a = this.fdSelect[glyphId]) !== null && _a !== void 0 ? _a : 0;
+        return (_c = (_b = this.getPrivateInfo(fdIndex)) === null || _b === void 0 ? void 0 : _b.subrs) !== null && _c !== void 0 ? _c : this.localSubrs;
+    };
+    CffTable.prototype.getPrivateInfo = function (fdIndex) {
+        if (!this.privateInfos) {
+            this.privateInfos = [];
+        }
+        if (!this.privateInfoSources) {
+            this.privateInfoSources = [];
+        }
+        if (fdIndex < 0 || fdIndex >= this.privateInfoSources.length) {
+            return null;
+        }
+        var cached = this.privateInfos[fdIndex];
+        if (cached) {
+            return cached;
+        }
+        var source = this.privateInfoSources[fdIndex];
+        if (!source) {
+            return null;
+        }
+        var fdDict = CffDict.parse(source.fdDictBytes);
+        var info = fdDict.getArray('private');
+        if (!info || info.length < 2) {
+            var empty = { subrs: [], nominalWidthX: 0, defaultWidthX: 0 };
+            this.privateInfos[fdIndex] = empty;
+            return empty;
+        }
+        var size = info[0];
+        var offset = info[1];
+        var privateStart = this.baseOffset + offset;
+        var privateBytes = this.data.subarray(privateStart, privateStart + size);
+        var privateDict = CffDict.parse(privateBytes);
+        var nominalWidthX = privateDict.getNumber('nominalWidthX', 0);
+        var defaultWidthX = privateDict.getNumber('defaultWidthX', 0);
+        var subrsOffset = privateDict.getNumber('subrs', 0);
+        var subrs = subrsOffset > 0
+            ? CffIndex.read(new ByteArray(this.data), privateStart + subrsOffset).objects
+            : [];
+        var loaded = { subrs: subrs, nominalWidthX: nominalWidthX, defaultWidthX: defaultWidthX };
+        this.privateInfos[fdIndex] = loaded;
+        return loaded;
     };
     CffTable.prototype.getSubrBias = function (subrs) {
         var n = subrs.length;

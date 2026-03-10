@@ -436,7 +436,9 @@ var FontParserWOFF = /** @class */ (function (_super) {
     };
     // Get a glyph description by index
     FontParserWOFF.prototype.getGlyph = function (i) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9;
+        if (i < 0 || (this.maxp && i >= this.maxp.numGlyphs))
+            return null;
         var description = (_a = this.glyf) === null || _a === void 0 ? void 0 : _a.getDescription(i);
         if (description != null) {
             var desc = description;
@@ -637,6 +639,25 @@ var FontParserWOFF = /** @class */ (function (_super) {
             if (cffDesc) {
                 return new GlyphData(cffDesc, (_3 = (_2 = this.hmtx) === null || _2 === void 0 ? void 0 : _2.getLeftSideBearing(i)) !== null && _3 !== void 0 ? _3 : 0, (_5 = (_4 = this.hmtx) === null || _4 === void 0 ? void 0 : _4.getAdvanceWidth(i)) !== null && _5 !== void 0 ? _5 : 0, { isCubic: true });
             }
+        }
+        if (this.glyf) {
+            var lsb = (_7 = (_6 = this.hmtx) === null || _6 === void 0 ? void 0 : _6.getLeftSideBearing(i)) !== null && _7 !== void 0 ? _7 : 0;
+            var advance = (_9 = (_8 = this.hmtx) === null || _8 === void 0 ? void 0 : _8.getAdvanceWidth(i)) !== null && _9 !== void 0 ? _9 : 0;
+            var emptyDesc = {
+                getPointCount: function () { return 0; },
+                getContourCount: function () { return 0; },
+                getEndPtOfContours: function () { return -1; },
+                getFlags: function () { return 0; },
+                getXCoordinate: function () { return 0; },
+                getYCoordinate: function () { return 0; },
+                getXMaximum: function () { return 0; },
+                getXMinimum: function () { return 0; },
+                getYMaximum: function () { return 0; },
+                getYMinimum: function () { return 0; },
+                isComposite: function () { return false; },
+                resolve: function () { }
+            };
+            return new GlyphData(emptyDesc, lsb, advance);
         }
         return null;
     };

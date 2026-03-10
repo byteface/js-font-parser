@@ -371,6 +371,7 @@ export class FontParserWOFF extends BaseFontParser {
 
     // Get a glyph description by index
     public getGlyph(i: number): GlyphData | null {
+        if (i < 0 || (this.maxp && i >= this.maxp.numGlyphs)) return null;
         const description = this.glyf?.getDescription(i);
         if (description != null) {
             let desc = description;
@@ -560,6 +561,25 @@ export class FontParserWOFF extends BaseFontParser {
             if (cffDesc) {
                 return new GlyphData(cffDesc, this.hmtx?.getLeftSideBearing(i) ?? 0, this.hmtx?.getAdvanceWidth(i) ?? 0, { isCubic: true });
             }
+        }
+        if (this.glyf) {
+            const lsb = this.hmtx?.getLeftSideBearing(i) ?? 0;
+            const advance = this.hmtx?.getAdvanceWidth(i) ?? 0;
+            const emptyDesc: IGlyphDescription = {
+                getPointCount: () => 0,
+                getContourCount: () => 0,
+                getEndPtOfContours: () => -1,
+                getFlags: () => 0,
+                getXCoordinate: () => 0,
+                getYCoordinate: () => 0,
+                getXMaximum: () => 0,
+                getXMinimum: () => 0,
+                getYMaximum: () => 0,
+                getYMinimum: () => 0,
+                isComposite: () => false,
+                resolve: () => { /* no-op for empty glyph */ }
+            };
+            return new GlyphData(emptyDesc, lsb, advance);
         }
         return null;
     }

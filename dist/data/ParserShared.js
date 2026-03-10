@@ -18,8 +18,11 @@ export function pickBestCmapFormat(formats, order) {
     if (order === void 0) { order = [4, 12, 10, 8, 6, 2, 0]; }
     if (formats.length === 0)
         return null;
+    var safeFormats = formats.filter(function (f) { return !!f && typeof f === 'object'; });
+    if (safeFormats.length === 0)
+        return null;
     var _loop_1 = function (fmt) {
-        var found = formats.find(function (f) { return (typeof f.getFormatType === 'function' ? f.getFormatType() : f.format) === fmt; });
+        var found = safeFormats.find(function (f) { return (typeof f.getFormatType === 'function' ? f.getFormatType() : f.format) === fmt; });
         if (found)
             return { value: found };
     };
@@ -29,7 +32,7 @@ export function pickBestCmapFormat(formats, order) {
         if (typeof state_1 === "object")
             return state_1.value;
     }
-    return formats[0];
+    return safeFormats[0];
 }
 export function getBestCmapFormatFor(cmap, codePoint) {
     if (!cmap)

@@ -96,7 +96,7 @@ export class CanvasGlyph {
         const g = this.fontdata.getGlyph(index);
         const drawingCanvas = document.getElementById(canvasId) as HTMLCanvasElement;
         
-        if (!drawingCanvas) {
+        if (!drawingCanvas || typeof (drawingCanvas as any).getContext !== 'function') {
             this.emitDiagnostic(
                 "CANVAS_NOT_FOUND",
                 "warning",
@@ -173,7 +173,7 @@ export class CanvasGlyph {
                     
                     if(p2.onCurve)
                     {
-                        context.quadraticCurveTo( ( p1.x + Math.random()*xShift ) *scale, (p1.y + Math.random()*yShift )*scale, (p2.x + Math.random()*xShift )*scale, (p2.y + Math.random()*xShift )*scale);
+                        context.quadraticCurveTo( ( p1.x + Math.random()*xShift ) *scale, (p1.y + Math.random()*yShift )*scale, (p2.x + Math.random()*xShift )*scale, (p2.y + Math.random()*yShift )*scale);
                     }
                     else
                     {
@@ -219,6 +219,7 @@ export class CanvasGlyph {
     drawString(text: string, canvasId: string, options: CanvasDrawOptions = {}): void {
         const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
         if (!canvas) return;
+        if (typeof (canvas as any).getContext !== 'function') return;
         if (!this.fontdata) return;
         CanvasRenderer.drawString(this.fontdata, text, canvas, options);
     }
@@ -226,6 +227,7 @@ export class CanvasGlyph {
     drawStringWithKerning(text: string, canvasId: string, options: CanvasDrawOptions = {}): void {
         const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
         if (!canvas) return;
+        if (typeof (canvas as any).getContext !== 'function') return;
         if (!this.fontdata) return;
         CanvasRenderer.drawStringWithKerning(this.fontdata, text, canvas, options);
     }
@@ -233,6 +235,7 @@ export class CanvasGlyph {
     drawLayout(layout: Array<{ glyphIndex: number; xAdvance: number; xOffset?: number; yOffset?: number }>, canvasId: string, options: CanvasDrawOptions = {}): void {
         const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
         if (!canvas) return;
+        if (typeof (canvas as any).getContext !== 'function') return;
         if (!this.fontdata) return;
         CanvasRenderer.drawLayout(this.fontdata, layout, canvas, options);
     }

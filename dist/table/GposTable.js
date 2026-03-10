@@ -18,6 +18,7 @@ var GposTable = /** @class */ (function () {
         this.scriptList = new ScriptList(byte_ar, de.offset + scriptListOffset);
         this.featureList = new FeatureList(byte_ar, de.offset + featureListOffset);
         this.lookupList = new LookupList(byte_ar, de.offset + lookupListOffset, this);
+        this.subtableCache = new Map();
     }
     GposTable.prototype.read = function (_type, _byte_ar, _offset) {
         if (_type === 1)
@@ -57,6 +58,13 @@ var GposTable = /** @class */ (function () {
     };
     GposTable.prototype.getSubtablesForFeatures = function (featureTags, scriptTags) {
         if (scriptTags === void 0) { scriptTags = ["DFLT", "latn"]; }
+        if (!this.subtableCache) {
+            this.subtableCache = new Map();
+        }
+        var cacheKey = "".concat(scriptTags.join(","), "::").concat(featureTags.join(","));
+        var cached = this.subtableCache.get(cacheKey);
+        if (cached)
+            return cached;
         var script = this.findPreferredScript(scriptTags);
         var langSys = this.getDefaultLangSys(script);
         if (!langSys)
@@ -78,6 +86,7 @@ var GposTable = /** @class */ (function () {
                 }
             }
         }
+        this.subtableCache.set(cacheKey, subtables);
         return subtables;
     };
     GposTable.prototype.getType = function () {

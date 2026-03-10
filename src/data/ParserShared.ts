@@ -45,11 +45,13 @@ export function clearDiagnostics(state: DiagnosticState): void {
 
 export function pickBestCmapFormat(formats: CmapFormatLike[], order: number[] = [4, 12, 10, 8, 6, 2, 0]): CmapFormatLike | null {
     if (formats.length === 0) return null;
+    const safeFormats = formats.filter((f): f is CmapFormatLike => !!f && typeof f === 'object');
+    if (safeFormats.length === 0) return null;
     for (const fmt of order) {
-        const found = formats.find((f) => (typeof f.getFormatType === 'function' ? f.getFormatType() : f.format) === fmt);
+        const found = safeFormats.find((f) => (typeof f.getFormatType === 'function' ? f.getFormatType() : f.format) === fmt);
         if (found) return found;
     }
-    return formats[0];
+    return safeFormats[0];
 }
 
 export function getBestCmapFormatFor(cmap: CmapLike | null, codePoint: number): CmapFormatLike | null {

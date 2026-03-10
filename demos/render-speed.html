@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Render Speed Lab</title>
+  <style>
+    :root { --bg:#0e1118; --ink:#eaf0ff; --muted:#9dadc9; --panel:#161c28; --border:#2b3448; }
+    body { margin:0; font-family:"IBM Plex Sans", system-ui, sans-serif; color:var(--ink); background:var(--bg); }
+    header { padding:20px 22px 10px; }
+    h1 { margin:0 0 6px; font-size:24px; }
+    p { margin:0 0 12px; color:var(--muted); }
+    .panel { display:flex; flex-wrap:wrap; gap:12px; padding:10px 22px 14px; align-items:flex-end; }
+    label { display:flex; flex-direction:column; gap:6px; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); }
+    input, select, button { background:var(--panel); color:var(--ink); border:1px solid var(--border); border-radius:8px; padding:8px 10px; min-width:140px; }
+    input[type="range"] { min-width:180px; }
+    button { cursor:pointer; }
+    .toggle { flex-direction:row; align-items:center; gap:8px; text-transform:none; letter-spacing:0; font-size:13px; }
+    .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; padding:0 22px 14px; }
+    .metric { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+    .metric .k { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:0.06em; }
+    .metric .v { font-size:18px; margin-top:4px; }
+    canvas { display:block; width:100vw; height:68vh; background:#090d15; border-top:1px solid #20283a; }
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+
+<header>
+  <h1>Render Speed Lab</h1>
+  <p>Stress-test glyph rendering volume and timing. Increase characters, shrink text, and benchmark throughput.</p>
+</header>
+
+<div class="panel">
+  <label>Font
+    <select id="fontSelect"></select>
+  </label>
+  <label>Characters
+    <input id="charCount" type="range" min="80" max="18000" value="1800" />
+  </label>
+  <label>Font Size
+    <input id="fontSize" type="range" min="8" max="72" value="26" />
+  </label>
+  <label>Line Height
+    <input id="lineHeight" type="range" min="90" max="220" value="126" />
+  </label>
+  <label>Passes
+    <input id="passes" type="range" min="5" max="80" value="24" />
+  </label>
+  <label class="toggle">
+    <input id="autoFit" type="checkbox" checked />
+    Auto-fit smaller text
+  </label>
+  <button id="redrawBtn">Redraw</button>
+  <button id="benchBtn">Run Benchmark</button>
+</div>
+
+<div class="metrics">
+  <div class="metric"><div class="k">Requested Chars</div><div class="v" id="mRequested">0</div></div>
+  <div class="metric"><div class="k">Glyphs Drawn</div><div class="v" id="mDrawn">0</div></div>
+  <div class="metric"><div class="k">Used Font Size</div><div class="v" id="mSize">0 px</div></div>
+  <div class="metric"><div class="k">Last Draw Time</div><div class="v" id="mDrawMs">0.00 ms</div></div>
+  <div class="metric"><div class="k">Benchmark Avg</div><div class="v" id="mBenchMs">-</div></div>
+  <div class="metric"><div class="k">Glyphs / sec</div><div class="v" id="mGps">-</div></div>
+</div>
+
+<canvas id="stage" width="1400" height="760"></canvas>
+
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser, CanvasRenderer } = window.FontParser;
+import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/demo-scaffold.js";
+import { getFontList } from "../tools/shared/font-catalog.js";
+
+const fontSelect = document.getElementById("fontSelect");
+const charCountInput = document.getElementById("charCount");
+const fontSizeInput = document.getElementById("fontSize");
+const lineHeightInput = document.getElementById("lineHeight");
+const passesInput = document.getElementById("passes");
+const autoFitInput = document.getElementById("autoFit");
+const redrawBtn = document.getElementById("redrawBtn");
+const benchBtn = document.getElementById("benchBtn");
+const canvas = document.getElementById("stage");
+const ctx = canvas.getContext("2d");
+
+const mRequested = document.getElementById("mRequested");
+const mDrawn = document.getElementById("mDrawn");
+const mSize = document.getElementById("mSize");
+const mDrawMs = document.getElementById("mDrawMs");
+const mBenchMs = document.getElementById("mBenchMs");
+const mGps = document.getElementById("mGps");
+
+const loadFont = createFontLoader(FontParser.load);
+let font = null;
+
+const fonts = (() => {
+  const seen = new Set();
+  const merged = [...getFontList("demoCore"), ...getFontList("kerning"), ...getFontList("allGlyphs").slice(0, 14)];
+  const out = [];
+  for (const f of merged) {
+    if (!f || !f.url || seen.has(f.url)) continue;
+    seen.add(f.url);
+    out.push(f);
+  }
+  return out;
+})();
+
+const LOREM = (
+  "Lorem ipsum dolor sit amet, consectetur adipiscing elit. " +
+  "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. " +
+  "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. " +
+  "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. " +
+  "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+);
+
+function buildText(targetLength) {
+  const n = Math.max(1, Math.floor(Number(targetLength) || 1));
+  let out = "";
+  while (out.length < n) out += (out ? " " : "") + LOREM;
+  return out.slice(0, n);
+}
+
+function getGlyphCacheForText(text) {
+  const cache = new Map();
+  for (const ch of text) {
+    if (cache.has(ch)) continue;
+    cache.set(ch, font.getGlyphByChar(ch));
+  }
+  return cache;
+}
+
+function layoutGlyphs(text, pxSize, lineHeightMult) {
+  const unitsPerEm = Math.max(1, Number(font.getUnitsPerEm?.() || 1000));
+  const scale = pxSize / unitsPerEm;
+  const lineHeight = pxSize * lineHeightMult;
+  const left = 24;
+  const top = 46;
+  const maxX = canvas.width - 24;
+  const maxY = canvas.height - 16;
+  const glyphCache = getGlyphCacheForText(text);
+
+  const positioned = [];
+  let x = left;
+  let y = top;
+  let drawn = 0;
+
+  for (const ch of text) {
+    if (ch === "\n") {
+      x = left;
+      y += lineHeight;
+      if (y > maxY) break;
+      continue;
+    }
+
+    const glyph = glyphCache.get(ch);
+    const advance = Math.max(0, Number((glyph?.advanceWidth ?? unitsPerEm * 0.4) * scale));
+
+    if (ch === " " && x + advance > maxX) {
+      x = left;
+      y += lineHeight;
+      if (y > maxY) break;
+      continue;
+    }
+
+    if (x + advance > maxX) {
+      x = left;
+      y += lineHeight;
+      if (y > maxY) break;
+    }
+
+    if (glyph) {
+      positioned.push({ glyph, x, y });
+      drawn++;
+    }
+    x += advance;
+  }
+
+  return { positioned, drawn, scale };
+}
+
+function computeFittedSize(text, requestedSize, lineHeightMult) {
+  if (!autoFitInput.checked) return requestedSize;
+  let size = requestedSize;
+  for (let i = 0; i < 28; i++) {
+    const layout = layoutGlyphs(text, size, lineHeightMult);
+    if (layout.drawn >= Math.max(1, text.replace(/\s+/g, "").length - 4)) return size;
+    size = Math.max(6, size - 1.4);
+    if (size <= 6.01) return 6;
+  }
+  return size;
+}
+
+function drawLayout(context, layout, scale) {
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "#090d15";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const styles = {
+    fillStyle: "rgba(232,242,255,0.92)",
+    strokeStyle: "rgba(101,185,255,0.22)",
+    lineWidth: 1
+  };
+
+  for (const item of layout) {
+    CanvasRenderer.drawGlyphToContext(context, item.glyph, {
+      x: item.x,
+      y: item.y,
+      scale,
+      styles
+    });
+  }
+}
+
+function renderOnce(context = ctx) {
+  if (!font) return { requested: 0, drawn: 0, usedSize: 0, drawMs: 0 };
+
+  const requested = Number(charCountInput.value);
+  const requestedSize = Number(fontSizeInput.value);
+  const lineHeightMult = Number(lineHeightInput.value) / 100;
+  const text = buildText(requested);
+  const usedSize = computeFittedSize(text, requestedSize, lineHeightMult);
+  const layout = layoutGlyphs(text, usedSize, lineHeightMult);
+
+  const t0 = performance.now();
+  drawLayout(context, layout.positioned, layout.scale);
+  const drawMs = performance.now() - t0;
+
+  return { requested, drawn: layout.drawn, usedSize, drawMs };
+}
+
+function updateMetrics(result) {
+  mRequested.textContent = String(result.requested);
+  mDrawn.textContent = String(result.drawn);
+  mSize.textContent = `${result.usedSize.toFixed(1)} px`;
+  mDrawMs.textContent = `${result.drawMs.toFixed(2)} ms`;
+}
+
+function redraw() {
+  const result = renderOnce(ctx);
+  updateMetrics(result);
+}
+
+function runBenchmark() {
+  if (!font) return;
+  const passes = Math.max(1, Math.floor(Number(passesInput.value) || 1));
+  const offscreen = document.createElement("canvas");
+  offscreen.width = canvas.width;
+  offscreen.height = canvas.height;
+  const offCtx = offscreen.getContext("2d");
+  if (!offCtx) return;
+
+  let totalMs = 0;
+  let last = null;
+  for (let i = 0; i < passes; i++) {
+    const r = renderOnce(offCtx);
+    totalMs += r.drawMs;
+    last = r;
+  }
+
+  const avgMs = totalMs / passes;
+  const gps = last && avgMs > 0 ? (last.drawn / avgMs) * 1000 : 0;
+
+  redraw();
+
+  mBenchMs.textContent = `${avgMs.toFixed(2)} ms (${passes} passes)`;
+  mGps.textContent = `${Math.round(gps).toLocaleString()}`;
+}
+
+async function boot() {
+  const selected = getSelectedFont(fontSelect, fonts);
+  font = await loadFont(selected.url);
+  redraw();
+}
+
+redrawBtn.addEventListener("click", redraw);
+benchBtn.addEventListener("click", runBenchmark);
+fontSelect.addEventListener("change", boot);
+charCountInput.addEventListener("input", redraw);
+fontSizeInput.addEventListener("input", redraw);
+lineHeightInput.addEventListener("input", redraw);
+autoFitInput.addEventListener("change", redraw);
+
+populateFontSelect(fontSelect, fonts);
+boot();
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>
