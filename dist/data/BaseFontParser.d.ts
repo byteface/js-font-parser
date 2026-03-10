@@ -63,7 +63,7 @@ export declare abstract class BaseFontParser {
     clearDiagnostics(): void;
     protected getCmapTableForLookup(): any | null;
     protected getBestCmapFormatFor(codePoint: number): any | null;
-    protected pickBestFormat(formats: any[]): any | null;
+    protected pickBestFormat(formats: any[], order?: number[]): any | null;
     protected isNonRenderingFormatCodePoint(codePoint: number): boolean;
     protected getGsubTableForLayout(): any | null;
     protected getKernTableForLayout(): {
