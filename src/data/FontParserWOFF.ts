@@ -895,153 +895,6 @@ export class FontParserWOFF extends BaseFontParser {
         return aDelta + (bDelta - aDelta) * clamped;
     }
 
-    public getGlyphIndexByChar(char: string): number | null {
-        if (!char || char.length === 0) {
-            this.emitDiagnostic("INVALID_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar expects a character.");
-            return null;
-        }
-        if (Array.from(char).length > 1) {
-            this.emitDiagnostic(
-                "MULTI_CHAR_INPUT",
-                "warning",
-                "parse",
-                "getGlyphIndexByChar received multiple characters; using the first code point.",
-                undefined,
-                "MULTI_CHAR_INPUT"
-            );
-        }
-
-        const codePoint = char.codePointAt(0);
-        if (codePoint == null) {
-            this.emitDiagnostic("CODE_POINT_RESOLVE_FAILED", "warning", "parse", "Failed to resolve code point for character.");
-            return null;
-        }
-
-        if (!this.cmap) {
-            this.emitDiagnostic("MISSING_TABLE_CMAP", "warning", "parse", "No cmap table available.", undefined, "MISSING_TABLE_CMAP");
-            return null;
-        }
-        let cmapFormat: any = null;
-        try {
-            cmapFormat = this.getBestCmapFormatFor(codePoint);
-        } catch {
-            this.emitDiagnostic(
-                "CMAP_FORMAT_RESOLVE_FAILED",
-                "warning",
-                "parse",
-                "Failed while resolving preferred cmap format; using fallback format order.",
-                { codePoint },
-                "CMAP_FORMAT_RESOLVE_FAILED"
-            );
-            const fallbackFormats = Array.isArray(this.cmap.formats)
-                ? this.cmap.formats.filter((fmt): fmt is NonNullable<typeof fmt> => fmt != null)
-                : [];
-            cmapFormat = this.pickBestFormat(fallbackFormats);
-        }
-        if (!cmapFormat) {
-            this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint });
-            return null;
-        }
-
-        let glyphIndex: unknown = null;
-        try {
-            if (typeof cmapFormat.getGlyphIndex === "function") {
-                glyphIndex = cmapFormat.getGlyphIndex(codePoint);
-            } else if (typeof cmapFormat.mapCharCode === "function") {
-                glyphIndex = cmapFormat.mapCharCode(codePoint);
-            } else {
-                this.emitDiagnostic(
-                    "UNSUPPORTED_CMAP_FORMAT",
-                    "warning",
-                    "parse",
-                    "Selected cmap format does not expose getGlyphIndex/mapCharCode.",
-                    { codePoint },
-                    "UNSUPPORTED_CMAP_FORMAT"
-                );
-                return null;
-            }
-        } catch {
-            this.emitDiagnostic(
-                "CMAP_LOOKUP_FAILED",
-                "warning",
-                "parse",
-                "cmap glyph lookup failed for code point.",
-                { codePoint }
-            );
-            return null;
-        }
-
-        if (typeof glyphIndex !== "number" || !Number.isFinite(glyphIndex) || glyphIndex === 0) return null;
-        return glyphIndex;
-    }
-
-    public getGlyphByChar(char: string): GlyphData | null {
-        const idx = this.getGlyphIndexByChar(char);
-        if (idx == null) return null;
-        return this.getGlyph(idx);
-    }
-
-    public getGlyphIndicesForStringWithGsub(text: string, featureTags: string[] = ["liga"], scriptTags: string[] = ["DFLT", "latn"]): number[] {
-        const glyphs = [];
-        for (const ch of Array.from(text)) {
-            const idx = this.getGlyphIndexByChar(ch);
-            if (idx != null) glyphs.push(idx);
-        }
-        if (!this.gsub || glyphs.length === 0) {
-            if (!this.gsub && glyphs.length > 0) {
-                this.emitDiagnostic("MISSING_TABLE_GSUB", "info", "layout", "GSUB table not present; using direct glyph mapping.", undefined, "MISSING_TABLE_GSUB");
-            }
-            return glyphs;
-        }
-        return this.gsub.applyFeatures(glyphs, featureTags, scriptTags);
-    }
-
-    public getKerningValueByGlyphs(leftGlyph: number, rightGlyph: number): number {
-        if (!this.kern) return 0;
-        if (typeof this.kern.getKerningValue === "function") {
-            try {
-                const value = this.kern.getKerningValue(leftGlyph, rightGlyph);
-                return typeof value === 'number' && Number.isFinite(value) ? value : 0;
-            } catch {
-                return 0;
-            }
-        }
-        return 0;
-    }
-
-    public getGposKerningValueByGlyphs(leftGlyph: number, rightGlyph: number): number {
-        if (!this.gpos) {
-            this.emitDiagnostic("MISSING_TABLE_GPOS", "info", "layout", "GPOS table not present; kerning defaults to 0.", undefined, "MISSING_TABLE_GPOS");
-            return 0;
-        }
-        const lookups = this.gpos.lookupList?.getLookups?.() ?? [];
-        let value = 0;
-        for (const lookup of lookups) {
-            if (!lookup || lookup.getType() !== 2) continue;
-            for (let i = 0; i < lookup.getSubtableCount(); i++) {
-                const st = lookup.getSubtable(i);
-                if (st instanceof PairPosFormat1 || st instanceof PairPosFormat2) {
-                    try {
-                        const kern = st.getKerning(leftGlyph, rightGlyph);
-                        value += Number.isFinite(kern) ? kern : 0;
-                    } catch {
-                        // Ignore malformed pair subtables and continue.
-                    }
-                }
-            }
-        }
-        return Number.isFinite(value) ? value : 0;
-    }
-
-    public getKerningValue(leftChar: string, rightChar: string): number {
-        const left = this.getGlyphIndexByChar(leftChar);
-        const right = this.getGlyphIndexByChar(rightChar);
-        if (left == null || right == null) return 0;
-        const kern = this.getKerningValueByGlyphs(left, right);
-        if (kern !== 0) return kern;
-        return this.getGposKerningValueByGlyphs(left, right);
-    }
-
     public getVariationAxes(): FvarTable['axes'] {
         return this.fvar?.axes ?? [];
     }
@@ -1074,46 +927,7 @@ export class FontParserWOFF extends BaseFontParser {
         this.setVariationCoords(coords);
     }
 
-    public layoutString(
-        text: string,
-        options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean; gposFeatures?: string[] } = {}
-    ): Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }> {
-        const gsubFeatures = options.gsubFeatures ?? ["liga"];
-        const scriptTags = options.scriptTags ?? ["DFLT", "latn"];
-        const gposFeatures = options.gposFeatures ?? ["kern", "mark", "mkmk", "curs"];
-        const glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
-
-        const positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }> = [];
-        for (let i = 0; i < glyphIndices.length; i++) {
-            const glyphIndex = glyphIndices[i];
-            const glyph = this.getGlyph(glyphIndex);
-
-            let kern = 0;
-            if (i < glyphIndices.length - 1) {
-                kern = this.getKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
-                if (kern === 0) {
-                    kern = this.getGposKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
-                }
-            }
-
-            positioned.push({
-                glyphIndex,
-                xAdvance: this.isMarkGlyphClass(glyphIndex) ? 0 : (glyph?.advanceWidth ?? 0) + kern,
-                xOffset: 0,
-                yOffset: 0,
-                yAdvance: 0,
-            });
-        }
-        if (options.gpos) {
-            if (!this.gpos) {
-                this.emitDiagnostic("MISSING_TABLE_GPOS", "info", "layout", "Requested GPOS positioning, but GPOS table is unavailable.", undefined, "MISSING_TABLE_GPOS");
-            }
-            this.applyGposPositioning(glyphIndices, positioned, gposFeatures, scriptTags);
-        }
-        return positioned;
-    }
-
-    private applyGposPositioning(
+    private applyGposPositioningInternal(
         glyphIndices: number[],
         positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }>,
         gposFeatures: string[],
@@ -1282,6 +1096,16 @@ export class FontParserWOFF extends BaseFontParser {
                 positioned[i].xAdvance = 0;
             }
         }
+    }
+
+    // Backward-compatible alias used by tests/tools that call this directly.
+    public applyGposPositioning(
+        glyphIndices: number[],
+        positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }>,
+        gposFeatures: string[],
+        scriptTags: string[]
+    ): void {
+        this.applyGposPositioningInternal(glyphIndices, positioned, gposFeatures, scriptTags);
     }
 
     private isMarkGlyphClass(glyphId: number): boolean {
@@ -1576,89 +1400,53 @@ export class FontParserWOFF extends BaseFontParser {
         return text.replace(/\0/g, '').trim();
     }
 
-    public getTableByType(tableType: number): ITable | null {
+    private getTable(tableType: any): ITable | null {
+        return this.tables.find(tab => tab?.getType() === tableType) || null;
+    }
+
+    protected getGsubTableForLayout(): any | null {
+        return this.gsub;
+    }
+
+    protected getKernTableForLayout(): { getKerningValue?: (leftGlyph: number, rightGlyph: number) => number | null } | null {
+        return this.kern;
+    }
+
+    protected getGposTableForLayout(): any | null {
+        return this.gpos;
+    }
+
+    protected getGlyphByIndexForLayout(glyphIndex: number): { advanceWidth?: number } | null {
+        return this.getGlyph(glyphIndex);
+    }
+
+    protected isMarkGlyphForLayout(glyphIndex: number): boolean {
+        return this.isMarkGlyphClass(glyphIndex);
+    }
+
+    protected applyGposPositioningForLayout(
+        glyphIndices: number[],
+        positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }>,
+        gposFeatures: string[],
+        scriptTags: string[]
+    ): void {
+        this.applyGposPositioningInternal(glyphIndices, positioned, gposFeatures, scriptTags);
+    }
+
+    protected getTableByTypeInternal(tableType: number): any | null {
         return this.getTable(tableType);
     }
 
-    public getNameInfo(): {
-        family: string;
-        subfamily: string;
-        fullName: string;
-        postScriptName: string;
-        version: string;
-        manufacturer: string;
-        designer: string;
-        description: string;
-        typoFamily: string;
-        typoSubfamily: string;
-    } {
-        return {
-            family: this.getNameRecord(1),
-            subfamily: this.getNameRecord(2),
-            fullName: this.getNameRecord(4),
-            postScriptName: this.getNameRecord(6),
-            version: this.getNameRecord(5),
-            manufacturer: this.getNameRecord(8),
-            designer: this.getNameRecord(9),
-            description: this.getNameRecord(10),
-            typoFamily: this.getNameRecord(16),
-            typoSubfamily: this.getNameRecord(17)
-        };
+    protected getNameRecordForInfo(nameId: number): string {
+        return this.getNameRecord(nameId);
     }
 
-    public getOs2Info(): {
-        weightClass: number;
-        widthClass: number;
-        typoAscender: number;
-        typoDescender: number;
-        typoLineGap: number;
-        winAscent: number;
-        winDescent: number;
-        unicodeRanges: number[];
-        codePageRanges: number[];
-        vendorId: string;
-        fsSelection: number;
-    } | null {
-        if (!this.os2) return null;
-        const vendorId = String.fromCharCode(
-            (this.os2.achVendorID >> 24) & 0xff,
-            (this.os2.achVendorID >> 16) & 0xff,
-            (this.os2.achVendorID >> 8) & 0xff,
-            this.os2.achVendorID & 0xff
-        ).replace(/\0/g, '');
-        return {
-            weightClass: this.os2.usWeightClass,
-            widthClass: this.os2.usWidthClass,
-            typoAscender: this.os2.sTypoAscender,
-            typoDescender: this.os2.sTypoDescender,
-            typoLineGap: this.os2.sTypoLineGap,
-            winAscent: this.os2.usWinAscent,
-            winDescent: this.os2.usWinDescent,
-            unicodeRanges: [this.os2.ulUnicodeRange1, this.os2.ulUnicodeRange2, this.os2.ulUnicodeRange3, this.os2.ulUnicodeRange4],
-            codePageRanges: [this.os2.ulCodePageRange1, this.os2.ulCodePageRange2],
-            vendorId,
-            fsSelection: this.os2.fsSelection
-        };
+    protected getOs2TableForInfo(): any | null {
+        return this.os2;
     }
 
-    public getPostInfo(): {
-        italicAngle: number;
-        underlinePosition: number;
-        underlineThickness: number;
-        isFixedPitch: number;
-    } | null {
-        if (!this.post) return null;
-        return {
-            italicAngle: this.post.italicAngle / 65536,
-            underlinePosition: this.post.underlinePosition,
-            underlineThickness: this.post.underlineThickness,
-            isFixedPitch: this.post.isFixedPitch
-        };
-    }
-
-    // Return a table by type
-    private getTable(tableType: any): ITable | null {
-        return this.tables.find(tab => tab?.getType() === tableType) || null;
+    protected getPostTableForInfo(): any | null {
+        return this.post;
     }
 
     protected getCmapTableForLookup(): any | null {

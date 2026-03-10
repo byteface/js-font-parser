@@ -183,102 +183,6 @@ var FontParserTTF = /** @class */ (function (_super) {
             this.glyf.run(this.maxp.numGlyphs, this.loca);
         }
     };
-    FontParserTTF.prototype.getGlyphIndexByChar = function (char) {
-        if (!char || char.length === 0) {
-            this.emitDiagnostic("INVALID_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar expects a character.");
-            return null;
-        }
-        if (Array.from(char).length > 1) {
-            this.emitDiagnostic("MULTI_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar received multiple characters; using the first code point.", undefined, "MULTI_CHAR_INPUT");
-        }
-        var codePoint = char.codePointAt(0); // Convert character to Unicode code point
-        if (codePoint == null) {
-            this.emitDiagnostic("CODE_POINT_RESOLVE_FAILED", "warning", "parse", "Failed to resolve code point for character.");
-            return null;
-        }
-        if (!this.cmap) {
-            this.emitDiagnostic("MISSING_TABLE_CMAP", "warning", "parse", "No cmap table available.", undefined, "MISSING_TABLE_CMAP");
-            return null;
-        }
-        var cmapFormat = null;
-        try {
-            cmapFormat = this.getBestCmapFormatFor(codePoint);
-        }
-        catch (_a) {
-            this.emitDiagnostic("CMAP_FORMAT_RESOLVE_FAILED", "warning", "parse", "Failed while resolving preferred cmap format; using fallback format order.", { codePoint: codePoint }, "CMAP_FORMAT_RESOLVE_FAILED");
-            var fallbackFormats = Array.isArray(this.cmap.formats)
-                ? this.cmap.formats.filter(function (fmt) { return fmt != null; })
-                : [];
-            cmapFormat = this.pickBestFormat(fallbackFormats);
-        }
-        if (!cmapFormat) {
-            this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint: codePoint });
-            return null;
-        }
-        var glyphIndex = null;
-        try {
-            if (typeof cmapFormat.getGlyphIndex === "function") {
-                glyphIndex = cmapFormat.getGlyphIndex(codePoint);
-            }
-            else if (typeof cmapFormat.mapCharCode === "function") {
-                glyphIndex = cmapFormat.mapCharCode(codePoint);
-            }
-            else {
-                this.emitDiagnostic("UNSUPPORTED_CMAP_FORMAT", "warning", "parse", "Selected cmap format does not expose getGlyphIndex/mapCharCode.", { codePoint: codePoint }, "UNSUPPORTED_CMAP_FORMAT");
-                return null;
-            }
-        }
-        catch (_b) {
-            this.emitDiagnostic("CMAP_LOOKUP_FAILED", "warning", "parse", "cmap glyph lookup failed for code point.", { codePoint: codePoint });
-            return null;
-        }
-        if (typeof glyphIndex !== "number" || !Number.isFinite(glyphIndex) || glyphIndex === 0) {
-            return null;
-        }
-        return glyphIndex;
-    };
-    FontParserTTF.prototype.getGlyphByChar = function (char) {
-        var glyphIndex = this.getGlyphIndexByChar(char);
-        if (glyphIndex == null)
-            return null;
-        return this.getGlyph(glyphIndex);
-    };
-    FontParserTTF.prototype.getGlyphIndicesForString = function (text) {
-        var indices = [];
-        for (var _i = 0, _a = Array.from(text); _i < _a.length; _i++) {
-            var ch = _a[_i];
-            var idx = this.getGlyphIndexByChar(ch);
-            if (idx != null)
-                indices.push(idx);
-        }
-        return indices;
-    };
-    FontParserTTF.prototype.getGlyphIndicesForStringWithGsub = function (text, featureTags, scriptTags) {
-        if (featureTags === void 0) { featureTags = ["liga"]; }
-        if (scriptTags === void 0) { scriptTags = ["DFLT", "latn"]; }
-        var glyphs = this.getGlyphIndicesForString(text);
-        if (!this.gsub || glyphs.length === 0) {
-            if (!this.gsub && glyphs.length > 0) {
-                this.emitDiagnostic("MISSING_TABLE_GSUB", "info", "layout", "GSUB table not present; using direct glyph mapping.", undefined, "MISSING_TABLE_GSUB");
-            }
-            return glyphs;
-        }
-        return this.gsub.applyFeatures(glyphs, featureTags, scriptTags);
-    };
-    FontParserTTF.prototype.getKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
-        if (!this.kern)
-            return 0;
-        if (typeof this.kern.getKerningValue === "function") {
-            try {
-                var value = this.kern.getKerningValue(leftGlyph, rightGlyph);
-                return typeof value === 'number' && Number.isFinite(value) ? value : 0;
-            }
-            catch (_a) {
-                return 0;
-            }
-        }
-        return 0;
-    };
     FontParserTTF.prototype.getVariationAxes = function () {
         var _a, _b;
         return (_b = (_a = this.fvar) === null || _a === void 0 ? void 0 : _a.axes) !== null && _b !== void 0 ? _b : [];
@@ -319,81 +223,6 @@ var FontParserTTF = /** @class */ (function (_super) {
         }
         this.setVariationCoords(coords);
     };
-    FontParserTTF.prototype.getGposKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
-        var _a, _b, _c;
-        if (!this.gpos) {
-            this.emitDiagnostic("MISSING_TABLE_GPOS", "info", "layout", "GPOS table not present; kerning defaults to 0.", undefined, "MISSING_TABLE_GPOS");
-            return 0;
-        }
-        var lookups = (_c = (_b = (_a = this.gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : [];
-        var value = 0;
-        for (var _i = 0, lookups_1 = lookups; _i < lookups_1.length; _i++) {
-            var lookup = lookups_1[_i];
-            if (!lookup || lookup.getType() !== 2)
-                continue;
-            for (var i = 0; i < lookup.getSubtableCount(); i++) {
-                var st = lookup.getSubtable(i);
-                if (st instanceof PairPosFormat1 || st instanceof PairPosFormat2) {
-                    try {
-                        var kern = st.getKerning(leftGlyph, rightGlyph);
-                        value += Number.isFinite(kern) ? kern : 0;
-                    }
-                    catch (_d) {
-                        // Ignore malformed pair subtables and continue.
-                    }
-                }
-            }
-        }
-        return Number.isFinite(value) ? value : 0;
-    };
-    FontParserTTF.prototype.getKerningValue = function (leftChar, rightChar) {
-        var left = this.getGlyphIndexByChar(leftChar);
-        var right = this.getGlyphIndexByChar(rightChar);
-        if (left == null || right == null)
-            return 0;
-        var kern = this.getKerningValueByGlyphs(left, right);
-        if (kern !== 0)
-            return kern;
-        return this.getGposKerningValueByGlyphs(left, right);
-    };
-    /**
-     * Shape and position a single glyph run (no wrapping/line layout).
-     * Applies GSUB substitutions first, then kerning + optional GPOS.
-     */
-    FontParserTTF.prototype.layoutString = function (text, options) {
-        var _a, _b, _c, _d;
-        if (options === void 0) { options = {}; }
-        var gsubFeatures = (_a = options.gsubFeatures) !== null && _a !== void 0 ? _a : ["liga"];
-        var scriptTags = (_b = options.scriptTags) !== null && _b !== void 0 ? _b : ["DFLT", "latn"];
-        var gposFeatures = (_c = options.gposFeatures) !== null && _c !== void 0 ? _c : ["kern", "mark", "mkmk", "curs"];
-        var glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
-        var positioned = [];
-        for (var i = 0; i < glyphIndices.length; i++) {
-            var glyphIndex = glyphIndices[i];
-            var glyph = this.getGlyph(glyphIndex);
-            var kern = 0;
-            if (i < glyphIndices.length - 1) {
-                kern = this.getKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
-                if (kern === 0) {
-                    kern = this.getGposKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
-                }
-            }
-            positioned.push({
-                glyphIndex: glyphIndex,
-                xAdvance: this.isMarkGlyphClass(glyphIndex) ? 0 : ((_d = glyph === null || glyph === void 0 ? void 0 : glyph.advanceWidth) !== null && _d !== void 0 ? _d : 0) + kern,
-                xOffset: 0,
-                yOffset: 0,
-                yAdvance: 0,
-            });
-        }
-        if (options.gpos) {
-            if (!this.gpos) {
-                this.emitDiagnostic("MISSING_TABLE_GPOS", "info", "layout", "Requested GPOS positioning, but GPOS table is unavailable.", undefined, "MISSING_TABLE_GPOS");
-            }
-            this.applyGposPositioning(glyphIndices, positioned, gposFeatures, scriptTags);
-        }
-        return positioned;
-    };
     FontParserTTF.prototype.layoutStringAuto = function (text, options) {
         var _a;
         if (options === void 0) { options = {}; }
@@ -410,7 +239,7 @@ var FontParserTTF = /** @class */ (function (_super) {
      * Attachment positioning runs after value positioning so mark anchors
      * inherit parent/base offsets introduced earlier in the run.
      */
-    FontParserTTF.prototype.applyGposPositioning = function (glyphIndices, positioned, gposFeatures, scriptTags) {
+    FontParserTTF.prototype.applyGposPositioningInternal = function (glyphIndices, positioned, gposFeatures, scriptTags) {
         var _this = this;
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1;
         if (!this.gpos)
@@ -564,6 +393,10 @@ var FontParserTTF = /** @class */ (function (_super) {
                 positioned[i].xAdvance = 0;
             }
         }
+    };
+    // Backward-compatible alias used by tests/tools that call this directly.
+    FontParserTTF.prototype.applyGposPositioning = function (glyphIndices, positioned, gposFeatures, scriptTags) {
+        this.applyGposPositioningInternal(glyphIndices, positioned, gposFeatures, scriptTags);
     };
     FontParserTTF.prototype.isMarkGlyphClass = function (glyphId) {
         var _a, _b, _c;
@@ -965,8 +798,8 @@ var FontParserTTF = /** @class */ (function (_super) {
             var _a, _b, _c, _d;
             var lookups = (_d = (_c = (_b = (_a = _this.gpos) === null || _a === void 0 ? void 0 : _a.lookupList) === null || _b === void 0 ? void 0 : _b.getLookups) === null || _c === void 0 ? void 0 : _c.call(_b)) !== null && _d !== void 0 ? _d : [];
             var all = [];
-            for (var _i = 0, lookups_2 = lookups; _i < lookups_2.length; _i++) {
-                var lookup = lookups_2[_i];
+            for (var _i = 0, lookups_1 = lookups; _i < lookups_1.length; _i++) {
+                var lookup = lookups_1[_i];
                 if (!lookup)
                     continue;
                 for (var i = 0; i < lookup.getSubtableCount(); i++) {
@@ -1359,54 +1192,38 @@ var FontParserTTF = /** @class */ (function (_super) {
         var text = String.fromCharCode((n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff);
         return text.replace(/\0/g, '').trim();
     };
-    FontParserTTF.prototype.getTableByType = function (tableType) {
-        return this.getTable(tableType);
-    };
-    FontParserTTF.prototype.getNameInfo = function () {
-        return {
-            family: this.getNameRecord(1),
-            subfamily: this.getNameRecord(2),
-            fullName: this.getNameRecord(4),
-            postScriptName: this.getNameRecord(6),
-            version: this.getNameRecord(5),
-            manufacturer: this.getNameRecord(8),
-            designer: this.getNameRecord(9),
-            description: this.getNameRecord(10),
-            typoFamily: this.getNameRecord(16),
-            typoSubfamily: this.getNameRecord(17)
-        };
-    };
-    FontParserTTF.prototype.getOs2Info = function () {
-        if (!this.os2)
-            return null;
-        var vendorId = String.fromCharCode((this.os2.achVendorID >> 24) & 0xff, (this.os2.achVendorID >> 16) & 0xff, (this.os2.achVendorID >> 8) & 0xff, this.os2.achVendorID & 0xff).replace(/\0/g, '');
-        return {
-            weightClass: this.os2.usWeightClass,
-            widthClass: this.os2.usWidthClass,
-            typoAscender: this.os2.sTypoAscender,
-            typoDescender: this.os2.sTypoDescender,
-            typoLineGap: this.os2.sTypoLineGap,
-            winAscent: this.os2.usWinAscent,
-            winDescent: this.os2.usWinDescent,
-            unicodeRanges: [this.os2.ulUnicodeRange1, this.os2.ulUnicodeRange2, this.os2.ulUnicodeRange3, this.os2.ulUnicodeRange4],
-            codePageRanges: [this.os2.ulCodePageRange1, this.os2.ulCodePageRange2],
-            vendorId: vendorId,
-            fsSelection: this.os2.fsSelection
-        };
-    };
-    FontParserTTF.prototype.getPostInfo = function () {
-        if (!this.post)
-            return null;
-        return {
-            italicAngle: this.post.italicAngle / 65536,
-            underlinePosition: this.post.underlinePosition,
-            underlineThickness: this.post.underlineThickness,
-            isFixedPitch: this.post.isFixedPitch
-        };
-    };
-    // Return a table by type
     FontParserTTF.prototype.getTable = function (tableType) {
         return this.tables.find(function (tab) { return (tab === null || tab === void 0 ? void 0 : tab.getType()) === tableType; }) || null;
+    };
+    FontParserTTF.prototype.getGsubTableForLayout = function () {
+        return this.gsub;
+    };
+    FontParserTTF.prototype.getKernTableForLayout = function () {
+        return this.kern;
+    };
+    FontParserTTF.prototype.getGposTableForLayout = function () {
+        return this.gpos;
+    };
+    FontParserTTF.prototype.getGlyphByIndexForLayout = function (glyphIndex) {
+        return this.getGlyph(glyphIndex);
+    };
+    FontParserTTF.prototype.isMarkGlyphForLayout = function (glyphIndex) {
+        return this.isMarkGlyphClass(glyphIndex);
+    };
+    FontParserTTF.prototype.applyGposPositioningForLayout = function (glyphIndices, positioned, gposFeatures, scriptTags) {
+        this.applyGposPositioningInternal(glyphIndices, positioned, gposFeatures, scriptTags);
+    };
+    FontParserTTF.prototype.getTableByTypeInternal = function (tableType) {
+        return this.getTable(tableType);
+    };
+    FontParserTTF.prototype.getNameRecordForInfo = function (nameId) {
+        return this.getNameRecord(nameId);
+    };
+    FontParserTTF.prototype.getOs2TableForInfo = function () {
+        return this.os2;
+    };
+    FontParserTTF.prototype.getPostTableForInfo = function () {
+        return this.post;
     };
     FontParserTTF.prototype.getCmapTableForLookup = function () {
         return this.cmap;
