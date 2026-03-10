@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Ribbon Skeleton</title>
+<style>
+:root{--ink:#e8f4ff;--muted:#9eb9d5;--line:rgba(132,205,255,.34)}
+body{margin:0;color:var(--ink);font-family:"Avenir Next",sans-serif;background:radial-gradient(circle at 16% 10%,#243f70 0,transparent 36%),linear-gradient(145deg,#050b15,#101e33)}
+.wrap{width:min(1240px,calc(100vw - 20px));margin:10px auto 18px;display:grid;grid-template-columns:320px 1fr;gap:12px}.panel{border:1px solid var(--line);border-radius:12px;background:rgba(8,20,34,.75);padding:12px}
+h1{margin:0 0 6px;font-size:22px}p{margin:0 0 12px;color:var(--muted);font-size:13px}label{display:block;color:var(--muted);font-size:12px;margin-bottom:10px}
+select,input{width:100%;margin-top:6px;background:#081424;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+canvas{width:100%;height:min(74vh,680px);display:block;border:1px solid var(--line);border-radius:12px;background:linear-gradient(#040b14,#081629)}
+@media(max-width:940px){.wrap{grid-template-columns:1fr}canvas{height:min(60vh,560px)}}
+</style></head>
+<body>
+<div data-nav="main"></div>
+<div class="wrap"><section class="panel"><h1>Ribbon Skeleton</h1><p>Contour chains become drifting, glowing ribbons.</p><label>Font <select id="fontSelect"></select></label><label>Character <input id="charInput" value="S" maxlength="2" /></label><label>Ribbon width <input id="widthInput" type="range" min="3" max="32" value="12" /></label></section><canvas id="stage" width="1360" height="760"></canvas></div>
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser } = window.FontParser;
+import { getFontList } from '../tools/shared/font-catalog.js';
+import { collectGlyphPoints, splitContours, sampleContour, getBounds } from './shared/glyph-helpers.js';
+const canvas=document.getElementById('stage'),ctx=canvas.getContext('2d');
+const fontSelect=document.getElementById('fontSelect'),charInput=document.getElementById('charInput'),widthInput=document.getElementById('widthInput');
+let dpr=1,font=null,ribbons=[];
+const fonts=getFontList('demoCore').filter((f)=>!/2006 Team/i.test(f.name));for(const f of fonts){const o=document.createElement('option');o.value=f.url;o.textContent=f.name;fontSelect.appendChild(o);} 
+function resize(){dpr=Math.max(1,Math.min(2,window.devicePixelRatio||1));const r=canvas.getBoundingClientRect();canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);rebuild();}
+function rebuild(){if(!font)return;const ch=Array.from(charInput.value||'S')[0]||'S';const gi=font.getGlyphIndexByChar(ch)??0;const g=font.getGlyph(gi);if(!g)return;const pts=collectGlyphPoints(g);const b=getBounds(pts);if(!b)return;const s=Math.min((canvas.width*0.62)/Math.max(1,b.width),(canvas.height*0.62)/Math.max(1,b.height));const gx=(b.minX+b.maxX)*0.5,gy=(b.minY+b.maxY)*0.5;const mapped=pts.map((p)=>({...p,x:(p.x-gx)*s+canvas.width*0.5,y:(gy-p.y)*s+canvas.height*0.5}));
+ ribbons=splitContours(mapped).map((c,i)=>({points:sampleContour(c,0.13),phase:i*0.8})).filter((r)=>r.points.length>8);
+}
+function frame(ts){const t=ts*0.001;ctx.fillStyle='rgba(5,11,18,0.24)';ctx.fillRect(0,0,canvas.width,canvas.height);const w=Number(widthInput.value)*dpr;
+for(const r of ribbons){ctx.beginPath();for(let i=0;i<r.points.length;i++){const p=r.points[i];const nx=r.points[(i+1)%r.points.length];const dx=nx.x-p.x,dy=nx.y-p.y;const len=Math.hypot(dx,dy)||1;const px=-dy/len,py=dx/len;const amp=Math.sin(t*2.1+i*0.28+r.phase)*w*0.45;const x=p.x+px*amp,y=p.y+py*amp;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.closePath();ctx.fillStyle='rgba(90,202,255,0.12)';ctx.strokeStyle='rgba(130,224,255,0.8)';ctx.lineWidth=1.3*dpr;ctx.shadowColor='rgba(95,211,255,0.8)';ctx.shadowBlur=14*dpr;ctx.fill();ctx.stroke();}
+requestAnimationFrame(frame);} 
+async function loadFont(){try{font=await FontParser.load(fontSelect.value);rebuild();}catch(e){console.error(e);}}
+fontSelect.addEventListener('change',loadFont);charInput.addEventListener('input',rebuild);widthInput.addEventListener('input',()=>{});window.addEventListener('resize',resize);resize();await loadFont();requestAnimationFrame(frame);
+</script><script type="module" src="../tools/shared/main-nav.js"></script></body></html>

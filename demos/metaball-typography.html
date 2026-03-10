@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Metaball Typography</title>
+<style>
+:root{--ink:#edf6ff;--muted:#9fb8d4;--line:rgba(134,201,255,.34)}
+body{margin:0;color:var(--ink);font-family:"Avenir Next",sans-serif;background:radial-gradient(circle at 16% 8%,#274472 0,transparent 36%),linear-gradient(145deg,#060b15,#111d32)}
+.wrap{width:min(1240px,calc(100vw - 20px));margin:10px auto 18px;display:grid;grid-template-columns:320px 1fr;gap:12px}.panel{border:1px solid var(--line);border-radius:12px;background:rgba(8,20,35,.75);padding:12px}
+h1{margin:0 0 6px;font-size:22px}p{margin:0 0 12px;color:var(--muted);font-size:13px}label{display:block;color:var(--muted);font-size:12px;margin-bottom:10px}
+select,input{width:100%;margin-top:6px;background:#081424;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+canvas{width:100%;height:min(74vh,680px);display:block;border:1px solid var(--line);border-radius:12px;background:linear-gradient(#040b14,#08172a)}
+@media(max-width:940px){.wrap{grid-template-columns:1fr}canvas{height:min(60vh,560px)}}
+</style></head>
+<body>
+<div data-nav="main"></div>
+<div class="wrap"><section class="panel"><h1>Metaball Typography</h1><p>Glyph points melt and merge into organic blobs.</p><label>Font <select id="fontSelect"></select></label><label>Text <input id="textInput" value="MELT" /></label><label>Threshold <input id="threshInput" type="range" min="90" max="220" value="150" /></label></section><canvas id="stage" width="1360" height="760"></canvas></div>
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser } = window.FontParser;
+import { getFontList } from '../tools/shared/font-catalog.js';
+const canvas=document.getElementById('stage'),ctx=canvas.getContext('2d');
+const fontSelect=document.getElementById('fontSelect'),textInput=document.getElementById('textInput'),threshInput=document.getElementById('threshInput');
+let dpr=1,font=null,blobs=[];const low=document.createElement('canvas');const lctx=low.getContext('2d',{willReadFrequently:true});
+const fonts=getFontList('demoCore').filter((f)=>!/2006 Team/i.test(f.name));for(const f of fonts){const o=document.createElement('option');o.value=f.url;o.textContent=f.name;fontSelect.appendChild(o);} 
+function resize(){dpr=Math.max(1,Math.min(2,window.devicePixelRatio||1));const r=canvas.getBoundingClientRect();canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);low.width=Math.max(32,Math.round(canvas.width/3));low.height=Math.max(24,Math.round(canvas.height/3));rebuild();}
+function rebuild(){if(!font)return;blobs=[];const text=textInput.value||'MELT';const scale=Math.min(canvas.width/1800,canvas.height/1000)*0.18;let x=70*dpr;const y=canvas.height*0.65;
+for(const ch of Array.from(text)){const g=font.getGlyphByChar(ch);if(!g){x+=30*dpr;continue;}for(let i=0;i<g.getPointCount();i+=3){const p=g.getPoint(i);blobs.push({x:x+p.x*scale,y:y-p.y*scale,r:3+Math.random()*5,phase:Math.random()*10});}x+=Math.max(40*dpr,(g.advanceWidth||200)*scale+12*dpr);} }
+function frame(ts){const t=ts*0.001;lctx.clearRect(0,0,low.width,low.height);for(const b of blobs){const x=(b.x/canvas.width)*low.width;const y=(b.y/canvas.height)*low.height;const rr=(b.r+Math.sin(t*2+b.phase)*1.6)*(low.width/canvas.width)*3;lctx.beginPath();lctx.fillStyle='rgba(255,255,255,0.22)';lctx.arc(x,y,Math.max(1,rr),0,Math.PI*2);lctx.fill();}
+const img=lctx.getImageData(0,0,low.width,low.height);const th=Number(threshInput.value);for(let i=0;i<img.data.length;i+=4){const a=img.data[i+3];if(a>th){img.data[i]=95;img.data[i+1]=211;img.data[i+2]=255;img.data[i+3]=220;}else{img.data[i+3]=0;}}
+lctx.putImageData(img,0,0);
+ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#040a14';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.imageSmoothingEnabled=true;ctx.drawImage(low,0,0,canvas.width,canvas.height);
+requestAnimationFrame(frame);} 
+async function loadFont(){try{font=await FontParser.load(fontSelect.value);rebuild();}catch(e){console.error(e);}}
+fontSelect.addEventListener('change',loadFont);textInput.addEventListener('input',rebuild);threshInput.addEventListener('input',()=>{});window.addEventListener('resize',resize);resize();await loadFont();requestAnimationFrame(frame);
+</script><script type="module" src="../tools/shared/main-nav.js"></script></body></html>

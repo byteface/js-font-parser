@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Variable Font Terrain</title>
+<style>
+:root{--ink:#e8f4ff;--muted:#a0bad6;--line:rgba(132,202,255,.34)}
+body{margin:0;color:var(--ink);font-family:"Avenir Next",sans-serif;background:radial-gradient(circle at 16% 8%,#244373 0,transparent 36%),linear-gradient(145deg,#050b16,#111e32)}
+.wrap{width:min(1240px,calc(100vw - 20px));margin:10px auto 18px;display:grid;grid-template-columns:320px 1fr;gap:12px}.panel{border:1px solid var(--line);border-radius:12px;background:rgba(8,20,35,.75);padding:12px}
+h1{margin:0 0 6px;font-size:22px}p{margin:0 0 12px;color:var(--muted);font-size:13px}label{display:block;color:var(--muted);font-size:12px;margin-bottom:10px}
+select,input{width:100%;margin-top:6px;background:#081424;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+canvas{width:100%;height:min(74vh,680px);display:block;border:1px solid var(--line);border-radius:12px;background:linear-gradient(#040b14,#081729)}
+@media(max-width:940px){.wrap{grid-template-columns:1fr}canvas{height:min(60vh,560px)}}
+</style></head>
+<body>
+<div data-nav="main"></div>
+<div class="wrap"><section class="panel"><h1>Variable Font Terrain</h1><p>Variable axes become a moving 3D topography.</p><label>Font <select id="fontSelect"></select></label><label>Character <input id="charInput" maxlength="2" value="A" /></label><label>Travel <input id="travelInput" type="range" min="0" max="100" value="45" /></label></section><canvas id="stage" width="1360" height="760"></canvas></div>
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser } = window.FontParser;
+import { getFontList } from '../tools/shared/font-catalog.js';
+import { collectGlyphPoints, getBounds } from './shared/glyph-helpers.js';
+const canvas=document.getElementById('stage'),ctx=canvas.getContext('2d');
+const fontSelect=document.getElementById('fontSelect'),charInput=document.getElementById('charInput'),travelInput=document.getElementById('travelInput');
+let dpr=1,font=null,base=[];
+const fonts=getFontList('variableFonts').slice(0,8);for(const f of fonts){const o=document.createElement('option');o.value=f.url;o.textContent=f.name;fontSelect.appendChild(o);} 
+function resize(){dpr=Math.max(1,Math.min(2,window.devicePixelRatio||1));const r=canvas.getBoundingClientRect();canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);rebuild();}
+function rebuild(){if(!font)return;const ch=Array.from(charInput.value||'A')[0]||'A';const gi=font.getGlyphIndexByChar(ch)??0;const g=font.getGlyph(gi);if(!g)return;const pts=collectGlyphPoints(g);const b=getBounds(pts);if(!b)return;const s=Math.min((canvas.width*0.55)/Math.max(1,b.width),(canvas.height*0.55)/Math.max(1,b.height));const gx=(b.minX+b.maxX)*0.5,gy=(b.minY+b.maxY)*0.5;base=pts.filter((_,i)=>i%2===0).map((p)=>({x:(p.x-gx)*s,y:(gy-p.y)*s,onCurve:!!p.onCurve}));}
+function project(x,y,z,cx,cy){const d=420*dpr;const k=d/(d+z);return {x:cx+x*k,y:cy+y*k,k};}
+function frame(ts){const t=ts*0.001;ctx.fillStyle='rgba(4,10,18,0.24)';ctx.fillRect(0,0,canvas.width,canvas.height);const cx=canvas.width*0.5,cy=canvas.height*0.56;const travel=Number(travelInput.value)*0.02*dpr;for(let i=0;i<base.length;i++){const p=base[i];const z=Math.sin(t*1.2+i*0.08)*travel*40+Math.cos(t*0.7+i*0.03)*travel*18;const x=p.x+Math.sin(t*0.8+i*0.05)*travel*2;const y=p.y+Math.cos(t*0.6+i*0.04)*travel*2;const q=project(x,y,z,cx,cy);ctx.beginPath();ctx.fillStyle=p.onCurve?'rgba(245,157,179,0.85)':'rgba(95,211,255,0.8)';ctx.arc(q.x,q.y,Math.max(0.7,1.9*q.k)*dpr,0,Math.PI*2);ctx.fill();if(i%7===0){const g=project(x,y,-120*dpr,cx,cy);ctx.beginPath();ctx.strokeStyle='rgba(118,206,255,0.14)';ctx.moveTo(g.x,g.y);ctx.lineTo(q.x,q.y);ctx.stroke();}}
+requestAnimationFrame(frame);} 
+async function loadFont(){try{font=await FontParser.load(fontSelect.value);const axes=font.getVariationAxes?.();if(Array.isArray(axes)&&axes.length){const vals=axes.map((a)=>a.defaultValue??0);font.setVariationCoords(vals);}rebuild();}catch(e){console.error(e);}}
+fontSelect.addEventListener('change',loadFont);charInput.addEventListener('input',rebuild);window.addEventListener('resize',resize);resize();await loadFont();requestAnimationFrame(frame);
+</script><script type="module" src="../tools/shared/main-nav.js"></script></body></html>

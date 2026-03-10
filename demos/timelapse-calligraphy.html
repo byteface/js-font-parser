@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Time-Lapse Calligraphy</title>
+<style>
+:root{--ink:#efe7d3;--muted:#bfb49a;--line:rgba(235,211,162,.36)}
+body{margin:0;color:var(--ink);font-family:"Avenir Next",sans-serif;background:radial-gradient(circle at 15% 8%,#4c3b23 0,transparent 40%),linear-gradient(145deg,#1a140d,#271d14)}
+.wrap{width:min(1240px,calc(100vw - 20px));margin:10px auto 18px;display:grid;grid-template-columns:320px 1fr;gap:12px}.panel{border:1px solid var(--line);border-radius:12px;background:rgba(33,25,16,.76);padding:12px}
+h1{margin:0 0 6px;font-size:22px}p{margin:0 0 12px;color:var(--muted);font-size:13px}label{display:block;color:var(--muted);font-size:12px;margin-bottom:10px}
+select,input{width:100%;margin-top:6px;background:#2c2115;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+canvas{width:100%;height:min(74vh,680px);display:block;border:1px solid var(--line);border-radius:12px;background:linear-gradient(#1f1710,#2a2016)}
+@media(max-width:940px){.wrap{grid-template-columns:1fr}canvas{height:min(60vh,560px)}}
+</style></head>
+<body>
+<div data-nav="main"></div>
+<div class="wrap"><section class="panel"><h1>Time-Lapse Calligraphy</h1><p>Stroke path reveals as if hand-drawn with pressure.</p><label>Font <select id="fontSelect"></select></label><label>Text <input id="textInput" value="SCRIPTS" /></label><label>Speed <input id="speedInput" type="range" min="1" max="20" value="8" /></label></section><canvas id="stage" width="1360" height="760"></canvas></div>
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser } = window.FontParser;
+import { getFontList } from '../tools/shared/font-catalog.js';
+import { collectGlyphPoints, splitContours, sampleContour, getBounds } from './shared/glyph-helpers.js';
+const canvas=document.getElementById('stage'),ctx=canvas.getContext('2d');
+const fontSelect=document.getElementById('fontSelect'),textInput=document.getElementById('textInput'),speedInput=document.getElementById('speedInput');
+let dpr=1,font=null,path=[],cursor=0;
+const fonts=[...getFontList('demoCore'),...getFontList('allGlyphs').slice(0,6)].filter((f,i,a)=>a.findIndex((x)=>x.url===f.url)===i).filter((f)=>!/2006 Team/i.test(f.name));
+for(const f of fonts){const o=document.createElement('option');o.value=f.url;o.textContent=f.name;fontSelect.appendChild(o);} 
+function resize(){dpr=Math.max(1,Math.min(2,window.devicePixelRatio||1));const r=canvas.getBoundingClientRect();canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);rebuild();}
+function buildGlyphRoute(glyph,offsetX,offsetY,scale){const pts=collectGlyphPoints(glyph);const mapped=pts.map((p)=>({...p,x:offsetX+p.x*scale,y:offsetY-p.y*scale}));const contours=splitContours(mapped);let out=[];for(const c of contours) out=out.concat(sampleContour(c,0.12));return out;}
+function rebuild(){if(!font)return;path=[];cursor=0;const text=textInput.value||'SCRIPTS';const scale=Math.min(canvas.width/1800,canvas.height/1000)*0.2;let x=70*dpr;const y=canvas.height*0.66;for(const ch of Array.from(text)){const g=font.getGlyphByChar(ch);if(!g){x+=30*dpr;continue;}const r=buildGlyphRoute(g,x,y,scale);path.push(...r);x+=Math.max(40*dpr,(g.advanceWidth||200)*scale+10*dpr);} }
+function frame(){ctx.fillStyle='rgba(31,23,16,0.14)';ctx.fillRect(0,0,canvas.width,canvas.height);if(path.length){const speed=Number(speedInput.value)*0.75;cursor=Math.min(path.length-1,cursor+speed);ctx.save();ctx.lineCap='round';ctx.lineJoin='round';for(let i=1;i<cursor;i++){const a=path[i-1],b=path[i];const t=i/Math.max(1,cursor);ctx.strokeStyle=`rgba(255,232,192,${0.15+t*0.8})`;ctx.lineWidth=(1.2+Math.sin(i*0.1)*0.6+t*2.4)*dpr;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}ctx.restore();if(cursor>=path.length-1)cursor=0;}
+requestAnimationFrame(frame);} 
+async function loadFont(){try{font=await FontParser.load(fontSelect.value);ctx.fillStyle='#21180f';ctx.fillRect(0,0,canvas.width,canvas.height);rebuild();}catch(e){console.error(e);}}
+fontSelect.addEventListener('change',loadFont);textInput.addEventListener('input',rebuild);window.addEventListener('resize',resize);resize();await loadFont();requestAnimationFrame(frame);
+</script><script type="module" src="../tools/shared/main-nav.js"></script></body></html>

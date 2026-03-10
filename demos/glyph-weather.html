@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glyph Weather</title>
+  <style>
+    :root{--ink:#eaf4ff;--muted:#a3b9d1;--line:rgba(141,203,255,.35)}
+    body{margin:0;color:var(--ink);font-family:"Avenir Next",sans-serif;background:radial-gradient(circle at 18% 8%,#2a466f 0,transparent 38%),linear-gradient(145deg,#070d17,#101d30)}
+    .wrap{width:min(1240px,calc(100vw - 20px));margin:10px auto 18px;display:grid;grid-template-columns:320px 1fr;gap:12px}
+    .panel{border:1px solid var(--line);border-radius:12px;background:rgba(8,20,35,.75);padding:12px}
+    h1{margin:0 0 6px;font-size:22px} p{margin:0 0 12px;color:var(--muted);font-size:13px}
+    label{display:block;color:var(--muted);font-size:12px;margin-bottom:10px}
+    select,input{width:100%;margin-top:6px}
+    select,input{background:#081424;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+    canvas{width:100%;height:min(74vh,680px);display:block;border:1px solid var(--line);border-radius:12px;background:linear-gradient(#04101c,#081728)}
+    @media(max-width:940px){.wrap{grid-template-columns:1fr}canvas{height:min(60vh,560px)}}
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<div class="wrap">
+  <section class="panel">
+    <h1>Glyph Weather</h1>
+    <p>Rain, wind, and gusts push live stroke clouds.</p>
+    <label>Font <select id="fontSelect"></select></label>
+    <label>Text <input id="textInput" value="STORM" /></label>
+    <label>Wind <input id="windInput" type="range" min="-30" max="30" value="8" /></label>
+    <label>Rain <input id="rainInput" type="range" min="10" max="220" value="90" /></label>
+  </section>
+  <canvas id="stage" width="1360" height="760"></canvas>
+</div>
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser, CanvasRenderer } = window.FontParser;
+import { getFontList } from '../tools/shared/font-catalog.js';
+
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const fontSelect = document.getElementById('fontSelect');
+const textInput = document.getElementById('textInput');
+const windInput = document.getElementById('windInput');
+const rainInput = document.getElementById('rainInput');
+let dpr = 1;
+let font = null;
+let rain = [];
+
+const fonts = getFontList('demoCore').filter((f) => !/2006 Team/i.test(f.name));
+for (const f of fonts) { const o = document.createElement('option'); o.value = f.url; o.textContent = f.name; fontSelect.appendChild(o); }
+
+function resize(){
+  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  rain = Array.from({ length: 220 }, () => ({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, vy: 2 + Math.random() * 7 }));
+}
+
+function drawTextLayer(time){
+  if (!font) return;
+  const wind = Number(windInput.value) * dpr;
+  const text = textInput.value || 'STORM';
+  for (let i = 0; i < 4; i++) {
+    const jitterY = Math.sin(time * 0.002 + i * 0.7) * 8 * dpr;
+    CanvasRenderer.drawString(font, text, canvas, {
+      x: 80 + i * 3 + wind * 0.5,
+      y: canvas.height * 0.64 + jitterY + i * 2,
+      scale: Math.min(canvas.width / 1800, canvas.height / 1000) * 0.22,
+      spacing: 8,
+      styles: {
+        fillStyle: `rgba(140,215,255,${0.08 + i * 0.05})`,
+        strokeStyle: `rgba(166,230,255,${0.24 + i * 0.12})`,
+        lineWidth: 1.2
+      }
+    });
+  }
+}
+
+function frame(time){
+  ctx.fillStyle = 'rgba(5,11,18,0.22)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  const wind = Number(windInput.value) * 0.08 * dpr;
+  const rainRate = Number(rainInput.value);
+
+  drawTextLayer(time);
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(160,220,255,0.45)';
+  ctx.lineWidth = 1 * dpr;
+  for (const r of rain) {
+    r.x += wind;
+    r.y += r.vy + rainRate * 0.01;
+    if (r.y > canvas.height + 20 || r.x < -20 || r.x > canvas.width + 20) {
+      r.x = Math.random() * canvas.width;
+      r.y = -20;
+      r.vy = 2 + Math.random() * 7;
+    }
+    ctx.beginPath();
+    ctx.moveTo(r.x, r.y);
+    ctx.lineTo(r.x - wind * 2.2, r.y - (7 + rainRate * 0.04) * dpr);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  requestAnimationFrame(frame);
+}
+
+async function loadFont(){
+  try { font = await FontParser.load(fontSelect.value); }
+  catch(e){ console.error(e); }
+}
+
+fontSelect.addEventListener('change', loadFont);
+textInput.addEventListener('input', () => {});
+window.addEventListener('resize', resize);
+resize();
+await loadFont();
+requestAnimationFrame(frame);
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

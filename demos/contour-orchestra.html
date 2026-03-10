@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contour Orchestra</title>
+  <style>
+    :root { --ink:#e8f5ff; --muted:#9db8d4; --line:rgba(136,203,255,.35); }
+    body{margin:0;color:var(--ink);font-family:"Avenir Next",sans-serif;background:radial-gradient(circle at 18% 8%,#26457c 0,transparent 36%),linear-gradient(140deg,#050b16,#121f33)}
+    .wrap{width:min(1220px,calc(100vw - 20px));margin:10px auto 18px;display:grid;grid-template-columns:320px 1fr;gap:12px}
+    .panel{border:1px solid var(--line);border-radius:12px;background:rgba(8,20,35,.74);padding:12px}
+    h1{margin:0 0 6px;font-size:22px}p{margin:0 0 12px;color:var(--muted);font-size:13px}
+    label{display:block;color:var(--muted);font-size:12px;margin-bottom:10px}
+    select,input,button{width:100%;margin-top:6px}
+    select,input,button{background:#081424;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+    .status{min-height:16px;font-size:12px;color:#cae9ff}
+    canvas{width:100%;height:min(74vh,680px);display:block;border:1px solid var(--line);border-radius:12px;background:linear-gradient(#040b14,#0a1728)}
+    @media(max-width:940px){.wrap{grid-template-columns:1fr}canvas{height:min(60vh,560px)}}
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<div class="wrap">
+  <section class="panel">
+    <h1>Contour Orchestra</h1>
+    <p>Each contour becomes a voice. Shape = score.</p>
+    <label>Font <select id="fontSelect"></select></label>
+    <label>Character <input id="charInput" maxlength="2" value="B" /></label>
+    <label>Tempo <input id="tempoInput" type="range" min="20" max="190" value="88" /></label>
+    <button id="audioBtn">Start Audio</button>
+    <div class="status" id="status">Load a glyph and start audio.</div>
+  </section>
+  <canvas id="stage" width="1360" height="760"></canvas>
+</div>
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser } = window.FontParser;
+import { getFontList } from '../tools/shared/font-catalog.js';
+import { collectGlyphPoints, splitContours, drawGlyphPath, getBounds } from './shared/glyph-helpers.js';
+
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const fontSelect = document.getElementById('fontSelect');
+const charInput = document.getElementById('charInput');
+const tempoInput = document.getElementById('tempoInput');
+const audioBtn = document.getElementById('audioBtn');
+const statusEl = document.getElementById('status');
+
+let dpr = 1;
+let font = null;
+let contours = [];
+let voices = [];
+let audioCtx = null;
+let master = null;
+
+const fonts = [...getFontList('demoCore'), ...getFontList('allGlyphs').slice(0, 10)]
+  .filter((f, i, arr) => arr.findIndex((x) => x.url === f.url) === i)
+  .filter((f) => !/2006 Team/i.test(f.name));
+for (const f of fonts) {
+  const o = document.createElement('option'); o.value = f.url; o.textContent = f.name; fontSelect.appendChild(o);
+}
+
+function resize() {
+  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  rebuild();
+}
+
+function rebuild() {
+  if (!font) return;
+  const ch = Array.from(charInput.value || 'B')[0] || 'B';
+  const gi = font.getGlyphIndexByChar(ch) ?? 0;
+  const glyph = font.getGlyph(gi);
+  if (!glyph) return;
+  const pts = collectGlyphPoints(glyph);
+  const b = getBounds(pts);
+  if (!b) return;
+  const s = Math.min((canvas.width * 0.6) / Math.max(1, b.width), (canvas.height * 0.6) / Math.max(1, b.height));
+  const gx = (b.minX + b.maxX) * 0.5;
+  const gy = (b.minY + b.maxY) * 0.5;
+  const mapped = pts.map((p) => ({ ...p, x: (p.x - gx) * s + canvas.width * 0.5, y: (gy - p.y) * s + canvas.height * 0.5 }));
+  contours = splitContours(mapped);
+  buildVoices();
+  statusEl.textContent = `Glyph ${ch} | contours ${contours.length}`;
+}
+
+function buildVoices() {
+  voices = contours.map((c, i) => {
+    let len = 0;
+    for (let j = 0; j < c.length; j++) {
+      const a = c[j], b = c[(j + 1) % c.length];
+      len += Math.hypot(b.x - a.x, b.y - a.y);
+    }
+    const base = 120 + (len % 400);
+    return { contour: c, length: len, freq: base, phase: i * 0.9, osc: null, gain: null };
+  });
+  if (audioCtx) attachAudioVoices();
+}
+
+function attachAudioVoices() {
+  if (!audioCtx || !master) return;
+  for (const v of voices) {
+    if (v.osc) { try { v.osc.stop(); } catch {} }
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = v.freq;
+    gain.gain.value = 0;
+    osc.connect(gain).connect(master);
+    osc.start();
+    v.osc = osc;
+    v.gain = gain;
+  }
+}
+
+async function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  master = audioCtx.createGain();
+  master.gain.value = 0.16;
+  master.connect(audioCtx.destination);
+  attachAudioVoices();
+  audioBtn.textContent = 'Audio Running';
+}
+
+function frame(ts) {
+  const t = ts * 0.001;
+  const tempo = Number(tempoInput.value) * 0.01;
+  ctx.fillStyle = 'rgba(4,10,18,0.2)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = 0; i < voices.length; i++) {
+    const v = voices[i];
+    const pulse = 0.5 + 0.5 * Math.sin(t * tempo * 6 + v.phase);
+    const wobble = Math.sin(t * tempo * 4 + i * 0.8) * 8 * dpr;
+
+    const warped = v.contour.map((p, pi) => ({
+      ...p,
+      x: p.x + Math.cos(t * 1.7 + pi * 0.2 + i) * wobble * 0.35,
+      y: p.y + Math.sin(t * 1.4 + pi * 0.17 + i) * wobble * 0.35
+    }));
+
+    ctx.save();
+    drawGlyphPath(ctx, [warped]);
+    ctx.fillStyle = `rgba(95,211,255,${0.06 + pulse * 0.08})`;
+    ctx.fill('evenodd');
+    ctx.lineWidth = (1 + pulse * 2) * dpr;
+    ctx.strokeStyle = `rgba(${110 + i * 11},${190 + i * 3},255,${0.35 + pulse * 0.55})`;
+    ctx.shadowColor = 'rgba(95,211,255,0.8)';
+    ctx.shadowBlur = (8 + pulse * 16) * dpr;
+    ctx.stroke();
+    ctx.restore();
+
+    if (audioCtx && v.osc && v.gain) {
+      const now = audioCtx.currentTime;
+      v.osc.frequency.setTargetAtTime(v.freq * (0.85 + pulse * 0.45), now, 0.05);
+      v.gain.gain.setTargetAtTime(0.01 + pulse * 0.045, now, 0.05);
+    }
+  }
+
+  requestAnimationFrame(frame);
+}
+
+async function loadFont() {
+  try {
+    statusEl.textContent = `Loading ${fontSelect.selectedOptions[0]?.textContent || ''}…`;
+    font = await FontParser.load(fontSelect.value);
+    rebuild();
+  } catch (e) {
+    statusEl.textContent = `Load failed: ${e?.message || e}`;
+  }
+}
+
+audioBtn.addEventListener('click', async () => {
+  try {
+    await initAudio();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+  } catch (e) {
+    statusEl.textContent = `Audio failed: ${e?.message || e}`;
+  }
+});
+fontSelect.addEventListener('change', loadFont);
+charInput.addEventListener('input', rebuild);
+window.addEventListener('resize', resize);
+resize();
+await loadFont();
+requestAnimationFrame(frame);
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

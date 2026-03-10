@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ink Diffusion</title>
+  <style>
+    :root { --ink:#eaf4ff; --muted:#9cb6d4; --line:rgba(130,200,255,.3); }
+    body{margin:0;font-family:"Avenir Next",sans-serif;color:var(--ink);background:radial-gradient(circle at 15% 10%,#243e72 0,transparent 36%),linear-gradient(145deg,#050a14,#0d1b30)}
+    .wrap{width:min(1240px,calc(100vw - 20px));margin:10px auto 18px;display:grid;grid-template-columns:320px 1fr;gap:12px}
+    .panel{border:1px solid var(--line);border-radius:12px;background:rgba(8,18,34,.75);padding:12px}
+    h1{margin:0 0 6px;font-size:22px} p{margin:0 0 12px;color:var(--muted);font-size:13px}
+    label{display:block;color:var(--muted);font-size:12px;margin-bottom:10px}
+    select,input{width:100%;margin-top:6px}
+    select,input[type="text"]{background:#081424;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+    .row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.v{min-width:38px;text-align:right;color:#d6efff}
+    canvas{width:100%;height:min(74vh,680px);display:block;border:1px solid var(--line);border-radius:12px;background:linear-gradient(#040a13,#08131f)}
+    .status{min-height:16px;font-size:12px;color:#cde8ff}
+    @media(max-width:940px){.wrap{grid-template-columns:1fr}canvas{height:min(60vh,560px)}}
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<div class="wrap">
+  <section class="panel">
+    <h1>Ink Diffusion</h1>
+    <p>The glyph leaks glowing pigment and blooms into fluid halos.</p>
+    <label>Font <select id="fontSelect"></select></label>
+    <label>Character <input id="charInput" type="text" maxlength="2" value="R" /></label>
+    <label class="row">Bloom <span class="v" id="bloomVal"></span><input id="bloomInput" type="range" min="2" max="30" value="12" /></label>
+    <label class="row">Flow <span class="v" id="flowVal"></span><input id="flowInput" type="range" min="1" max="18" value="8" /></label>
+    <label class="row">Drying <span class="v" id="dryVal"></span><input id="dryInput" type="range" min="870" max="998" value="955" /></label>
+    <div class="status" id="status">Loading…</div>
+  </section>
+  <canvas id="stage" width="1360" height="760"></canvas>
+</div>
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser } = window.FontParser;
+import { getFontList } from '../tools/shared/font-catalog.js';
+import { collectGlyphPoints, getBounds } from './shared/glyph-helpers.js';
+
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const fontSelect = document.getElementById('fontSelect');
+const charInput = document.getElementById('charInput');
+const bloomInput = document.getElementById('bloomInput');
+const flowInput = document.getElementById('flowInput');
+const dryInput = document.getElementById('dryInput');
+const bloomVal = document.getElementById('bloomVal');
+const flowVal = document.getElementById('flowVal');
+const dryVal = document.getElementById('dryVal');
+const statusEl = document.getElementById('status');
+
+let dpr = 1;
+let font = null;
+let seeds = [];
+let drops = [];
+
+const fonts = [...getFontList('demoCore'), ...getFontList('allGlyphs').slice(0, 8)]
+  .filter((f, i, arr) => arr.findIndex((x) => x.url === f.url) === i)
+  .filter((f) => !/2006 Team/i.test(f.name));
+for (const f of fonts) {
+  const o = document.createElement('option'); o.value = f.url; o.textContent = f.name; fontSelect.appendChild(o);
+}
+
+function syncVals() {
+  bloomVal.textContent = bloomInput.value;
+  flowVal.textContent = flowInput.value;
+  dryVal.textContent = (Number(dryInput.value) / 1000).toFixed(3);
+}
+
+function resize() {
+  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  rebuild();
+}
+
+function rebuild() {
+  if (!font) return;
+  const ch = Array.from(charInput.value || 'R')[0] || 'R';
+  const gi = font.getGlyphIndexByChar(ch) ?? font.getGlyphIndexByChar('A') ?? 0;
+  const glyph = font.getGlyph(gi);
+  if (!glyph) return;
+  const pts = collectGlyphPoints(glyph);
+  const b = getBounds(pts);
+  if (!b) return;
+  const s = Math.min((canvas.width * 0.62) / Math.max(1, b.width), (canvas.height * 0.62) / Math.max(1, b.height));
+  const gx = (b.minX + b.maxX) * 0.5;
+  const gy = (b.minY + b.maxY) * 0.5;
+  seeds = pts.map((p) => ({
+    x: (p.x - gx) * s + canvas.width * 0.5,
+    y: (gy - p.y) * s + canvas.height * 0.5,
+    onCurve: !!p.onCurve
+  })).filter((_, i) => i % 2 === 0);
+  drops = seeds.map((p, i) => ({
+    x: p.x,
+    y: p.y,
+    vx: Math.sin(i * 1.13) * 0.2,
+    vy: Math.cos(i * 0.79) * 0.2,
+    life: Math.random() * 0.7 + 0.25
+  }));
+  statusEl.textContent = `Glyph ${ch} | seeds ${seeds.length}`;
+}
+
+function tick() {
+  ctx.fillStyle = 'rgba(5,10,18,0.14)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const bloom = Number(bloomInput.value) * dpr;
+  const flow = Number(flowInput.value) * 0.004 * dpr;
+  const dry = Number(dryInput.value) / 1000;
+
+  ctx.save();
+  for (let i = 0; i < drops.length; i++) {
+    const d = drops[i];
+    const s = seeds[i % seeds.length];
+    const dx = s.x - d.x;
+    const dy = s.y - d.y;
+    d.vx += dx * flow + (Math.random() - 0.5) * flow * 18;
+    d.vy += dy * flow + (Math.random() - 0.5) * flow * 18;
+    d.vx *= dry;
+    d.vy *= dry;
+    d.x += d.vx;
+    d.y += d.vy;
+    d.life = Math.max(0.05, Math.min(1, d.life + (Math.random() - 0.5) * 0.04));
+
+    const r = (1.2 + d.life * bloom * 0.24) * dpr;
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(95, 211, 255, ${0.07 + d.life * 0.08})`;
+    ctx.shadowColor = 'rgba(95, 211, 255, 0.9)';
+    ctx.shadowBlur = bloom;
+    ctx.arc(d.x, d.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (i % 5 === 0) {
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(245, 157, 179, ${0.08 + d.life * 0.12})`;
+      ctx.shadowColor = 'rgba(245, 157, 179, 0.8)';
+      ctx.shadowBlur = bloom * 0.7;
+      ctx.arc(d.x + d.vx * 2.2, d.y + d.vy * 2.2, r * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  requestAnimationFrame(tick);
+}
+
+async function loadFont() {
+  try {
+    statusEl.textContent = `Loading ${fontSelect.selectedOptions[0]?.textContent || ''}…`;
+    font = await FontParser.load(fontSelect.value);
+    ctx.fillStyle = '#040913';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    rebuild();
+  } catch (e) {
+    statusEl.textContent = `Load failed: ${e?.message || e}`;
+  }
+}
+
+fontSelect.addEventListener('change', loadFont);
+charInput.addEventListener('input', rebuild);
+[bloomInput, flowInput, dryInput].forEach((el) => el.addEventListener('input', syncVals));
+window.addEventListener('resize', resize);
+syncVals();
+resize();
+await loadFont();
+requestAnimationFrame(tick);
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>
