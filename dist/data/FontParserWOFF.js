@@ -1,3 +1,18 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var __assign = (this && this.__assign) || function () {
     __assign = Object.assign || function(t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -68,65 +83,44 @@ import { PairPosFormat1 } from '../table/PairPosFormat1.js';
 import { PairPosFormat2 } from '../table/PairPosFormat2.js';
 import { SinglePosSubtable } from '../table/SinglePosSubtable.js';
 import { PairPosSubtable } from '../table/PairPosSubtable.js';
-import { emitDiagnostic as emitParserDiagnostic, getDiagnostics as getParserDiagnostics, clearDiagnostics as clearParserDiagnostics, getBestCmapFormatFor as selectBestCmapFormatFor, pickBestCmapFormat } from './ParserShared.js';
-var FontParserWOFF = /** @class */ (function () {
+import { BaseFontParser } from './BaseFontParser.js';
+var FontParserWOFF = /** @class */ (function (_super) {
+    __extends(FontParserWOFF, _super);
     function FontParserWOFF(byteData, options) {
+        var _this = _super.call(this) || this;
         // Define properties
-        this.os2 = null;
-        this.cmap = null;
-        this.glyf = null;
-        this.cff = null;
-        this.head = null;
-        this.hhea = null;
-        this.hmtx = null;
-        this.loca = null;
-        this.maxp = null;
-        this.pName = null;
-        this.post = null;
-        this.gsub = null;
-        this.kern = null;
-        this.colr = null;
-        this.cpal = null;
-        this.gpos = null;
-        this.gdef = null;
-        this.svg = null;
-        this.fvar = null;
-        this.gvar = null;
-        this.variationCoords = [];
-        this.diagnostics = [];
-        this.diagnosticKeys = new Set();
+        _this.os2 = null;
+        _this.cmap = null;
+        _this.glyf = null;
+        _this.cff = null;
+        _this.head = null;
+        _this.hhea = null;
+        _this.hmtx = null;
+        _this.loca = null;
+        _this.maxp = null;
+        _this.pName = null;
+        _this.post = null;
+        _this.gsub = null;
+        _this.kern = null;
+        _this.colr = null;
+        _this.cpal = null;
+        _this.gpos = null;
+        _this.gdef = null;
+        _this.svg = null;
+        _this.fvar = null;
+        _this.gvar = null;
+        _this.variationCoords = [];
         // Table directory and tables
-        this.tableDir = null;
-        this.tables = [];
+        _this.tableDir = null;
+        _this.tables = [];
         if ((options === null || options === void 0 ? void 0 : options.format) === 'sfnt') {
-            this.parseTTF(byteData);
+            _this.parseTTF(byteData);
         }
         else {
-            this.init(byteData);
+            _this.init(byteData);
         }
+        return _this;
     }
-    FontParserWOFF.prototype.emitDiagnostic = function (code, level, phase, message, context, onceKey) {
-        var _a, _b;
-        var state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
-        emitParserDiagnostic(state, code, level, phase, message, context, onceKey);
-        this.diagnostics = (_a = state.diagnostics) !== null && _a !== void 0 ? _a : [];
-        this.diagnosticKeys = (_b = state.diagnosticKeys) !== null && _b !== void 0 ? _b : new Set();
-    };
-    FontParserWOFF.prototype.getDiagnostics = function (filter) {
-        var _a, _b;
-        var state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
-        var out = getParserDiagnostics(state, filter);
-        this.diagnostics = (_a = state.diagnostics) !== null && _a !== void 0 ? _a : [];
-        this.diagnosticKeys = (_b = state.diagnosticKeys) !== null && _b !== void 0 ? _b : new Set();
-        return out;
-    };
-    FontParserWOFF.prototype.clearDiagnostics = function () {
-        var _a, _b;
-        var state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
-        clearParserDiagnostics(state);
-        this.diagnostics = (_a = state.diagnostics) !== null && _a !== void 0 ? _a : [];
-        this.diagnosticKeys = (_b = state.diagnosticKeys) !== null && _b !== void 0 ? _b : new Set();
-    };
     FontParserWOFF.load = function (url) {
         return __awaiter(this, void 0, void 0, function () {
             var response, buffer, sfnt;
@@ -1004,7 +998,7 @@ var FontParserWOFF = /** @class */ (function () {
             var fallbackFormats = Array.isArray(this.cmap.formats)
                 ? this.cmap.formats.filter(function (fmt) { return fmt != null; })
                 : [];
-            cmapFormat = pickBestCmapFormat(fallbackFormats);
+            cmapFormat = this.pickBestFormat(fallbackFormats);
         }
         if (!cmapFormat) {
             this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint: codePoint });
@@ -1614,13 +1608,10 @@ var FontParserWOFF = /** @class */ (function () {
     FontParserWOFF.prototype.getTable = function (tableType) {
         return this.tables.find(function (tab) { return (tab === null || tab === void 0 ? void 0 : tab.getType()) === tableType; }) || null;
     };
-    FontParserWOFF.prototype.getBestCmapFormatFor = function (codePoint) {
-        return selectBestCmapFormatFor(this.cmap, codePoint);
-    };
-    FontParserWOFF.prototype.pickBestFormat = function (formats) {
-        return pickBestCmapFormat(formats);
+    FontParserWOFF.prototype.getCmapTableForLookup = function () {
+        return this.cmap;
     };
     FontParserWOFF.WOFF_SIGNATURE = 0x774f4646;
     return FontParserWOFF;
-}());
+}(BaseFontParser));
 export { FontParserWOFF };

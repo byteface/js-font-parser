@@ -75,6 +75,17 @@ Use the pinned version in `.nvmrc` (`22`).
 - `proj/fontparser/README.md` (CLI)
 - `tests/golden/README.md`
 
+## NPM Import Policy
+
+Use a single package entrypoint:
+
+```js
+import { FontParser } from 'js-font-parser';
+```
+
+- Public npm API is exposed via `package.json` `exports["."]`.
+- Do not deep-import internal paths such as `js-font-parser/dist/...`; those are not a supported npm contract.
+
 Use `docs/WISHLIST.md` as the single source of truth for:
 - desired core features
 - known limitations

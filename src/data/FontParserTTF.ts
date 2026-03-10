@@ -35,16 +35,9 @@ import { FvarTable } from '../table/FvarTable.js';
 import { detectScriptTags } from '../utils/ScriptDetector.js';
 import { SvgTable } from '../table/SvgTable.js';
 import { GvarTable } from '../table/GvarTable.js';
-import type { Diagnostic as FontDiagnostic, DiagnosticFilter } from '../types/Diagnostics.js';
-import {
-    emitDiagnostic as emitParserDiagnostic,
-    getDiagnostics as getParserDiagnostics,
-    clearDiagnostics as clearParserDiagnostics,
-    getBestCmapFormatFor as selectBestCmapFormatFor,
-    pickBestCmapFormat
-} from './ParserShared.js';
+import { BaseFontParser } from './BaseFontParser.js';
 
-export class FontParserTTF {
+export class FontParserTTF extends BaseFontParser {
     // Define properties
     private os2: Os2Table | null = null;
     private cmap: CmapTable | null = null;
@@ -68,8 +61,6 @@ export class FontParserTTF {
     private svg: SvgTable | null = null;
     private gvar: GvarTable | null = null;
     private variationCoords: number[] = [];
-    private diagnostics: FontDiagnostic[] = [];
-    private diagnosticKeys = new Set<string>();
 
     // Table directory and tables
     private tableDir: TableDirectory | null = null;
@@ -91,36 +82,8 @@ export class FontParserTTF {
     }
 
     constructor(byteData: ByteArray) {
+        super();
         this.init(byteData);
-    }
-
-    private emitDiagnostic(
-        code: string,
-        level: 'warning' | 'info',
-        phase: 'parse' | 'layout',
-        message: string,
-        context?: Record<string, unknown>,
-        onceKey?: string
-    ): void {
-        const state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
-        emitParserDiagnostic(state, code, level, phase, message, context, onceKey);
-        this.diagnostics = state.diagnostics ?? [];
-        this.diagnosticKeys = state.diagnosticKeys ?? new Set<string>();
-    }
-
-    public getDiagnostics(filter?: DiagnosticFilter): FontDiagnostic[] {
-        const state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
-        const out = getParserDiagnostics(state, filter);
-        this.diagnostics = state.diagnostics ?? [];
-        this.diagnosticKeys = state.diagnosticKeys ?? new Set<string>();
-        return out;
-    }
-
-    public clearDiagnostics(): void {
-        const state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
-        clearParserDiagnostics(state);
-        this.diagnostics = state.diagnostics ?? [];
-        this.diagnosticKeys = state.diagnosticKeys ?? new Set<string>();
     }
 
     // Initialize the FontParserTTF instance
@@ -225,7 +188,7 @@ export class FontParserTTF {
             const fallbackFormats = Array.isArray(this.cmap.formats)
                 ? this.cmap.formats.filter((fmt): fmt is NonNullable<typeof fmt> => fmt != null)
                 : [];
-            cmapFormat = pickBestCmapFormat(fallbackFormats);
+            cmapFormat = this.pickBestFormat(fallbackFormats);
         }
         if (!cmapFormat) {
             this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint });
@@ -1541,24 +1504,7 @@ export class FontParserTTF {
         return this.tables.find(tab => tab?.getType() === tableType) || null;
     }
 
-    private getBestCmapFormatFor(codePoint: number): any | null {
-        return selectBestCmapFormatFor(this.cmap as any, codePoint);
+    protected getCmapTableForLookup(): any | null {
+        return this.cmap as any;
     }
-
-    private pickBestFormat(formats: any[]): any | null {
-        return pickBestCmapFormat(formats as any);
-    }
-//     private getTable( tableType:any )
-//     {
-//         for (var i=0; i < this.tables.length; i++)
-//         {
-//             if( (this.tables[i] != null) && (this.tables[i].getType() == tableType) )
-//             {
-//                 return this.tables[i];
-//             }
-//         }
-//         return null;
-//     } 
-
-
 }

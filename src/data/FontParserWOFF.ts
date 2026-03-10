@@ -33,16 +33,9 @@ import { PairPosSubtable } from '../table/PairPosSubtable.js';
 import { SvgTable } from '../table/SvgTable.js';
 import { FvarTable } from '../table/FvarTable.js';
 import { GvarTable } from '../table/GvarTable.js';
-import type { Diagnostic as FontDiagnostic, DiagnosticFilter } from '../types/Diagnostics.js';
-import {
-    emitDiagnostic as emitParserDiagnostic,
-    getDiagnostics as getParserDiagnostics,
-    clearDiagnostics as clearParserDiagnostics,
-    getBestCmapFormatFor as selectBestCmapFormatFor,
-    pickBestCmapFormat
-} from './ParserShared.js';
+import { BaseFontParser } from './BaseFontParser.js';
 
-export class FontParserWOFF {
+export class FontParserWOFF extends BaseFontParser {
     private static readonly WOFF_SIGNATURE = 0x774f4646;
     // Define properties
     private os2: Os2Table | null = null;
@@ -66,48 +59,18 @@ export class FontParserWOFF {
     private fvar: FvarTable | null = null;
     private gvar: GvarTable | null = null;
     private variationCoords: number[] = [];
-    private diagnostics: FontDiagnostic[] = [];
-    private diagnosticKeys = new Set<string>();
 
     // Table directory and tables
     private tableDir: TableDirectory | null = null;
     private tables: ITable[] = [];
 
     constructor(byteData: ByteArray, options?: { format?: 'woff' | 'sfnt' }) {
+        super();
         if (options?.format === 'sfnt') {
             this.parseTTF(byteData);
         } else {
             this.init(byteData);
         }
-    }
-
-    private emitDiagnostic(
-        code: string,
-        level: 'warning' | 'info',
-        phase: 'parse' | 'layout',
-        message: string,
-        context?: Record<string, unknown>,
-        onceKey?: string
-    ): void {
-        const state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
-        emitParserDiagnostic(state, code, level, phase, message, context, onceKey);
-        this.diagnostics = state.diagnostics ?? [];
-        this.diagnosticKeys = state.diagnosticKeys ?? new Set<string>();
-    }
-
-    public getDiagnostics(filter?: DiagnosticFilter): FontDiagnostic[] {
-        const state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
-        const out = getParserDiagnostics(state, filter);
-        this.diagnostics = state.diagnostics ?? [];
-        this.diagnosticKeys = state.diagnosticKeys ?? new Set<string>();
-        return out;
-    }
-
-    public clearDiagnostics(): void {
-        const state = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
-        clearParserDiagnostics(state);
-        this.diagnostics = state.diagnostics ?? [];
-        this.diagnosticKeys = state.diagnosticKeys ?? new Set<string>();
     }
 
     static async load(url: string): Promise<FontParserWOFF> {
@@ -973,7 +936,7 @@ export class FontParserWOFF {
             const fallbackFormats = Array.isArray(this.cmap.formats)
                 ? this.cmap.formats.filter((fmt): fmt is NonNullable<typeof fmt> => fmt != null)
                 : [];
-            cmapFormat = pickBestCmapFormat(fallbackFormats);
+            cmapFormat = this.pickBestFormat(fallbackFormats);
         }
         if (!cmapFormat) {
             this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint });
@@ -1698,11 +1661,7 @@ export class FontParserWOFF {
         return this.tables.find(tab => tab?.getType() === tableType) || null;
     }
 
-    private getBestCmapFormatFor(codePoint: number): any | null {
-        return selectBestCmapFormatFor(this.cmap as any, codePoint);
-    }
-
-    private pickBestFormat(formats: any[]): any | null {
-        return pickBestCmapFormat(formats as any);
+    protected getCmapTableForLookup(): any | null {
+        return this.cmap as any;
     }
 }
