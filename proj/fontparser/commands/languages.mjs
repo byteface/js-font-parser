@@ -1,7 +1,37 @@
 import { getSupportedLanguages, listLanguages, supportsLanguage } from "../../../dist/utils/LanguageSupport.js";
 
-export function printCoverage(font) {
-  const rows = getSupportedLanguages(font);
+export function getCoverageRows(font) {
+  return getSupportedLanguages(font);
+}
+
+export function getSupportedRows(font, minCoverage = 1) {
+  return getSupportedLanguages(font).filter(r => r.coverage >= minCoverage);
+}
+
+export function getMissingCharsPayload(font, langCode) {
+  const info = supportsLanguage(font, langCode);
+  if (!info) {
+    throw new Error(`Unknown language code: ${langCode}`);
+  }
+  return {
+    code: info.code,
+    name: info.name,
+    coverage: info.coverage,
+    missingCount: info.missing.length,
+    missing: info.missing
+  };
+}
+
+export function getLanguages() {
+  return listLanguages();
+}
+
+export function printCoverage(font, asJson = false) {
+  const rows = getCoverageRows(font);
+  if (asJson) {
+    console.log(JSON.stringify(rows, null, 2));
+    return;
+  }
   rows.forEach(r => {
     const pct = Math.round(r.coverage * 100);
     const status = r.supported ? "yes" : "no";
@@ -11,7 +41,7 @@ export function printCoverage(font) {
 }
 
 export function printSupportedLanguages(font, minCoverage = 1, asJson = false) {
-  const rows = getSupportedLanguages(font).filter(r => r.coverage >= minCoverage);
+  const rows = getSupportedRows(font, minCoverage);
   if (asJson) {
     console.log(JSON.stringify(rows, null, 2));
     return;
@@ -28,32 +58,22 @@ export function printSupportedLanguages(font, minCoverage = 1, asJson = false) {
 }
 
 export function printMissingChars(font, langCode, asJson = false) {
-  const info = supportsLanguage(font, langCode);
-  if (!info) {
-    throw new Error(`Unknown language code: ${langCode}`);
-  }
-  const payload = {
-    code: info.code,
-    name: info.name,
-    coverage: info.coverage,
-    missingCount: info.missing.length,
-    missing: info.missing
-  };
+  const payload = getMissingCharsPayload(font, langCode);
   if (asJson) {
     console.log(JSON.stringify(payload, null, 2));
     return;
   }
-  const pct = Math.round(info.coverage * 100);
-  console.log(`${info.code} ${info.name} coverage: ${pct}%`);
-  if (info.missing.length === 0) {
+  const pct = Math.round(payload.coverage * 100);
+  console.log(`${payload.code} ${payload.name} coverage: ${pct}%`);
+  if (payload.missing.length === 0) {
     console.log("Missing chars: (none)");
     return;
   }
-  console.log(`Missing chars (${info.missing.length}): ${info.missing.join(" ")}`);
+  console.log(`Missing chars (${payload.missing.length}): ${payload.missing.join(" ")}`);
 }
 
 export function printLanguages() {
-  const rows = listLanguages();
+  const rows = getLanguages();
   rows.forEach(r => {
     console.log(`${r.code.padEnd(4)} ${r.name}${r.notes ? ` (${r.notes})` : ""}`);
   });

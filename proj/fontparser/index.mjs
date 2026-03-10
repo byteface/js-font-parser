@@ -7,9 +7,20 @@ import { supportsLanguage } from "../../dist/utils/LanguageSupport.js";
 
 import { parseArgs, parseBoolean, printUsage } from "./cli/args.mjs";
 import { runCli } from "./cli/runner.mjs";
-import { printCoverage, printSupportedLanguages, printMissingChars, printLanguages } from "./commands/languages.mjs";
+import { EXIT_CODES, inputError, ioError } from "./cli/errors.mjs";
+import { writeJsonError } from "./cli/response.mjs";
+import {
+  getCoverageRows,
+  getSupportedRows,
+  getMissingCharsPayload,
+  getLanguages,
+  printCoverage,
+  printSupportedLanguages,
+  printMissingChars,
+  printLanguages
+} from "./commands/languages.mjs";
 import { printMetadata } from "./commands/meta.mjs";
-import { printOverview } from "./commands/overview.mjs";
+import { getOverviewData, printOverview } from "./commands/overview.mjs";
 import { printTables, printGlyphStats, printKerningStats } from "./commands/tables.mjs";
 import { exportSvgText } from "./commands/svg-text.mjs";
 import { buildSubsetFont, collectSubsetChars } from "./commands/subset.mjs";
@@ -20,6 +31,7 @@ import {
   convertWoffToSfnt,
   resolveConvertOutPath,
   detectInputType,
+  detectSfntKind,
   asArrayBuffer
 } from "./commands/convert.mjs";
 
@@ -32,24 +44,45 @@ function loadFont(pathLike) {
 }
 
 async function main() {
-  const args = parseArgs();
-  const fontPath = args.font;
-  if (!fontPath) {
+  const parsed = parseArgs();
+  const args = parsed.args ?? {};
+
+  if (!parsed.command || parsed.command === "help") {
     printUsage();
-    process.exit(1);
+    return;
   }
 
-  const resolved = path.resolve(process.cwd(), fontPath);
-  const originalBuffer = Buffer.from(fs.readFileSync(resolved));
-  const font = args.convert != null ? null : loadFont(resolved);
+  const knownCommands = new Set(["coverage", "inspect", "svg", "subset", "convert", "localise"]);
+  const isKnownCommand = knownCommands.has(parsed.command);
+  const allowNoFont = !isKnownCommand || (parsed.command === "coverage" && Boolean(args["list-languages"]));
+  const fontPath = args.font != null ? String(args.font) : "";
+  if (!allowNoFont && !fontPath) {
+    throw inputError("--font is required.");
+  }
 
-  await runCli(args, {
+  const resolved = fontPath ? path.resolve(process.cwd(), fontPath) : "";
+  let originalBuffer = null;
+  if (fontPath) {
+    try {
+      originalBuffer = Buffer.from(fs.readFileSync(resolved));
+    } catch (err) {
+      throw ioError(`Failed to read font file: ${resolved}`, { cause: String(err?.message || err) });
+    }
+  }
+  const font = (fontPath && parsed.command !== "convert") ? loadFont(resolved) : null;
+
+  await runCli(parsed, {
     font,
     originalBuffer,
     resolved,
     __dirname,
-    parseBoolean
+    parseBoolean,
+    printUsage
   }, {
+    getCoverageRows,
+    getSupportedRows,
+    getMissingCharsPayload,
+    getLanguages,
     printLanguages,
     printCoverage,
     printSupportedLanguages,
@@ -57,6 +90,7 @@ async function main() {
     printTables,
     printGlyphStats,
     printKerningStats,
+    getOverviewData,
     printOverview,
     exportSvgText,
     printMetadata,
@@ -77,11 +111,19 @@ async function main() {
     convertSfntToWoff,
     convertWoffToSfnt,
     resolveConvertOutPath,
-    detectInputType
+    detectInputType,
+    detectSfntKind
   });
 }
 
 main().catch(err => {
-  console.error(err);
-  process.exit(1);
+  const parsed = parseArgs();
+  const args = parsed.args ?? {};
+  const asJson = Boolean(args.json);
+  if (asJson) {
+    writeJsonError(err, parsed.command || null);
+  } else {
+    console.error(`${err?.code || "E_INTERNAL"}: ${err?.message || String(err)}`);
+  }
+  process.exit(Number.isInteger(err?.exitCode) ? err.exitCode : EXIT_CODES.INTERNAL);
 });

@@ -1,34 +1,58 @@
 import { Table } from "../../../dist/table/Table.js";
 
-export function printMetadata(font, asJson = false) {
+export function getMetadataSummary(font) {
   const meta = font.getMetadata?.() ?? null;
-  if (!meta) {
+  if (!meta) return null;
+
+  return {
+    raw: meta,
+    summary: {
+      family: meta.names?.family ?? "",
+      subfamily: meta.names?.subfamily ?? "",
+      fullName: meta.names?.fullName ?? "",
+      postScriptName: meta.names?.postScriptName ?? "",
+      version: meta.names?.version ?? "",
+      vendorId: meta.os2?.vendorId ?? "",
+      unitsPerEm: font.getTableByType(Table.head)?.unitsPerEm ?? null,
+      glyphs: font.getTableByType(Table.maxp)?.numGlyphs ?? null,
+      weightClass: meta.style?.weightClass ?? null,
+      widthClass: meta.style?.widthClass ?? null,
+      italicAngle: meta.post?.italicAngle ?? null,
+      isBold: !!meta.style?.isBold,
+      isItalic: !!meta.style?.isItalic,
+      isMonospace: !!meta.style?.isMonospace,
+      fsTypeFlags: meta.style?.fsTypeFlags ?? [],
+      fsSelectionFlags: meta.style?.fsSelectionFlags ?? []
+    }
+  };
+}
+
+export function printMetadata(font, asJson = false) {
+  const payload = getMetadataSummary(font);
+  if (!payload) {
     console.log("No metadata available.");
     return;
   }
   if (asJson) {
-    console.log(JSON.stringify(meta, null, 2));
+    console.log(JSON.stringify(payload.raw, null, 2));
     return;
   }
 
-  const names = meta.names ?? {};
-  const os2 = meta.os2 ?? {};
-  const post = meta.post ?? {};
-  const style = meta.style ?? {};
+  const s = payload.summary;
 
   console.log("Font metadata");
-  console.log(`  family: ${names.family ?? ""}`);
-  console.log(`  subfamily: ${names.subfamily ?? ""}`);
-  console.log(`  fullName: ${names.fullName ?? ""}`);
-  console.log(`  postScriptName: ${names.postScriptName ?? ""}`);
-  console.log(`  version: ${names.version ?? ""}`);
-  console.log(`  vendorId: ${os2.vendorId ?? ""}`);
-  console.log(`  unitsPerEm: ${font.getTableByType(Table.head)?.unitsPerEm ?? ""}`);
-  console.log(`  glyphs: ${font.getTableByType(Table.maxp)?.numGlyphs ?? ""}`);
-  console.log(`  weightClass: ${style.weightClass ?? ""}`);
-  console.log(`  widthClass: ${style.widthClass ?? ""}`);
-  console.log(`  italicAngle: ${post.italicAngle ?? ""}`);
-  console.log(`  isBold/isItalic/isMonospace: ${!!style.isBold}/${!!style.isItalic}/${!!style.isMonospace}`);
-  console.log(`  fsTypeFlags: ${(style.fsTypeFlags ?? []).join(", ") || "(none)"}`);
-  console.log(`  fsSelectionFlags: ${(style.fsSelectionFlags ?? []).join(", ") || "(none)"}`);
+  console.log(`  family: ${s.family}`);
+  console.log(`  subfamily: ${s.subfamily}`);
+  console.log(`  fullName: ${s.fullName}`);
+  console.log(`  postScriptName: ${s.postScriptName}`);
+  console.log(`  version: ${s.version}`);
+  console.log(`  vendorId: ${s.vendorId}`);
+  console.log(`  unitsPerEm: ${s.unitsPerEm ?? ""}`);
+  console.log(`  glyphs: ${s.glyphs ?? ""}`);
+  console.log(`  weightClass: ${s.weightClass ?? ""}`);
+  console.log(`  widthClass: ${s.widthClass ?? ""}`);
+  console.log(`  italicAngle: ${s.italicAngle ?? ""}`);
+  console.log(`  isBold/isItalic/isMonospace: ${s.isBold}/${s.isItalic}/${s.isMonospace}`);
+  console.log(`  fsTypeFlags: ${s.fsTypeFlags.join(", ") || "(none)"}`);
+  console.log(`  fsSelectionFlags: ${s.fsSelectionFlags.join(", ") || "(none)"}`);
 }

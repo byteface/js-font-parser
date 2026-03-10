@@ -8,6 +8,7 @@ import {
   convertSfntToWoff,
   convertWoffToSfnt,
   detectInputType,
+  detectSfntKind,
   defaultSfntExtension,
   resolveConvertOutPath,
   asArrayBuffer
@@ -65,4 +66,18 @@ test('CLI convert: output path resolver chooses expected extensions', () => {
 test('CLI convert: rejects malformed WOFF input', () => {
   const bad = Buffer.from([0x77, 0x4F, 0x46, 0x46, 0x00]);
   assert.throws(() => convertWoffToSfnt(bad), /Invalid WOFF input|header|too short/i);
+});
+
+test('CLI convert: input type detection distinguishes WOFF1 and WOFF2', () => {
+  const woff1 = Buffer.from([0x77, 0x4F, 0x46, 0x46, 0, 0, 0, 0]);
+  const woff2 = Buffer.from([0x77, 0x4F, 0x46, 0x32, 0, 0, 0, 0]);
+  assert.equal(detectInputType(woff1), 'woff');
+  assert.equal(detectInputType(woff2), 'woff2');
+});
+
+test('CLI convert: sfnt kind detection identifies TTF and OTF', () => {
+  const ttf = readFixture('truetypefonts/curated/FiraSans-Regular.ttf');
+  const otf = readFixture('truetypefonts/curated/SourceSerif4-Regular.otf');
+  assert.equal(detectSfntKind(ttf), 'ttf');
+  assert.equal(detectSfntKind(otf), 'otf');
 });

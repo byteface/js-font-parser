@@ -1,13 +1,24 @@
 export function parseArgs(argv = process.argv.slice(2)) {
-  const out = {};
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a.startsWith("--")) {
-      const key = a.slice(2);
-      const val = argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[++i] : true;
-      out[key] = val;
-    }
+  const out = { command: null, args: {} };
+  if (!Array.isArray(argv) || argv.length === 0) {
+    return out;
   }
+
+  const first = String(argv[0] || "");
+  if (first === "-h" || first === "--help" || first === "help") {
+    out.command = "help";
+    return out;
+  }
+
+  out.command = first.toLowerCase();
+  for (let i = 1; i < argv.length; i++) {
+    const a = argv[i];
+    if (!a.startsWith("--")) continue;
+    const key = a.slice(2);
+    const val = argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[++i] : true;
+    out.args[key] = val;
+  }
+
   return out;
 }
 
@@ -22,16 +33,13 @@ export function parseBoolean(value, defaultValue = false) {
 
 export function usageLines() {
   return [
-    "fontparser --font path.ttf [--coverage] [--supported-languages] [--min-coverage 100] [--supported-languages-json] [--meta|--meta-json] [--list-languages]",
-    "fontparser --font path.ttf --missing-chars --lang <code> [--json]",
-    "fontparser --font path.ttf [--tables|--tables-json] [--glyph-stats|--glyph-stats-json]",
-    "fontparser --font path.ttf [--kerning-stats|--kerning-stats-json] [--kerning-chars \"AVTo\"] [--kerning-limit 20]",
-    "fontparser --font path.ttf --inspect [--min-coverage 90] [--kerning-chars \"AVTo\"] [--kerning-limit 10] [--overview (alias)]",
-    "fontparser --font path.ttf --svg-text \"Hello\" [--svg-out out.svg] [--svg-font-size 96] [--svg-fill '#111'] [--svg-stroke none] [--svg-stroke-width 0] [--svg-padding 24] [--svg-line-height 1.2] [--svg-letter-spacing 0] [--svg-use-kerning true] [--svg-bg '#fff']",
-    "fontparser --font path.ttf --localise <code> [--out output.ttf]",
-    "fontparser --font path.ttf --subset [--subset-chars <text>] [--subset-file <txt>] [--subset-lang <code[,code]>] [--out output.ttf] [--subset-report report.json]",
-    "fontparser --font input.ttf --convert woff [--out output.woff]",
-    "fontparser --font input.woff --convert sfnt|ttf|otf [--out output.ttf|output.otf]"
+    "fontparser coverage --font path.ttf [--supported] [--missing --lang <code>] [--min-coverage 100] [--json] [--list-languages]",
+    "fontparser inspect --font path.ttf [--min-coverage 90] [--kerning-chars \"AVTo\"] [--kerning-limit 10]",
+    "fontparser svg --font path.ttf --text \"Hello\" [--out out.svg] [--font-size 96] [--fill '#111'] [--stroke none] [--stroke-width 0] [--padding 24] [--line-height 1.2] [--letter-spacing 0] [--use-kerning true] [--bg '#fff']",
+    "fontparser subset --font path.ttf [--chars <text>] [--file <txt>] [--lang <code[,code]>] [--out output.ttf] [--report report.json]",
+    "fontparser convert --font input.ttf --to woff [--out output.woff]",
+    "fontparser convert --font input.woff --to sfnt|ttf|otf [--out output.ttf|output.otf]",
+    "fontparser localise --font path.ttf --lang <code> [--out output.ttf]"
   ];
 }
 

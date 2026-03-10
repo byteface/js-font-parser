@@ -2,7 +2,10 @@ import path from "node:path";
 import zlib from "node:zlib";
 
 const TAG_WOFF = 0x774f4646;
+const TAG_WOFF2 = 0x774f4632;
 const FLAVOR_OTTO = 0x4f54544f;
+const FLAVOR_TTF = 0x00010000;
+const FLAVOR_TRUE = 0x74727565;
 
 function align4(n) {
   return (n + 3) & ~3;
@@ -175,7 +178,9 @@ export function convertWoffToSfnt(buffer) {
 
 export function defaultSfntExtension(sfntBuffer) {
   const flavor = sfntBuffer.readUInt32BE(0);
-  return flavor === FLAVOR_OTTO ? ".otf" : ".ttf";
+  const kind = sfntFlavorKind(flavor);
+  if (kind === "otf") return ".otf";
+  return ".ttf";
 }
 
 export function resolveConvertOutPath(inputPath, format, outPath, sfntBuffer = null) {
@@ -191,7 +196,19 @@ export function detectInputType(buffer) {
   if (!buffer || buffer.length < 4) return "unknown";
   const sig = buffer.readUInt32BE(0);
   if (sig === TAG_WOFF) return "woff";
+  if (sig === TAG_WOFF2) return "woff2";
   return "sfnt";
+}
+
+export function sfntFlavorKind(flavor) {
+  if (flavor === FLAVOR_OTTO) return "otf";
+  if (flavor === FLAVOR_TTF || flavor === FLAVOR_TRUE) return "ttf";
+  return "other";
+}
+
+export function detectSfntKind(buffer) {
+  if (!buffer || buffer.length < 4) return "other";
+  return sfntFlavorKind(buffer.readUInt32BE(0));
 }
 
 export function asArrayBuffer(buffer) {

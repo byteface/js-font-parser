@@ -1,9 +1,9 @@
 import { Table } from "../../../dist/table/Table.js";
 import { getTableData, getTableRecords, getLocaOffsets, getGlyphMetric, tagToString, uniqueChars } from "../lib/font-utils.mjs";
 
-export function printTables(buffer, asJson = false) {
+export function getTablesData(buffer) {
   const { records } = getTableRecords(buffer);
-  const rows = records
+  return records
     .map(r => ({
       tag: tagToString(r.tag),
       checksum: `0x${r.checkSum.toString(16).padStart(8, "0")}`,
@@ -11,7 +11,10 @@ export function printTables(buffer, asJson = false) {
       length: r.tableLength
     }))
     .sort((a, b) => a.tag.localeCompare(b.tag));
+}
 
+export function printTables(buffer, asJson = false) {
+  const rows = getTablesData(buffer);
   if (asJson) {
     console.log(JSON.stringify(rows, null, 2));
     return;
@@ -23,7 +26,7 @@ export function printTables(buffer, asJson = false) {
   });
 }
 
-export function printGlyphStats(buffer, font, asJson = false) {
+export function getGlyphStatsData(buffer, font) {
   const head = font.getTableByType(Table.head);
   const hhea = font.getTableByType(Table.hhea);
   const maxp = font.getTableByType(Table.maxp);
@@ -54,7 +57,7 @@ export function printGlyphStats(buffer, font, asJson = false) {
     else simple++;
   }
 
-  const stats = {
+  return {
     glyphCount: maxp.numGlyphs,
     numberOfHMetrics: hhea.numberOfHMetrics,
     indexToLocFormat: head.indexToLocFormat,
@@ -63,11 +66,15 @@ export function printGlyphStats(buffer, font, asJson = false) {
     emptyGlyphs: empty,
     unknownGlyphs: unknown
   };
+}
+
+export function printGlyphStats(buffer, font, asJson = false) {
+  const stats = getGlyphStatsData(buffer, font);
 
   if (asJson) {
     console.log(JSON.stringify(stats, null, 2));
     return;
-  }
+  };
   console.log("Glyph stats");
   console.log(`  glyphCount: ${stats.glyphCount}`);
   console.log(`  simpleGlyphs: ${stats.simpleGlyphs}`);
@@ -78,7 +85,7 @@ export function printGlyphStats(buffer, font, asJson = false) {
   console.log(`  indexToLocFormat: ${stats.indexToLocFormat}`);
 }
 
-export function printKerningStats(font, chars, limit = 20, asJson = false) {
+export function getKerningStatsData(font, chars, limit = 20) {
   const charList = uniqueChars(chars).filter(ch => ch !== " ");
   if (charList.length < 2) {
     throw new Error("Kerning stats requires at least 2 unique non-space characters.");
@@ -105,7 +112,7 @@ export function printKerningStats(font, chars, limit = 20, asJson = false) {
   const kernTable = font.getTableByType?.(Table.kern);
   const gposTable = font.getTableByType?.(Table.GPOS);
 
-  const stats = {
+  return {
     sampleChars: charList.join(""),
     sampleCharCount: charList.length,
     testedPairs: charList.length * charList.length,
@@ -118,11 +125,15 @@ export function printKerningStats(font, chars, limit = 20, asJson = false) {
     topNegative,
     topPositive
   };
+}
+
+export function printKerningStats(font, chars, limit = 20, asJson = false) {
+  const stats = getKerningStatsData(font, chars, limit);
 
   if (asJson) {
     console.log(JSON.stringify(stats, null, 2));
     return;
-  }
+  };
 
   console.log("Kerning stats");
   console.log(`  sampleCharCount: ${stats.sampleCharCount}`);

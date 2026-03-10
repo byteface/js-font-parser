@@ -1,62 +1,133 @@
 # fontparser CLI (prototype)
 
-This is an early CLI for inspecting language coverage and writing a modified font file.
+Early CLI for inspection, SVG export, localization/subsetting, and sfnt/WOFF conversion.
 
 ## Usage
 
 ```bash
 cd /Users/byteface/Desktop/projects/js-font-parser
 npm run build:dist
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --coverage
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --supported-languages
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --supported-languages --min-coverage 80
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --supported-languages-json --min-coverage 95
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --missing-chars --lang hu
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --missing-chars --lang hu --json
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --meta
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --meta-json
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --list-languages
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --tables
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --glyph-stats
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --kerning-stats --kerning-chars "AVWToY.,tafy" --kerning-limit 12
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --inspect
-node proj/fontparser/index.mjs --font truetypefonts/GothamNarrow-Ultra.otf --svg-text "AVATAR\nType test" --svg-font-size 84 --svg-fill "#111" --svg-bg "#f8f8f8" --svg-padding 20 --svg-line-height 1.25 --svg-use-kerning true --svg-out /tmp/type-test.svg
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --localise es --out /tmp/DiscoMo-es.ttf
-node proj/fontparser/index.mjs --font truetypefonts/noto/NotoSans-Regular.ttf --subset --subset-lang en,es --out /tmp/NotoSans-en-es-subset.ttf
-node proj/fontparser/index.mjs --font truetypefonts/noto/NotoSans-Regular.ttf --subset --subset-chars "AVWToY.,tafy123" --subset-file /tmp/custom_chars.txt --out /tmp/NotoSans-custom-subset.ttf
-node proj/fontparser/index.mjs --font truetypefonts/noto/NotoSans-Regular.ttf --convert woff --out /tmp/NotoSans-Regular.woff
-node proj/fontparser/index.mjs --font /tmp/NotoSans-Regular.woff --convert sfnt --out /tmp/NotoSans-Regular.roundtrip.ttf
-node proj/fontparser/index.mjs --font truetypefonts/curated/SourceSerif4-Regular.otf --convert woff --out /tmp/SourceSerif4-Regular.woff
-node proj/fontparser/index.mjs --font /tmp/SourceSerif4-Regular.woff --convert otf --out /tmp/SourceSerif4-Regular.roundtrip.otf
+
+# coverage
+node proj/fontparser/index.mjs coverage --font truetypefonts/DiscoMo.ttf
+node proj/fontparser/index.mjs coverage --font truetypefonts/DiscoMo.ttf --supported --min-coverage 80
+node proj/fontparser/index.mjs coverage --font truetypefonts/DiscoMo.ttf --missing --lang hu
+node proj/fontparser/index.mjs coverage --font truetypefonts/DiscoMo.ttf --missing --lang hu --json
+node proj/fontparser/index.mjs coverage --list-languages
+
+# inspect
+node proj/fontparser/index.mjs inspect --font truetypefonts/DiscoMo.ttf
+node proj/fontparser/index.mjs inspect --font truetypefonts/DiscoMo.ttf --min-coverage 95 --kerning-chars "AVWToY.,tafy" --kerning-limit 12
+
+# svg
+node proj/fontparser/index.mjs svg --font truetypefonts/GothamNarrow-Ultra.otf --text "AVATAR\nType test" --font-size 84 --fill "#111" --bg "#f8f8f8" --padding 20 --line-height 1.25 --use-kerning true --out /tmp/type-test.svg
+
+# localise
+node proj/fontparser/index.mjs localise --font truetypefonts/DiscoMo.ttf --lang es --out /tmp/DiscoMo-es.ttf
+
+# subset
+node proj/fontparser/index.mjs subset --font truetypefonts/noto/NotoSans-Regular.ttf --lang en,es --out /tmp/NotoSans-en-es-subset.ttf
+node proj/fontparser/index.mjs subset --font truetypefonts/noto/NotoSans-Regular.ttf --chars "AVWToY.,tafy123" --file /tmp/custom_chars.txt --out /tmp/NotoSans-custom-subset.ttf
+
+# convert
+node proj/fontparser/index.mjs convert --font truetypefonts/noto/NotoSans-Regular.ttf --to woff --out /tmp/NotoSans-Regular.woff
+node proj/fontparser/index.mjs convert --font /tmp/NotoSans-Regular.woff --to sfnt --out /tmp/NotoSans-Regular.roundtrip.ttf
+node proj/fontparser/index.mjs convert --font truetypefonts/curated/SourceSerif4-Regular.otf --to woff --out /tmp/SourceSerif4-Regular.woff
+node proj/fontparser/index.mjs convert --font /tmp/SourceSerif4-Regular.woff --to otf --out /tmp/SourceSerif4-Regular.roundtrip.otf
+
+# machine-readable output
+node proj/fontparser/index.mjs inspect --font truetypefonts/DiscoMo.ttf --json
+node proj/fontparser/index.mjs coverage --font truetypefonts/DiscoMo.ttf --supported --min-coverage 90 --json
 ```
 
-## Notes
-- `--coverage` prints language coverage based on required character sets.
-- `--supported-languages` prints only languages that meet `--min-coverage` (default `100`).
-- `--supported-languages-json` emits the same filtered list in JSON.
-- `--missing-chars --lang <code>` prints only missing required chars for one language.
-- Add `--json` to emit missing-char output as JSON.
-- `--meta` prints a concise metadata summary (name/style/OS2/post fields).
-- `--meta-json` prints full metadata JSON.
-- `--list-languages` prints available language codes for `--localise` and `--subset-lang`.
-- `--tables` prints table tag/offset/length/checksum; `--tables-json` prints JSON.
-- `--glyph-stats` prints simple/composite/empty counts; `--glyph-stats-json` prints JSON.
-- `--kerning-stats` samples pair kerning over a character set; `--kerning-stats-json` prints JSON.
-- Tune kerning sampling with `--kerning-chars` and `--kerning-limit`.
-- `--inspect` prints a consolidated report: metadata, glyph stats, table list, filtered supported languages, and kerning sample stats.
-- `--overview` is kept as a backward-compatible alias for `--inspect`.
-- `--svg-text` generates SVG text paths directly from a font and prints to stdout unless `--svg-out` is provided.
-- SVG tuning flags: `--svg-font-size`, `--svg-fill`, `--svg-stroke`, `--svg-stroke-width`, `--svg-padding`, `--svg-line-height`, `--svg-letter-spacing`, `--svg-use-kerning`, `--svg-bg`.
-- `--localise` writes a new font and attempts to compose missing Latin glyphs using base + combining marks.
-- `--subset` writes a TTF subset by keeping only requested characters (plus required composite dependencies), and writes a sidecar report JSON.
-- `--convert woff` wraps a TTF/OTF sfnt font into WOFF (table-level deflate where beneficial).
-- `--convert sfnt|ttf|otf` decodes WOFF back to sfnt bytes and writes with requested/default extension.
-- Subset character sources can be combined: `--subset-chars`, `--subset-file`, `--subset-lang`.
-- Use `--subset-report <path>` to override the default report path (`<out>.report.json`).
-- If combining marks are missing, it will try simple fallback punctuation (e.g. dot/comma) for proof-of-concept.
-- When composition happens, a sidecar report is written to `<output>.report.json` listing how each glyph was generated.
+## Commands
+
+- `coverage`
+  - Default: full language coverage table
+  - `--supported`: only languages meeting threshold (`--min-coverage`, default `100`)
+  - `--missing --lang <code>`: missing chars for one language
+  - `--list-languages`: print available language codes
+  - `--json`: JSON output for coverage/supported/missing modes
+
+- `inspect`
+  - Consolidated report: metadata, glyph stats, table list, supported languages, kerning sample stats
+  - Options: `--min-coverage`, `--kerning-chars`, `--kerning-limit`
+
+- `svg`
+  - Generate SVG text paths; stdout by default or `--out <file>`
+  - Options: `--font-size`, `--fill`, `--stroke`, `--stroke-width`, `--padding`, `--line-height`, `--letter-spacing`, `--use-kerning`, `--bg`
+
+- `localise`
+  - Writes localized font variant and optional composition sidecar report
+  - Options: `--lang <code>`, `--out <file>`
+
+- `subset`
+  - Writes subset TTF and sidecar report JSON
+  - Sources can be combined: `--chars`, `--file`, `--lang`
+  - Options: `--out <file>`, `--report <file>`
+
+- `convert`
+  - `--to woff`: TTF/OTF sfnt -> WOFF
+  - `--to sfnt|ttf|otf`: WOFF -> sfnt output
+  - Option: `--out <file>`
+
+## Conversion Matrix
+
+| Input | `--to` | Status | Notes |
+|---|---|---|---|
+| `ttf` | `woff` | supported | Wraps sfnt tables into WOFF 1.0 |
+| `otf` | `woff` | supported | Wraps OTTO/CFF sfnt tables into WOFF 1.0 |
+| `woff` (ttf payload) | `sfnt` | supported | Decodes to sfnt bytes; extension defaults to `.ttf` |
+| `woff` (otf payload) | `sfnt` | supported | Decodes to sfnt bytes; extension defaults to `.otf` |
+| `woff` (ttf payload) | `ttf` | supported | Validates payload flavor is TrueType |
+| `woff` (otf payload) | `otf` | supported | Validates payload flavor is OTTO/CFF |
+| `woff` (otf payload) | `ttf` | rejected | Use `--to otf` or `--to sfnt` |
+| `woff` (ttf payload) | `otf` | rejected | Use `--to ttf` or `--to sfnt` |
+| `woff2` | any | unsupported | CLI convert currently supports WOFF 1.0 only |
+
+Important:
+- The CLI does not transcode outlines between TrueType and CFF.
+- `convert` is a container/table transformation path (`sfnt <-> woff`), not a glyph model conversion path.
+- For `--to sfnt`, if your explicit `--out` extension mismatches decoded flavor, the CLI emits a warning.
+
+## JSON Output Contract
+
+All commands support `--json` with a consistent envelope:
+
+- Success:
+
+```json
+{
+  "ok": true,
+  "command": "<subcommand>",
+  "data": { }
+}
+```
+
+- Error:
+
+```json
+{
+  "ok": false,
+  "command": "<subcommand-or-null>",
+  "error": {
+    "code": "E_USAGE|E_INPUT|E_IO|E_COMMAND|E_INTERNAL",
+    "message": "human readable message"
+  }
+}
+```
+
+## Exit Codes
+
+- `0`: success
+- `2`: usage/argument error (`E_USAGE`)
+- `3`: input validation error (`E_INPUT`)
+- `4`: IO/file error (`E_IO`)
+- `5`: command execution error (`E_COMMAND`)
+- `10`: unexpected internal failure (`E_INTERNAL`)
 
 ## Limitations
+
 - Composition currently targets BMP characters only (cmap format 4 rebuild).
 - Subset currently targets BMP `cmap` output (format 4) and glyf/loca-based TTF fonts.
 - CFF/CFF2 fonts are not supported for writing yet.
@@ -64,8 +135,9 @@ node proj/fontparser/index.mjs --font /tmp/SourceSerif4-Regular.woff --convert o
 - WOFF conversion currently targets WOFF 1.0 only (`sfnt <-> woff`), not WOFF2.
 
 ## Fallback Rules (Current)
-- Acute/grave/etc: fallback to `"."`, `"'"`, ``"` ``, `"^"`, `"~"` when marks are missing.
+
+- Acute/grave/etc: fallback to `"."`, `"'"`, ``"`"``, `"^"`, `"~"` when marks are missing.
 - Cedilla/ogonek: fallback to comma/dot below.
 - Breve: fallback to `"v"` when missing.
-- Stroke/overlay (`ł/Ł`): fallback to `"-"` or `"—"` and **rotate -12°** for a slanted bar.
+- Stroke/overlay (`ł/Ł`): fallback to `"-"` or `"—"` and rotate `-12°` for a slanted bar.
 - Dotless `ı`: prefer removing the dot if the `i` glyph is composite; otherwise fallback maps to `l`.
