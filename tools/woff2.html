@@ -33,12 +33,12 @@
     </label>
     <button id="decoderBtn" type="button">Enable browser decoder</button>
 </div>
-<div class="hint">Default browser decoder path: <code>wawoff2</code> from unpkg (sets <code>setWoff2Decoder(...)</code>).</div>
+<div class="hint">Default browser decoder path: <code>woff2-encoder</code> ESM, with <code>wawoff2</code> fallback.</div>
 <div id="status" class="hint"></div>
 <canvas id="myDrawing" width="1000" height="420"></canvas>
 
 <script type="module">
-    import { FontParserWOFF2, CanvasRenderer, setWoff2Decoder } from '../dist/index.js';
+    import { FontParserWOFF2, CanvasRenderer, setWoff2Decoder, setWoff2DecoderAsync } from '../dist/index.js';
     import { clearCanvas } from './shared/canvas-utils.js';
     import { setStatus } from './shared/status-ui.js';
     import { getFontList } from './shared/font-catalog.js';
@@ -56,15 +56,25 @@
     const ctx = canvas.getContext('2d');
 
     const sampleFonts = getFontList('woff2Samples');
+    const DEFAULT_DECODER_ESM = 'https://cdn.jsdelivr.net/npm/woff2-encoder@2.0.0/+esm';
     const DEFAULT_DECODER_SCRIPT = 'https://unpkg.com/wawoff2@2.0.1/build/decompress_binding.js';
+    const SAMPLE_TEXT_BY_LABEL = {
+        'Noto Sans subset (Latin)': 'Hello WOFF2',
+        'Noto Sans Hebrew subset': 'שלום עולם',
+        'Noto Naskh Arabic subset': 'مرحبا',
+        'Roboto Variable subset': 'Variable WOFF2',
+        'Font Awesome icons subset': '\uf007 \uf013 \uf0c0 \uf0f3'
+    };
 
     let font = null;
     let decoderReady = false;
+    let decoderLabel = 'none';
 
     populateFontSelect(sampleSelect, sampleFonts);
 
     textInput.addEventListener('input', render);
     sizeInput.addEventListener('input', render);
+    sampleSelect.addEventListener('change', applySampleTextFromSelection);
 
     decoderBtn.addEventListener('click', async () => {
         try {
@@ -89,8 +99,8 @@
             setStatus(status, `Loading ${file.name}...`, 'info');
             const parser = await FontParserWOFF2.fromArrayBufferAsync(await file.arrayBuffer());
             font = parser;
-            setStatus(status, `Loaded ${file.name}`, 'success');
             render();
+            setStatus(status, `Loaded ${file.name} (${decoderLabel})`, 'success');
         } catch (err) {
             font = null;
             clearCanvas(canvas, ctx);
@@ -104,8 +114,8 @@
             setStatus(status, `Loading ${label}...`, 'info');
             const parser = await FontParserWOFF2.fromArrayBufferAsync(await fetchArrayBuffer(url));
             font = parser;
-            setStatus(status, `Loaded ${label}`, 'success');
             render();
+            setStatus(status, `Loaded ${label} (${decoderLabel})`, 'success');
         } catch (err) {
             font = null;
             clearCanvas(canvas, ctx);
@@ -117,27 +127,43 @@
         if (decoderReady) return;
         const globalDecode = globalThis?.WOFF2?.decode;
         if (typeof globalDecode === 'function') {
-            setWoff2Decoder((bytes) => globalDecode(bytes));
+            setWoff2Decoder((bytes) => toUint8Array(globalDecode(toTightArrayBuffer(bytes))));
             decoderReady = true;
+            decoderLabel = 'global WOFF2.decode';
             return;
         }
 
         setStatus(status, 'Setting up browser WOFF2 decoder...', 'info');
+        const esmDecoder = await loadDecoderEsm(DEFAULT_DECODER_ESM);
+        if (typeof esmDecoder === 'function') {
+            setWoff2DecoderAsync(async (bytes) => toUint8Array(await esmDecoder(toTightArrayBuffer(bytes))));
+            decoderReady = true;
+            decoderLabel = 'woff2-encoder';
+            return;
+        }
+
         const moduleRef = await loadWawoff2Module(DEFAULT_DECODER_SCRIPT);
         if (!moduleRef || typeof moduleRef.decompress !== 'function') {
             throw new Error('Decoder module loaded but Module.decompress is unavailable.');
         }
 
         setWoff2Decoder((bytes) => {
-            const decoded = moduleRef.decompress(bytes);
-            if (decoded instanceof Uint8Array) return decoded;
-            if (decoded instanceof ArrayBuffer) return new Uint8Array(decoded);
-            if (ArrayBuffer.isView(decoded)) {
-                return new Uint8Array(decoded.buffer, decoded.byteOffset, decoded.byteLength);
-            }
-            throw new Error('Decoder returned unsupported byte type.');
+            return toUint8Array(moduleRef.decompress(toTightArrayBuffer(bytes)));
         });
         decoderReady = true;
+        decoderLabel = 'wawoff2';
+    }
+
+    async function loadDecoderEsm(url) {
+        try {
+            const mod = await import(url);
+            if (typeof mod?.decompress === 'function') return mod.decompress;
+            if (typeof mod?.default === 'function') return mod.default;
+            if (mod?.default && typeof mod.default.decompress === 'function') return mod.default.decompress;
+            return null;
+        } catch {
+            return null;
+        }
     }
 
     async function loadWawoff2Module(src) {
@@ -178,6 +204,38 @@
         return moduleRef;
     }
 
+    function toTightArrayBuffer(bytes) {
+        if (!bytes) return new ArrayBuffer(0);
+        if (bytes instanceof ArrayBuffer) return bytes;
+        const view = bytes instanceof Uint8Array ? bytes : toUint8Array(bytes);
+        const start = view.byteOffset;
+        const end = start + view.byteLength;
+        if (start === 0 && end === view.buffer.byteLength) return view.buffer;
+        return view.buffer.slice(start, end);
+    }
+
+    function toUint8Array(value) {
+        if (value instanceof Uint8Array) {
+            return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+        }
+        if (value instanceof ArrayBuffer) {
+            return new Uint8Array(value);
+        }
+        if (ArrayBuffer.isView(value)) {
+            return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+        }
+        throw new Error('Decoder returned unsupported byte type.');
+    }
+
+    function applySampleTextFromSelection() {
+        const selected = getSelectedFont(sampleSelect, sampleFonts);
+        if (!selected) return;
+        const sampleText = SAMPLE_TEXT_BY_LABEL[selected.name];
+        if (sampleText) {
+            textInput.value = sampleText;
+        }
+    }
+
     function render() {
         if (!font) return;
         clearCanvas(canvas, ctx);
@@ -207,6 +265,7 @@
             setStatus(status, 'WOFF2 browser decoder ready. Loading first sample...', 'success');
             const first = sampleFonts[0];
             if (first) {
+                applySampleTextFromSelection();
                 await loadWoff2Url(first.url, first.name);
             }
         } catch (err) {
