@@ -24,6 +24,10 @@ Additional fixtures for broader demo/test coverage across scripts and formats:
   - Coverage: Khmer script variable TTF
   - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosanskhmer/NotoSansKhmer%5Bwdth%2Cwght%5D.ttf
   - SHA256: `f37a8431a0c5d5ed2f81a767417546aca576a81fb7eff9c924d46aecf828f2ca`
+- `NotoSerifKhmer-VF.ttf`
+  - Coverage: Khmer serif variable TTF
+  - Source: https://github.com/notofonts/khmer/releases/download/NotoSerifKhmer-v2.004/NotoSerifKhmer-v2.004.zip
+  - SHA256: `3fb93df65112aa9ec847521f84fcfcf26535ecb4b111d647c44188dc96af5cfa`
 - `NotoSansHebrew-VF.ttf`
   - Coverage: Hebrew script variable TTF
   - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosanshebrew/NotoSansHebrew%5Bwdth%2Cwght%5D.ttf
@@ -52,6 +56,10 @@ Additional fixtures for broader demo/test coverage across scripts and formats:
   - Coverage: Myanmar script variable TTF
   - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosansmyanmar/NotoSansMyanmar%5Bwdth%2Cwght%5D.ttf
   - SHA256: `7abbbfbe2514105d7ce94937aee3feb2ba89b73a256c8b77b5866bd9b83e32ec`
+- `NotoSerifMyanmar-VF.ttf`
+  - Coverage: Myanmar serif variable TTF
+  - Source: https://github.com/notofonts/myanmar/releases/download/NotoSerifMyanmar-v2.106/NotoSerifMyanmar-v2.106.zip
+  - SHA256: `a8dea6b4fec9db92ac90ad4f710e8a50cd8e8e17a117f2c7eeffdb4de7be4785`
 - `NotoSansSinhala-VF.ttf`
   - Coverage: Sinhala script variable TTF
   - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssinhala/NotoSansSinhala%5Bwdth%2Cwght%5D.ttf
@@ -72,6 +80,10 @@ Additional fixtures for broader demo/test coverage across scripts and formats:
   - Coverage: Lao script variable TTF
   - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosanslao/NotoSansLao%5Bwdth%2Cwght%5D.ttf
   - SHA256: `9608b94603a82d09a8038946f9775242f99e3b3459b7f1e4d5b335b578cd7ab3`
+- `NotoSerifLao-VF.ttf`
+  - Coverage: Lao serif variable TTF
+  - Source: https://github.com/notofonts/lao/releases/download/NotoSerifLao-v2.003/NotoSerifLao-v2.003.zip
+  - SHA256: `33aa77b8ad78abacad0d78d9629ab73ac44e7937dd39c0782885ccf0981a8e4a`
 - `NotoSansMalayalam-VF.ttf`
   - Coverage: Malayalam script variable TTF
   - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosansmalayalam/NotoSansMalayalam%5Bwdth%2Cwght%5D.ttf
