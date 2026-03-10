@@ -634,3 +634,40 @@ test('hint vm experimental: top-level ENDF is treated as no-op', () => {
   assert.equal(result.executed, true);
   assert.equal(result.unsupportedOpcodeCount, 0);
 });
+
+test('hint vm experimental: IDEF can define and execute a custom opcode body', () => {
+  const vm = new TrueTypeHintVM();
+  const glyph = makeGlyph([{ x: 0, y: 0, onCurve: true, endOfContour: true }]);
+
+  // IDEF(op=0x90){ PUSH 42 } ENDF; invoke 0x90; write result into p0.x via SCFS.
+  const program = [0xB0, 0x90, 0x89, 0xB0, 0x2A, 0x2D, 0x90, 0xB0, 0x00, 0x23, 0x48];
+  const result = vm.runPrograms(glyph, [program], { cvtValues: [] });
+  assert.equal(result.unsupportedOpcodeCount, 0);
+  assert.equal(glyph.points[0].x, 42);
+});
+
+test('hint vm experimental: MIRP respects autoFlip=false with signed CVT direction', () => {
+  const vm = new TrueTypeHintVM();
+  const glyph = makeGlyph([
+    { x: 0, y: 0, onCurve: true, endOfContour: false },
+    { x: 20, y: 0, onCurve: true, endOfContour: true }
+  ]);
+
+  // SVTCA[x], SRP0(p0), FLIPOFF, MIRP p1 to cvt0=-16 => p1 ends at -16
+  const program = [0x01, 0xB0, 0x00, 0x10, 0x4E, 0xB0, 0x00, 0xB0, 0x01, 0xE0];
+  vm.runPrograms(glyph, [program], { cvtValues: [-16] });
+  assert.equal(glyph.points[1].x, -16);
+});
+
+test('hint vm experimental: MIRP keeps original direction when autoFlip=true', () => {
+  const vm = new TrueTypeHintVM();
+  const glyph = makeGlyph([
+    { x: 0, y: 0, onCurve: true, endOfContour: false },
+    { x: 20, y: 0, onCurve: true, endOfContour: true }
+  ]);
+
+  // SVTCA[x], SRP0(p0), FLIPON, MIRP p1 with cvt0=-16 => keep original (+x) side
+  const program = [0x01, 0xB0, 0x00, 0x10, 0x4D, 0xB0, 0x00, 0xB0, 0x01, 0xE0];
+  vm.runPrograms(glyph, [program], { cvtValues: [-16] });
+  assert.equal(glyph.points[1].x, 16);
+});

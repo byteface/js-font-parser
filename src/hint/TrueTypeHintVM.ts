@@ -55,6 +55,7 @@ type HintVmState = {
     zp1: ZoneId;
     zp2: ZoneId;
     functions: Map<number, number[]>;
+    instructionDefs: Map<number, number[]>;
     callDepth: number;
     deltaBase: number;
     deltaShift: number;
@@ -110,6 +111,7 @@ export class TrueTypeHintVM {
             zp1: 1,
             zp2: 1,
             functions: new Map(),
+            instructionDefs: new Map(),
             callDepth: 0,
             deltaBase: 9,
             deltaShift: 3
@@ -177,6 +179,19 @@ export class TrueTypeHintVM {
                 if (end >= 0) {
                     const body = program.slice(ip + 1, end);
                     state.functions.set(fnId, body);
+                    ip = end + 1;
+                    continue;
+                }
+                state.unsupportedOpcodeCount++;
+                ip += 1;
+                continue;
+            }
+            if (opcode === 0x89) {
+                const opId = this.pop(state) & 0xff;
+                const end = this.findEndf(program, ip + 1);
+                if (end >= 0) {
+                    const body = program.slice(ip + 1, end);
+                    state.instructionDefs.set(opId, body);
                     ip = end + 1;
                     continue;
                 }
@@ -551,6 +566,12 @@ export class TrueTypeHintVM {
                 ip += 1;
                 continue;
             }
+            if (opcode === 0x7e || opcode === 0x7f) {
+                // SANGW / AA rasterization controls: consume selector, no geometry effect in this VM.
+                this.pop(state);
+                ip += 1;
+                continue;
+            }
             if (opcode === 0x7c) {
                 state.roundMode = 'up';
                 ip += 1;
@@ -869,6 +890,15 @@ export class TrueTypeHintVM {
                 continue;
             }
 
+            const idef = state.instructionDefs.get(opcode);
+            if (idef && state.callDepth < MAX_CALL_DEPTH) {
+                state.callDepth++;
+                this.executeProgram(idef, state);
+                state.callDepth--;
+                ip += 1;
+                continue;
+            }
+
             state.unsupportedOpcodeCount++;
             ip += 1;
         }
@@ -1023,7 +1053,8 @@ export class TrueTypeHintVM {
         const refValue = this.getPointAxis(state, state.rp0Zone, state.rp0, state.projectionAxis);
         const current = this.getPointAxis(state, pointZone, pointIndex, state.projectionAxis);
         const signedDist = current - refValue;
-        const sign = signedDist < 0 ? -1 : 1;
+        const originalSign = signedDist < 0 ? -1 : 1;
+        let sign = originalSign;
         const roundFlag = (opcode & 0x04) !== 0;
         const minDistFlag = (opcode & 0x08) !== 0;
         const setRp0Flag = (opcode & 0x10) !== 0;
@@ -1031,7 +1062,11 @@ export class TrueTypeHintVM {
         const originalAbsDistance = Math.abs(signedDist);
         let targetAbsDistance = originalAbsDistance;
         if (cvtIndex != null) {
-            const cvtValue = Math.abs(this.getCvt(state, cvtIndex));
+            const rawCvtValue = this.getCvt(state, cvtIndex);
+            const cvtValue = Math.abs(rawCvtValue);
+            if (!state.autoFlip && rawCvtValue !== 0) {
+                sign = rawCvtValue < 0 ? -1 : 1;
+            }
             targetAbsDistance = Math.abs(cvtValue - originalAbsDistance) > state.cvtCutIn ? originalAbsDistance : cvtValue;
             if (Math.abs(targetAbsDistance - state.singleWidthValue) < state.singleWidthCutIn) {
                 targetAbsDistance = Math.abs(state.singleWidthValue);
