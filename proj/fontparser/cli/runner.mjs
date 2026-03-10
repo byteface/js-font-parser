@@ -72,7 +72,7 @@ export async function runCli(args, ctx, actions) {
     actions.printKerningStats(font, sample, Math.floor(limit), Boolean(args["kerning-stats-json"]));
   }
 
-  if (args.overview) {
+  if (args.inspect || args.overview) {
     const minCoveragePct = args["min-coverage"] != null ? Number(args["min-coverage"]) : 90;
     const sample = args["kerning-chars"] != null
       ? String(args["kerning-chars"])

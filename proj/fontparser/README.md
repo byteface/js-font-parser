@@ -19,7 +19,7 @@ node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --list-languages
 node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --tables
 node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --glyph-stats
 node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --kerning-stats --kerning-chars "AVWToY.,tafy" --kerning-limit 12
-node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --overview
+node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --inspect
 node proj/fontparser/index.mjs --font truetypefonts/GothamNarrow-Ultra.otf --svg-text "AVATAR\nType test" --svg-font-size 84 --svg-fill "#111" --svg-bg "#f8f8f8" --svg-padding 20 --svg-line-height 1.25 --svg-use-kerning true --svg-out /tmp/type-test.svg
 node proj/fontparser/index.mjs --font truetypefonts/DiscoMo.ttf --localise es --out /tmp/DiscoMo-es.ttf
 node proj/fontparser/index.mjs --font truetypefonts/noto/NotoSans-Regular.ttf --subset --subset-lang en,es --out /tmp/NotoSans-en-es-subset.ttf
@@ -43,7 +43,8 @@ node proj/fontparser/index.mjs --font /tmp/SourceSerif4-Regular.woff --convert o
 - `--glyph-stats` prints simple/composite/empty counts; `--glyph-stats-json` prints JSON.
 - `--kerning-stats` samples pair kerning over a character set; `--kerning-stats-json` prints JSON.
 - Tune kerning sampling with `--kerning-chars` and `--kerning-limit`.
-- `--overview` prints a consolidated report: metadata, glyph stats, table list, filtered supported languages, and kerning sample stats.
+- `--inspect` prints a consolidated report: metadata, glyph stats, table list, filtered supported languages, and kerning sample stats.
+- `--overview` is kept as a backward-compatible alias for `--inspect`.
 - `--svg-text` generates SVG text paths directly from a font and prints to stdout unless `--svg-out` is provided.
 - SVG tuning flags: `--svg-font-size`, `--svg-fill`, `--svg-stroke`, `--svg-stroke-width`, `--svg-padding`, `--svg-line-height`, `--svg-letter-spacing`, `--svg-use-kerning`, `--svg-bg`.
 - `--localise` writes a new font and attempts to compose missing Latin glyphs using base + combining marks.
