@@ -1,4 +1,6 @@
 import type { Diagnostic as FontDiagnostic, DiagnosticFilter } from '../types/Diagnostics.js';
+import { GlyfCompositeDescript } from '../table/GlyfCompositeDescript.js';
+import type { IGlyphDescription } from '../table/IGlyphDescription.js';
 import { Table } from '../table/Table.js';
 import { CursivePosFormat1 } from '../table/CursivePosFormat1.js';
 import { MarkBasePosFormat1 } from '../table/MarkBasePosFormat1.js';
@@ -16,6 +18,7 @@ import {
     getDiagnostics as getParserDiagnostics,
     pickBestCmapFormat
 } from './ParserShared.js';
+import { GlyphData } from './GlyphData.js';
 
 type DiagnosticState = {
     diagnostics: FontDiagnostic[];
@@ -25,6 +28,16 @@ type DiagnosticState = {
 type PositionedGlyph = { glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number };
 type MarkAnchorType = 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit';
 type MarkAnchor = { type: MarkAnchorType; classIndex: number; x: number; y: number; componentIndex?: number };
+type GlyphBuildOptions = {
+    maxGlyphs?: number | null;
+    glyf?: any | null;
+    hmtx?: any | null;
+    gvar?: any | null;
+    variationCoords?: number[];
+    cff?: any | null;
+    cff2?: any | null;
+    cffIncludePhantoms?: boolean;
+};
 
 export abstract class BaseFontParser {
     private diagnostics: FontDiagnostic[] = [];
@@ -93,6 +106,328 @@ export abstract class BaseFontParser {
     protected abstract getUnitsPerEmForShared(): number;
     protected abstract setVariationCoordsInternal(coords: number[]): void;
     protected abstract onVariationCoordsUpdated(coords: number[]): void;
+
+    protected getGlyphShared(i: number, options: GlyphBuildOptions): GlyphData | null {
+        const maxGlyphs = options.maxGlyphs ?? null;
+        if (i < 0 || (maxGlyphs != null && i >= maxGlyphs)) return null;
+        const glyf = options.glyf ?? null;
+        const hmtx = options.hmtx ?? null;
+        const gvar = options.gvar ?? null;
+        const variationCoords = options.variationCoords ?? [];
+        const cff = options.cff ?? null;
+        const cff2 = options.cff2 ?? null;
+        const cffIncludePhantoms = options.cffIncludePhantoms ?? true;
+
+        const description = glyf?.getDescription?.(i) ?? null;
+        if (description != null) {
+            let desc = description;
+            let lsb = hmtx?.getLeftSideBearing?.(i) ?? 0;
+            let advance = hmtx?.getAdvanceWidth?.(i) ?? 0;
+            if (gvar && variationCoords.length > 0) {
+                const basePointCount = description.getPointCount();
+                const isComposite = description.isComposite();
+                const descriptionComponents = description instanceof GlyfCompositeDescript && Array.isArray((description as any).components)
+                    ? (description as any).components
+                    : [];
+                const componentCount = isComposite && description instanceof GlyfCompositeDescript
+                    ? (descriptionComponents.length > 0 ? descriptionComponents.length : basePointCount)
+                    : 0;
+                let transformSlotCount = 0;
+                if (isComposite && description instanceof GlyfCompositeDescript) {
+                    for (const comp of descriptionComponents) {
+                        transformSlotCount += comp.getTransformSlotCount();
+                    }
+                }
+                const compositePointCount = isComposite ? (componentCount + transformSlotCount) : basePointCount;
+                const gvarPointCount = compositePointCount + 4;
+                const deltas = gvar.getDeltasForGlyph(i, variationCoords, gvarPointCount);
+                if (deltas) {
+                    const base = description;
+                    const fullDx = deltas.dx;
+                    const fullDy = deltas.dy;
+                    let dx: number[] = [];
+                    let dy: number[] = [];
+                    let compDx: number[] | null = null;
+                    let compDy: number[] | null = null;
+                    let compXScale: number[] | null = null;
+                    let compYScale: number[] | null = null;
+                    let compScale01: number[] | null = null;
+                    let compScale10: number[] | null = null;
+
+                    if (!isComposite) {
+                        dx = fullDx.slice(0, basePointCount);
+                        dy = fullDy.slice(0, basePointCount);
+                        const touched = deltas.touched.slice(0, basePointCount);
+                        while (dx.length < basePointCount) dx.push(0);
+                        while (dy.length < basePointCount) dy.push(0);
+                        while (touched.length < basePointCount) touched.push(false);
+                        this.applyIupDeltasShared(base, dx, dy, touched);
+                    } else if (base instanceof GlyfCompositeDescript) {
+                        compDx = new Array(componentCount).fill(0);
+                        compDy = new Array(componentCount).fill(0);
+                        compXScale = new Array(componentCount).fill(0);
+                        compYScale = new Array(componentCount).fill(0);
+                        compScale01 = new Array(componentCount).fill(0);
+                        compScale10 = new Array(componentCount).fill(0);
+                        for (let c = 0; c < componentCount; c++) {
+                            compDx[c] = fullDx[c] ?? 0;
+                            compDy[c] = fullDy[c] ?? 0;
+                        }
+                        let tIndex = componentCount;
+                        for (let c = 0; c < componentCount; c++) {
+                            const comp = descriptionComponents[c];
+                            if (!comp) continue;
+                            if (comp.hasTwoByTwo()) {
+                                const idx1 = tIndex++;
+                                const idx2 = tIndex++;
+                                compXScale[c] = (fullDx[idx1] ?? 0) / 0x4000;
+                                compScale01[c] = (fullDy[idx1] ?? 0) / 0x4000;
+                                compScale10[c] = (fullDx[idx2] ?? 0) / 0x4000;
+                                compYScale[c] = (fullDy[idx2] ?? 0) / 0x4000;
+                            } else if (comp.hasXYScale()) {
+                                const idx = tIndex++;
+                                compXScale[c] = (fullDx[idx] ?? 0) / 0x4000;
+                                compYScale[c] = (fullDy[idx] ?? 0) / 0x4000;
+                            } else if (comp.hasScale()) {
+                                const idx = tIndex++;
+                                const delta = (fullDx[idx] ?? 0) / 0x4000;
+                                compXScale[c] = delta;
+                                compYScale[c] = delta;
+                            }
+                        }
+                    }
+
+                    const phantomBase = isComposite ? compositePointCount : basePointCount;
+                    const lsbDelta = fullDx[phantomBase] ?? 0;
+                    const rsbDelta = fullDx[phantomBase + 1] ?? 0;
+                    lsb += lsbDelta;
+                    advance += (rsbDelta - lsbDelta);
+
+                    let minX = Infinity;
+                    let maxX = -Infinity;
+                    let minY = Infinity;
+                    let maxY = -Infinity;
+                    for (let p = 0; p < basePointCount; p++) {
+                        const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
+                        const compositeComponents = compositeBase && Array.isArray(compositeBase.components) ? compositeBase.components : [];
+                        const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                        const compIndex = comp ? compositeComponents.indexOf(comp) : -1;
+                        let x = base.getXCoordinate(p);
+                        let y = base.getYCoordinate(p);
+                        if (comp && compIndex >= 0 && glyf) {
+                            const gd = glyf.getDescription(comp.glyphIndex);
+                            if (gd) {
+                                const localIndex = p - comp.firstIndex;
+                                const px = gd.getXCoordinate(localIndex);
+                                const py = gd.getYCoordinate(localIndex);
+                                const xscale = comp.xscale + (compXScale?.[compIndex] ?? 0);
+                                const yscale = comp.yscale + (compYScale?.[compIndex] ?? 0);
+                                const scale01 = comp.scale01 + (compScale01?.[compIndex] ?? 0);
+                                const scale10 = comp.scale10 + (compScale10?.[compIndex] ?? 0);
+                                const ox = comp.xtranslate + (compDx?.[compIndex] ?? 0);
+                                const oy = comp.ytranslate + (compDy?.[compIndex] ?? 0);
+                                x = (px * xscale) + (py * scale10) + ox;
+                                y = (px * scale01) + (py * yscale) + oy;
+                            }
+                        } else {
+                            const rawDx = fullDx[p] ?? 0;
+                            const rawDy = fullDy[p] ?? 0;
+                            const transformed = comp && typeof (comp as any).hasTransform === 'function' && (comp as any).hasTransform() && typeof (comp as any).transformDelta === 'function'
+                                ? (comp as any).transformDelta(rawDx, rawDy)
+                                : null;
+                            const pointDx = transformed ? (transformed.dx ?? rawDx) : rawDx;
+                            const pointDy = transformed ? (transformed.dy ?? rawDy) : rawDy;
+                            const ox = compIndex >= 0 && compDx ? compDx[compIndex] ?? 0 : 0;
+                            const oy = compIndex >= 0 && compDy ? compDy[compIndex] ?? 0 : 0;
+                            x = base.getXCoordinate(p) + pointDx + ox;
+                            y = base.getYCoordinate(p) + pointDy + oy;
+                        }
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+
+                    desc = {
+                        getPointCount: () => base.getPointCount(),
+                        getContourCount: () => base.getContourCount(),
+                        getEndPtOfContours: (c: number) => base.getEndPtOfContours(c),
+                        getFlags: (p: number) => base.getFlags(p),
+                        getXCoordinate: (p: number) => {
+                            const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
+                            const compositeComponents = compositeBase && Array.isArray(compositeBase.components) ? compositeBase.components : [];
+                            const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            const compIndex = comp ? compositeComponents.indexOf(comp) : -1;
+                            if (comp && compIndex >= 0 && glyf) {
+                                const gd = glyf.getDescription(comp.glyphIndex);
+                                if (gd) {
+                                    const localIndex = p - comp.firstIndex;
+                                    const px = gd.getXCoordinate(localIndex);
+                                    const py = gd.getYCoordinate(localIndex);
+                                    const xscale = comp.xscale + (compXScale?.[compIndex] ?? 0);
+                                    const yscale = comp.yscale + (compYScale?.[compIndex] ?? 0);
+                                    const scale01 = comp.scale01 + (compScale01?.[compIndex] ?? 0);
+                                    const scale10 = comp.scale10 + (compScale10?.[compIndex] ?? 0);
+                                    const ox = comp.xtranslate + (compDx?.[compIndex] ?? 0);
+                                    return (px * xscale) + (py * scale10) + ox;
+                                }
+                            }
+                            const rawDx = fullDx[p] ?? 0;
+                            const rawDy = fullDy[p] ?? 0;
+                            const transformed = comp && typeof (comp as any).hasTransform === 'function' && (comp as any).hasTransform() && typeof (comp as any).transformDelta === 'function'
+                                ? (comp as any).transformDelta(rawDx, rawDy)
+                                : null;
+                            const pointDx = transformed ? (transformed.dx ?? rawDx) : rawDx;
+                            const ox = compIndex >= 0 && compDx ? compDx[compIndex] ?? 0 : 0;
+                            return base.getXCoordinate(p) + pointDx + ox;
+                        },
+                        getYCoordinate: (p: number) => {
+                            const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
+                            const compositeComponents = compositeBase && Array.isArray(compositeBase.components) ? compositeBase.components : [];
+                            const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            const compIndex = comp ? compositeComponents.indexOf(comp) : -1;
+                            if (comp && compIndex >= 0 && glyf) {
+                                const gd = glyf.getDescription(comp.glyphIndex);
+                                if (gd) {
+                                    const localIndex = p - comp.firstIndex;
+                                    const px = gd.getXCoordinate(localIndex);
+                                    const py = gd.getYCoordinate(localIndex);
+                                    const xscale = comp.xscale + (compXScale?.[compIndex] ?? 0);
+                                    const yscale = comp.yscale + (compYScale?.[compIndex] ?? 0);
+                                    const scale01 = comp.scale01 + (compScale01?.[compIndex] ?? 0);
+                                    const scale10 = comp.scale10 + (compScale10?.[compIndex] ?? 0);
+                                    const oy = comp.ytranslate + (compDy?.[compIndex] ?? 0);
+                                    return (px * scale01) + (py * yscale) + oy;
+                                }
+                            }
+                            const rawDx = fullDx[p] ?? 0;
+                            const rawDy = fullDy[p] ?? 0;
+                            const transformed = comp && typeof (comp as any).hasTransform === 'function' && (comp as any).hasTransform() && typeof (comp as any).transformDelta === 'function'
+                                ? (comp as any).transformDelta(rawDx, rawDy)
+                                : null;
+                            const pointDy = transformed ? (transformed.dy ?? rawDy) : rawDy;
+                            const oy = compIndex >= 0 && compDy ? compDy[compIndex] ?? 0 : 0;
+                            return base.getYCoordinate(p) + pointDy + oy;
+                        },
+                        getXMaximum: () => (maxX !== -Infinity ? maxX : base.getXMaximum()),
+                        getXMinimum: () => (minX !== Infinity ? minX : base.getXMinimum()),
+                        getYMaximum: () => (maxY !== -Infinity ? maxY : base.getYMaximum()),
+                        getYMinimum: () => (minY !== Infinity ? minY : base.getYMinimum()),
+                        isComposite: () => base.isComposite(),
+                        resolve: () => base.resolve()
+                    };
+                }
+            }
+            return new GlyphData(desc, lsb, advance);
+        }
+
+        if (cff2) {
+            const cff2Desc = cff2.getGlyphDescription(i);
+            if (cff2Desc) {
+                return new GlyphData(
+                    cff2Desc,
+                    hmtx?.getLeftSideBearing?.(i) ?? 0,
+                    hmtx?.getAdvanceWidth?.(i) ?? 0,
+                    { isCubic: true, includePhantoms: false }
+                );
+            }
+        }
+        if (cff) {
+            const cffDesc = cff.getGlyphDescription(i);
+            if (cffDesc) {
+                return new GlyphData(
+                    cffDesc,
+                    hmtx?.getLeftSideBearing?.(i) ?? 0,
+                    hmtx?.getAdvanceWidth?.(i) ?? 0,
+                    { isCubic: true, includePhantoms: cffIncludePhantoms }
+                );
+            }
+        }
+        if (glyf) {
+            const lsb = hmtx?.getLeftSideBearing?.(i) ?? 0;
+            const advance = hmtx?.getAdvanceWidth?.(i) ?? 0;
+            const emptyDesc: IGlyphDescription = {
+                getPointCount: () => 0,
+                getContourCount: () => 0,
+                getEndPtOfContours: () => -1,
+                getFlags: () => 0,
+                getXCoordinate: () => 0,
+                getYCoordinate: () => 0,
+                getXMaximum: () => 0,
+                getXMinimum: () => 0,
+                getYMaximum: () => 0,
+                getYMinimum: () => 0,
+                isComposite: () => false,
+                resolve: () => { /* no-op for empty glyph */ }
+            };
+            return new GlyphData(emptyDesc, lsb, advance);
+        }
+        return null;
+    }
+
+    protected applyIupDeltasShared(base: IGlyphDescription, dx: number[], dy: number[], touched: boolean[]): void {
+        const pointCount = base.getPointCount();
+        if (pointCount === 0) return;
+        const endPts: number[] = [];
+        for (let c = 0; c < base.getContourCount(); c++) {
+            endPts.push(base.getEndPtOfContours(c));
+        }
+
+        let start = 0;
+        for (const end of endPts) {
+            const indices: number[] = [];
+            const touchedIndices: number[] = [];
+            for (let i = start; i <= end; i++) {
+                indices.push(i);
+                if (touched[i]) touchedIndices.push(i);
+            }
+            if (touchedIndices.length === 0) {
+                start = end + 1;
+                continue;
+            }
+            if (touchedIndices.length === 1) {
+                const idx = touchedIndices[0];
+                for (const j of indices) {
+                    dx[j] = dx[idx];
+                    dy[j] = dy[idx];
+                }
+                start = end + 1;
+                continue;
+            }
+
+            const contour = indices;
+            const total = contour.length;
+            const order = touchedIndices.map(idx => contour.indexOf(idx)).sort((a, b) => a - b);
+            const coordsX = contour.map(idx => base.getXCoordinate(idx));
+            const coordsY = contour.map(idx => base.getYCoordinate(idx));
+
+            for (let t = 0; t < order.length; t++) {
+                const a = order[t];
+                const b = order[(t + 1) % order.length];
+                let idx = (a + 1) % total;
+                while (idx !== b) {
+                    const globalIndex = contour[idx];
+                    const ax = coordsX[a];
+                    const bx = coordsX[b];
+                    const ay = coordsY[a];
+                    const by = coordsY[b];
+                    const px = coordsX[idx];
+                    const py = coordsY[idx];
+                    dx[globalIndex] = this.interpolateShared(ax, bx, dx[contour[a]], dx[contour[b]], px);
+                    dy[globalIndex] = this.interpolateShared(ay, by, dy[contour[a]], dy[contour[b]], py);
+                    idx = (idx + 1) % total;
+                }
+            }
+            start = end + 1;
+        }
+    }
+
+    protected interpolateShared(aCoord: number, bCoord: number, aDelta: number, bDelta: number, pCoord: number): number {
+        if (aCoord === bCoord) return aDelta;
+        const t = (pCoord - aCoord) / (bCoord - aCoord);
+        const clamped = Math.max(0, Math.min(1, t));
+        return aDelta + (bDelta - aDelta) * clamped;
+    }
 
     protected getGposAttachmentAnchors(glyphId: number, subtables?: Array<any>): MarkAnchor[] {
         const gpos = this.getGposTableForLayout();
