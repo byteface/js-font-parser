@@ -59,6 +59,9 @@ const sentences = [
 
 const fontOptions = [
   ...DEFAULT_DEMO_FONTS,
+  ...getFontList("allGlyphs").filter((f) =>
+    /Noto Sans Regular|Noto Sans CJK SC|Noto Sans CJK JP|Noto Sans CJK KR|Noto Serif CJK SC|Noto Serif CJK JP|Noto Serif CJK KR|Roboto VF|Arimo Variable|Source Code Pro Bold|SourceCodePro-Regular|Minecraft|slkscr|JoeJack/i.test(f.name)
+  ),
   ...getFontList("kerning").slice(0, 6),
   ...getFontList("featureMatrix").slice(0, 6)
 ].filter((f, i, arr) => arr.findIndex((x) => x.url === f.url) === i);

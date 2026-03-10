@@ -37,6 +37,18 @@
     <label>Gravity
       <input id="gravInput" type="range" min="4" max="18" value="10" />
     </label>
+    <label>Stack Size
+      <input id="countInput" type="range" min="6" max="28" value="12" />
+    </label>
+    <label>Glyph Size
+      <input id="sizeInput" type="range" min="72" max="180" value="120" />
+    </label>
+    <label>Drop Spread
+      <input id="spreadInput" type="range" min="120" max="920" value="600" />
+    </label>
+    <label>Bounce
+      <input id="bounceInput" type="range" min="0" max="40" value="8" />
+    </label>
     <button id="resetBtn">Reset</button>
   </div>
   <canvas id="stage" width="1200" height="600"></canvas>
@@ -53,6 +65,10 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     const fontSelect = document.getElementById("fontSelect");
     const textInput = document.getElementById("textInput");
     const gravInput = document.getElementById("gravInput");
+    const countInput = document.getElementById("countInput");
+    const sizeInput = document.getElementById("sizeInput");
+    const spreadInput = document.getElementById("spreadInput");
+    const bounceInput = document.getElementById("bounceInput");
     const resetBtn = document.getElementById("resetBtn");
 
     const scale = 30;
@@ -60,6 +76,7 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     let world = null;
     let font = null;
     let bodies = [];
+    let bodyMeta = new Map();
 
     function pxToWorld(v) { return v / scale; }
     function worldToPx(v) { return v * scale; }
@@ -143,7 +160,7 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
       return out;
     }
 
-    function addGlyphOutlineFixtures(body, glyph, glyphScale, bounds) {
+    function addGlyphOutlineFixtures(body, glyph, glyphScale, bounds, bounce) {
       const localContours = splitContours(glyph)
         .map((contour) => sampleContour(contour, 0.18))
         .map((contour) => contourToLocal(contour, glyphScale, bounds))
@@ -180,7 +197,7 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         body.createFixture(planck.Polygon(vertices), {
           density: 0.95,
           friction: 0.3,
-          restitution: 0.05
+          restitution: Math.max(0.05, bounce)
         });
       } catch {
         return { ok: false, centerX: 0, centerY: 0 };
@@ -192,22 +209,81 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     function setupWorld() {
       const gravity = Number(gravInput.value);
       world = planck.World({ gravity: planck.Vec2(0, gravity) });
+      bodyMeta = new Map();
       const ground = world.createBody();
       const floorThickness = pxToWorld(36);
       ground.createFixture(
         planck.Box(pxToWorld(canvas.width + 120) * 0.5, floorThickness, planck.Vec2(pxToWorld(canvas.width) * 0.5, floorY + floorThickness * 0.5), 0),
         { friction: 0.9, restitution: 0.02 }
       );
+      ground.setUserData({ kind: "ground" });
+
+      world.on("post-solve", (contact, impulse) => {
+        if (!contact) return;
+        const fixtureA = contact.getFixtureA();
+        const fixtureB = contact.getFixtureB();
+        const bodyA = fixtureA ? fixtureA.getBody() : null;
+        const bodyB = fixtureB ? fixtureB.getBody() : null;
+        if (!bodyA || !bodyB) return;
+
+        const dataA = bodyA.getUserData();
+        const dataB = bodyB.getUserData();
+        const isGlyphA = dataA && dataA.kind === "glyph";
+        const isGlyphB = dataB && dataB.kind === "glyph";
+        if (!isGlyphA && !isGlyphB) return;
+
+        const normalImpulses = impulse && impulse.normalImpulses ? impulse.normalImpulses : [];
+        let totalImpulse = 0;
+        for (let i = 0; i < normalImpulses.length; i++) totalImpulse += Math.abs(normalImpulses[i] || 0);
+        if (!Number.isFinite(totalImpulse) || totalImpulse <= 0.01) return;
+        const heatBoost = Math.min(1, totalImpulse * 0.11);
+
+        if (isGlyphA) {
+          const m = bodyMeta.get(bodyA);
+          if (m) m.heat = Math.min(1, m.heat + heatBoost);
+        }
+        if (isGlyphB) {
+          const m = bodyMeta.get(bodyB);
+          if (m) m.heat = Math.min(1, m.heat + heatBoost);
+        }
+        const worldManifold = contact.getWorldManifold ? contact.getWorldManifold(null) : null;
+        const points = worldManifold && Array.isArray(worldManifold.points) ? worldManifold.points.filter(Boolean) : [];
+        if (!points.length) return;
+
+        if (isGlyphA) {
+          const m = bodyMeta.get(bodyA);
+          if (m) {
+            for (const p of points) {
+              const lp = bodyA.getLocalPoint(p);
+              m.hits.push({ x: lp.x, y: lp.y, life: 1, intensity: Math.min(1, heatBoost) });
+            }
+          }
+        }
+        if (isGlyphB) {
+          const m = bodyMeta.get(bodyB);
+          if (m) {
+            for (const p of points) {
+              const lp = bodyB.getLocalPoint(p);
+              m.hits.push({ x: lp.x, y: lp.y, life: 1, intensity: Math.min(1, heatBoost) });
+            }
+          }
+        }
+      });
     }
 
     function buildPile() {
       bodies = [];
       const unitsPerEm = typeof font.getUnitsPerEm === "function" ? font.getUnitsPerEm() : 1000;
-      const sizePx = 120;
+      const sizePx = Number(sizeInput.value);
       const glyphScale = sizePx / unitsPerEm;
+      const bounce = Number(bounceInput.value) / 100;
+      const stackSize = Number(countInput.value);
+      const spread = Number(spreadInput.value);
+      const spawnLeft = Math.max(60, canvas.width * 0.5 - spread * 0.5);
+      const impulseScale = 0.12 + bounce * 0.7;
 
       const chars = Array.from(textInput.value || "");
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < stackSize; i++) {
         const ch = chars[i % chars.length] || "A";
         const glyph = font.getGlyphByChar(ch);
         if (!glyph) continue;
@@ -216,22 +292,29 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         const h = Math.max(10, (bounds.maxY - bounds.minY) * glyphScale);
         const body = world.createBody({
           type: "dynamic",
-          position: planck.Vec2(pxToWorld(80 + Math.random() * 600), pxToWorld(40 + Math.random() * 120)),
-          angle: (Math.random() - 0.5) * 0.24,
+          position: planck.Vec2(pxToWorld(spawnLeft + Math.random() * spread), pxToWorld(36 + Math.random() * 160)),
+          angle: (Math.random() - 0.5) * (0.16 + bounce * 1.4),
           bullet: true,
           linearDamping: 0.65,
           angularDamping: 1.45
         });
-        const result = addGlyphOutlineFixtures(body, glyph, glyphScale, bounds);
+        const result = addGlyphOutlineFixtures(body, glyph, glyphScale, bounds, bounce);
         if (!result.ok) {
           body.createFixture(planck.Box(pxToWorld(w * 0.3), pxToWorld(h * 0.3)), {
             density: 0.9,
             friction: 0.65,
-            restitution: 0.08
+            restitution: Math.max(0.08, bounce)
           });
         }
-        body.applyLinearImpulse(planck.Vec2((Math.random() - 0.5) * 0.25, Math.random() * 0.08), body.getWorldCenter(), true);
-        bodies.push({ body, glyph, glyphScale, bounds, centerX: result.centerX || 0, centerY: result.centerY || 0 });
+        body.applyLinearImpulse(
+          planck.Vec2((Math.random() - 0.5) * impulseScale, Math.random() * impulseScale * 0.35),
+          body.getWorldCenter(),
+          true
+        );
+        const item = { body, glyph, glyphScale, bounds, centerX: result.centerX || 0, centerY: result.centerY || 0, heat: 0, hits: [] };
+        body.setUserData({ kind: "glyph" });
+        bodyMeta.set(body, item);
+        bodies.push(item);
       }
     }
 
@@ -264,6 +347,14 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 
       for (const item of bodies) {
         const { body, glyph, glyphScale, bounds, centerX = 0, centerY = 0 } = item;
+        item.heat = Math.max(0, item.heat * 0.92);
+        const heat = item.heat;
+        const fillR = Math.round(244 + ((255 - 244) * heat * 0.2));
+        const fillG = Math.round(241 - (86 * heat * 0.2));
+        const fillB = Math.round(236 - (140 * heat * 0.2));
+        const strokeR = Math.round(180 + (70 * heat * 0.35));
+        const strokeG = Math.round(169 - (89 * heat * 0.35));
+        const strokeB = Math.round(160 - (120 * heat * 0.35));
         const pos = body.getPosition();
         const angle = body.getAngle();
         ctx.save();
@@ -273,8 +364,38 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
           x: -(bounds.minX * glyphScale) - worldToPx(centerX),
           y: (bounds.maxY * glyphScale) - worldToPx(centerY),
           scale: glyphScale,
-          styles: { fillStyle: "#f4f1ec", strokeStyle: "#b4a9a0", lineWidth: 1 }
+          styles: {
+            fillStyle: `rgb(${fillR}, ${fillG}, ${fillB})`,
+            strokeStyle: `rgb(${strokeR}, ${strokeG}, ${strokeB})`,
+            lineWidth: 1 + (0.25 * heat)
+          }
         });
+
+        if (item.hits.length) {
+          ctx.save();
+          ctx.globalCompositeOperation = "lighter";
+          for (let i = item.hits.length - 1; i >= 0; i--) {
+            const hit = item.hits[i];
+            hit.life -= 0.06;
+            if (hit.life <= 0) {
+              item.hits.splice(i, 1);
+              continue;
+            }
+            const alpha = hit.life * 0.75;
+            const radius = 4 + (13 * hit.intensity * (1 - hit.life));
+            const hx = worldToPx(hit.x);
+            const hy = worldToPx(hit.y);
+            const grad = ctx.createRadialGradient(hx, hy, 0, hx, hy, radius);
+            grad.addColorStop(0, `rgba(255, 245, 215, ${alpha})`);
+            grad.addColorStop(0.5, `rgba(255, 163, 66, ${alpha * 0.85})`);
+            grad.addColorStop(1, "rgba(255, 120, 32, 0)");
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(hx, hy, radius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
         ctx.restore();
       }
     }
@@ -290,6 +411,10 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     fontSelect.addEventListener("change", boot);
     textInput.addEventListener("input", reset);
     gravInput.addEventListener("input", reset);
+    countInput.addEventListener("input", reset);
+    sizeInput.addEventListener("input", reset);
+    spreadInput.addEventListener("input", reset);
+    bounceInput.addEventListener("input", reset);
     resetBtn.addEventListener("click", reset);
 
     boot();

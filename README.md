@@ -107,7 +107,6 @@ Full API details: `docs/API.md`
 
 Examples:
 - `demos/glyph-playground.html`: deformable interactive glyph physics
-- `demos/path-runner.html`: path traversal + node pausing
 - `tools/metadata.html`: metadata inspection
 - `tools/unicode-coverage.html`: block coverage inspection
 

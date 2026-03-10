@@ -108,6 +108,10 @@
             Built-in font
             <select id="fontSelect">
                 <option value="../truetypefonts/color/TwemojiMozilla.ttf">Twemoji Mozilla (COLR/CPAL)</option>
+                <option value="../truetypefonts/color/nabla/Nabla[EDPT,EHLT].ttf">Nabla (COLRv1 variable)</option>
+                <option value="../truetypefonts/color/colrv1/test_glyphs-glyf_colr_1.ttf">COLRv1 Test Shapes</option>
+                <option value="../truetypefonts/svg/TwitterColorEmoji-SVGinOT-15.1.0/TwitterColorEmoji-SVGinOT.ttf">Twitter Color Emoji (SVG)</option>
+                <option value="../truetypefonts/curated/NotoColorEmoji.ttf">Noto Color Emoji</option>
             </select>
         </label>
         <label>
@@ -149,7 +153,7 @@
             </div>
         </div>
         <div class="hint">
-            This demo uses a built-in COLR/CPAL font. Upload your own to compare. SVG glyphs are not rendered here.
+            This demo includes local COLR, COLRv1, SVG-in-OpenType, and emoji fixtures. Some fonts render in full color, others currently serve as table-presence and fallback specimens.
         </div>
     </div>
 
@@ -176,6 +180,13 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         const outlineContainer = document.getElementById("outlineContainer");
 
         let font = null;
+        const SAMPLE_TEXTS = {
+            "../truetypefonts/color/TwemojiMozilla.ttf": "😀😁😂🤣😃😄😅😆😉😊😍😘😜",
+            "../truetypefonts/color/nabla/Nabla[EDPT,EHLT].ttf": "COLOR",
+            "../truetypefonts/color/colrv1/test_glyphs-glyf_colr_1.ttf": "ABCDEF",
+            "../truetypefonts/svg/TwitterColorEmoji-SVGinOT-15.1.0/TwitterColorEmoji-SVGinOT.ttf": "😀🥳🚀🎉",
+            "../truetypefonts/curated/NotoColorEmoji.ttf": "😀🥳🚀🎉"
+        };
 
         function clearContainers() {
             palette.innerHTML = "";
@@ -214,6 +225,48 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
             const svg = SVGFont.exportStringSvg(font, text, { scale: 1, fill: "#6b4e3d", stroke: "#6b4e3d" });
             outlineInfo.textContent = "Rendered from outline data.";
             outlineContainer.innerHTML = svg;
+        }
+
+        async function renderSvgGlyphPreview(text) {
+            outlineContainer.innerHTML = "";
+            if (!font || typeof font.getSvgDocumentForGlyphAsync !== "function") {
+                outlineInfo.textContent = "SVG glyph preview not available.";
+                return;
+            }
+
+            const glyphIds = Array.from(text)
+                .map((ch) => font.getGlyphIndexByChar(ch))
+                .filter((glyphId) => glyphId != null);
+            for (const glyphId of glyphIds) {
+                const result = await font.getSvgDocumentForGlyphAsync(glyphId);
+                if (!result?.svgText) continue;
+
+                const svgStart = result.svgText.indexOf("<svg");
+                const cleaned = svgStart >= 0 ? result.svgText.slice(svgStart) : result.svgText;
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(cleaned, "image/svg+xml");
+                const svgEl = doc.querySelector("svg");
+                if (!svgEl) continue;
+
+                if (!svgEl.getAttribute("viewBox")) {
+                  const width = parseFloat(svgEl.getAttribute("width") || "128");
+                  const height = parseFloat(svgEl.getAttribute("height") || "128");
+                  if (Number.isFinite(width) && Number.isFinite(height)) {
+                    svgEl.setAttribute("viewBox", `0 0 ${width} ${height}`);
+                  }
+                }
+
+                svgEl.setAttribute("width", "100%");
+                svgEl.setAttribute("height", "220");
+                svgEl.setAttribute("preserveAspectRatio", "xMidYMid meet");
+                outlineContainer.appendChild(svgEl);
+                outlineInfo.textContent = result.isCompressed
+                    ? "Rendered from SVG table data (compressed source)."
+                    : "Rendered from SVG table data.";
+                return;
+            }
+
+            outlineInfo.textContent = "SVG table present, but no preview glyph was found for the current text.";
         }
 
         function renderColorGlyphs(text, colr) {
@@ -280,6 +333,11 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
             return FontParser.load(url);
         }
 
+        function syncSampleText() {
+            const sample = SAMPLE_TEXTS[fontSelect.value];
+            if (sample) textInput.value = sample;
+        }
+
         async function parseAndRender() {
             clearContainers();
             const file = fileInput.files && fileInput.files[0];
@@ -298,13 +356,19 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
             renderPalette(cpal);
 
             const text = textInput.value || "";
-            if (!colr || !cpal) {
+            if (svg && !colr) {
+                colorInfo.textContent = "SVG glyph table detected. Canvas color rendering is not implemented here, but table presence and outline fallback are shown.";
+            } else if (!colr || !cpal) {
                 colorInfo.textContent = "COLR/CPAL tables not found in this font.";
             } else {
-                colorInfo.textContent = "Rendered with COLR/CPAL layers.";
+                colorInfo.textContent = `Rendered with ${colr.version >= 1 ? "COLRv1" : "COLR/CPAL"} layers.`;
             }
             renderColorGlyphs(text, colr);
-            renderOutlineGlyph(text);
+            if (svg && !colr) {
+                await renderSvgGlyphPreview(text);
+            } else {
+                renderOutlineGlyph(text);
+            }
         }
 
         renderBtn.addEventListener("click", parseAndRender);
@@ -312,9 +376,11 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         sizeInput.addEventListener("input", parseAndRender);
         fontSelect.addEventListener("change", () => {
             fileInput.value = "";
+            syncSampleText();
             parseAndRender();
         });
 
+        syncSampleText();
         parseAndRender();
     </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>

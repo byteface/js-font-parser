@@ -105,6 +105,9 @@
     <label>Intensity
       <input id="intensity" type="range" min="6" max="28" value="16" />
     </label>
+    <label>Lifespan
+      <input id="lifespan" type="range" min="60" max="420" value="180" />
+    </label>
   </div>
   <div class="statline">
     <div class="chip" id="particleStat">0 particles</div>
@@ -119,6 +122,7 @@ import { CREATIVE_FONTS, populateCreativeFonts, loadFontByUrl, getGlyphGeometry 
 const fontSel = document.getElementById("font");
 const charInput = document.getElementById("char");
 const intensityInput = document.getElementById("intensity");
+const lifespanInput = document.getElementById("lifespan");
 const particleStat = document.getElementById("particleStat");
 const fontStat = document.getElementById("fontStat");
 populateCreativeFonts(fontSel);
@@ -138,36 +142,85 @@ class Particle {
     this.vy = 0;
     this.seed = random(1000);
     this.life = random(0.35, 1);
+    this.homeRadius = random(18, 40);
+    this.target = null;
+    this.ttl = this.pickLife();
+    this.pickTarget();
+  }
+
+  pickLife() {
+    const base = Number(lifespanInput.value) || 180;
+    return max(20, floor(base * random(0.72, 1.28)));
+  }
+
+  pickTarget() {
+    if (!geom?.points?.length) {
+      this.target = { x: this.anchor.x, y: this.anchor.y };
+      return;
+    }
+    const p = geom.points[floor(random(geom.points.length))];
+    this.target = p ? { x: p.x, y: p.y } : { x: this.anchor.x, y: this.anchor.y };
+  }
+
+  respawn() {
+    const jitter = this.homeRadius * 0.65;
+    this.x = this.anchor.x + random(-jitter, jitter);
+    this.y = this.anchor.y + random(-jitter, jitter);
+    this.px = this.x;
+    this.py = this.y;
+    this.vx = random(-0.2, 0.2);
+    this.vy = random(-0.2, 0.2);
+    this.life = random(0.5, 1);
+    this.ttl = this.pickLife();
+    this.pickTarget();
   }
 
   update(time, intensity) {
     const dx = this.anchor.x - this.x;
     const dy = this.anchor.y - this.y;
     const dist = max(16, sqrt(dx * dx + dy * dy));
+    const tx = (this.target?.x ?? this.anchor.x) - this.x;
+    const ty = (this.target?.y ?? this.anchor.y) - this.y;
+    const tdist = max(12, sqrt(tx * tx + ty * ty));
     const n = noise(this.x * 0.002, this.y * 0.002, this.seed + time * 0.00018);
     const angle = n * TAU * 2.0 + dist * 0.01;
     const swirl = intensity * 0.034;
-    const pull = intensity * 0.0075;
+    const pull = intensity * 0.015;
+    const seek = intensity * 0.0085;
 
     this.px = this.x;
     this.py = this.y;
-    this.vx += cos(angle) * swirl + dx / dist * pull;
-    this.vy += sin(angle) * swirl + dy / dist * pull;
+    this.vx += cos(angle) * swirl + dx / dist * pull + tx / tdist * seek;
+    this.vy += sin(angle) * swirl + dy / dist * pull + ty / tdist * seek;
     this.vx *= 0.93;
     this.vy *= 0.93;
     this.x += this.vx;
     this.y += this.vy;
+
+    // Softly keep particles near their spawn anchors.
+    const homeDx = this.x - this.anchor.x;
+    const homeDy = this.y - this.anchor.y;
+    const homeDist = sqrt(homeDx * homeDx + homeDy * homeDy);
+    if (homeDist > this.homeRadius) {
+      const clamp = this.homeRadius / max(1, homeDist);
+      const tx = this.anchor.x + homeDx * clamp;
+      const ty = this.anchor.y + homeDy * clamp;
+      this.x = lerp(this.x, tx, 0.48);
+      this.y = lerp(this.y, ty, 0.48);
+      this.vx *= 0.72;
+      this.vy *= 0.72;
+    }
+
+    if (tdist < 12 || random() < 0.004) this.pickTarget();
+    if (abs(this.vx) + abs(this.vy) < 0.05) {
+      this.vx += random(-0.35, 0.35);
+      this.vy += random(-0.35, 0.35);
+    }
+
+    this.ttl -= 1;
     this.life *= 0.9988;
 
-    if (dist < 9 || this.life < 0.14) {
-      this.x = this.anchor.x + random(-20, 20);
-      this.y = this.anchor.y + random(-20, 20);
-      this.px = this.x;
-      this.py = this.y;
-      this.vx = 0;
-      this.vy = 0;
-      this.life = random(0.5, 1);
-    }
+    if (dist < 9 || this.life < 0.14 || this.ttl <= 0) this.respawn();
   }
 
   draw(intensity) {
@@ -239,6 +292,9 @@ new p5(() => {
 fontSel.addEventListener("change", rebuild);
 charInput.addEventListener("input", rebuild);
 intensityInput.addEventListener("input", rebuild);
+lifespanInput.addEventListener("input", () => {
+  for (const p of particles) p.ttl = p.pickLife();
+});
 </script>
 <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
