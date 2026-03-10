@@ -17,7 +17,6 @@ import {
   CanvasRenderer,
   CanvasGlyph,
   LayoutEngine,
-  Table,
   getSupportedLanguages,
   supportsLanguage,
   listLanguages,
@@ -43,6 +42,11 @@ From raw bytes:
 const font = FontParser.fromArrayBuffer(arrayBuffer);
 ```
 
+`FontParser.fromArrayBuffer(...)` returns:
+- `FontParserTTF` for sfnt/TTF/OTF input
+- `FontParserWOFF` for WOFF input
+- `FontParserTTF` for WOFF2 input (decoded through the configured WOFF2 decoder)
+
 Direct loaders are also available:
 
 ```js
@@ -56,7 +60,7 @@ font.getGlyphIndexByChar("H");               // number | null
 font.getGlyphByChar("H");                    // GlyphData | null
 font.getGlyphPointsByChar("H", { sampleStep: 2 });
 // -> [{ x, y, onCurve, endOfContour }, ...]
-font.getGlyphIndicesForString("hello");      // number[] (TTF)
+font.getGlyphIndicesForString("hello");      // number[]
 font.getGlyphIndicesForStringWithGsub("office", ["liga"], ["DFLT", "latn"]);
 ```
 
@@ -171,13 +175,15 @@ font.getMarkAnchorsForGlyph(glyphId);
 
 ## Table Access
 
-```js
-import { Table } from "js-font-parser";
+Use numeric OpenType table tags:
 
-font.getTableByType(Table.GSUB);
-font.getTableByType(Table.GPOS);
-font.getTableByType(Table.pName);
+```js
+font.getTableByType(0x47535542); // GSUB
+font.getTableByType(0x47504f53); // GPOS
+font.getTableByType(0x6e616d65); // name
 ```
+
+`Table` constants exist internally in `src/table/Table.ts`, but are not exported from the npm package entrypoint.
 
 ## Metadata API
 
