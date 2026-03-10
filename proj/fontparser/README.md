@@ -18,6 +18,7 @@ node proj/fontparser/index.mjs coverage --list-languages
 # inspect
 node proj/fontparser/index.mjs inspect --font truetypefonts/DiscoMo.ttf
 node proj/fontparser/index.mjs inspect --font truetypefonts/DiscoMo.ttf --min-coverage 95 --kerning-chars "AVWToY.,tafy" --kerning-limit 12
+node proj/fontparser/index.mjs inspect --font truetypefonts/curated-extra/woff2/NotoSans-Regular-subset.woff2 --woff2-decoder woff2
 
 # svg
 node proj/fontparser/index.mjs svg --font truetypefonts/GothamNarrow-Ultra.otf --text "AVATAR\nType test" --font-size 84 --fill "#111" --bg "#f8f8f8" --padding 20 --line-height 1.25 --use-kerning true --out /tmp/type-test.svg
@@ -38,6 +39,7 @@ node proj/fontparser/index.mjs convert --font /tmp/SourceSerif4-Regular.woff --t
 # machine-readable output
 node proj/fontparser/index.mjs inspect --font truetypefonts/DiscoMo.ttf --json
 node proj/fontparser/index.mjs coverage --font truetypefonts/DiscoMo.ttf --supported --min-coverage 90 --json
+node proj/fontparser/index.mjs inspect --font truetypefonts/curated-extra/woff2/NotoSans-Regular-subset.woff2 --woff2-decoder woff2 --json
 ```
 
 ## Commands
@@ -51,7 +53,7 @@ node proj/fontparser/index.mjs coverage --font truetypefonts/DiscoMo.ttf --suppo
 
 - `inspect`
   - Consolidated report: metadata, glyph stats, table list, scripts (GSUB/GPOS), supported languages, variation axes, color-table summary, diagnostics summary, kerning sample stats
-  - Options: `--min-coverage`, `--kerning-chars`, `--kerning-limit`
+  - Options: `--min-coverage`, `--kerning-chars`, `--kerning-limit`, `--woff2-decoder`
 
 - `svg`
   - Generate SVG text paths; stdout by default or `--out <file>`
@@ -59,12 +61,12 @@ node proj/fontparser/index.mjs coverage --font truetypefonts/DiscoMo.ttf --suppo
 
 - `localise`
   - Writes localized font variant and optional composition sidecar report
-  - Options: `--lang <code>`, `--out <file>`
+  - Options: `--lang <code>`, `--out <file>`, `--woff2-decoder`
 
 - `subset`
   - Writes subset TTF and sidecar report JSON
   - Sources can be combined: `--chars`, `--file`, `--lang`
-  - Options: `--out <file>`, `--report <file>`
+  - Options: `--out <file>`, `--report <file>`, `--woff2-decoder`
 
 - `convert`
   - `--to woff`: TTF/OTF sfnt -> WOFF
@@ -89,6 +91,7 @@ Important:
 - The CLI does not transcode outlines between TrueType and CFF.
 - `convert` is a container/table transformation path (`sfnt <-> woff`), not a glyph model conversion path.
 - For `--to sfnt`, if your explicit `--out` extension mismatches decoded flavor, the CLI emits a warning.
+- WOFF2 input for non-`convert` commands requires a decoder module via `--woff2-decoder` (for example `woff2`).
 
 ## JSON Output Contract
 
@@ -133,6 +136,22 @@ All commands support `--json` with a consistent envelope:
 - CFF/CFF2 fonts are not supported for writing yet.
 - Some marks may be missing in the source font; those composites will be skipped.
 - WOFF conversion currently targets WOFF 1.0 only (`sfnt <-> woff`), not WOFF2.
+
+## WOFF2 Decoder (CLI)
+
+For WOFF2 fonts in `inspect`, `coverage`, `svg`, `subset`, and `localise`, pass:
+
+```bash
+node proj/fontparser/index.mjs inspect --font path/to/font.woff2 --woff2-decoder woff2 --json
+```
+
+Decoder module contract:
+- Export a function that decodes WOFF2 bytes.
+- Or export an object with `decode(data)`.
+- Return `Uint8Array`, `Buffer`, or `ArrayBuffer`.
+
+If decoder is missing, CLI returns:
+- `E_COMMAND` (exit code `5`) with a hint to use `--woff2-decoder`.
 
 ## Fallback Rules (Current)
 

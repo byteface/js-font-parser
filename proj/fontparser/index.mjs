@@ -3,12 +3,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { FontParser } from "../../dist/data/FontParser.js";
+import { decodeWoff2, setWoff2Decoder, setWoff2DecoderAsync } from "../../dist/utils/Woff2Decoder.js";
 import { supportsLanguage } from "../../dist/utils/LanguageSupport.js";
 
 import { parseArgs, parseBoolean, printUsage } from "./cli/args.mjs";
 import { runCli } from "./cli/runner.mjs";
-import { EXIT_CODES, inputError, ioError } from "./cli/errors.mjs";
+import { EXIT_CODES, commandError, inputError, ioError } from "./cli/errors.mjs";
 import { writeJsonError } from "./cli/response.mjs";
+import { configureWoff2Decoder } from "./cli/woff2-decoder.mjs";
 import {
   getCoverageRows,
   getSupportedRows,
@@ -37,10 +39,25 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const TAG_WOFF2 = 0x774f4632; // "wOF2"
 
 function loadFont(pathLike) {
   const data = fs.readFileSync(pathLike);
   return FontParser.fromArrayBuffer(asArrayBuffer(data));
+}
+
+function mapWoff2DecoderError(err) {
+  const message = String(err?.message || err || "");
+  if (!message.includes("WOFF2 decoder not available")) return err;
+  return commandError(
+    'WOFF2 decoder not available for CLI. Pass --woff2-decoder <module-or-path> (example: "woff2").'
+  );
+}
+
+function isWoff2Buffer(buffer) {
+  if (!buffer || buffer.length < 4) return false;
+  const sig = buffer.readUInt32BE(0);
+  return sig === TAG_WOFF2;
 }
 
 async function main() {
@@ -56,6 +73,7 @@ async function main() {
   const isKnownCommand = knownCommands.has(parsed.command);
   const allowNoFont = !isKnownCommand || (parsed.command === "coverage" && Boolean(args["list-languages"]));
   const fontPath = args.font != null ? String(args.font) : "";
+  await configureWoff2Decoder(args["woff2-decoder"], setWoff2Decoder, setWoff2DecoderAsync);
   if (!allowNoFont && !fontPath) {
     throw inputError("--font is required.");
   }
@@ -69,7 +87,22 @@ async function main() {
       throw ioError(`Failed to read font file: ${resolved}`, { cause: String(err?.message || err) });
     }
   }
-  const font = (fontPath && parsed.command !== "convert") ? loadFont(resolved) : null;
+  let font = null;
+  if (fontPath && parsed.command !== "convert") {
+    try {
+      font = loadFont(resolved);
+    } catch (err) {
+      throw mapWoff2DecoderError(err);
+    }
+    if (isWoff2Buffer(originalBuffer)) {
+      try {
+        const decoded = decodeWoff2(new Uint8Array(originalBuffer));
+        originalBuffer = Buffer.from(decoded);
+      } catch (err) {
+        throw mapWoff2DecoderError(err);
+      }
+    }
+  }
 
   await runCli(parsed, {
     font,
@@ -120,10 +153,11 @@ main().catch(err => {
   const parsed = parseArgs();
   const args = parsed.args ?? {};
   const asJson = Boolean(args.json);
+  const mapped = mapWoff2DecoderError(err);
   if (asJson) {
-    writeJsonError(err, parsed.command || null);
+    writeJsonError(mapped, parsed.command || null);
   } else {
-    console.error(`${err?.code || "E_INTERNAL"}: ${err?.message || String(err)}`);
+    console.error(`${mapped?.code || "E_INTERNAL"}: ${mapped?.message || String(mapped)}`);
   }
-  process.exit(Number.isInteger(err?.exitCode) ? err.exitCode : EXIT_CODES.INTERNAL);
+  process.exit(Number.isInteger(mapped?.exitCode) ? mapped.exitCode : EXIT_CODES.INTERNAL);
 });

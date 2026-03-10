@@ -33,13 +33,13 @@ export function parseBoolean(value, defaultValue = false) {
 
 export function usageLines() {
   return [
-    "fontparser coverage --font path.ttf [--supported] [--missing --lang <code>] [--min-coverage 100] [--json] [--list-languages]",
-    "fontparser inspect --font path.ttf [--min-coverage 90] [--kerning-chars \"AVTo\"] [--kerning-limit 10]",
-    "fontparser svg --font path.ttf --text \"Hello\" [--out out.svg] [--font-size 96] [--fill '#111'] [--stroke none] [--stroke-width 0] [--padding 24] [--line-height 1.2] [--letter-spacing 0] [--use-kerning true] [--bg '#fff']",
-    "fontparser subset --font path.ttf [--chars <text>] [--file <txt>] [--lang <code[,code]>] [--out output.ttf] [--report report.json]",
+    "fontparser coverage --font path.ttf [--supported] [--missing --lang <code>] [--min-coverage 100] [--json] [--list-languages] [--woff2-decoder <module-or-path>]",
+    "fontparser inspect --font path.ttf [--min-coverage 90] [--kerning-chars \"AVTo\"] [--kerning-limit 10] [--woff2-decoder <module-or-path>]",
+    "fontparser svg --font path.ttf --text \"Hello\" [--out out.svg] [--font-size 96] [--fill '#111'] [--stroke none] [--stroke-width 0] [--padding 24] [--line-height 1.2] [--letter-spacing 0] [--use-kerning true] [--bg '#fff'] [--woff2-decoder <module-or-path>]",
+    "fontparser subset --font path.ttf [--chars <text>] [--file <txt>] [--lang <code[,code]>] [--out output.ttf] [--report report.json] [--woff2-decoder <module-or-path>]",
     "fontparser convert --font input.ttf --to woff [--out output.woff]",
     "fontparser convert --font input.woff --to sfnt|ttf|otf [--out output.ttf|output.otf]",
-    "fontparser localise --font path.ttf --lang <code> [--out output.ttf]"
+    "fontparser localise --font path.ttf --lang <code> [--out output.ttf] [--woff2-decoder <module-or-path>]"
   ];
 }
 
