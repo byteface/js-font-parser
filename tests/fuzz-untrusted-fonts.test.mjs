@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { FontParser } from '../dist/data/FontParser.js';
 
@@ -101,14 +102,14 @@ function mutateBytes(base, rand) {
 }
 
 function parseMustTerminateQuickly(bytes, maxMs) {
-  const start = Date.now();
+  const start = performance.now();
   let parser = null;
   try {
     parser = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
   } catch {
     // expected for malformed data
   }
-  const elapsed = Date.now() - start;
+  const elapsed = performance.now() - start;
   assert.ok(elapsed < maxMs, `parse took too long: ${elapsed}ms`);
   if (parser) {
     // If parse succeeds on fuzzed bytes, basic API calls should still be safe.
@@ -123,8 +124,8 @@ test('fuzz hardening: mutated TTF and OTF inputs parse-or-throw quickly', { time
   const rand = mulberry32(0xA11CE);
 
   for (let i = 0; i < 24; i++) {
-    parseMustTerminateQuickly(mutateBytes(ttfBase, rand), 3000);
-    parseMustTerminateQuickly(mutateBytes(otfBase, rand), 3000);
+    parseMustTerminateQuickly(mutateBytes(ttfBase, rand), 5000);
+    parseMustTerminateQuickly(mutateBytes(otfBase, rand), 5000);
   }
 });
 

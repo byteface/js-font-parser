@@ -2,8 +2,12 @@
 
 The suite is grouped by concern rather than by discovery order.
 
-- `basic.test.mjs`
+- `font-parser-smoke.test.mjs`
   Core library smoke coverage.
+- `fixture-smoke.test.mjs`
+  Curated fixture and variation smoke coverage.
+- `canvas-glyph-diagnostics.test.mjs`
+  CanvasGlyph load and missing-canvas diagnostics.
 - `text-spacing-controls.test.mjs`
   User-visible spacing and invisible-character behavior.
 - `text-renderers.test.mjs`

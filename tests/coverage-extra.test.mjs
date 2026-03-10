@@ -118,22 +118,6 @@ function listLocalFontFixtures() {
   return out.sort();
 }
 
-const CURATED_FIXTURES = [
-  'truetypefonts/curated/IBMPlexSerif-Regular.ttf',
-  'truetypefonts/curated/FiraSans-Regular.ttf',
-  'truetypefonts/curated/Inter-VF.ttf',
-  'truetypefonts/curated/Roboto-VF.ttf',
-  'truetypefonts/curated/NotoSerif-VF.ttf',
-  'truetypefonts/curated/NotoSansTamil-VF.ttf',
-  'truetypefonts/curated/NotoSansGeorgian-VF.ttf',
-  'truetypefonts/curated/SourceSerif4-Regular.otf',
-  'truetypefonts/curated/SourceSans3-Regular.otf',
-  'truetypefonts/curated/SourceSerif4Variable-Roman.otf',
-  'truetypefonts/curated/SourceSerif4Variable-Italic.otf',
-  'truetypefonts/curated/NotoSansCJKjp-Regular.otf',
-  'truetypefonts/curated/NotoColorEmoji.ttf'
-];
-
 function createTtfParserMock() {
   const parser = Object.create(FontParserTTF.prototype);
   parser.diagnostics = [];
@@ -147,16 +131,6 @@ function createWoffParserMock() {
   parser.diagnosticKeys = new Set();
   return parser;
 }
-
-test('curated fixture list stays in sync with curated folder fonts', () => {
-  const curatedDir = path.resolve(__dirname, '..', 'truetypefonts', 'curated');
-  const actual = fs.readdirSync(curatedDir)
-    .filter((name) => /\.(ttf|otf|woff)$/i.test(name))
-    .map((name) => `truetypefonts/curated/${name}`)
-    .sort();
-  const listed = [...CURATED_FIXTURES].sort();
-  assert.deepEqual(listed, actual);
-});
 
 test('ByteArray reads primitives and guards bounds', () => {
   const raw = new Uint8Array(24);
@@ -293,39 +267,6 @@ test('OTF/CFF font parsing returns glyphs and metadata', () => {
   assert.ok(names.family.length > 0 || names.fullName.length > 0);
 });
 
-test('CFF CID-keyed OTF smoke glyphs keep valid outlines', () => {
-  const otfBytes = readBytes('truetypefonts/curated/NotoSansCJKjp-Regular.otf');
-  const font = FontParser.fromArrayBuffer(toArrayBuffer(otfBytes));
-  assert.ok(font instanceof FontParserTTF);
-
-  for (const ch of ['h', 'e', 'o', 'd']) {
-    const glyph = font.getGlyphByChar(ch);
-    assert.ok(glyph, `expected glyph object for ${ch}`);
-    assert.ok(glyph.getPointCount() > 0, `expected outline points for ${ch}`);
-  }
-});
-
-test('curated fixture fonts parse and expose stable core metadata', () => {
-  for (const fixture of CURATED_FIXTURES) {
-    const bytes = readBytes(fixture);
-    const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
-    assert.ok(font instanceof FontParserTTF, `expected TTF-compatible parser for ${fixture}`);
-
-    // Metadata should always be structured, even if some fields are empty.
-    const meta = font.getMetadata();
-    assert.ok(meta && typeof meta === 'object', `metadata object for ${fixture}`);
-    assert.ok(meta.names && typeof meta.names === 'object', `names section for ${fixture}`);
-    assert.ok(Array.isArray(meta.nameRecords), `name records array for ${fixture}`);
-    assert.equal(typeof meta.style.isItalic, 'boolean', `style.isItalic for ${fixture}`);
-    assert.equal(typeof meta.style.isBold, 'boolean', `style.isBold for ${fixture}`);
-
-    // Parsing should expose at least one core table and a non-negative glyph count.
-    const cmap = font.getTableByType(Table.cmap);
-    assert.ok(cmap, `cmap should exist for ${fixture}`);
-    assert.ok(font.getNumGlyphs() >= 0, `glyph count should be non-negative for ${fixture}`);
-  }
-});
-
 testSweep('all local truetypefonts fixtures are wired into parse smoke coverage', () => {
   const fixtures = listLocalFontFixtures();
   assert.ok(fixtures.length > 0, 'expected local font fixtures under truetypefonts');
@@ -343,105 +284,6 @@ testSweep('all local truetypefonts fixtures are wired into parse smoke coverage'
     assert.ok(Number.isInteger(glyphCount) && glyphCount >= 0, `expected non-negative glyph count for ${fixture}`);
     assert.equal(typeof font.getAscent?.(), 'number', `expected ascent for ${fixture}`);
     assert.equal(typeof font.getDescent?.(), 'number', `expected descent for ${fixture}`);
-  }
-});
-
-test('curated variable fonts expose variation axes and survive axis updates', () => {
-  const variableFixtures = [
-    'truetypefonts/curated/Inter-VF.ttf',
-    'truetypefonts/curated/Roboto-VF.ttf',
-    'truetypefonts/curated/NotoSerif-VF.ttf',
-    'truetypefonts/curated/SourceSerif4Variable-Roman.otf',
-    'truetypefonts/curated/SourceSerif4Variable-Italic.otf'
-  ];
-
-  for (const fixture of variableFixtures) {
-    const bytes = readBytes(fixture);
-    const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
-    const axes = font.getVariationAxes();
-    assert.ok(Array.isArray(axes), `axes should be an array for ${fixture}`);
-
-    if (axes.length > 0) {
-      const minValues = Object.fromEntries(axes.map(a => [a.name, a.minValue]));
-      const maxValues = Object.fromEntries(axes.map(a => [a.name, a.maxValue]));
-      font.setVariationByAxes(minValues);
-      font.setVariationByAxes(maxValues);
-    }
-
-    const layout = font.layoutStringAuto('Hello');
-    assert.ok(Array.isArray(layout), `layout result should be an array for ${fixture}`);
-  }
-});
-
-test('CFF2 variable OTF fixtures survive axis extremes and update outlines', () => {
-  const cff2Fixtures = [
-    'truetypefonts/curated/SourceSerif4Variable-Roman.otf',
-    'truetypefonts/curated/SourceSerif4Variable-Italic.otf'
-  ];
-
-  const getBbox = (glyph) => {
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (let i = 0; i < glyph.getPointCount(); i++) {
-      const p = glyph.getPoint(i);
-      minX = Math.min(minX, p.x);
-      minY = Math.min(minY, p.y);
-      maxX = Math.max(maxX, p.x);
-      maxY = Math.max(maxY, p.y);
-    }
-    return { minX, minY, maxX, maxY };
-  };
-
-  for (const fixture of cff2Fixtures) {
-    const bytes = readBytes(fixture);
-    const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
-    assert.ok(font instanceof FontParserTTF);
-
-    const axes = font.getVariationAxes();
-    assert.ok(Array.isArray(axes), `expected axes array for ${fixture}`);
-    assert.ok(axes.length > 0, `expected variable axes for ${fixture}`);
-
-    const defaults = Object.fromEntries(axes.map(a => [a.name, a.defaultValue]));
-    const mins = Object.fromEntries(axes.map(a => [a.name, a.minValue]));
-    const maxs = Object.fromEntries(axes.map(a => [a.name, a.maxValue]));
-    const outOfRange = Object.fromEntries(axes.map(a => [a.name, a.maxValue + (a.maxValue - a.minValue + 1)]));
-
-    const gid = font.getGlyphIndexByChar('H');
-    assert.ok(gid != null, `expected test glyph id for ${fixture}`);
-
-    font.setVariationByAxes(defaults);
-    const defaultGlyph = font.getGlyph(gid);
-    assert.ok(defaultGlyph, `expected default glyph for ${fixture}`);
-    const defaultBbox = getBbox(defaultGlyph);
-
-    font.setVariationByAxes(mins);
-    const minGlyph = font.getGlyph(gid);
-    assert.ok(minGlyph, `expected min-axis glyph for ${fixture}`);
-    const minBbox = getBbox(minGlyph);
-
-    font.setVariationByAxes(maxs);
-    const maxGlyph = font.getGlyph(gid);
-    assert.ok(maxGlyph, `expected max-axis glyph for ${fixture}`);
-    const maxBbox = getBbox(maxGlyph);
-
-    for (const box of [defaultBbox, minBbox, maxBbox]) {
-      assert.ok(Number.isFinite(box.minX) && Number.isFinite(box.minY) && Number.isFinite(box.maxX) && Number.isFinite(box.maxY));
-    }
-    assert.notDeepEqual(minBbox, maxBbox, `expected outline bbox to vary across axis extremes for ${fixture}`);
-
-    // Out-of-range values should clamp safely and never produce NaN coords.
-    font.setVariationByAxes(outOfRange);
-    const clampedGlyph = font.getGlyph(gid);
-    assert.ok(clampedGlyph, `expected clamped glyph for ${fixture}`);
-    for (let i = 0; i < clampedGlyph.getPointCount(); i++) {
-      const p = clampedGlyph.getPoint(i);
-      assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y), `expected finite point coordinates for ${fixture}`);
-    }
-
-    const layout = font.layoutString('Variable', { gsubFeatures: ['liga'], gpos: true });
-    assert.ok(Array.isArray(layout), `expected layout for ${fixture}`);
   }
 });
 
