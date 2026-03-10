@@ -8,7 +8,7 @@ import {
   getColorLayersForGlyph,
   computeVariationCoords
 } from '../dist/data/ParserApiShared.js';
-import { pickBestCmapFormat } from '../dist/data/ParserShared.js';
+import { FontParserTTF } from '../dist/data/FontParserTTF.js';
 
 function makeGlyph(points) {
   return {
@@ -114,13 +114,14 @@ test('round7 edge: ParserApiShared.getColorLayersForGlyph should not throw when 
   assert.deepEqual(out, [{ glyphId: 10, color: null, paletteIndex: 0 }]);
 });
 
-test('round7 edge: ParserShared.pickBestCmapFormat should ignore null entries in format list', () => {
-  assert.doesNotThrow(() => pickBestCmapFormat([
+test('round7 edge: parser cmap format picker should ignore null entries in format list', () => {
+  const parser = Object.create(FontParserTTF.prototype);
+  assert.doesNotThrow(() => parser.pickBestFormat([
     null,
     { getFormatType: () => 4, mapCharCode: () => 55 }
   ]));
 
-  const fmt = pickBestCmapFormat([
+  const fmt = parser.pickBestFormat([
     null,
     { getFormatType: () => 4, mapCharCode: () => 55 }
   ]);

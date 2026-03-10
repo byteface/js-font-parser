@@ -1,4 +1,5 @@
 import type { Diagnostic as FontDiagnostic, DiagnosticFilter } from '../types/Diagnostics.js';
+import { matchesDiagnosticFilter } from '../types/Diagnostics.js';
 import { GlyfCompositeDescript } from '../table/GlyfCompositeDescript.js';
 import type { IGlyphDescription } from '../table/IGlyphDescription.js';
 import { Table } from '../table/Table.js';
@@ -14,19 +15,7 @@ import { detectScriptTags } from '../utils/ScriptDetector.js';
 import { ByteArray } from '../utils/ByteArray.js';
 import { TableDirectory } from '../table/TableDirectory.js';
 import { TableFactory } from '../table/TableFactory.js';
-import {
-    clearDiagnostics as clearParserDiagnostics,
-    emitDiagnostic as emitParserDiagnostic,
-    getBestCmapFormatFor as selectBestCmapFormatFor,
-    getDiagnostics as getParserDiagnostics,
-    pickBestCmapFormat
-} from './ParserShared.js';
 import { GlyphData } from './GlyphData.js';
-
-type DiagnosticState = {
-    diagnostics: FontDiagnostic[];
-    diagnosticKeys: Set<string>;
-};
 
 type PositionedGlyph = { glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number };
 type MarkAnchorType = 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit';
@@ -40,6 +29,18 @@ type GlyphBuildOptions = {
     cff?: any | null;
     cff2?: any | null;
     cffIncludePhantoms?: boolean;
+};
+
+type CmapFormatLike = {
+    format?: number;
+    getFormatType?: () => number;
+    getGlyphIndex?: (codePoint: number) => number | null;
+    mapCharCode?: (codePoint: number) => number | null;
+};
+
+type CmapLike = {
+    formats: CmapFormatLike[];
+    getCmapFormats: (platformId: number, encodingId: number) => CmapFormatLike[];
 };
 
 export abstract class BaseFontParser {
@@ -77,25 +78,20 @@ export abstract class BaseFontParser {
         context?: Record<string, unknown>,
         onceKey?: string
     ): void {
-        const state: DiagnosticState = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
-        emitParserDiagnostic(state, code, level, phase, message, context, onceKey);
-        this.diagnostics = state.diagnostics ?? [];
-        this.diagnosticKeys = state.diagnosticKeys ?? new Set<string>();
+        if (onceKey) {
+            if (this.diagnosticKeys.has(onceKey)) return;
+            this.diagnosticKeys.add(onceKey);
+        }
+        this.diagnostics.push({ code, level, phase, message, context });
     }
 
     public getDiagnostics(filter?: DiagnosticFilter): FontDiagnostic[] {
-        const state: DiagnosticState = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
-        const out = getParserDiagnostics(state, filter);
-        this.diagnostics = state.diagnostics ?? [];
-        this.diagnosticKeys = state.diagnosticKeys ?? new Set<string>();
-        return out;
+        return this.diagnostics.filter((d) => matchesDiagnosticFilter(d, filter)).slice();
     }
 
     public clearDiagnostics(): void {
-        const state: DiagnosticState = { diagnostics: this.diagnostics, diagnosticKeys: this.diagnosticKeys };
-        clearParserDiagnostics(state);
-        this.diagnostics = state.diagnostics ?? [];
-        this.diagnosticKeys = state.diagnosticKeys ?? new Set<string>();
+        this.diagnostics = [];
+        this.diagnosticKeys.clear();
     }
 
     protected getCmapTableForLookup(): any | null {
@@ -103,11 +99,56 @@ export abstract class BaseFontParser {
     }
 
     protected getBestCmapFormatFor(codePoint: number): any | null {
-        return selectBestCmapFormatFor(this.getCmapTableForLookup(), codePoint);
+        const cmap = this.getCmapTableForLookup() as CmapLike | null;
+        if (!cmap) return null;
+
+        const prefersUcs4 = codePoint > 0xffff;
+        const preferred = prefersUcs4
+            ? [
+                { platformId: 3, encodingId: 10 },
+                { platformId: 0, encodingId: 4 },
+                { platformId: 3, encodingId: 1 },
+                { platformId: 0, encodingId: 3 },
+                { platformId: 0, encodingId: 1 },
+                { platformId: 1, encodingId: 0 }
+            ]
+            : [
+                { platformId: 3, encodingId: 1 },
+                { platformId: 0, encodingId: 3 },
+                { platformId: 0, encodingId: 1 },
+                { platformId: 3, encodingId: 10 },
+                { platformId: 0, encodingId: 4 },
+                { platformId: 1, encodingId: 0 }
+            ];
+
+        for (const pref of preferred) {
+            let formats: CmapFormatLike[] = [];
+            try {
+                const resolved = cmap.getCmapFormats(pref.platformId, pref.encodingId);
+                formats = Array.isArray(resolved) ? resolved : [];
+            } catch {
+                formats = [];
+            }
+            if (formats.length > 0) {
+                return this.pickBestFormat(formats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0]);
+            }
+        }
+
+        const fallbackFormats = Array.isArray(cmap.formats) ? cmap.formats : [];
+        return fallbackFormats.length > 0
+            ? this.pickBestFormat(fallbackFormats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0])
+            : null;
     }
 
-    protected pickBestFormat(formats: any[]): any | null {
-        return pickBestCmapFormat(formats as any);
+    protected pickBestFormat(formats: any[], order: number[] = [4, 12, 10, 8, 6, 2, 0]): any | null {
+        if (formats.length === 0) return null;
+        const safeFormats = formats.filter((f: any): f is CmapFormatLike => !!f && typeof f === 'object');
+        if (safeFormats.length === 0) return null;
+        for (const fmt of order) {
+            const found = safeFormats.find((f) => (typeof f.getFormatType === 'function' ? f.getFormatType() : f.format) === fmt);
+            if (found) return found;
+        }
+        return safeFormats[0];
     }
 
     protected isNonRenderingFormatCodePoint(codePoint: number): boolean {
