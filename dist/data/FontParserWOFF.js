@@ -93,6 +93,9 @@ var FontParserWOFF = /** @class */ (function () {
         this.fvar = null;
         this.gvar = null;
         this.variationCoords = [];
+        this.glyphCache = new Map();
+        this.gposKerningCache = new Map();
+        this.markAnchorsCache = new WeakMap();
         this.diagnostics = [];
         this.diagnosticKeys = new Set();
         // Table directory and tables
@@ -453,12 +456,18 @@ var FontParserWOFF = /** @class */ (function () {
     };
     // Get a glyph description by index
     FontParserWOFF.prototype.getGlyph = function (i) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
-        var description = (_a = this.glyf) === null || _a === void 0 ? void 0 : _a.getDescription(i);
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6;
+        if (!this.glyphCache)
+            this.glyphCache = new Map();
+        var cacheKey = "".concat(this.variationCoords.join(","), "::").concat(i);
+        if (this.glyphCache.has(cacheKey)) {
+            return (_a = this.glyphCache.get(cacheKey)) !== null && _a !== void 0 ? _a : null;
+        }
+        var description = (_b = this.glyf) === null || _b === void 0 ? void 0 : _b.getDescription(i);
         if (description != null) {
             var desc = description;
-            var lsb = (_c = (_b = this.hmtx) === null || _b === void 0 ? void 0 : _b.getLeftSideBearing(i)) !== null && _c !== void 0 ? _c : 0;
-            var advance = (_e = (_d = this.hmtx) === null || _d === void 0 ? void 0 : _d.getAdvanceWidth(i)) !== null && _e !== void 0 ? _e : 0;
+            var lsb = (_d = (_c = this.hmtx) === null || _c === void 0 ? void 0 : _c.getLeftSideBearing(i)) !== null && _d !== void 0 ? _d : 0;
+            var advance = (_f = (_e = this.hmtx) === null || _e === void 0 ? void 0 : _e.getAdvanceWidth(i)) !== null && _f !== void 0 ? _f : 0;
             if (this.gvar && this.variationCoords.length > 0) {
                 var basePointCount = description.getPointCount();
                 var isComposite_1 = description.isComposite();
@@ -512,8 +521,8 @@ var FontParserWOFF = /** @class */ (function () {
                         compScale01_1 = new Array(componentCount).fill(0);
                         compScale10_1 = new Array(componentCount).fill(0);
                         for (var c = 0; c < componentCount; c++) {
-                            var rawDx = (_f = fullDx[c]) !== null && _f !== void 0 ? _f : 0;
-                            var rawDy = (_g = fullDy[c]) !== null && _g !== void 0 ? _g : 0;
+                            var rawDx = (_g = fullDx[c]) !== null && _g !== void 0 ? _g : 0;
+                            var rawDy = (_h = fullDy[c]) !== null && _h !== void 0 ? _h : 0;
                             compDx_1[c] = rawDx;
                             compDy_1[c] = rawDy;
                         }
@@ -525,27 +534,27 @@ var FontParserWOFF = /** @class */ (function () {
                             if (comp.hasTwoByTwo()) {
                                 var idx1 = tIndex++;
                                 var idx2 = tIndex++;
-                                compXScale_1[c] = ((_h = fullDx[idx1]) !== null && _h !== void 0 ? _h : 0) / 0x4000;
-                                compScale01_1[c] = ((_j = fullDy[idx1]) !== null && _j !== void 0 ? _j : 0) / 0x4000;
-                                compScale10_1[c] = ((_k = fullDx[idx2]) !== null && _k !== void 0 ? _k : 0) / 0x4000;
-                                compYScale_1[c] = ((_l = fullDy[idx2]) !== null && _l !== void 0 ? _l : 0) / 0x4000;
+                                compXScale_1[c] = ((_j = fullDx[idx1]) !== null && _j !== void 0 ? _j : 0) / 0x4000;
+                                compScale01_1[c] = ((_k = fullDy[idx1]) !== null && _k !== void 0 ? _k : 0) / 0x4000;
+                                compScale10_1[c] = ((_l = fullDx[idx2]) !== null && _l !== void 0 ? _l : 0) / 0x4000;
+                                compYScale_1[c] = ((_m = fullDy[idx2]) !== null && _m !== void 0 ? _m : 0) / 0x4000;
                             }
                             else if (comp.hasXYScale()) {
                                 var idx = tIndex++;
-                                compXScale_1[c] = ((_m = fullDx[idx]) !== null && _m !== void 0 ? _m : 0) / 0x4000;
-                                compYScale_1[c] = ((_o = fullDy[idx]) !== null && _o !== void 0 ? _o : 0) / 0x4000;
+                                compXScale_1[c] = ((_o = fullDx[idx]) !== null && _o !== void 0 ? _o : 0) / 0x4000;
+                                compYScale_1[c] = ((_p = fullDy[idx]) !== null && _p !== void 0 ? _p : 0) / 0x4000;
                             }
                             else if (comp.hasScale()) {
                                 var idx = tIndex++;
-                                var delta = ((_p = fullDx[idx]) !== null && _p !== void 0 ? _p : 0) / 0x4000;
+                                var delta = ((_q = fullDx[idx]) !== null && _q !== void 0 ? _q : 0) / 0x4000;
                                 compXScale_1[c] = delta;
                                 compYScale_1[c] = delta;
                             }
                         }
                     }
                     var phantomBase = isComposite_1 ? compositePointCount : basePointCount;
-                    var lsbDelta = (_q = fullDx[phantomBase]) !== null && _q !== void 0 ? _q : 0;
-                    var rsbDelta = (_r = fullDx[phantomBase + 1]) !== null && _r !== void 0 ? _r : 0;
+                    var lsbDelta = (_r = fullDx[phantomBase]) !== null && _r !== void 0 ? _r : 0;
+                    var rsbDelta = (_s = fullDx[phantomBase + 1]) !== null && _s !== void 0 ? _s : 0;
                     lsb += lsbDelta;
                     advance += (rsbDelta - lsbDelta);
                     var minX_1 = Infinity;
@@ -564,21 +573,21 @@ var FontParserWOFF = /** @class */ (function () {
                                 var localIndex = p - comp.firstIndex;
                                 var px = gd.getXCoordinate(localIndex);
                                 var py = gd.getYCoordinate(localIndex);
-                                var xscale = comp.xscale + ((_s = compXScale_1 === null || compXScale_1 === void 0 ? void 0 : compXScale_1[compIndex]) !== null && _s !== void 0 ? _s : 0);
-                                var yscale = comp.yscale + ((_t = compYScale_1 === null || compYScale_1 === void 0 ? void 0 : compYScale_1[compIndex]) !== null && _t !== void 0 ? _t : 0);
-                                var scale01 = comp.scale01 + ((_u = compScale01_1 === null || compScale01_1 === void 0 ? void 0 : compScale01_1[compIndex]) !== null && _u !== void 0 ? _u : 0);
-                                var scale10 = comp.scale10 + ((_v = compScale10_1 === null || compScale10_1 === void 0 ? void 0 : compScale10_1[compIndex]) !== null && _v !== void 0 ? _v : 0);
-                                var ox = comp.xtranslate + ((_w = compDx_1 === null || compDx_1 === void 0 ? void 0 : compDx_1[compIndex]) !== null && _w !== void 0 ? _w : 0);
-                                var oy = comp.ytranslate + ((_x = compDy_1 === null || compDy_1 === void 0 ? void 0 : compDy_1[compIndex]) !== null && _x !== void 0 ? _x : 0);
+                                var xscale = comp.xscale + ((_t = compXScale_1 === null || compXScale_1 === void 0 ? void 0 : compXScale_1[compIndex]) !== null && _t !== void 0 ? _t : 0);
+                                var yscale = comp.yscale + ((_u = compYScale_1 === null || compYScale_1 === void 0 ? void 0 : compYScale_1[compIndex]) !== null && _u !== void 0 ? _u : 0);
+                                var scale01 = comp.scale01 + ((_v = compScale01_1 === null || compScale01_1 === void 0 ? void 0 : compScale01_1[compIndex]) !== null && _v !== void 0 ? _v : 0);
+                                var scale10 = comp.scale10 + ((_w = compScale10_1 === null || compScale10_1 === void 0 ? void 0 : compScale10_1[compIndex]) !== null && _w !== void 0 ? _w : 0);
+                                var ox = comp.xtranslate + ((_x = compDx_1 === null || compDx_1 === void 0 ? void 0 : compDx_1[compIndex]) !== null && _x !== void 0 ? _x : 0);
+                                var oy = comp.ytranslate + ((_y = compDy_1 === null || compDy_1 === void 0 ? void 0 : compDy_1[compIndex]) !== null && _y !== void 0 ? _y : 0);
                                 x = (px * xscale) + (py * scale10) + ox;
                                 y = (px * scale01) + (py * yscale) + oy;
                             }
                         }
                         else {
-                            var ox = compIndex >= 0 && compDx_1 ? (_y = compDx_1[compIndex]) !== null && _y !== void 0 ? _y : 0 : 0;
-                            var oy = compIndex >= 0 && compDy_1 ? (_z = compDy_1[compIndex]) !== null && _z !== void 0 ? _z : 0 : 0;
-                            x = base_1.getXCoordinate(p) + ((_0 = dx_1[p]) !== null && _0 !== void 0 ? _0 : 0) + ox;
-                            y = base_1.getYCoordinate(p) + ((_1 = dy_1[p]) !== null && _1 !== void 0 ? _1 : 0) + oy;
+                            var ox = compIndex >= 0 && compDx_1 ? (_z = compDx_1[compIndex]) !== null && _z !== void 0 ? _z : 0 : 0;
+                            var oy = compIndex >= 0 && compDy_1 ? (_0 = compDy_1[compIndex]) !== null && _0 !== void 0 ? _0 : 0 : 0;
+                            x = base_1.getXCoordinate(p) + ((_1 = dx_1[p]) !== null && _1 !== void 0 ? _1 : 0) + ox;
+                            y = base_1.getYCoordinate(p) + ((_2 = dy_1[p]) !== null && _2 !== void 0 ? _2 : 0) + oy;
                         }
                         if (x < minX_1)
                             minX_1 = x;
@@ -647,14 +656,19 @@ var FontParserWOFF = /** @class */ (function () {
                     };
                 }
             }
-            return new GlyphData(desc, lsb, advance);
+            var glyphData = new GlyphData(desc, lsb, advance);
+            this.glyphCache.set(cacheKey, glyphData);
+            return glyphData;
         }
         if (this.cff) {
             var cffDesc = this.cff.getGlyphDescription(i);
             if (cffDesc) {
-                return new GlyphData(cffDesc, (_3 = (_2 = this.hmtx) === null || _2 === void 0 ? void 0 : _2.getLeftSideBearing(i)) !== null && _3 !== void 0 ? _3 : 0, (_5 = (_4 = this.hmtx) === null || _4 === void 0 ? void 0 : _4.getAdvanceWidth(i)) !== null && _5 !== void 0 ? _5 : 0, { isCubic: true });
+                var glyphData = new GlyphData(cffDesc, (_4 = (_3 = this.hmtx) === null || _3 === void 0 ? void 0 : _3.getLeftSideBearing(i)) !== null && _4 !== void 0 ? _4 : 0, (_6 = (_5 = this.hmtx) === null || _5 === void 0 ? void 0 : _5.getAdvanceWidth(i)) !== null && _6 !== void 0 ? _6 : 0, { isCubic: true });
+                this.glyphCache.set(cacheKey, glyphData);
+                return glyphData;
             }
         }
+        this.glyphCache.set(cacheKey, null);
         return null;
     };
     // Get the number of glyphs
@@ -810,10 +824,29 @@ var FontParserWOFF = /** @class */ (function () {
         return [];
     };
     FontParserWOFF.prototype.getMarkAnchorsForGlyph = function (glyphId, subtables) {
-        var _this = this;
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
         if (!this.gpos)
             return [];
+        if (!this.markAnchorsCache)
+            this.markAnchorsCache = new WeakMap();
+        if (subtables) {
+            var glyphMap = this.markAnchorsCache.get(subtables);
+            if (!glyphMap) {
+                glyphMap = new Map();
+                this.markAnchorsCache.set(subtables, glyphMap);
+            }
+            var cached = glyphMap.get(glyphId);
+            if (cached) {
+                return cached;
+            }
+            var anchors = this.collectMarkAnchorsForGlyph(glyphId, subtables);
+            glyphMap.set(glyphId, anchors);
+            return anchors;
+        }
+        return this.collectMarkAnchorsForGlyph(glyphId, undefined);
+    };
+    FontParserWOFF.prototype.collectMarkAnchorsForGlyph = function (glyphId, subtables) {
+        var _this = this;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
         var anchors = [];
         var activeSubtables = subtables !== null && subtables !== void 0 ? subtables : (function () {
             var _a, _b, _c, _d;
@@ -1078,6 +1111,13 @@ var FontParserWOFF = /** @class */ (function () {
             this.emitDiagnostic("MISSING_TABLE_GPOS", "info", "layout", "GPOS table not present; kerning defaults to 0.", undefined, "MISSING_TABLE_GPOS");
             return 0;
         }
+        if (!this.gposKerningCache)
+            this.gposKerningCache = new Map();
+        var cacheKey = "".concat(leftGlyph, ":").concat(rightGlyph);
+        var cached = this.gposKerningCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
         var lookups = (_c = (_b = (_a = this.gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : [];
         var value = 0;
         for (var _i = 0, lookups_2 = lookups; _i < lookups_2.length; _i++) {
@@ -1097,7 +1137,9 @@ var FontParserWOFF = /** @class */ (function () {
                 }
             }
         }
-        return Number.isFinite(value) ? value : 0;
+        var resolved = Number.isFinite(value) ? value : 0;
+        this.gposKerningCache.set(cacheKey, resolved);
+        return resolved;
     };
     FontParserWOFF.prototype.getKerningValue = function (leftChar, rightChar) {
         var left = this.getGlyphIndexByChar(leftChar);
@@ -1115,6 +1157,9 @@ var FontParserWOFF = /** @class */ (function () {
     };
     FontParserWOFF.prototype.setVariationCoords = function (coords) {
         this.variationCoords = coords.slice();
+        if (!this.glyphCache)
+            this.glyphCache = new Map();
+        this.glyphCache.clear();
         if (this.colr && typeof this.colr.setVariationCoords === 'function') {
             this.colr.setVariationCoords(coords);
         }

@@ -2,6 +2,7 @@ import { Script } from "./Script.js";
 import { ScriptRecord } from "./ScriptRecord.js";
 var ScriptList = /** @class */ (function () {
     function ScriptList(byte_ar, offset) {
+        this.scriptByTag = new Map();
         byte_ar.offset = offset;
         this.scriptCount = byte_ar.readUnsignedShort();
         this.scriptRecords = new Array(this.scriptCount);
@@ -10,7 +11,9 @@ var ScriptList = /** @class */ (function () {
             this.scriptRecords[i] = new ScriptRecord(byte_ar);
         }
         for (var j = 0; j < this.scriptCount; j++) {
-            this.scripts[j] = new Script(byte_ar, offset + this.scriptRecords[j].offset);
+            var script = new Script(byte_ar, offset + this.scriptRecords[j].offset);
+            this.scripts[j] = script;
+            this.scriptByTag.set(this.scriptRecords[j].tag, script);
         }
     }
     ScriptList.prototype.getScriptRecord = function (i) {
@@ -20,6 +23,7 @@ var ScriptList = /** @class */ (function () {
         return this.scriptRecords;
     };
     ScriptList.prototype.findScript = function (tag) {
+        var _a;
         if (tag.length !== 4) {
             return null;
         }
@@ -27,12 +31,7 @@ var ScriptList = /** @class */ (function () {
             (tag.charCodeAt(1) << 16) |
             (tag.charCodeAt(2) << 8) |
             tag.charCodeAt(3);
-        for (var i = 0; i < this.scriptCount; i++) {
-            if (this.scriptRecords[i].tag === tagVal) {
-                return this.scripts[i];
-            }
-        }
-        return null;
+        return (_a = this.scriptByTag.get(tagVal)) !== null && _a !== void 0 ? _a : null;
     };
     return ScriptList;
 }());

@@ -66,6 +66,9 @@ export class FontParserWOFF {
     private fvar: FvarTable | null = null;
     private gvar: GvarTable | null = null;
     private variationCoords: number[] = [];
+    private glyphCache = new Map<string, GlyphData | null>();
+    private gposKerningCache = new Map<string, number>();
+    private markAnchorsCache = new WeakMap<object, Map<number, Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number; componentIndex?: number }>>>();
     private diagnostics: FontDiagnostic[] = [];
     private diagnosticKeys = new Set<string>();
 
@@ -419,6 +422,11 @@ export class FontParserWOFF {
 
     // Get a glyph description by index
     public getGlyph(i: number): GlyphData | null {
+        if (!this.glyphCache) this.glyphCache = new Map<string, GlyphData | null>();
+        const cacheKey = `${this.variationCoords.join(",")}::${i}`;
+        if (this.glyphCache.has(cacheKey)) {
+            return this.glyphCache.get(cacheKey) ?? null;
+        }
         const description = this.glyf?.getDescription(i);
         if (description != null) {
             let desc = description;
@@ -601,14 +609,19 @@ export class FontParserWOFF {
                     };
                 }
             }
-            return new GlyphData(desc, lsb, advance);
+            const glyphData = new GlyphData(desc, lsb, advance);
+            this.glyphCache.set(cacheKey, glyphData);
+            return glyphData;
         }
         if (this.cff) {
             const cffDesc = this.cff.getGlyphDescription(i);
             if (cffDesc) {
-                return new GlyphData(cffDesc, this.hmtx?.getLeftSideBearing(i) ?? 0, this.hmtx?.getAdvanceWidth(i) ?? 0, { isCubic: true });
+                const glyphData = new GlyphData(cffDesc, this.hmtx?.getLeftSideBearing(i) ?? 0, this.hmtx?.getAdvanceWidth(i) ?? 0, { isCubic: true });
+                this.glyphCache.set(cacheKey, glyphData);
+                return glyphData;
             }
         }
+        this.glyphCache.set(cacheKey, null);
         return null;
     }
 
@@ -781,6 +794,28 @@ export class FontParserWOFF {
         subtables?: Array<any>
     ): Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number; componentIndex?: number }> {
         if (!this.gpos) return [];
+        if (!this.markAnchorsCache) this.markAnchorsCache = new WeakMap();
+        if (subtables) {
+            let glyphMap = this.markAnchorsCache.get(subtables);
+            if (!glyphMap) {
+                glyphMap = new Map();
+                this.markAnchorsCache.set(subtables, glyphMap);
+            }
+            const cached = glyphMap.get(glyphId);
+            if (cached) {
+                return cached;
+            }
+            const anchors = this.collectMarkAnchorsForGlyph(glyphId, subtables);
+            glyphMap.set(glyphId, anchors);
+            return anchors;
+        }
+        return this.collectMarkAnchorsForGlyph(glyphId, undefined);
+    }
+
+    private collectMarkAnchorsForGlyph(
+        glyphId: number,
+        subtables?: Array<any>
+    ): Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number; componentIndex?: number }> {
         const anchors: Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number; componentIndex?: number }> = [];
         const activeSubtables = subtables ?? (() => {
             const lookups = this.gpos?.lookupList?.getLookups?.() ?? [];
@@ -1054,6 +1089,12 @@ export class FontParserWOFF {
             this.emitDiagnostic("MISSING_TABLE_GPOS", "info", "layout", "GPOS table not present; kerning defaults to 0.", undefined, "MISSING_TABLE_GPOS");
             return 0;
         }
+        if (!this.gposKerningCache) this.gposKerningCache = new Map<string, number>();
+        const cacheKey = `${leftGlyph}:${rightGlyph}`;
+        const cached = this.gposKerningCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
         const lookups = this.gpos.lookupList?.getLookups?.() ?? [];
         let value = 0;
         for (const lookup of lookups) {
@@ -1070,7 +1111,9 @@ export class FontParserWOFF {
                 }
             }
         }
-        return Number.isFinite(value) ? value : 0;
+        const resolved = Number.isFinite(value) ? value : 0;
+        this.gposKerningCache.set(cacheKey, resolved);
+        return resolved;
     }
 
     public getKerningValue(leftChar: string, rightChar: string): number {
@@ -1088,6 +1131,8 @@ export class FontParserWOFF {
 
     public setVariationCoords(coords: number[]): void {
         this.variationCoords = coords.slice();
+        if (!this.glyphCache) this.glyphCache = new Map<string, GlyphData | null>();
+        this.glyphCache.clear();
         if (this.colr && typeof (this.colr as any).setVariationCoords === 'function') {
             (this.colr as any).setVariationCoords(coords);
         }

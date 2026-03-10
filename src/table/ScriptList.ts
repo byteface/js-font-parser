@@ -6,6 +6,7 @@ export class ScriptList {
     scriptCount: number;
     scriptRecords: ScriptRecord[];
     scripts: Script[];
+    private scriptByTag = new Map<number, Script>();
 
     constructor(byte_ar: ByteArray, offset: number) {
         byte_ar.offset = offset;
@@ -19,7 +20,9 @@ export class ScriptList {
         }
 
         for (let j = 0; j < this.scriptCount; j++) {
-            this.scripts[j] = new Script(byte_ar, offset + this.scriptRecords[j].offset);
+            const script = new Script(byte_ar, offset + this.scriptRecords[j].offset);
+            this.scripts[j] = script;
+            this.scriptByTag.set(this.scriptRecords[j].tag, script);
         }
     }
 
@@ -42,12 +45,6 @@ export class ScriptList {
             (tag.charCodeAt(2) << 8) |
             tag.charCodeAt(3);
 
-        for (let i = 0; i < this.scriptCount; i++) {
-            if (this.scriptRecords[i].tag === tagVal) {
-                return this.scripts[i];
-            }
-        }
-
-        return null;
+        return this.scriptByTag.get(tagVal) ?? null;
     }
 }
