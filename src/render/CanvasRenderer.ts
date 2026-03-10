@@ -29,9 +29,13 @@ type FontForCanvas = {
     getGlyph: (index: number) => GlyphData | null;
     getGlyphIndexByChar?: (ch: string) => number | null;
     getKerningValue?: (left: string, right: string) => number;
+    layoutString?: (text: string, options?: Record<string, unknown>) => Array<{ glyphIndex: number; xAdvance: number; xOffset?: number; yOffset?: number }>;
+    layoutStringAuto?: (text: string, options?: Record<string, unknown>) => Array<{ glyphIndex: number; xAdvance: number; xOffset?: number; yOffset?: number }>;
     getColorLayersForGlyph?: (glyphIndex: number, paletteIndex?: number) => Array<{ glyphId: number; color: string | null }>;
     getColrV1LayersForGlyph?: (glyphIndex: number, paletteIndex?: number) => Array<{ glyphId: number; color: string | null }>;
 };
+
+type PositionedGlyphLike = { glyphIndex: number; xAdvance: number; xOffset?: number; yOffset?: number };
 
 export class CanvasRenderer {
     private static safeNumber(value: number | undefined, fallback: number): number {
@@ -41,6 +45,69 @@ export class CanvasRenderer {
     private static safeProduct(a: number, b: number, fallback = 0): number {
         const product = a * b;
         return Number.isFinite(product) ? product : fallback;
+    }
+
+    private static getDrawableChars(font: FontForCanvas, text: string): string[] {
+        const chars: string[] = [];
+        for (const ch of Array.from(text)) {
+            try {
+                if (font.getGlyphByChar(ch)) chars.push(ch);
+            } catch {
+                // Skip characters that fail glyph resolution during rendering.
+            }
+        }
+        return chars;
+    }
+
+    private static getLayout(
+        font: FontForCanvas,
+        text: string,
+        options: Record<string, unknown> = { gpos: true }
+    ): PositionedGlyphLike[] | null {
+        try {
+            if (typeof font.layoutStringAuto === 'function') {
+                return font.layoutStringAuto(text, options) ?? null;
+            }
+            if (typeof font.layoutString === 'function') {
+                return font.layoutString(text, options) ?? null;
+            }
+        } catch {
+            return null;
+        }
+        return null;
+    }
+
+    private static getKerningAdjustedLayout(
+        font: FontForCanvas,
+        text: string,
+        spacing: number,
+        kerningScale: number
+    ): PositionedGlyphLike[] | null {
+        const kerned = this.getLayout(font, text, { gpos: true, kerning: true });
+        if (!Array.isArray(kerned) || kerned.length === 0) return null;
+
+        const markLayout = this.getLayout(font, text, { gpos: true, kerning: false });
+        const base = (kerningScale === 1 && spacing === 0)
+            ? kerned
+            : (Array.isArray(markLayout) && markLayout.length === kerned.length ? markLayout : kerned);
+
+        if (!Array.isArray(base) || base.length !== kerned.length) {
+            return kerned.map((item, index) => ({
+                ...item,
+                xAdvance: item.xAdvance + (index < kerned.length - 1 ? spacing : 0)
+            }));
+        }
+
+        return kerned.map((item, index) => {
+            const baseItem = base[index];
+            const withSpacing = index < kerned.length - 1 ? spacing : 0;
+            return {
+                glyphIndex: item.glyphIndex,
+                xAdvance: baseItem.xAdvance + ((item.xAdvance - baseItem.xAdvance) * kerningScale) + withSpacing,
+                xOffset: (baseItem.xOffset ?? 0) + (((item.xOffset ?? 0) - (baseItem.xOffset ?? 0)) * kerningScale),
+                yOffset: (baseItem.yOffset ?? 0) + (((item.yOffset ?? 0) - (baseItem.yOffset ?? 0)) * kerningScale)
+            };
+        });
     }
 
     static applyCanvasStyles(context: CanvasRenderingContext2D, styles?: CanvasStyleOptions): void {
@@ -187,12 +254,9 @@ export class CanvasRenderer {
         context.save();
         context.translate(0, y);
 
-        for (const ch of Array.from(text)) {
+        for (const ch of this.getDrawableChars(font, text)) {
             const glyph = font.getGlyphByChar(ch);
-            if (!glyph) {
-                cursorX += spacing;
-                continue;
-            }
+            if (!glyph) continue;
             this.drawGlyphToContext(context, glyph, {
                 x: cursorX,
                 y: 0,
@@ -213,7 +277,13 @@ export class CanvasRenderer {
         const kerningScale = this.safeNumber(options.kerningScale, 1);
         const context = canvas.getContext('2d');
         if (!context) return;
-        const chars = Array.from(text);
+        const spacingUnits = scale === 0 ? 0 : spacing / scale;
+        const shapedLayout = this.getKerningAdjustedLayout(font, text, spacingUnits, kerningScale);
+        if (Array.isArray(shapedLayout) && shapedLayout.length > 0) {
+            this.drawLayout(font, shapedLayout, canvas, options);
+            return;
+        }
+        const chars = this.getDrawableChars(font, text);
 
         let cursorX = x;
         context.save();
@@ -222,10 +292,7 @@ export class CanvasRenderer {
         for (let i = 0; i < chars.length; i++) {
             const ch = chars[i];
             const glyph = font.getGlyphByChar(ch);
-            if (!glyph) {
-                cursorX += spacing;
-                continue;
-            }
+            if (!glyph) continue;
 
             let kern = 0;
             if (i < chars.length - 1 && typeof font.getKerningValue === 'function') {
@@ -342,6 +409,32 @@ export class CanvasRenderer {
         const fallbackAdvance = this.safeNumber(options.fallbackAdvance, 0);
         const context = canvas.getContext('2d');
         if (!context) return;
+        const shapedLayout = this.getLayout(font, text);
+        if (Array.isArray(shapedLayout) && shapedLayout.length > 0) {
+            const adjustedLayout = spacing === 0
+                ? shapedLayout
+                : shapedLayout.map((item, index) => ({
+                    ...item,
+                    xAdvance: item.xAdvance + ((index < shapedLayout.length - 1 ? spacing : 0) / scale)
+                }));
+
+            let cursorX = x;
+            context.save();
+            context.translate(0, y);
+            for (const item of adjustedLayout) {
+                this.drawColorGlyph(font, item.glyphIndex, canvas, {
+                    x: cursorX + this.safeProduct(this.safeNumber(item.xOffset, 0), scale),
+                    y: this.safeProduct(this.safeNumber(item.yOffset, 0), scale),
+                    scale,
+                    paletteIndex,
+                    fallbackFill: options.fallbackFill,
+                    styles: options.styles
+                });
+                cursorX += this.safeProduct(this.safeNumber(item.xAdvance, 0), scale);
+            }
+            context.restore();
+            return;
+        }
 
         let cursorX = x;
         context.save();

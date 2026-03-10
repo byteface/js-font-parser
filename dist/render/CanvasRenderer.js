@@ -1,15 +1,64 @@
-var CanvasRenderer = /** @class */ (function () {
-    function CanvasRenderer() {
-    }
-    CanvasRenderer.safeNumber = function (value, fallback) {
+export class CanvasRenderer {
+    static safeNumber(value, fallback) {
         return Number.isFinite(value) ? value : fallback;
-    };
-    CanvasRenderer.safeProduct = function (a, b, fallback) {
-        if (fallback === void 0) { fallback = 0; }
-        var product = a * b;
+    }
+    static safeProduct(a, b, fallback = 0) {
+        const product = a * b;
         return Number.isFinite(product) ? product : fallback;
-    };
-    CanvasRenderer.applyCanvasStyles = function (context, styles) {
+    }
+    static getDrawableChars(font, text) {
+        const chars = [];
+        for (const ch of Array.from(text)) {
+            try {
+                if (font.getGlyphByChar(ch))
+                    chars.push(ch);
+            }
+            catch {
+                // Skip characters that fail glyph resolution during rendering.
+            }
+        }
+        return chars;
+    }
+    static getLayout(font, text, options = { gpos: true }) {
+        try {
+            if (typeof font.layoutStringAuto === 'function') {
+                return font.layoutStringAuto(text, options) ?? null;
+            }
+            if (typeof font.layoutString === 'function') {
+                return font.layoutString(text, options) ?? null;
+            }
+        }
+        catch {
+            return null;
+        }
+        return null;
+    }
+    static getKerningAdjustedLayout(font, text, spacing, kerningScale) {
+        const kerned = this.getLayout(font, text, { gpos: true, kerning: true });
+        if (!Array.isArray(kerned) || kerned.length === 0)
+            return null;
+        const markLayout = this.getLayout(font, text, { gpos: true, kerning: false });
+        const base = (kerningScale === 1 && spacing === 0)
+            ? kerned
+            : (Array.isArray(markLayout) && markLayout.length === kerned.length ? markLayout : kerned);
+        if (!Array.isArray(base) || base.length !== kerned.length) {
+            return kerned.map((item, index) => ({
+                ...item,
+                xAdvance: item.xAdvance + (index < kerned.length - 1 ? spacing : 0)
+            }));
+        }
+        return kerned.map((item, index) => {
+            const baseItem = base[index];
+            const withSpacing = index < kerned.length - 1 ? spacing : 0;
+            return {
+                glyphIndex: item.glyphIndex,
+                xAdvance: baseItem.xAdvance + ((item.xAdvance - baseItem.xAdvance) * kerningScale) + withSpacing,
+                xOffset: (baseItem.xOffset ?? 0) + (((item.xOffset ?? 0) - (baseItem.xOffset ?? 0)) * kerningScale),
+                yOffset: (baseItem.yOffset ?? 0) + (((item.yOffset ?? 0) - (baseItem.yOffset ?? 0)) * kerningScale)
+            };
+        });
+    }
+    static applyCanvasStyles(context, styles) {
         if (!styles)
             return;
         if (styles.fillStyle != null)
@@ -28,15 +77,14 @@ var CanvasRenderer = /** @class */ (function () {
             context.shadowOffsetX = styles.shadowOffsetX;
         if (styles.shadowOffsetY != null)
             context.shadowOffsetY = styles.shadowOffsetY;
-    };
-    CanvasRenderer.addContourToShape = function (context, glyph, startIndex, count) {
-        var _a;
-        if ((_a = glyph.getPoint(startIndex)) === null || _a === void 0 ? void 0 : _a.endOfContour)
+    }
+    static addContourToShape(context, glyph, startIndex, count) {
+        if (glyph.getPoint(startIndex)?.endOfContour)
             return;
-        var offset = 0;
+        let offset = 0;
         while (offset < count) {
-            var p0 = glyph.getPoint(startIndex + offset % count);
-            var p1 = glyph.getPoint(startIndex + (offset + 1) % count);
+            const p0 = glyph.getPoint(startIndex + offset % count);
+            const p1 = glyph.getPoint(startIndex + (offset + 1) % count);
             if (!p0 || !p1)
                 break;
             if (offset === 0) {
@@ -48,7 +96,7 @@ var CanvasRenderer = /** @class */ (function () {
                     offset++;
                 }
                 else {
-                    var p2 = glyph.getPoint(startIndex + (offset + 2) % count);
+                    const p2 = glyph.getPoint(startIndex + (offset + 2) % count);
                     if (!p2)
                         break;
                     if (p2.onCurve) {
@@ -70,15 +118,14 @@ var CanvasRenderer = /** @class */ (function () {
                 offset++;
             }
         }
-    };
-    CanvasRenderer.addContourToShapeCubic = function (context, glyph, startIndex, count) {
-        var _a;
-        if ((_a = glyph.getPoint(startIndex)) === null || _a === void 0 ? void 0 : _a.endOfContour)
+    }
+    static addContourToShapeCubic(context, glyph, startIndex, count) {
+        if (glyph.getPoint(startIndex)?.endOfContour)
             return;
-        var offset = 0;
+        let offset = 0;
         while (offset < count) {
-            var p0 = glyph.getPoint(startIndex + (offset % count));
-            var p1 = glyph.getPoint(startIndex + ((offset + 1) % count));
+            const p0 = glyph.getPoint(startIndex + (offset % count));
+            const p1 = glyph.getPoint(startIndex + ((offset + 1) % count));
             if (!p0 || !p1)
                 break;
             if (offset === 0) {
@@ -89,8 +136,8 @@ var CanvasRenderer = /** @class */ (function () {
                 offset += 1;
                 continue;
             }
-            var p2 = glyph.getPoint(startIndex + ((offset + 2) % count));
-            var p3 = glyph.getPoint(startIndex + ((offset + 3) % count));
+            const p2 = glyph.getPoint(startIndex + ((offset + 2) % count));
+            const p3 = glyph.getPoint(startIndex + ((offset + 3) % count));
             if (p2 && !p2.onCurve && p3 && p3.onCurve) {
                 context.bezierCurveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
                 offset += 3;
@@ -105,25 +152,23 @@ var CanvasRenderer = /** @class */ (function () {
             context.lineTo(p1.x, p1.y);
             offset += 1;
         }
-    };
-    CanvasRenderer.drawGlyphToContext = function (context, glyph, options) {
-        var _a;
-        if (options === void 0) { options = {}; }
+    }
+    static drawGlyphToContext(context, glyph, options = {}) {
         if (!glyph)
             return;
-        var scale = this.safeNumber(options.scale, 0.1);
-        var x = this.safeNumber(options.x, 0);
-        var y = this.safeNumber(options.y, 0);
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
         context.save();
         context.translate(x, y);
         context.scale(scale, -scale);
         this.applyCanvasStyles(context, options.styles);
         context.beginPath();
-        var firstIndex = 0;
-        var counter = 0;
-        for (var i = 0; i < glyph.getPointCount(); i++) {
+        let firstIndex = 0;
+        let counter = 0;
+        for (let i = 0; i < glyph.getPointCount(); i++) {
             counter++;
-            if ((_a = glyph.getPoint(i)) === null || _a === void 0 ? void 0 : _a.endOfContour) {
+            if (glyph.getPoint(i)?.endOfContour) {
                 if (glyph.isCubic) {
                     this.addContourToShapeCubic(context, glyph, firstIndex, counter);
                 }
@@ -144,92 +189,89 @@ var CanvasRenderer = /** @class */ (function () {
             context.fill();
         }
         context.restore();
-    };
-    CanvasRenderer.drawString = function (font, text, canvas, options) {
-        if (options === void 0) { options = {}; }
-        var scale = this.safeNumber(options.scale, 0.1);
-        var x = this.safeNumber(options.x, 0);
-        var y = this.safeNumber(options.y, 0);
-        var spacing = this.safeNumber(options.spacing, 0);
-        var context = canvas.getContext('2d');
+    }
+    static drawString(font, text, canvas, options = {}) {
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
+        const spacing = this.safeNumber(options.spacing, 0);
+        const context = canvas.getContext('2d');
         if (!context)
             return;
-        var cursorX = x;
+        let cursorX = x;
         context.save();
         context.translate(0, y);
-        for (var _i = 0, _a = Array.from(text); _i < _a.length; _i++) {
-            var ch = _a[_i];
-            var glyph = font.getGlyphByChar(ch);
-            if (!glyph) {
-                cursorX += spacing;
+        for (const ch of this.getDrawableChars(font, text)) {
+            const glyph = font.getGlyphByChar(ch);
+            if (!glyph)
                 continue;
-            }
             this.drawGlyphToContext(context, glyph, {
                 x: cursorX,
                 y: 0,
-                scale: scale,
+                scale,
                 styles: options.styles
             });
             cursorX += this.safeProduct(glyph.advanceWidth, scale) + spacing;
         }
         context.restore();
-    };
-    CanvasRenderer.drawStringWithKerning = function (font, text, canvas, options) {
-        if (options === void 0) { options = {}; }
-        var scale = this.safeNumber(options.scale, 0.1);
-        var x = this.safeNumber(options.x, 0);
-        var y = this.safeNumber(options.y, 0);
-        var spacing = this.safeNumber(options.spacing, 0);
-        var kerningScale = this.safeNumber(options.kerningScale, 1);
-        var context = canvas.getContext('2d');
+    }
+    static drawStringWithKerning(font, text, canvas, options = {}) {
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
+        const spacing = this.safeNumber(options.spacing, 0);
+        const kerningScale = this.safeNumber(options.kerningScale, 1);
+        const context = canvas.getContext('2d');
         if (!context)
             return;
-        var chars = Array.from(text);
-        var cursorX = x;
+        const spacingUnits = scale === 0 ? 0 : spacing / scale;
+        const shapedLayout = this.getKerningAdjustedLayout(font, text, spacingUnits, kerningScale);
+        if (Array.isArray(shapedLayout) && shapedLayout.length > 0) {
+            this.drawLayout(font, shapedLayout, canvas, options);
+            return;
+        }
+        const chars = this.getDrawableChars(font, text);
+        let cursorX = x;
         context.save();
         context.translate(0, y);
-        for (var i = 0; i < chars.length; i++) {
-            var ch = chars[i];
-            var glyph = font.getGlyphByChar(ch);
-            if (!glyph) {
-                cursorX += spacing;
+        for (let i = 0; i < chars.length; i++) {
+            const ch = chars[i];
+            const glyph = font.getGlyphByChar(ch);
+            if (!glyph)
                 continue;
-            }
-            var kern = 0;
+            let kern = 0;
             if (i < chars.length - 1 && typeof font.getKerningValue === 'function') {
                 try {
-                    var rawKern = font.getKerningValue(ch, chars[i + 1]);
+                    const rawKern = font.getKerningValue(ch, chars[i + 1]);
                     kern = this.safeProduct(this.safeProduct(rawKern, scale), kerningScale);
                 }
-                catch (_a) {
+                catch {
                     kern = 0;
                 }
             }
             this.drawGlyphToContext(context, glyph, {
                 x: cursorX,
                 y: 0,
-                scale: scale,
+                scale,
                 styles: options.styles
             });
             cursorX += this.safeProduct(glyph.advanceWidth, scale) + spacing + kern;
         }
         context.restore();
-    };
-    CanvasRenderer.drawGlyphIndices = function (font, glyphIndices, canvas, options) {
-        if (options === void 0) { options = {}; }
-        var scale = this.safeNumber(options.scale, 0.1);
-        var x = this.safeNumber(options.x, 0);
-        var y = this.safeNumber(options.y, 0);
-        var spacing = this.safeNumber(options.spacing, 0);
-        var context = canvas.getContext('2d');
+    }
+    static drawGlyphIndices(font, glyphIndices, canvas, options = {}) {
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
+        const spacing = this.safeNumber(options.spacing, 0);
+        const context = canvas.getContext('2d');
         if (!context)
             return;
-        var cursorX = x;
+        let cursorX = x;
         context.save();
         context.translate(0, y);
-        for (var _i = 0, glyphIndices_1 = glyphIndices; _i < glyphIndices_1.length; _i++) {
-            var idx = glyphIndices_1[_i];
-            var glyph = font.getGlyph(idx);
+        for (const idx of glyphIndices) {
+            const glyph = font.getGlyph(idx);
             if (!glyph) {
                 cursorX += spacing;
                 continue;
@@ -237,57 +279,54 @@ var CanvasRenderer = /** @class */ (function () {
             this.drawGlyphToContext(context, glyph, {
                 x: cursorX,
                 y: 0,
-                scale: scale,
+                scale,
                 styles: options.styles
             });
             cursorX += this.safeProduct(glyph.advanceWidth, scale) + spacing;
         }
         context.restore();
-    };
-    CanvasRenderer.drawColorGlyph = function (font, glyphIndex, canvas, options) {
-        var _a, _b, _c, _d, _e, _f;
-        if (options === void 0) { options = {}; }
-        var scale = this.safeNumber(options.scale, 0.1);
-        var x = this.safeNumber(options.x, 0);
-        var y = this.safeNumber(options.y, 0);
-        var context = canvas.getContext('2d');
+    }
+    static drawColorGlyph(font, glyphIndex, canvas, options = {}) {
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
+        const context = canvas.getContext('2d');
         if (!context)
             return;
-        var paletteIndex = this.safeNumber(options.paletteIndex, 0);
-        var layers = [];
+        const paletteIndex = this.safeNumber(options.paletteIndex, 0);
+        let layers = [];
         if (typeof font.getColorLayersForGlyph === 'function') {
             try {
-                layers = (_a = font.getColorLayersForGlyph(glyphIndex, paletteIndex)) !== null && _a !== void 0 ? _a : [];
+                layers = font.getColorLayersForGlyph(glyphIndex, paletteIndex) ?? [];
             }
-            catch (_g) {
+            catch {
                 layers = [];
             }
         }
         if ((!layers || layers.length === 0) && typeof font.getColrV1LayersForGlyph === 'function') {
             try {
-                layers = (_b = font.getColrV1LayersForGlyph(glyphIndex, paletteIndex)) !== null && _b !== void 0 ? _b : [];
+                layers = font.getColrV1LayersForGlyph(glyphIndex, paletteIndex) ?? [];
             }
-            catch (_h) {
+            catch {
                 layers = [];
             }
         }
         if (!layers || layers.length === 0) {
-            var glyph = font.getGlyph(glyphIndex);
+            const glyph = font.getGlyph(glyphIndex);
             if (!glyph)
                 return;
-            this.drawGlyphToContext(context, glyph, { x: x, y: y, scale: scale, styles: options.styles });
+            this.drawGlyphToContext(context, glyph, { x, y, scale, styles: options.styles });
             return;
         }
-        for (var _i = 0, layers_1 = layers; _i < layers_1.length; _i++) {
-            var layer = layers_1[_i];
-            var glyph = font.getGlyph(layer.glyphId);
+        for (const layer of layers) {
+            const glyph = font.getGlyph(layer.glyphId);
             if (!glyph)
                 continue;
-            var fill = (_f = (_d = (_c = layer.color) !== null && _c !== void 0 ? _c : options.fallbackFill) !== null && _d !== void 0 ? _d : (_e = options.styles) === null || _e === void 0 ? void 0 : _e.fillStyle) !== null && _f !== void 0 ? _f : '#111';
+            const fill = layer.color ?? options.fallbackFill ?? options.styles?.fillStyle ?? '#111';
             this.drawGlyphToContext(context, glyph, {
-                x: x,
-                y: y,
-                scale: scale,
+                x,
+                y,
+                scale,
                 styles: {
                     fillStyle: fill,
                     strokeStyle: 'rgba(0,0,0,0)',
@@ -295,25 +334,47 @@ var CanvasRenderer = /** @class */ (function () {
                 }
             });
         }
-    };
-    CanvasRenderer.drawColorString = function (font, text, canvas, options) {
-        var _a;
-        if (options === void 0) { options = {}; }
-        var scale = this.safeNumber(options.scale, 0.1);
-        var x = this.safeNumber(options.x, 0);
-        var y = this.safeNumber(options.y, 0);
-        var spacing = this.safeNumber(options.spacing, 0);
-        var paletteIndex = this.safeNumber(options.paletteIndex, 0);
-        var fallbackAdvance = this.safeNumber(options.fallbackAdvance, 0);
-        var context = canvas.getContext('2d');
+    }
+    static drawColorString(font, text, canvas, options = {}) {
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
+        const spacing = this.safeNumber(options.spacing, 0);
+        const paletteIndex = this.safeNumber(options.paletteIndex, 0);
+        const fallbackAdvance = this.safeNumber(options.fallbackAdvance, 0);
+        const context = canvas.getContext('2d');
         if (!context)
             return;
-        var cursorX = x;
+        const shapedLayout = this.getLayout(font, text);
+        if (Array.isArray(shapedLayout) && shapedLayout.length > 0) {
+            const adjustedLayout = spacing === 0
+                ? shapedLayout
+                : shapedLayout.map((item, index) => ({
+                    ...item,
+                    xAdvance: item.xAdvance + ((index < shapedLayout.length - 1 ? spacing : 0) / scale)
+                }));
+            let cursorX = x;
+            context.save();
+            context.translate(0, y);
+            for (const item of adjustedLayout) {
+                this.drawColorGlyph(font, item.glyphIndex, canvas, {
+                    x: cursorX + this.safeProduct(this.safeNumber(item.xOffset, 0), scale),
+                    y: this.safeProduct(this.safeNumber(item.yOffset, 0), scale),
+                    scale,
+                    paletteIndex,
+                    fallbackFill: options.fallbackFill,
+                    styles: options.styles
+                });
+                cursorX += this.safeProduct(this.safeNumber(item.xAdvance, 0), scale);
+            }
+            context.restore();
+            return;
+        }
+        let cursorX = x;
         context.save();
         context.translate(0, y);
-        for (var _i = 0, _b = Array.from(text); _i < _b.length; _i++) {
-            var ch = _b[_i];
-            var glyphIndex = typeof font.getGlyphIndexByChar === 'function'
+        for (const ch of Array.from(text)) {
+            const glyphIndex = typeof font.getGlyphIndexByChar === 'function'
                 ? font.getGlyphIndexByChar(ch)
                 : null;
             if (glyphIndex == null) {
@@ -323,50 +384,46 @@ var CanvasRenderer = /** @class */ (function () {
             this.drawColorGlyph(font, glyphIndex, canvas, {
                 x: cursorX,
                 y: 0,
-                scale: scale,
-                paletteIndex: paletteIndex,
+                scale,
+                paletteIndex,
                 fallbackFill: options.fallbackFill,
                 styles: options.styles
             });
-            var glyph = font.getGlyph(glyphIndex);
-            var advance = (_a = glyph === null || glyph === void 0 ? void 0 : glyph.advanceWidth) !== null && _a !== void 0 ? _a : 0;
-            var effectiveAdvance = advance > 0 ? advance : fallbackAdvance;
+            const glyph = font.getGlyph(glyphIndex);
+            const advance = glyph?.advanceWidth ?? 0;
+            const effectiveAdvance = advance > 0 ? advance : fallbackAdvance;
             cursorX += this.safeProduct(effectiveAdvance, scale) + spacing;
         }
         context.restore();
-    };
-    CanvasRenderer.drawLayout = function (font, layout, canvas, options) {
-        if (options === void 0) { options = {}; }
-        var scale = this.safeNumber(options.scale, 0.1);
-        var x = this.safeNumber(options.x, 0);
-        var y = this.safeNumber(options.y, 0);
-        var context = canvas.getContext('2d');
+    }
+    static drawLayout(font, layout, canvas, options = {}) {
+        const scale = this.safeNumber(options.scale, 0.1);
+        const x = this.safeNumber(options.x, 0);
+        const y = this.safeNumber(options.y, 0);
+        const context = canvas.getContext('2d');
         if (!context)
             return;
-        var cursorX = x;
+        let cursorX = x;
         context.save();
         context.translate(0, y);
-        for (var _i = 0, layout_1 = layout; _i < layout_1.length; _i++) {
-            var item = layout_1[_i];
-            var glyph = font.getGlyph(item.glyphIndex);
+        for (const item of layout) {
+            const glyph = font.getGlyph(item.glyphIndex);
             if (!glyph)
                 continue;
-            var xOffset = this.safeNumber(item.xOffset, 0);
-            var yOffset = this.safeNumber(item.yOffset, 0);
-            var xAdvance = this.safeNumber(item.xAdvance, 0);
+            const xOffset = this.safeNumber(item.xOffset, 0);
+            const yOffset = this.safeNumber(item.yOffset, 0);
+            const xAdvance = this.safeNumber(item.xAdvance, 0);
             this.drawGlyphToContext(context, glyph, {
                 x: cursorX + this.safeProduct(xOffset, scale),
                 y: this.safeProduct(yOffset, scale),
-                scale: scale,
+                scale,
                 styles: options.styles
             });
             cursorX += this.safeProduct(xAdvance, scale);
         }
         context.restore();
-    };
-    CanvasRenderer.midValue = function (a, b) {
+    }
+    static midValue(a, b) {
         return (a + b) / 2;
-    };
-    return CanvasRenderer;
-}());
-export { CanvasRenderer };
+    }
+}

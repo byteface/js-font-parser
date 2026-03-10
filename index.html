@@ -263,7 +263,7 @@
           </div>
           <div class="field">
             <label for="kerning">Kerning Strength</label>
-            <input id="kerning" type="range" min="0" max="8" step="0.2" value="1.6" />
+            <input id="kerning" type="range" min="0" max="2" step="0.05" value="1" />
           </div>
           <div class="field">
             <label for="lineHeight">Line Height</label>
@@ -441,6 +441,36 @@
       ctx.restore();
     }
 
+    function getRawLineLayout(line, options) {
+      if (!font) return null;
+      if (typeof font.layoutStringAuto === 'function') {
+        return font.layoutStringAuto(line, options);
+      }
+      if (typeof font.layoutString === 'function') {
+        return font.layoutString(line, options);
+      }
+      return null;
+    }
+
+    function getLineLayout(line, useKerning, kerningScale) {
+      const base = getRawLineLayout(line, { gpos: true, kerning: false });
+      if (!useKerning) return base;
+
+      const kerned = getRawLineLayout(line, { gpos: true, kerning: true });
+      if (!Array.isArray(kerned) || kerned.length === 0) return base;
+      if (!Array.isArray(base) || base.length !== kerned.length) return kerned;
+
+      return kerned.map((item, index) => {
+        const baseItem = base[index];
+        return {
+          glyphIndex: item.glyphIndex,
+          xAdvance: baseItem.xAdvance + ((item.xAdvance - baseItem.xAdvance) * kerningScale),
+          xOffset: (baseItem.xOffset || 0) + (((item.xOffset || 0) - (baseItem.xOffset || 0)) * kerningScale),
+          yOffset: (baseItem.yOffset || 0) + (((item.yOffset || 0) - (baseItem.yOffset || 0)) * kerningScale)
+        };
+      });
+    }
+
     function drawLine(ctx, line, startX, baselineY, options) {
       const {
         scale,
@@ -452,31 +482,53 @@
         fontSize
       } = options;
 
+      const layout = getLineLayout(line, useKerning, kerningScale);
+      if (Array.isArray(layout) && typeof font.getGlyph === 'function') {
+        let cursorX = startX;
+        for (const item of layout) {
+          const glyph = font.getGlyph(item.glyphIndex);
+          if (!glyph) continue;
+
+          const xOffset = (item.xOffset || 0) * scale;
+          const yOffset = (item.yOffset || 0) * scale;
+
+          CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+            x: cursorX + xOffset,
+            y: baselineY - yOffset,
+            scale,
+            styles
+          });
+          cursorX += item.xAdvance * scale + spacing;
+        }
+        return;
+      }
+
       let cursorX = startX;
       let prevChar = null;
       const maxAbsKernUnits = Math.max(1, unitsPerEm * 0.25);
 
       for (const ch of line) {
         const glyph = font.getGlyphByChar(ch);
-        if (glyph) {
-          if (useKerning && prevChar != null && typeof font.getKerningValue === 'function') {
-            const rawKern = font.getKerningValue(prevChar, ch) || 0;
-            const safeKern = Math.max(-maxAbsKernUnits, Math.min(maxAbsKernUnits, rawKern));
-            cursorX += safeKern * scale * kerningScale;
-          }
-
-          CanvasRenderer.drawGlyphToContext(ctx, glyph, {
-            x: cursorX,
-            y: baselineY,
-            scale,
-            styles
-          });
-          cursorX += glyph.advanceWidth * scale + spacing;
-          prevChar = ch;
-        } else {
+        if (!glyph) {
           cursorX += Math.max(spacing, fontSize * 0.33);
           prevChar = null;
+          continue;
         }
+
+        if (useKerning && prevChar != null && typeof font.getKerningValue === 'function') {
+          const rawKern = font.getKerningValue(prevChar, ch) || 0;
+          const safeKern = Math.max(-maxAbsKernUnits, Math.min(maxAbsKernUnits, rawKern));
+          cursorX += safeKern * scale * kerningScale;
+        }
+
+        CanvasRenderer.drawGlyphToContext(ctx, glyph, {
+          x: cursorX,
+          y: baselineY,
+          scale,
+          styles
+        });
+        cursorX += glyph.advanceWidth * scale + spacing;
+        prevChar = ch;
       }
     }
 

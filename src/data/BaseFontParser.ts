@@ -110,6 +110,16 @@ export abstract class BaseFontParser {
         return pickBestCmapFormat(formats as any);
     }
 
+    protected isNonRenderingFormatCodePoint(codePoint: number): boolean {
+        return codePoint === 0x00AD
+            || codePoint === 0x061C
+            || codePoint === 0x200B
+            || codePoint === 0x200E
+            || codePoint === 0x200F
+            || codePoint === 0x2060
+            || codePoint === 0xFEFF;
+    }
+
     protected getGsubTableForLayout(): any | null {
         return this.gsub;
     }
@@ -860,6 +870,7 @@ export abstract class BaseFontParser {
             this.emitDiagnostic("CODE_POINT_RESOLVE_FAILED", "warning", "parse", "Failed to resolve code point for character.");
             return null;
         }
+        if (this.isNonRenderingFormatCodePoint(codePoint)) return null;
 
         const cmap = this.getCmapTableForLookup();
         if (!cmap) {
@@ -998,11 +1009,12 @@ export abstract class BaseFontParser {
 
     public layoutString(
         text: string,
-        options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean; gposFeatures?: string[] } = {}
+        options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean; gposFeatures?: string[]; kerning?: boolean } = {}
     ): Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }> {
         const gsubFeatures = options.gsubFeatures ?? ["liga"];
         const scriptTags = options.scriptTags ?? ["DFLT", "latn"];
-        const gposFeatures = options.gposFeatures ?? ["kern", "mark", "mkmk", "curs"];
+        const kerningEnabled = options.kerning ?? true;
+        const gposFeatures = options.gposFeatures ?? (kerningEnabled ? ["kern", "mark", "mkmk", "curs"] : ["mark", "mkmk", "curs"]);
         const glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
 
         const positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }> = [];
@@ -1011,9 +1023,9 @@ export abstract class BaseFontParser {
             const glyph = this.getGlyphByIndexForLayout(glyphIndex);
 
             let kern = 0;
-            if (i < glyphIndices.length - 1) {
+            if (kerningEnabled && i < glyphIndices.length - 1) {
                 kern = this.getKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
-                if (kern === 0) {
+                if (kern === 0 && !options.gpos) {
                     kern = this.getGposKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
                 }
             }
@@ -1148,14 +1160,15 @@ export abstract class BaseFontParser {
 
     public layoutStringAuto(
         text: string,
-        options: { gpos?: boolean; gposFeatures?: string[] } = {}
+        options: { gpos?: boolean; gposFeatures?: string[]; kerning?: boolean } = {}
     ): PositionedGlyph[] {
         const detection = detectScriptTags(text);
         return this.layoutString(text, {
             gsubFeatures: detection.features,
             scriptTags: detection.scripts,
             gpos: options.gpos ?? true,
-            gposFeatures: options.gposFeatures
+            gposFeatures: options.gposFeatures,
+            kerning: options.kerning
         });
     }
 

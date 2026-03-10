@@ -41,6 +41,7 @@ export class PairPosFormat2 extends LookupSubtable {
         const classDef2Offset = byte_ar.readUnsignedShort();
         this.class1Count = byte_ar.readUnsignedShort();
         this.class2Count = byte_ar.readUnsignedShort();
+        const classMatrixOffset = byte_ar.offset;
 
         byte_ar.offset = offset + coverageOffset;
         this.coverage = Coverage.read(byte_ar);
@@ -52,6 +53,7 @@ export class PairPosFormat2 extends LookupSubtable {
 
         this.classRecords = [];
         try {
+            byte_ar.offset = classMatrixOffset;
             for (let i = 0; i < this.class1Count; i++) {
                 const row: Array<{ v1: ValueRecordData; v2: ValueRecordData }> = [];
                 for (let j = 0; j < this.class2Count; j++) {
