@@ -36,10 +36,18 @@ Additional fixtures for broader demo/test coverage across scripts and formats:
   - Coverage: Bengali script variable TTF
   - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosansbengali/NotoSansBengali%5Bwdth%2Cwght%5D.ttf
   - SHA256: `dcd42978094e584a849c84a51450eeac40c8826057d566ea6d4b9627a403a05a`
+- `NotoSerifTamil-VF.ttf`
+  - Coverage: Tamil serif variable TTF
+  - Source: https://github.com/notofonts/tamil/releases/download/NotoSerifTamil-v2.004/NotoSerifTamil-v2.004.zip
+  - SHA256: `5a42ff4eaf83611d8983d6cd7209689b58c468fe8f76fc0d88ffdec453a6d05b`
 - `NotoSansTelugu-VF.ttf`
   - Coverage: Telugu script variable TTF
   - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstelugu/NotoSansTelugu%5Bwdth%2Cwght%5D.ttf
   - SHA256: `e618af7bf999df192ed4f388eba2e563f2b5015034e9cbb317b5bd793bd7334d`
+- `NotoSerifTelugu-VF.ttf`
+  - Coverage: Telugu serif variable TTF
+  - Source: https://github.com/notofonts/telugu/releases/download/NotoSerifTelugu-v2.005/NotoSerifTelugu-v2.005.zip
+  - SHA256: `22bc97f28b7098f7e7dbb46eb4c363148f8472629eae3963ab15e5e11e2ab75b`
 - `NotoSansMyanmar-VF.ttf`
   - Coverage: Myanmar script variable TTF
   - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosansmyanmar/NotoSansMyanmar%5Bwdth%2Cwght%5D.ttf
@@ -48,6 +56,10 @@ Additional fixtures for broader demo/test coverage across scripts and formats:
   - Coverage: Sinhala script variable TTF
   - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssinhala/NotoSansSinhala%5Bwdth%2Cwght%5D.ttf
   - SHA256: `9bd93e407a278075be403324063bc94a7e306c44de4df81214e932330c22eecf`
+- `NotoSerifSinhala-VF.ttf`
+  - Coverage: Sinhala serif variable TTF
+  - Source: https://github.com/notofonts/sinhala/releases/download/NotoSerifSinhala-v2.007/NotoSerifSinhala-v2.007.zip
+  - SHA256: `e6a0a593a229401bdb64453fafae930dffc676a7b810f1baa6ccae0ca2a9db27`
 - `NotoSerifTibetan-VF.ttf`
   - Coverage: Tibetan script variable TTF
   - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notoseriftibetan/NotoSerifTibetan%5Bwght%5D.ttf
@@ -64,6 +76,18 @@ Additional fixtures for broader demo/test coverage across scripts and formats:
   - Coverage: Malayalam script variable TTF
   - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosansmalayalam/NotoSansMalayalam%5Bwdth%2Cwght%5D.ttf
   - SHA256: `312e0e7c3cc15fa09eb42a8f749eeb246b593ed420e3c81aafe8d910c3a6fb56`
+- `NotoSerifMalayalam-VF.ttf`
+  - Coverage: Malayalam serif variable TTF
+  - Source: https://github.com/notofonts/malayalam/releases/download/NotoSerifMalayalam-v2.104/NotoSerifMalayalam-v2.104.zip
+  - SHA256: `574dfe9ec5c13318ebc9bff896f0263d45bc956b2f032e23276fad4a95f2e408`
+- `NotoSansKannada-VF.ttf`
+  - Coverage: Kannada script variable TTF
+  - Source: https://github.com/notofonts/kannada/releases/download/NotoSansKannada-v2.006/NotoSansKannada-v2.006.zip
+  - SHA256: `612e9c46c6c8dbd57aa3ecb785068065e30593bffdaaeae323a7b1a22014cf5d`
+- `NotoSerifKannada-VF.ttf`
+  - Coverage: Kannada serif variable TTF
+  - Source: https://github.com/notofonts/kannada/releases/download/NotoSerifKannada-v2.005/NotoSerifKannada-v2.005.zip
+  - SHA256: `9d15bc697b2147a54f9e40a173e30e3fd95b3f0d775841d5dedc7b900088d9ae`
 - `SourceCodePro-Regular.otf`
   - Coverage: CFF OpenType static OTF
   - Source: https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Regular.otf
