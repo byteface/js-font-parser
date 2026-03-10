@@ -76,8 +76,7 @@ Known-good WOFF2 smoke fixture path:
 
 ## Current Known Gaps
 
-Current top open items are tracked in `docs/WISHLIST.md`:
-- support and limitations are documented in `docs/SUPPORT.md`
+Current top open items are tracked in `docs/WISHLIST.md`.
 
 ## API by Task
 
@@ -100,7 +99,6 @@ Current top open items are tracked in `docs/WISHLIST.md`:
   - `SVGFont`
 
 Full API details: `docs/API.md`
-Support matrix: `docs/SUPPORT.md`
 
 ## Demos and Tools
 
@@ -145,7 +143,6 @@ Important TS import note:
 ## Project Docs
 
 - `docs/API.md`
-- `docs/SUPPORT.md`
 - `docs/WISHLIST.md`
 - `proj/fontparser/README.md` (CLI in development)
 - `tests/golden/README.md`
