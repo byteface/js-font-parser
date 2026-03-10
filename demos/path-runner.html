@@ -32,13 +32,14 @@
     <label class="row">Glow <span id="glowVal" class="v"></span><input id="glowInput" type="range" min="3" max="28" value="12" /></label>
     <div class="status" id="status">Loading…</div>
   </section>
-  <canvas id="stage"></canvas>
+  <canvas id="stage" width="1360" height="760"></canvas>
 </div>
 
+<script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-import { FontParser } from '../dist/data/FontParser.js';
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 import { getFontList } from '../tools/shared/font-catalog.js';
-import { collectGlyphPoints, splitContours, drawGlyphPath, getBounds, transformPoints, sampleContour } from './shared/glyph-helpers.js';
+import { collectGlyphPoints, splitContours, drawGlyphPath, getBounds, sampleContour } from './shared/glyph-helpers.js';
 
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
@@ -92,8 +93,13 @@ function rebuild() {
   const b = getBounds(pts);
   if (!b) return;
   const scale = Math.min((canvas.width * 0.62) / Math.max(1, b.width), (canvas.height * 0.62) / Math.max(1, b.height));
-  const transformed = transformPoints(pts, -((b.minX + b.maxX) * 0.5), -((b.minY + b.maxY) * 0.5), scale, true)
-    .map((p) => ({ ...p, x: p.x + canvas.width * 0.5, y: p.y + canvas.height * 0.5 }));
+  const gx = (b.minX + b.maxX) * 0.5;
+  const gy = (b.minY + b.maxY) * 0.5;
+  const transformed = pts.map((p) => ({
+    ...p,
+    x: (p.x - gx) * scale + canvas.width * 0.5,
+    y: (gy - p.y) * scale + canvas.height * 0.5
+  }));
   contours = splitContours(transformed);
   route = [];
   for (const contour of contours) {

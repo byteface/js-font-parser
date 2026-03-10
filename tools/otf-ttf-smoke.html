@@ -153,6 +153,20 @@
       });
     }
 
+    function getSampleOutlineIssues(font, text) {
+      const issues = [];
+      for (const ch of text) {
+        if (ch.trim().length === 0) continue;
+        const glyphIndex = font.getGlyphIndexByChar?.(ch);
+        const glyph = glyphIndex != null ? font.getGlyph?.(glyphIndex) : null;
+        const pointCount = glyph?.getPointCount?.() ?? 0;
+        if (!glyph || pointCount <= 0) {
+          issues.push(`${ch}:${glyphIndex ?? "null"}`);
+        }
+      }
+      return issues;
+    }
+
     async function render() {
       grid.innerHTML = "";
       const showTtf = filterTtf.checked;
@@ -193,9 +207,15 @@
           const hasGlyf = !!font.getTableByType(Table.glyf);
           const hasCff = !!font.getTableByType(Table.CFF);
           const hasCff2 = !!font.getTableByType(Table.CFF2);
+          const issues = getSampleOutlineIssues(font, sampleInput.value);
           draw(font, entry.canvas, sampleInput.value);
           entry.status.textContent = `ok | ${hasGlyf ? "glyf" : ""}${hasCff ? " CFF" : ""}${hasCff2 ? " CFF2" : ""}`.trim();
-          entry.card.dataset.failed = "0";
+          if (issues.length > 0) {
+            entry.status.textContent += ` | outline issues: ${issues.join(", ")}`;
+            entry.card.dataset.failed = "1";
+          } else {
+            entry.card.dataset.failed = "0";
+          }
         } catch (err) {
           entry.status.textContent = "failed";
           entry.card.dataset.failed = "1";

@@ -41,20 +41,6 @@ import {
     getBestCmapFormatFor as selectBestCmapFormatFor,
     pickBestCmapFormat
 } from './ParserShared.js';
-import {
-    applyIupDeltas as applyIupDeltasShared,
-    flattenColrV1Paint as flattenColrV1PaintShared,
-    getMarkAnchorsForGlyph as getMarkAnchorsForGlyphShared,
-    interpolateDelta as interpolateDeltaShared
-} from './ParserGlyphShared.js';
-import {
-    computeVariationCoords as computeVariationCoordsShared,
-    getColorLayersForChar as getColorLayersForCharShared,
-    getColorLayersForGlyph as getColorLayersForGlyphShared,
-    getGlyphPointsByChar as getGlyphPointsByCharShared,
-    layoutToPoints as layoutToPointsShared,
-    measureText as measureTextShared
-} from './ParserApiShared.js';
 
 export class FontParserWOFF {
     private static readonly WOFF_SIGNATURE = 0x774f4646;
@@ -163,6 +149,18 @@ export class FontParserWOFF {
         return view.getUint16(offset, false);
     }
 
+    private static assertNonOverlappingTableRanges(entries: Array<{ offset: number; compLength: number }>): void {
+        const byOffset = [...entries].sort((a, b) => a.offset - b.offset);
+        for (let i = 1; i < byOffset.length; i++) {
+            const prev = byOffset[i - 1];
+            const curr = byOffset[i];
+            const prevEnd = prev.offset + prev.compLength;
+            if (curr.offset < prevEnd) {
+                throw new Error('Invalid WOFF table entry: overlapping table data ranges.');
+            }
+        }
+    }
+
     private static decodeWoffToSfntSync(buffer: Uint8Array): Uint8Array {
         const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
         if (view.byteLength < 44) {
@@ -176,8 +174,8 @@ export class FontParserWOFF {
         const declaredLength = this.readUint32(view, 8);
         const numTables = this.readUint16(view, 12);
         const totalSfntSize = this.readUint32(view, 16);
-        if (declaredLength > view.byteLength) {
-            throw new Error('Invalid WOFF header: declared length exceeds available bytes.');
+        if (declaredLength !== view.byteLength) {
+            throw new Error('Invalid WOFF header: declared length does not match available bytes.');
         }
         if (numTables <= 0) {
             throw new Error('Invalid WOFF header: numTables must be greater than zero.');
@@ -206,6 +204,7 @@ export class FontParserWOFF {
             }
             entries.push(entry);
         }
+        this.assertNonOverlappingTableRanges(entries);
 
         entries.sort((a, b) => a.tag - b.tag);
         const maxPower = 2 ** Math.floor(Math.log2(numTables));
@@ -274,8 +273,8 @@ export class FontParserWOFF {
         const numTables = this.readUint16(view, 12);
         const totalSfntSize = this.readUint32(view, 16);
 
-        if (length > buffer.byteLength) {
-            throw new Error('Invalid WOFF header: declared length exceeds available bytes.');
+        if (length !== buffer.byteLength) {
+            throw new Error('Invalid WOFF header: declared length does not match available bytes.');
         }
         if (numTables <= 0) {
             throw new Error('Invalid WOFF header: numTables must be greater than zero.');
@@ -298,8 +297,12 @@ export class FontParserWOFF {
             if (entry.offset > buffer.byteLength || entry.compLength > buffer.byteLength - entry.offset) {
                 throw new Error('Invalid WOFF table entry: table offset/length out of bounds.');
             }
+            if (entry.compLength > entry.origLength) {
+                throw new Error('Invalid WOFF table entry: compLength cannot exceed origLength.');
+            }
             entries.push(entry);
         }
+        this.assertNonOverlappingTableRanges(entries);
 
         entries.sort((a, b) => a.tag - b.tag);
 
@@ -629,14 +632,36 @@ export class FontParserWOFF {
         char: string,
         options: { sampleStep?: number } = {}
     ): Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean }> {
-        return getGlyphPointsByCharShared(char, options, (c) => this.getGlyphByChar(c));
+        const glyph = this.getGlyphByChar(char);
+        if (!glyph) return [];
+        const sampleStep = Math.max(1, Math.floor(options.sampleStep ?? 1));
+        const points: Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean }> = [];
+        for (let i = 0; i < glyph.getPointCount(); i += sampleStep) {
+            const p = glyph.getPoint(i);
+            if (!p) continue;
+            points.push({
+                x: p.x,
+                y: p.y,
+                onCurve: p.onCurve,
+                endOfContour: p.endOfContour
+            });
+        }
+        return points;
     }
 
     public measureText(
         text: string,
         options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean; gposFeatures?: string[]; letterSpacing?: number } = {}
     ): { advanceWidth: number; glyphCount: number } {
-        return measureTextShared(text, options, (t, o) => this.layoutString(t, o));
+        const layout = this.layoutString(text, options);
+        const letterSpacing = Number.isFinite(options.letterSpacing) ? (options.letterSpacing as number) : 0;
+        let advanceWidth = 0;
+        for (let i = 0; i < layout.length; i++) {
+            const xAdvance = Number.isFinite(layout[i].xAdvance) ? layout[i].xAdvance : 0;
+            advanceWidth += xAdvance;
+            if (letterSpacing !== 0 && i < layout.length - 1) advanceWidth += letterSpacing;
+        }
+        return { advanceWidth: Number.isFinite(advanceWidth) ? advanceWidth : 0, glyphCount: layout.length };
     }
 
     public layoutToPoints(
@@ -657,26 +682,68 @@ export class FontParserWOFF {
         advanceWidth: number;
         scale: number;
     } {
-        return layoutToPointsShared(text, options, {
-            layoutString: (t, o) => this.layoutString(t, o),
-            getGlyph: (gid) => this.getGlyph(gid),
-            getUnitsPerEm: () => this.getUnitsPerEm()
-        });
+        const layout = this.layoutString(text, options);
+        const sampleBase = Number.isFinite(options.sampleStep) ? (options.sampleStep as number) : 1;
+        const sampleStep = Math.max(1, Math.floor(sampleBase));
+        const unitsPerEm = this.getUnitsPerEm();
+        const safeUnitsPerEm = Number.isFinite(unitsPerEm) && unitsPerEm > 0 ? unitsPerEm : 1000;
+        const fontSize = Number.isFinite(options.fontSize) && (options.fontSize as number) > 0
+            ? (options.fontSize as number)
+            : safeUnitsPerEm;
+        const scale = fontSize / safeUnitsPerEm;
+        const originX = Number.isFinite(options.x) ? (options.x as number) : 0;
+        const originY = Number.isFinite(options.y) ? (options.y as number) : 0;
+        const letterSpacing = Number.isFinite(options.letterSpacing) ? (options.letterSpacing as number) : 0;
+        const points: Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean; glyphIndex: number; pointIndex: number }> = [];
+
+        let penX = 0;
+        for (let i = 0; i < layout.length; i++) {
+            const item = layout[i];
+            const glyph = this.getGlyph(item.glyphIndex);
+            if (glyph) {
+                for (let pIndex = 0; pIndex < glyph.getPointCount(); pIndex += sampleStep) {
+                    const p = glyph.getPoint(pIndex);
+                    if (!p) continue;
+                    points.push({
+                        x: originX + (penX + (Number.isFinite(item.xOffset) ? item.xOffset : 0) + p.x) * scale,
+                        y: originY - ((Number.isFinite(item.yOffset) ? item.yOffset : 0) + p.y) * scale,
+                        onCurve: p.onCurve,
+                        endOfContour: p.endOfContour,
+                        glyphIndex: item.glyphIndex,
+                        pointIndex: pIndex
+                    });
+                }
+            }
+            penX += Number.isFinite(item.xAdvance) ? item.xAdvance : 0;
+            if (letterSpacing !== 0 && i < layout.length - 1) penX += letterSpacing;
+        }
+
+        return { points, advanceWidth: Number.isFinite(penX) ? penX : 0, scale: Number.isFinite(scale) ? scale : 1 };
     }
 
     public getColorLayersForGlyph(glyphId: number, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
-        return getColorLayersForGlyphShared(glyphId, paletteIndex, {
-            hasColr: !!this.colr,
-            getLayersForGlyph: (gid) => this.colr?.getLayersForGlyph(gid) ?? [],
-            getPalette: (idx) => this.cpal?.getPalette(idx) ?? []
+        if (!this.colr) return [];
+        const layers = this.colr.getLayersForGlyph(glyphId);
+        if (layers.length === 0) return [];
+
+        const palette = this.cpal?.getPalette(paletteIndex) ?? [];
+        return layers.map(layer => {
+            if (layer.paletteIndex === 0xffff) {
+                return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
+            }
+            const color = palette[layer.paletteIndex];
+            if (!color) {
+                return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
+            }
+            const rgba = `rgba(${color.red}, ${color.green}, ${color.blue}, ${color.alpha / 255})`;
+            return { glyphId: layer.glyphId, color: rgba, paletteIndex: layer.paletteIndex };
         });
     }
 
     public getColorLayersForChar(char: string, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
-        return getColorLayersForCharShared(char, paletteIndex, {
-            getGlyphIndexByChar: (c) => this.getGlyphIndexByChar(c),
-            getColorLayersForGlyph: (gid, idx) => this.getColorLayersForGlyph(gid, idx)
-        });
+        const glyphId = this.getGlyphIndexByChar(char);
+        if (glyphId == null) return [];
+        return this.getColorLayersForGlyph(glyphId, paletteIndex);
     }
 
     public getColrV1LayersForGlyph(glyphId: number, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
@@ -687,24 +754,113 @@ export class FontParserWOFF {
     }
 
     private flattenColrV1Paint(paint: any, paletteIndex: number): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
-        return flattenColrV1PaintShared(
-            paint,
-            paletteIndex,
-            (idx) => this.cpal?.getPalette(idx) ?? [],
-            (gid, idx) => this.getColrV1LayersForGlyph(gid, idx)
-        );
+        if (!paint) return [];
+        if (paint.format === 1 && Array.isArray(paint.layers)) {
+            return paint.layers.flatMap((p: any) => this.flattenColrV1Paint(p, paletteIndex));
+        }
+        if (paint.format === 10) {
+            const child = paint.paint;
+            if (child && child.format === 2) {
+                const color = this.cpal?.getPalette(paletteIndex)?.[child.paletteIndex];
+                const rgba = color ? `rgba(${color.red}, ${color.green}, ${color.blue}, ${(color.alpha / 255) * (child.alpha ?? 1)})` : null;
+                return [{ glyphId: paint.glyphID, color: rgba, paletteIndex: child.paletteIndex }];
+            }
+            return this.flattenColrV1Paint(child, paletteIndex).map(layer => ({ ...layer, glyphId: paint.glyphID }));
+        }
+        if (paint.format === 11) {
+            return this.getColrV1LayersForGlyph(paint.glyphID, paletteIndex);
+        }
+        return [];
     }
 
     public getMarkAnchorsForGlyph(
         glyphId: number,
         subtables?: Array<any>
     ): Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number; componentIndex?: number }> {
-        return getMarkAnchorsForGlyphShared(glyphId, this.gpos, subtables, {
-            MarkBasePosFormat1,
-            MarkLigPosFormat1,
-            MarkMarkPosFormat1,
-            CursivePosFormat1
-        });
+        if (!this.gpos) return [];
+        const anchors: Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number; componentIndex?: number }> = [];
+        const activeSubtables = subtables ?? (() => {
+            const lookups = this.gpos?.lookupList?.getLookups?.() ?? [];
+            const all: any[] = [];
+            for (const lookup of lookups) {
+                if (!lookup) continue;
+                for (let i = 0; i < lookup.getSubtableCount(); i++) {
+                    const st = lookup.getSubtable(i);
+                    if (st) all.push(st);
+                }
+            }
+            return all;
+        })();
+
+        for (const st of activeSubtables) {
+                if (st instanceof MarkBasePosFormat1) {
+                    const markIndex = st.markCoverage?.findGlyph(glyphId) ?? -1;
+                    if (markIndex >= 0 && st.markArray) {
+                        const record = st.markArray.marks[markIndex];
+                        if (record?.anchor) {
+                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                        }
+                    }
+                    const baseIndex = st.baseCoverage?.findGlyph(glyphId) ?? -1;
+                    if (baseIndex >= 0 && st.baseArray) {
+                        const base = st.baseArray.baseRecords[baseIndex];
+                        if (base?.anchors) {
+                            base.anchors.forEach((anchor, classIndex) => {
+                                if (anchor) {
+                                    anchors.push({ type: 'base', classIndex, x: anchor.x, y: anchor.y });
+                                }
+                            });
+                        }
+                    }
+                }
+                if (st instanceof MarkLigPosFormat1) {
+                    const markIndex = st.markCoverage?.findGlyph(glyphId) ?? -1;
+                    if (markIndex >= 0 && st.markArray) {
+                        const record = st.markArray.marks[markIndex];
+                        if (record?.anchor) {
+                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                        }
+                    }
+                    const ligIndex = st.ligatureCoverage?.findGlyph(glyphId) ?? -1;
+                    if (ligIndex >= 0 && st.ligatureArray) {
+                        const lig = st.ligatureArray.ligatures[ligIndex];
+                        lig?.components?.forEach((component, componentIndex) => {
+                            component.forEach((anchor, classIndex) => {
+                                if (anchor) {
+                                    anchors.push({ type: 'ligature', classIndex, x: anchor.x, y: anchor.y, componentIndex });
+                                }
+                            });
+                        });
+                    }
+                }
+                if (st instanceof MarkMarkPosFormat1) {
+                    const mark1Index = st.mark1Coverage?.findGlyph(glyphId) ?? -1;
+                    if (mark1Index >= 0 && st.mark1Array) {
+                        const record = st.mark1Array.marks[mark1Index];
+                        if (record?.anchor) {
+                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                        }
+                    }
+                    const mark2Index = st.mark2Coverage?.findGlyph(glyphId) ?? -1;
+                    if (mark2Index >= 0 && st.mark2Array) {
+                        const record = st.mark2Array.records[mark2Index];
+                        record?.anchors?.forEach((anchor, classIndex) => {
+                            if (anchor) {
+                                anchors.push({ type: 'mark2', classIndex, x: anchor.x, y: anchor.y });
+                            }
+                        });
+                    }
+                }
+                if (st instanceof CursivePosFormat1) {
+                    const idx = st.coverage?.findGlyph(glyphId) ?? -1;
+                    if (idx >= 0) {
+                        const record = st.entryExitRecords[idx];
+                        if (record?.entry) anchors.push({ type: 'cursive-entry', classIndex: 0, x: record.entry.x, y: record.entry.y });
+                        if (record?.exit) anchors.push({ type: 'cursive-exit', classIndex: 0, x: record.exit.x, y: record.exit.y });
+                    }
+                }
+        }
+        return anchors;
     }
 
     public async getSvgDocumentForGlyphAsync(glyphId: number): Promise<{ svgText: string | null; isCompressed: boolean }> {
@@ -713,11 +869,67 @@ export class FontParserWOFF {
     }
 
     private applyIupDeltas(base: IGlyphDescription, dx: number[], dy: number[], touched: boolean[]): void {
-        applyIupDeltasShared(base, dx, dy, touched);
+        const pointCount = base.getPointCount();
+        if (pointCount === 0) return;
+        const endPts: number[] = [];
+        for (let c = 0; c < base.getContourCount(); c++) {
+            endPts.push(base.getEndPtOfContours(c));
+        }
+
+        let start = 0;
+        for (const end of endPts) {
+            const indices: number[] = [];
+            const touchedIndices: number[] = [];
+            for (let i = start; i <= end; i++) {
+                indices.push(i);
+                if (touched[i]) touchedIndices.push(i);
+            }
+            if (touchedIndices.length === 0) {
+                start = end + 1;
+                continue;
+            }
+            if (touchedIndices.length === 1) {
+                const idx = touchedIndices[0];
+                for (const i of indices) {
+                    dx[i] = dx[idx];
+                    dy[i] = dy[idx];
+                }
+                start = end + 1;
+                continue;
+            }
+
+            const contour = indices;
+            const total = contour.length;
+            const order = touchedIndices.map(i => contour.indexOf(i)).sort((a, b) => a - b);
+            const coordsX = contour.map(i => base.getXCoordinate(i));
+            const coordsY = contour.map(i => base.getYCoordinate(i));
+
+            for (let t = 0; t < order.length; t++) {
+                const a = order[t];
+                const b = order[(t + 1) % order.length];
+                let idx = (a + 1) % total;
+                while (idx !== b) {
+                    const globalIndex = contour[idx];
+                    const ax = coordsX[a];
+                    const bx = coordsX[b];
+                    const ay = coordsY[a];
+                    const by = coordsY[b];
+                    const px = coordsX[idx];
+                    const py = coordsY[idx];
+                    dx[globalIndex] = this.interpolate(ax, bx, dx[contour[a]], dx[contour[b]], px);
+                    dy[globalIndex] = this.interpolate(ay, by, dy[contour[a]], dy[contour[b]], py);
+                    idx = (idx + 1) % total;
+                }
+            }
+            start = end + 1;
+        }
     }
 
     private interpolate(aCoord: number, bCoord: number, aDelta: number, bDelta: number, pCoord: number): number {
-        return interpolateDeltaShared(aCoord, bCoord, aDelta, bDelta, pCoord);
+        if (aCoord === bCoord) return aDelta;
+        const t = (pCoord - aCoord) / (bCoord - aCoord);
+        const clamped = Math.max(0, Math.min(1, t));
+        return aDelta + (bDelta - aDelta) * clamped;
     }
 
     public getGlyphIndexByChar(char: string): number | null {
@@ -725,7 +937,7 @@ export class FontParserWOFF {
             this.emitDiagnostic("INVALID_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar expects a character.");
             return null;
         }
-        if (char.length > 2) {
+        if (Array.from(char).length > 1) {
             this.emitDiagnostic(
                 "MULTI_CHAR_INPUT",
                 "warning",
@@ -746,17 +958,57 @@ export class FontParserWOFF {
             this.emitDiagnostic("MISSING_TABLE_CMAP", "warning", "parse", "No cmap table available.", undefined, "MISSING_TABLE_CMAP");
             return null;
         }
-        const cmapFormat = this.getBestCmapFormatFor(codePoint);
+        let cmapFormat: any = null;
+        try {
+            cmapFormat = this.getBestCmapFormatFor(codePoint);
+        } catch {
+            this.emitDiagnostic(
+                "CMAP_FORMAT_RESOLVE_FAILED",
+                "warning",
+                "parse",
+                "Failed while resolving preferred cmap format; using fallback format order.",
+                { codePoint },
+                "CMAP_FORMAT_RESOLVE_FAILED"
+            );
+            const fallbackFormats = Array.isArray(this.cmap.formats)
+                ? this.cmap.formats.filter((fmt): fmt is NonNullable<typeof fmt> => fmt != null)
+                : [];
+            cmapFormat = pickBestCmapFormat(fallbackFormats);
+        }
         if (!cmapFormat) {
             this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint });
             return null;
         }
 
-        const glyphIndex = typeof cmapFormat.getGlyphIndex === "function"
-            ? cmapFormat.getGlyphIndex(codePoint)
-            : cmapFormat.mapCharCode(codePoint);
+        let glyphIndex: unknown = null;
+        try {
+            if (typeof cmapFormat.getGlyphIndex === "function") {
+                glyphIndex = cmapFormat.getGlyphIndex(codePoint);
+            } else if (typeof cmapFormat.mapCharCode === "function") {
+                glyphIndex = cmapFormat.mapCharCode(codePoint);
+            } else {
+                this.emitDiagnostic(
+                    "UNSUPPORTED_CMAP_FORMAT",
+                    "warning",
+                    "parse",
+                    "Selected cmap format does not expose getGlyphIndex/mapCharCode.",
+                    { codePoint },
+                    "UNSUPPORTED_CMAP_FORMAT"
+                );
+                return null;
+            }
+        } catch {
+            this.emitDiagnostic(
+                "CMAP_LOOKUP_FAILED",
+                "warning",
+                "parse",
+                "cmap glyph lookup failed for code point.",
+                { codePoint }
+            );
+            return null;
+        }
 
-        if (glyphIndex == null || glyphIndex === 0) return null;
+        if (typeof glyphIndex !== "number" || !Number.isFinite(glyphIndex) || glyphIndex === 0) return null;
         return glyphIndex;
     }
 
@@ -768,7 +1020,7 @@ export class FontParserWOFF {
 
     public getGlyphIndicesForStringWithGsub(text: string, featureTags: string[] = ["liga"], scriptTags: string[] = ["DFLT", "latn"]): number[] {
         const glyphs = [];
-        for (const ch of text) {
+        for (const ch of Array.from(text)) {
             const idx = this.getGlyphIndexByChar(ch);
             if (idx != null) glyphs.push(idx);
         }
@@ -784,7 +1036,12 @@ export class FontParserWOFF {
     public getKerningValueByGlyphs(leftGlyph: number, rightGlyph: number): number {
         if (!this.kern) return 0;
         if (typeof this.kern.getKerningValue === "function") {
-            return this.kern.getKerningValue(leftGlyph, rightGlyph) ?? 0;
+            try {
+                const value = this.kern.getKerningValue(leftGlyph, rightGlyph);
+                return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+            } catch {
+                return 0;
+            }
         }
         return 0;
     }
@@ -801,11 +1058,16 @@ export class FontParserWOFF {
             for (let i = 0; i < lookup.getSubtableCount(); i++) {
                 const st = lookup.getSubtable(i);
                 if (st instanceof PairPosFormat1 || st instanceof PairPosFormat2) {
-                    value += st.getKerning(leftGlyph, rightGlyph);
+                    try {
+                        const kern = st.getKerning(leftGlyph, rightGlyph);
+                        value += Number.isFinite(kern) ? kern : 0;
+                    } catch {
+                        // Ignore malformed pair subtables and continue.
+                    }
                 }
             }
         }
-        return value;
+        return Number.isFinite(value) ? value : 0;
     }
 
     public getKerningValue(leftChar: string, rightChar: string): number {
@@ -830,7 +1092,22 @@ export class FontParserWOFF {
 
     public setVariationByAxes(values: Record<string, number>): void {
         if (!this.fvar) return;
-        const coords = computeVariationCoordsShared(this.fvar.axes, values);
+        const coords: number[] = [];
+        for (const axis of this.fvar.axes) {
+            const tag = axis.name;
+            const value = values[tag] ?? axis.defaultValue;
+            let norm = 0;
+            if (value !== axis.defaultValue) {
+                if (value > axis.defaultValue) {
+                    const span = axis.maxValue - axis.defaultValue;
+                    norm = span !== 0 ? (value - axis.defaultValue) / span : 0;
+                } else {
+                    const span = axis.defaultValue - axis.minValue;
+                    norm = span !== 0 ? (value - axis.defaultValue) / span : 0;
+                }
+            }
+            coords.push(Number.isFinite(norm) ? Math.max(-1, Math.min(1, norm)) : 0);
+        }
         this.setVariationCoords(coords);
     }
 
@@ -858,7 +1135,7 @@ export class FontParserWOFF {
 
             positioned.push({
                 glyphIndex,
-                xAdvance: (glyph?.advanceWidth ?? 0) + kern,
+                xAdvance: this.isMarkGlyphClass(glyphIndex) ? 0 : (glyph?.advanceWidth ?? 0) + kern,
                 xOffset: 0,
                 yOffset: 0,
                 yAdvance: 0,
@@ -972,7 +1249,7 @@ export class FontParserWOFF {
             return candidates[0];
         };
 
-        const isMarkGlyph = (gid: number) => (this.gdef?.getGlyphClass?.(gid) ?? 0) === 3;
+        const isMarkGlyph = (gid: number) => this.isMarkGlyphClass(gid);
 
         for (let i = 0; i < glyphIndices.length; i++) {
             if (!positioned[i]) continue;
@@ -1036,6 +1313,16 @@ export class FontParserWOFF {
                 positioned[i].yOffset += exitAnchor.y - entryAnchor.y;
             }
         }
+
+        for (let i = 0; i < glyphIndices.length; i++) {
+            if (positioned[i] && this.isMarkGlyphClass(glyphIndices[i])) {
+                positioned[i].xAdvance = 0;
+            }
+        }
+    }
+
+    private isMarkGlyphClass(glyphId: number): boolean {
+        return (this.gdef?.getGlyphClass?.(glyphId) ?? 0) === 3;
     }
 
     public getNameRecord(nameId: number): string {

@@ -32,6 +32,38 @@ Additional fixtures for broader demo/test coverage across scripts and formats:
   - Coverage: Ethiopic script variable TTF
   - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosansethiopic/NotoSansEthiopic%5Bwdth%2Cwght%5D.ttf
   - SHA256: `0dbccc00b22d180ebd6a4bd8a733918a29e709fa6798023adc3e6cd40da65077`
+- `NotoSansBengali-VF.ttf`
+  - Coverage: Bengali script variable TTF
+  - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosansbengali/NotoSansBengali%5Bwdth%2Cwght%5D.ttf
+  - SHA256: `dcd42978094e584a849c84a51450eeac40c8826057d566ea6d4b9627a403a05a`
+- `NotoSansTelugu-VF.ttf`
+  - Coverage: Telugu script variable TTF
+  - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstelugu/NotoSansTelugu%5Bwdth%2Cwght%5D.ttf
+  - SHA256: `e618af7bf999df192ed4f388eba2e563f2b5015034e9cbb317b5bd793bd7334d`
+- `NotoSansMyanmar-VF.ttf`
+  - Coverage: Myanmar script variable TTF
+  - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosansmyanmar/NotoSansMyanmar%5Bwdth%2Cwght%5D.ttf
+  - SHA256: `7abbbfbe2514105d7ce94937aee3feb2ba89b73a256c8b77b5866bd9b83e32ec`
+- `NotoSansSinhala-VF.ttf`
+  - Coverage: Sinhala script variable TTF
+  - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssinhala/NotoSansSinhala%5Bwdth%2Cwght%5D.ttf
+  - SHA256: `9bd93e407a278075be403324063bc94a7e306c44de4df81214e932330c22eecf`
+- `NotoSerifTibetan-VF.ttf`
+  - Coverage: Tibetan script variable TTF
+  - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notoseriftibetan/NotoSerifTibetan%5Bwght%5D.ttf
+  - SHA256: `060ec022b04c306de3f58d051fb0e1cf81a5b610c5910fbfc43bba154c057cda`
+- `NotoNastaliqUrdu-VF.ttf`
+  - Coverage: Nastaliq Urdu variable TTF
+  - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notonastaliqurdu/NotoNastaliqUrdu%5Bwght%5D.ttf
+  - SHA256: `98a4787f34eb6fde57fb9a1121a8f216301196ab0da98ea110cad581be8abbcd`
+- `NotoSansLao-VF.ttf`
+  - Coverage: Lao script variable TTF
+  - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosanslao/NotoSansLao%5Bwdth%2Cwght%5D.ttf
+  - SHA256: `9608b94603a82d09a8038946f9775242f99e3b3459b7f1e4d5b335b578cd7ab3`
+- `NotoSansMalayalam-VF.ttf`
+  - Coverage: Malayalam script variable TTF
+  - Source: https://raw.githubusercontent.com/google/fonts/main/ofl/notosansmalayalam/NotoSansMalayalam%5Bwdth%2Cwght%5D.ttf
+  - SHA256: `312e0e7c3cc15fa09eb42a8f749eeb246b593ed420e3c81aafe8d910c3a6fb56`
 - `SourceCodePro-Regular.otf`
   - Coverage: CFF OpenType static OTF
   - Source: https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Regular.otf
@@ -40,6 +72,10 @@ Additional fixtures for broader demo/test coverage across scripts and formats:
   - Coverage: CFF OpenType static OTF (bold metrics)
   - Source: https://raw.githubusercontent.com/adobe-fonts/source-code-pro/release/OTF/SourceCodePro-Bold.otf
   - SHA256: `6f5a4a46a99ad1b92a8675e98f148272c8d2476fc0eb067247dd5eea6a3ad84c`
+- `NotoSansCJKkr-Regular.otf`
+  - Coverage: Korean CJK OpenType/CFF fixture
+  - Source: https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/Korean/NotoSansCJKkr-Regular.otf
+  - SHA256: `6bcb2a0703aa137e874fc2dffa85f6c21ba9a67fa329e81b8c801663af7e992a`
 - `FontAwesome-4.7.0.ttf`
   - Coverage: icon-focused TrueType font fixture
   - Source: https://raw.githubusercontent.com/FortAwesome/Font-Awesome/v4.7.0/fonts/fontawesome-webfont.ttf
@@ -48,6 +84,10 @@ Additional fixtures for broader demo/test coverage across scripts and formats:
   - Coverage: legacy WOFF fixture
   - Source: https://raw.githubusercontent.com/FortAwesome/Font-Awesome/v4.7.0/fonts/fontawesome-webfont.woff
   - SHA256: `ba0c59deb5450f5cb41b3f93609ee2d0d995415877ddfa223e8a8a7533474f07`
+- `FiraSans-Regular.woff`
+  - Coverage: text-oriented WOFF fixture
+  - Source: https://raw.githubusercontent.com/mozilla/Fira/master/woff/FiraSans-Regular.woff
+  - SHA256: `f424919647a665eebd5f5f6fb13f022b46f8542365f2892d6e5cf9318574379b`
 
 ## Notes
 - Downloaded with `curl -fL` from upstream sources.

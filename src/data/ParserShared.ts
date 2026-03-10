@@ -4,6 +4,8 @@ import { matchesDiagnosticFilter } from '../types/Diagnostics.js';
 export type CmapFormatLike = {
     format?: number;
     getFormatType?: () => number;
+    getGlyphIndex?: (codePoint: number) => number | null;
+    mapCharCode?: (codePoint: number) => number | null;
 };
 
 export type CmapLike = {
@@ -41,9 +43,8 @@ export function clearDiagnostics(state: DiagnosticState): void {
     state.diagnosticKeys.clear();
 }
 
-export function pickBestCmapFormat(formats: CmapFormatLike[]): CmapFormatLike | null {
+export function pickBestCmapFormat(formats: CmapFormatLike[], order: number[] = [4, 12, 10, 8, 6, 2, 0]): CmapFormatLike | null {
     if (formats.length === 0) return null;
-    const order = [4, 12, 10, 8, 6, 2, 0];
     for (const fmt of order) {
         const found = formats.find((f) => (typeof f.getFormatType === 'function' ? f.getFormatType() : f.format) === fmt);
         if (found) return found;
@@ -74,11 +75,20 @@ export function getBestCmapFormatFor(cmap: CmapLike | null, codePoint: number): 
         ];
 
     for (const pref of preferred) {
-        const formats = cmap.getCmapFormats(pref.platformId, pref.encodingId);
+        let formats: CmapFormatLike[] = [];
+        try {
+            const resolved = cmap.getCmapFormats(pref.platformId, pref.encodingId);
+            formats = Array.isArray(resolved) ? resolved : [];
+        } catch {
+            formats = [];
+        }
         if (formats.length > 0) {
-            return pickBestCmapFormat(formats);
+            return pickBestCmapFormat(formats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0]);
         }
     }
 
-    return cmap.formats.length > 0 ? pickBestCmapFormat(cmap.formats) : null;
+    const fallbackFormats = Array.isArray(cmap.formats) ? cmap.formats : [];
+    return fallbackFormats.length > 0
+        ? pickBestCmapFormat(fallbackFormats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0])
+        : null;
 }

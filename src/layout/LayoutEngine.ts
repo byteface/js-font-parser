@@ -64,9 +64,9 @@ export class LayoutEngine {
      * is intentionally independent from GSUB/GPOS internals.
      */
     static layoutText(font: FontLike, text: string, options: LayoutOptions = {}): LayoutResult {
-        const maxWidth = options.maxWidth ?? 0;
+        const maxWidth = Number.isFinite(options.maxWidth) ? (options.maxWidth as number) : 0;
         const align = options.align ?? 'left';
-        const letterSpacing = options.letterSpacing ?? 0;
+        const letterSpacing = Number.isFinite(options.letterSpacing) ? (options.letterSpacing as number) : 0;
         const useKerning = options.useKerning ?? true;
         const breakWords = options.breakWords ?? true;
         const trimLeadingSpaces = options.trimLeadingSpaces ?? true;
@@ -84,14 +84,48 @@ export class LayoutEngine {
             ? (this.hasRtl(text) ? 'rtl' : 'ltr')
             : resolvedDirection;
 
-        const hhea = font.getTableByType?.(0x68686561); // hhea
-        const head = font.getTableByType?.(0x68656164); // head
-        const unitsPerEm = head?.unitsPerEm ?? 1000;
-        const lineHeight = options.lineHeight ?? ((hhea?.ascender ?? unitsPerEm * 0.8) - (hhea?.descender ?? -unitsPerEm * 0.2) + (hhea?.lineGap ?? 0));
         const emitDiagnostic = (diagnostic: LayoutDiagnostic) => {
             options.diagnostics?.push(diagnostic);
             options.onDiagnostic?.(diagnostic);
         };
+        let hhea: { ascender?: number; descender?: number; lineGap?: number } | null = null;
+        let head: { unitsPerEm?: number } | null = null;
+        if (typeof font.getTableByType === 'function') {
+            try {
+                hhea = font.getTableByType(0x68686561); // hhea
+            } catch {
+                emitDiagnostic({
+                    code: 'LAYOUT_CALLBACK_ERROR',
+                    level: 'warning',
+                    phase: 'layout',
+                    message: 'getTableByType callback threw while reading hhea.'
+                });
+            }
+            try {
+                head = font.getTableByType(0x68656164); // head
+            } catch {
+                emitDiagnostic({
+                    code: 'LAYOUT_CALLBACK_ERROR',
+                    level: 'warning',
+                    phase: 'layout',
+                    message: 'getTableByType callback threw while reading head.'
+                });
+            }
+        }
+        const unitsPerEm = Number.isFinite(head?.unitsPerEm) && (head?.unitsPerEm as number) > 0
+            ? (head?.unitsPerEm as number)
+            : 1000;
+        const ascender = Number.isFinite(hhea?.ascender) ? (hhea?.ascender as number) : unitsPerEm * 0.8;
+        const descender = Number.isFinite(hhea?.descender) ? (hhea?.descender as number) : -unitsPerEm * 0.2;
+        const lineGap = Number.isFinite(hhea?.lineGap) ? (hhea?.lineGap as number) : 0;
+        const fallbackLineHeight = unitsPerEm * 1.2;
+        const rawComputedLineHeight = ascender - descender + lineGap;
+        const computedLineHeight = Number.isFinite(rawComputedLineHeight) && rawComputedLineHeight > 0
+            ? rawComputedLineHeight
+            : fallbackLineHeight;
+        const lineHeight = Number.isFinite(options.lineHeight) && (options.lineHeight as number) > 0
+            ? (options.lineHeight as number)
+            : computedLineHeight;
 
         const lines: LayoutLine[] = [];
         let current: LayoutGlyph[] = [];
@@ -162,7 +196,7 @@ export class LayoutEngine {
 
         pushLine(true);
 
-        const resultWidth = maxWidth > 0 ? maxWidth : Math.max(0, ...lines.map(l => l.width));
+        const resultWidth = maxWidth > 0 ? maxWidth : Math.max(0, ...lines.map(l => Number.isFinite(l.width) ? l.width : 0));
         lines.forEach((line, index) => {
             const y = index * lineHeight;
             if (direction === 'rtl') {
@@ -299,8 +333,33 @@ export class LayoutEngine {
         const glyphs: LayoutGlyph[] = [];
         let prevGlyph: number | null = null;
         for (const ch of token) {
-            const glyphIndex = font.getGlyphIndexByChar ? font.getGlyphIndexByChar(ch) : null;
-            const glyph = glyphIndex != null ? font.getGlyph(glyphIndex) : font.getGlyphByChar(ch);
+            let glyphIndex: number | null = null;
+            try {
+                glyphIndex = font.getGlyphIndexByChar ? font.getGlyphIndexByChar(ch) : null;
+            } catch {
+                emitDiagnostic?.({
+                    code: 'LAYOUT_CALLBACK_ERROR',
+                    level: 'warning',
+                    phase: 'layout',
+                    message: 'getGlyphIndexByChar callback threw during layout.',
+                    context: { char: ch }
+                });
+                glyphIndex = null;
+            }
+
+            let glyph: { advanceWidth: number } | null = null;
+            try {
+                glyph = glyphIndex != null ? font.getGlyph(glyphIndex) : font.getGlyphByChar(ch);
+            } catch {
+                emitDiagnostic?.({
+                    code: 'LAYOUT_CALLBACK_ERROR',
+                    level: 'warning',
+                    phase: 'layout',
+                    message: 'Glyph fetch callback threw during layout.',
+                    context: { char: ch, glyphIndex: glyphIndex ?? undefined }
+                });
+                glyph = null;
+            }
             if (!glyph) {
                 emitDiagnostic?.({
                     code: 'MISSING_GLYPH',
@@ -312,9 +371,24 @@ export class LayoutEngine {
                 prevGlyph = null;
                 continue;
             }
-            const advance = glyph.advanceWidth + letterSpacing + (useKerning && prevGlyph != null && font.getKerningValueByGlyphs
-                ? font.getKerningValueByGlyphs(prevGlyph, glyphIndex ?? 0)
-                : 0);
+            const baseAdvance = Number.isFinite(glyph.advanceWidth) ? glyph.advanceWidth : 0;
+            let kern = 0;
+            if (useKerning && prevGlyph != null && font.getKerningValueByGlyphs) {
+                try {
+                    kern = font.getKerningValueByGlyphs(prevGlyph, glyphIndex ?? 0);
+                } catch {
+                    emitDiagnostic?.({
+                        code: 'LAYOUT_CALLBACK_ERROR',
+                        level: 'warning',
+                        phase: 'layout',
+                        message: 'Kerning callback threw during layout.',
+                        context: { char: ch, glyphIndex: glyphIndex ?? undefined }
+                    });
+                    kern = 0;
+                }
+            }
+            const safeKern = Number.isFinite(kern) ? kern : 0;
+            const advance = baseAdvance + letterSpacing + safeKern;
             glyphs.push({ glyphIndex: glyphIndex ?? 0, x: 0, y: 0, advance, char: ch });
             prevGlyph = glyphIndex ?? 0;
         }

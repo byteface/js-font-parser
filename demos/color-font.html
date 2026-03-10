@@ -153,11 +153,14 @@
         </div>
     </div>
 
-    <script type="module">
-        import { FontParser } from "../dist/data/FontParser.js";
-        import { Table } from "../dist/table/Table.js";
-        import { SVGFont } from "../dist/render/SVGFont.js";
-        import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
+    <script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
+        const TABLE_TAGS = {
+            CPAL: 0x4350414c,
+            COLR: 0x434f4c52,
+            SVG: 0x53564720
+        };
 
         const fontSelect = document.getElementById("fontSelect");
         const fileInput = document.getElementById("fileInput");
@@ -287,9 +290,9 @@
                 font = await loadBuiltInFont(fontSelect.value);
             }
 
-            const cpal = font.getTableByType(Table.CPAL);
-            const colr = font.getTableByType(Table.COLR);
-            const svg = font.getTableByType(Table.SVG);
+            const cpal = font.getTableByType(TABLE_TAGS.CPAL);
+            const colr = font.getTableByType(TABLE_TAGS.COLR);
+            const svg = font.getTableByType(TABLE_TAGS.SVG);
 
             setTableInfo(cpal, colr, svg);
             renderPalette(cpal);

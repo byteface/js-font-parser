@@ -45,6 +45,15 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
+    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+        if (ar || !(i in from)) {
+            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+            ar[i] = from[i];
+        }
+    }
+    return to.concat(ar || Array.prototype.slice.call(from));
+};
 import { ByteArray } from '../utils/ByteArray.js';
 import { GlyfCompositeDescript } from '../table/GlyfCompositeDescript.js';
 import { Table } from '../table/Table.js';
@@ -60,8 +69,6 @@ import { PairPosFormat2 } from '../table/PairPosFormat2.js';
 import { SinglePosSubtable } from '../table/SinglePosSubtable.js';
 import { PairPosSubtable } from '../table/PairPosSubtable.js';
 import { emitDiagnostic as emitParserDiagnostic, getDiagnostics as getParserDiagnostics, clearDiagnostics as clearParserDiagnostics, getBestCmapFormatFor as selectBestCmapFormatFor, pickBestCmapFormat } from './ParserShared.js';
-import { applyIupDeltas as applyIupDeltasShared, flattenColrV1Paint as flattenColrV1PaintShared, getMarkAnchorsForGlyph as getMarkAnchorsForGlyphShared, interpolateDelta as interpolateDeltaShared } from './ParserGlyphShared.js';
-import { computeVariationCoords as computeVariationCoordsShared, getColorLayersForChar as getColorLayersForCharShared, getColorLayersForGlyph as getColorLayersForGlyphShared, getGlyphPointsByChar as getGlyphPointsByCharShared, layoutToPoints as layoutToPointsShared, measureText as measureTextShared } from './ParserApiShared.js';
 var FontParserWOFF = /** @class */ (function () {
     function FontParserWOFF(byteData, options) {
         // Define properties
@@ -167,6 +174,17 @@ var FontParserWOFF = /** @class */ (function () {
     FontParserWOFF.readUint16 = function (view, offset) {
         return view.getUint16(offset, false);
     };
+    FontParserWOFF.assertNonOverlappingTableRanges = function (entries) {
+        var byOffset = __spreadArray([], entries, true).sort(function (a, b) { return a.offset - b.offset; });
+        for (var i = 1; i < byOffset.length; i++) {
+            var prev = byOffset[i - 1];
+            var curr = byOffset[i];
+            var prevEnd = prev.offset + prev.compLength;
+            if (curr.offset < prevEnd) {
+                throw new Error('Invalid WOFF table entry: overlapping table data ranges.');
+            }
+        }
+    };
     FontParserWOFF.decodeWoffToSfntSync = function (buffer) {
         var view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
         if (view.byteLength < 44) {
@@ -180,8 +198,8 @@ var FontParserWOFF = /** @class */ (function () {
         var declaredLength = this.readUint32(view, 8);
         var numTables = this.readUint16(view, 12);
         var totalSfntSize = this.readUint32(view, 16);
-        if (declaredLength > view.byteLength) {
-            throw new Error('Invalid WOFF header: declared length exceeds available bytes.');
+        if (declaredLength !== view.byteLength) {
+            throw new Error('Invalid WOFF header: declared length does not match available bytes.');
         }
         if (numTables <= 0) {
             throw new Error('Invalid WOFF header: numTables must be greater than zero.');
@@ -208,6 +226,7 @@ var FontParserWOFF = /** @class */ (function () {
             }
             entries.push(entry);
         }
+        this.assertNonOverlappingTableRanges(entries);
         entries.sort(function (a, b) { return a.tag - b.tag; });
         var maxPower = Math.pow(2, Math.floor(Math.log2(numTables)));
         var searchRange = maxPower * 16;
@@ -284,8 +303,8 @@ var FontParserWOFF = /** @class */ (function () {
                         length = this.readUint32(view, 8);
                         numTables = this.readUint16(view, 12);
                         totalSfntSize = this.readUint32(view, 16);
-                        if (length > buffer.byteLength) {
-                            throw new Error('Invalid WOFF header: declared length exceeds available bytes.');
+                        if (length !== buffer.byteLength) {
+                            throw new Error('Invalid WOFF header: declared length does not match available bytes.');
                         }
                         if (numTables <= 0) {
                             throw new Error('Invalid WOFF header: numTables must be greater than zero.');
@@ -307,8 +326,12 @@ var FontParserWOFF = /** @class */ (function () {
                             if (entry.offset > buffer.byteLength || entry.compLength > buffer.byteLength - entry.offset) {
                                 throw new Error('Invalid WOFF table entry: table offset/length out of bounds.');
                             }
+                            if (entry.compLength > entry.origLength) {
+                                throw new Error('Invalid WOFF table entry: compLength cannot exceed origLength.');
+                            }
                             entries.push(entry);
                         }
+                        this.assertNonOverlappingTableRanges(entries);
                         entries.sort(function (a, b) { return a.tag - b.tag; });
                         maxPower = Math.pow(2, Math.floor(Math.log2(numTables)));
                         searchRange = maxPower * 16;
@@ -651,40 +674,106 @@ var FontParserWOFF = /** @class */ (function () {
         return (_b = (_a = this.head) === null || _a === void 0 ? void 0 : _a.unitsPerEm) !== null && _b !== void 0 ? _b : 1000;
     };
     FontParserWOFF.prototype.getGlyphPointsByChar = function (char, options) {
-        var _this = this;
+        var _a;
         if (options === void 0) { options = {}; }
-        return getGlyphPointsByCharShared(char, options, function (c) { return _this.getGlyphByChar(c); });
+        var glyph = this.getGlyphByChar(char);
+        if (!glyph)
+            return [];
+        var sampleStep = Math.max(1, Math.floor((_a = options.sampleStep) !== null && _a !== void 0 ? _a : 1));
+        var points = [];
+        for (var i = 0; i < glyph.getPointCount(); i += sampleStep) {
+            var p = glyph.getPoint(i);
+            if (!p)
+                continue;
+            points.push({
+                x: p.x,
+                y: p.y,
+                onCurve: p.onCurve,
+                endOfContour: p.endOfContour
+            });
+        }
+        return points;
     };
     FontParserWOFF.prototype.measureText = function (text, options) {
-        var _this = this;
         if (options === void 0) { options = {}; }
-        return measureTextShared(text, options, function (t, o) { return _this.layoutString(t, o); });
+        var layout = this.layoutString(text, options);
+        var letterSpacing = Number.isFinite(options.letterSpacing) ? options.letterSpacing : 0;
+        var advanceWidth = 0;
+        for (var i = 0; i < layout.length; i++) {
+            var xAdvance = Number.isFinite(layout[i].xAdvance) ? layout[i].xAdvance : 0;
+            advanceWidth += xAdvance;
+            if (letterSpacing !== 0 && i < layout.length - 1)
+                advanceWidth += letterSpacing;
+        }
+        return { advanceWidth: Number.isFinite(advanceWidth) ? advanceWidth : 0, glyphCount: layout.length };
     };
     FontParserWOFF.prototype.layoutToPoints = function (text, options) {
-        var _this = this;
         if (options === void 0) { options = {}; }
-        return layoutToPointsShared(text, options, {
-            layoutString: function (t, o) { return _this.layoutString(t, o); },
-            getGlyph: function (gid) { return _this.getGlyph(gid); },
-            getUnitsPerEm: function () { return _this.getUnitsPerEm(); }
-        });
+        var layout = this.layoutString(text, options);
+        var sampleBase = Number.isFinite(options.sampleStep) ? options.sampleStep : 1;
+        var sampleStep = Math.max(1, Math.floor(sampleBase));
+        var unitsPerEm = this.getUnitsPerEm();
+        var safeUnitsPerEm = Number.isFinite(unitsPerEm) && unitsPerEm > 0 ? unitsPerEm : 1000;
+        var fontSize = Number.isFinite(options.fontSize) && options.fontSize > 0
+            ? options.fontSize
+            : safeUnitsPerEm;
+        var scale = fontSize / safeUnitsPerEm;
+        var originX = Number.isFinite(options.x) ? options.x : 0;
+        var originY = Number.isFinite(options.y) ? options.y : 0;
+        var letterSpacing = Number.isFinite(options.letterSpacing) ? options.letterSpacing : 0;
+        var points = [];
+        var penX = 0;
+        for (var i = 0; i < layout.length; i++) {
+            var item = layout[i];
+            var glyph = this.getGlyph(item.glyphIndex);
+            if (glyph) {
+                for (var pIndex = 0; pIndex < glyph.getPointCount(); pIndex += sampleStep) {
+                    var p = glyph.getPoint(pIndex);
+                    if (!p)
+                        continue;
+                    points.push({
+                        x: originX + (penX + (Number.isFinite(item.xOffset) ? item.xOffset : 0) + p.x) * scale,
+                        y: originY - ((Number.isFinite(item.yOffset) ? item.yOffset : 0) + p.y) * scale,
+                        onCurve: p.onCurve,
+                        endOfContour: p.endOfContour,
+                        glyphIndex: item.glyphIndex,
+                        pointIndex: pIndex
+                    });
+                }
+            }
+            penX += Number.isFinite(item.xAdvance) ? item.xAdvance : 0;
+            if (letterSpacing !== 0 && i < layout.length - 1)
+                penX += letterSpacing;
+        }
+        return { points: points, advanceWidth: Number.isFinite(penX) ? penX : 0, scale: Number.isFinite(scale) ? scale : 1 };
     };
     FontParserWOFF.prototype.getColorLayersForGlyph = function (glyphId, paletteIndex) {
-        var _this = this;
+        var _a, _b;
         if (paletteIndex === void 0) { paletteIndex = 0; }
-        return getColorLayersForGlyphShared(glyphId, paletteIndex, {
-            hasColr: !!this.colr,
-            getLayersForGlyph: function (gid) { var _a, _b; return (_b = (_a = _this.colr) === null || _a === void 0 ? void 0 : _a.getLayersForGlyph(gid)) !== null && _b !== void 0 ? _b : []; },
-            getPalette: function (idx) { var _a, _b; return (_b = (_a = _this.cpal) === null || _a === void 0 ? void 0 : _a.getPalette(idx)) !== null && _b !== void 0 ? _b : []; }
+        if (!this.colr)
+            return [];
+        var layers = this.colr.getLayersForGlyph(glyphId);
+        if (layers.length === 0)
+            return [];
+        var palette = (_b = (_a = this.cpal) === null || _a === void 0 ? void 0 : _a.getPalette(paletteIndex)) !== null && _b !== void 0 ? _b : [];
+        return layers.map(function (layer) {
+            if (layer.paletteIndex === 0xffff) {
+                return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
+            }
+            var color = palette[layer.paletteIndex];
+            if (!color) {
+                return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
+            }
+            var rgba = "rgba(".concat(color.red, ", ").concat(color.green, ", ").concat(color.blue, ", ").concat(color.alpha / 255, ")");
+            return { glyphId: layer.glyphId, color: rgba, paletteIndex: layer.paletteIndex };
         });
     };
     FontParserWOFF.prototype.getColorLayersForChar = function (char, paletteIndex) {
-        var _this = this;
         if (paletteIndex === void 0) { paletteIndex = 0; }
-        return getColorLayersForCharShared(char, paletteIndex, {
-            getGlyphIndexByChar: function (c) { return _this.getGlyphIndexByChar(c); },
-            getColorLayersForGlyph: function (gid, idx) { return _this.getColorLayersForGlyph(gid, idx); }
-        });
+        var glyphId = this.getGlyphIndexByChar(char);
+        if (glyphId == null)
+            return [];
+        return this.getColorLayersForGlyph(glyphId, paletteIndex);
     };
     FontParserWOFF.prototype.getColrV1LayersForGlyph = function (glyphId, paletteIndex) {
         if (paletteIndex === void 0) { paletteIndex = 0; }
@@ -697,15 +786,120 @@ var FontParserWOFF = /** @class */ (function () {
     };
     FontParserWOFF.prototype.flattenColrV1Paint = function (paint, paletteIndex) {
         var _this = this;
-        return flattenColrV1PaintShared(paint, paletteIndex, function (idx) { var _a, _b; return (_b = (_a = _this.cpal) === null || _a === void 0 ? void 0 : _a.getPalette(idx)) !== null && _b !== void 0 ? _b : []; }, function (gid, idx) { return _this.getColrV1LayersForGlyph(gid, idx); });
+        var _a, _b, _c;
+        if (!paint)
+            return [];
+        if (paint.format === 1 && Array.isArray(paint.layers)) {
+            return paint.layers.flatMap(function (p) { return _this.flattenColrV1Paint(p, paletteIndex); });
+        }
+        if (paint.format === 10) {
+            var child = paint.paint;
+            if (child && child.format === 2) {
+                var color = (_b = (_a = this.cpal) === null || _a === void 0 ? void 0 : _a.getPalette(paletteIndex)) === null || _b === void 0 ? void 0 : _b[child.paletteIndex];
+                var rgba = color ? "rgba(".concat(color.red, ", ").concat(color.green, ", ").concat(color.blue, ", ").concat((color.alpha / 255) * ((_c = child.alpha) !== null && _c !== void 0 ? _c : 1), ")") : null;
+                return [{ glyphId: paint.glyphID, color: rgba, paletteIndex: child.paletteIndex }];
+            }
+            return this.flattenColrV1Paint(child, paletteIndex).map(function (layer) { return (__assign(__assign({}, layer), { glyphId: paint.glyphID })); });
+        }
+        if (paint.format === 11) {
+            return this.getColrV1LayersForGlyph(paint.glyphID, paletteIndex);
+        }
+        return [];
     };
     FontParserWOFF.prototype.getMarkAnchorsForGlyph = function (glyphId, subtables) {
-        return getMarkAnchorsForGlyphShared(glyphId, this.gpos, subtables, {
-            MarkBasePosFormat1: MarkBasePosFormat1,
-            MarkLigPosFormat1: MarkLigPosFormat1,
-            MarkMarkPosFormat1: MarkMarkPosFormat1,
-            CursivePosFormat1: CursivePosFormat1
-        });
+        var _this = this;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
+        if (!this.gpos)
+            return [];
+        var anchors = [];
+        var activeSubtables = subtables !== null && subtables !== void 0 ? subtables : (function () {
+            var _a, _b, _c, _d;
+            var lookups = (_d = (_c = (_b = (_a = _this.gpos) === null || _a === void 0 ? void 0 : _a.lookupList) === null || _b === void 0 ? void 0 : _b.getLookups) === null || _c === void 0 ? void 0 : _c.call(_b)) !== null && _d !== void 0 ? _d : [];
+            var all = [];
+            for (var _i = 0, lookups_1 = lookups; _i < lookups_1.length; _i++) {
+                var lookup = lookups_1[_i];
+                if (!lookup)
+                    continue;
+                for (var i = 0; i < lookup.getSubtableCount(); i++) {
+                    var st = lookup.getSubtable(i);
+                    if (st)
+                        all.push(st);
+                }
+            }
+            return all;
+        })();
+        for (var _i = 0, activeSubtables_1 = activeSubtables; _i < activeSubtables_1.length; _i++) {
+            var st = activeSubtables_1[_i];
+            if (st instanceof MarkBasePosFormat1) {
+                var markIndex = (_b = (_a = st.markCoverage) === null || _a === void 0 ? void 0 : _a.findGlyph(glyphId)) !== null && _b !== void 0 ? _b : -1;
+                if (markIndex >= 0 && st.markArray) {
+                    var record = st.markArray.marks[markIndex];
+                    if (record === null || record === void 0 ? void 0 : record.anchor) {
+                        anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                    }
+                }
+                var baseIndex = (_d = (_c = st.baseCoverage) === null || _c === void 0 ? void 0 : _c.findGlyph(glyphId)) !== null && _d !== void 0 ? _d : -1;
+                if (baseIndex >= 0 && st.baseArray) {
+                    var base = st.baseArray.baseRecords[baseIndex];
+                    if (base === null || base === void 0 ? void 0 : base.anchors) {
+                        base.anchors.forEach(function (anchor, classIndex) {
+                            if (anchor) {
+                                anchors.push({ type: 'base', classIndex: classIndex, x: anchor.x, y: anchor.y });
+                            }
+                        });
+                    }
+                }
+            }
+            if (st instanceof MarkLigPosFormat1) {
+                var markIndex = (_f = (_e = st.markCoverage) === null || _e === void 0 ? void 0 : _e.findGlyph(glyphId)) !== null && _f !== void 0 ? _f : -1;
+                if (markIndex >= 0 && st.markArray) {
+                    var record = st.markArray.marks[markIndex];
+                    if (record === null || record === void 0 ? void 0 : record.anchor) {
+                        anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                    }
+                }
+                var ligIndex = (_h = (_g = st.ligatureCoverage) === null || _g === void 0 ? void 0 : _g.findGlyph(glyphId)) !== null && _h !== void 0 ? _h : -1;
+                if (ligIndex >= 0 && st.ligatureArray) {
+                    var lig = st.ligatureArray.ligatures[ligIndex];
+                    (_j = lig === null || lig === void 0 ? void 0 : lig.components) === null || _j === void 0 ? void 0 : _j.forEach(function (component, componentIndex) {
+                        component.forEach(function (anchor, classIndex) {
+                            if (anchor) {
+                                anchors.push({ type: 'ligature', classIndex: classIndex, x: anchor.x, y: anchor.y, componentIndex: componentIndex });
+                            }
+                        });
+                    });
+                }
+            }
+            if (st instanceof MarkMarkPosFormat1) {
+                var mark1Index = (_l = (_k = st.mark1Coverage) === null || _k === void 0 ? void 0 : _k.findGlyph(glyphId)) !== null && _l !== void 0 ? _l : -1;
+                if (mark1Index >= 0 && st.mark1Array) {
+                    var record = st.mark1Array.marks[mark1Index];
+                    if (record === null || record === void 0 ? void 0 : record.anchor) {
+                        anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                    }
+                }
+                var mark2Index = (_o = (_m = st.mark2Coverage) === null || _m === void 0 ? void 0 : _m.findGlyph(glyphId)) !== null && _o !== void 0 ? _o : -1;
+                if (mark2Index >= 0 && st.mark2Array) {
+                    var record = st.mark2Array.records[mark2Index];
+                    (_p = record === null || record === void 0 ? void 0 : record.anchors) === null || _p === void 0 ? void 0 : _p.forEach(function (anchor, classIndex) {
+                        if (anchor) {
+                            anchors.push({ type: 'mark2', classIndex: classIndex, x: anchor.x, y: anchor.y });
+                        }
+                    });
+                }
+            }
+            if (st instanceof CursivePosFormat1) {
+                var idx = (_r = (_q = st.coverage) === null || _q === void 0 ? void 0 : _q.findGlyph(glyphId)) !== null && _r !== void 0 ? _r : -1;
+                if (idx >= 0) {
+                    var record = st.entryExitRecords[idx];
+                    if (record === null || record === void 0 ? void 0 : record.entry)
+                        anchors.push({ type: 'cursive-entry', classIndex: 0, x: record.entry.x, y: record.entry.y });
+                    if (record === null || record === void 0 ? void 0 : record.exit)
+                        anchors.push({ type: 'cursive-exit', classIndex: 0, x: record.exit.x, y: record.exit.y });
+                }
+            }
+        }
+        return anchors;
     };
     FontParserWOFF.prototype.getSvgDocumentForGlyphAsync = function (glyphId) {
         return __awaiter(this, void 0, void 0, function () {
@@ -717,17 +911,79 @@ var FontParserWOFF = /** @class */ (function () {
         });
     };
     FontParserWOFF.prototype.applyIupDeltas = function (base, dx, dy, touched) {
-        applyIupDeltasShared(base, dx, dy, touched);
+        var pointCount = base.getPointCount();
+        if (pointCount === 0)
+            return;
+        var endPts = [];
+        for (var c = 0; c < base.getContourCount(); c++) {
+            endPts.push(base.getEndPtOfContours(c));
+        }
+        var start = 0;
+        var _loop_1 = function (end) {
+            var indices = [];
+            var touchedIndices = [];
+            for (var i = start; i <= end; i++) {
+                indices.push(i);
+                if (touched[i])
+                    touchedIndices.push(i);
+            }
+            if (touchedIndices.length === 0) {
+                start = end + 1;
+                return "continue";
+            }
+            if (touchedIndices.length === 1) {
+                var idx = touchedIndices[0];
+                for (var _a = 0, indices_1 = indices; _a < indices_1.length; _a++) {
+                    var i = indices_1[_a];
+                    dx[i] = dx[idx];
+                    dy[i] = dy[idx];
+                }
+                start = end + 1;
+                return "continue";
+            }
+            var contour = indices;
+            var total = contour.length;
+            var order = touchedIndices.map(function (i) { return contour.indexOf(i); }).sort(function (a, b) { return a - b; });
+            var coordsX = contour.map(function (i) { return base.getXCoordinate(i); });
+            var coordsY = contour.map(function (i) { return base.getYCoordinate(i); });
+            for (var t = 0; t < order.length; t++) {
+                var a = order[t];
+                var b = order[(t + 1) % order.length];
+                var idx = (a + 1) % total;
+                while (idx !== b) {
+                    var globalIndex = contour[idx];
+                    var ax = coordsX[a];
+                    var bx = coordsX[b];
+                    var ay = coordsY[a];
+                    var by = coordsY[b];
+                    var px = coordsX[idx];
+                    var py = coordsY[idx];
+                    dx[globalIndex] = this_1.interpolate(ax, bx, dx[contour[a]], dx[contour[b]], px);
+                    dy[globalIndex] = this_1.interpolate(ay, by, dy[contour[a]], dy[contour[b]], py);
+                    idx = (idx + 1) % total;
+                }
+            }
+            start = end + 1;
+        };
+        var this_1 = this;
+        for (var _i = 0, endPts_1 = endPts; _i < endPts_1.length; _i++) {
+            var end = endPts_1[_i];
+            _loop_1(end);
+        }
     };
     FontParserWOFF.prototype.interpolate = function (aCoord, bCoord, aDelta, bDelta, pCoord) {
-        return interpolateDeltaShared(aCoord, bCoord, aDelta, bDelta, pCoord);
+        if (aCoord === bCoord)
+            return aDelta;
+        var t = (pCoord - aCoord) / (bCoord - aCoord);
+        var clamped = Math.max(0, Math.min(1, t));
+        return aDelta + (bDelta - aDelta) * clamped;
     };
     FontParserWOFF.prototype.getGlyphIndexByChar = function (char) {
         if (!char || char.length === 0) {
             this.emitDiagnostic("INVALID_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar expects a character.");
             return null;
         }
-        if (char.length > 2) {
+        if (Array.from(char).length > 1) {
             this.emitDiagnostic("MULTI_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar received multiple characters; using the first code point.", undefined, "MULTI_CHAR_INPUT");
         }
         var codePoint = char.codePointAt(0);
@@ -739,15 +995,39 @@ var FontParserWOFF = /** @class */ (function () {
             this.emitDiagnostic("MISSING_TABLE_CMAP", "warning", "parse", "No cmap table available.", undefined, "MISSING_TABLE_CMAP");
             return null;
         }
-        var cmapFormat = this.getBestCmapFormatFor(codePoint);
+        var cmapFormat = null;
+        try {
+            cmapFormat = this.getBestCmapFormatFor(codePoint);
+        }
+        catch (_a) {
+            this.emitDiagnostic("CMAP_FORMAT_RESOLVE_FAILED", "warning", "parse", "Failed while resolving preferred cmap format; using fallback format order.", { codePoint: codePoint }, "CMAP_FORMAT_RESOLVE_FAILED");
+            var fallbackFormats = Array.isArray(this.cmap.formats)
+                ? this.cmap.formats.filter(function (fmt) { return fmt != null; })
+                : [];
+            cmapFormat = pickBestCmapFormat(fallbackFormats);
+        }
         if (!cmapFormat) {
             this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint: codePoint });
             return null;
         }
-        var glyphIndex = typeof cmapFormat.getGlyphIndex === "function"
-            ? cmapFormat.getGlyphIndex(codePoint)
-            : cmapFormat.mapCharCode(codePoint);
-        if (glyphIndex == null || glyphIndex === 0)
+        var glyphIndex = null;
+        try {
+            if (typeof cmapFormat.getGlyphIndex === "function") {
+                glyphIndex = cmapFormat.getGlyphIndex(codePoint);
+            }
+            else if (typeof cmapFormat.mapCharCode === "function") {
+                glyphIndex = cmapFormat.mapCharCode(codePoint);
+            }
+            else {
+                this.emitDiagnostic("UNSUPPORTED_CMAP_FORMAT", "warning", "parse", "Selected cmap format does not expose getGlyphIndex/mapCharCode.", { codePoint: codePoint }, "UNSUPPORTED_CMAP_FORMAT");
+                return null;
+            }
+        }
+        catch (_b) {
+            this.emitDiagnostic("CMAP_LOOKUP_FAILED", "warning", "parse", "cmap glyph lookup failed for code point.", { codePoint: codePoint });
+            return null;
+        }
+        if (typeof glyphIndex !== "number" || !Number.isFinite(glyphIndex) || glyphIndex === 0)
             return null;
         return glyphIndex;
     };
@@ -761,8 +1041,8 @@ var FontParserWOFF = /** @class */ (function () {
         if (featureTags === void 0) { featureTags = ["liga"]; }
         if (scriptTags === void 0) { scriptTags = ["DFLT", "latn"]; }
         var glyphs = [];
-        for (var _i = 0, text_1 = text; _i < text_1.length; _i++) {
-            var ch = text_1[_i];
+        for (var _i = 0, _a = Array.from(text); _i < _a.length; _i++) {
+            var ch = _a[_i];
             var idx = this.getGlyphIndexByChar(ch);
             if (idx != null)
                 glyphs.push(idx);
@@ -776,11 +1056,16 @@ var FontParserWOFF = /** @class */ (function () {
         return this.gsub.applyFeatures(glyphs, featureTags, scriptTags);
     };
     FontParserWOFF.prototype.getKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
-        var _a;
         if (!this.kern)
             return 0;
         if (typeof this.kern.getKerningValue === "function") {
-            return (_a = this.kern.getKerningValue(leftGlyph, rightGlyph)) !== null && _a !== void 0 ? _a : 0;
+            try {
+                var value = this.kern.getKerningValue(leftGlyph, rightGlyph);
+                return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+            }
+            catch (_a) {
+                return 0;
+            }
         }
         return 0;
     };
@@ -792,18 +1077,24 @@ var FontParserWOFF = /** @class */ (function () {
         }
         var lookups = (_c = (_b = (_a = this.gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : [];
         var value = 0;
-        for (var _i = 0, lookups_1 = lookups; _i < lookups_1.length; _i++) {
-            var lookup = lookups_1[_i];
+        for (var _i = 0, lookups_2 = lookups; _i < lookups_2.length; _i++) {
+            var lookup = lookups_2[_i];
             if (!lookup || lookup.getType() !== 2)
                 continue;
             for (var i = 0; i < lookup.getSubtableCount(); i++) {
                 var st = lookup.getSubtable(i);
                 if (st instanceof PairPosFormat1 || st instanceof PairPosFormat2) {
-                    value += st.getKerning(leftGlyph, rightGlyph);
+                    try {
+                        var kern = st.getKerning(leftGlyph, rightGlyph);
+                        value += Number.isFinite(kern) ? kern : 0;
+                    }
+                    catch (_d) {
+                        // Ignore malformed pair subtables and continue.
+                    }
                 }
             }
         }
-        return value;
+        return Number.isFinite(value) ? value : 0;
     };
     FontParserWOFF.prototype.getKerningValue = function (leftChar, rightChar) {
         var left = this.getGlyphIndexByChar(leftChar);
@@ -826,9 +1117,27 @@ var FontParserWOFF = /** @class */ (function () {
         }
     };
     FontParserWOFF.prototype.setVariationByAxes = function (values) {
+        var _a;
         if (!this.fvar)
             return;
-        var coords = computeVariationCoordsShared(this.fvar.axes, values);
+        var coords = [];
+        for (var _i = 0, _b = this.fvar.axes; _i < _b.length; _i++) {
+            var axis = _b[_i];
+            var tag = axis.name;
+            var value = (_a = values[tag]) !== null && _a !== void 0 ? _a : axis.defaultValue;
+            var norm = 0;
+            if (value !== axis.defaultValue) {
+                if (value > axis.defaultValue) {
+                    var span = axis.maxValue - axis.defaultValue;
+                    norm = span !== 0 ? (value - axis.defaultValue) / span : 0;
+                }
+                else {
+                    var span = axis.defaultValue - axis.minValue;
+                    norm = span !== 0 ? (value - axis.defaultValue) / span : 0;
+                }
+            }
+            coords.push(Number.isFinite(norm) ? Math.max(-1, Math.min(1, norm)) : 0);
+        }
         this.setVariationCoords(coords);
     };
     FontParserWOFF.prototype.layoutString = function (text, options) {
@@ -851,7 +1160,7 @@ var FontParserWOFF = /** @class */ (function () {
             }
             positioned.push({
                 glyphIndex: glyphIndex,
-                xAdvance: ((_d = glyph === null || glyph === void 0 ? void 0 : glyph.advanceWidth) !== null && _d !== void 0 ? _d : 0) + kern,
+                xAdvance: this.isMarkGlyphClass(glyphIndex) ? 0 : ((_d = glyph === null || glyph === void 0 ? void 0 : glyph.advanceWidth) !== null && _d !== void 0 ? _d : 0) + kern,
                 xOffset: 0,
                 yOffset: 0,
                 yAdvance: 0,
@@ -947,8 +1256,8 @@ var FontParserWOFF = /** @class */ (function () {
             }
             return candidates[0];
         };
-        var isMarkGlyph = function (gid) { var _a, _b, _c; return ((_c = (_b = (_a = _this.gdef) === null || _a === void 0 ? void 0 : _a.getGlyphClass) === null || _b === void 0 ? void 0 : _b.call(_a, gid)) !== null && _c !== void 0 ? _c : 0) === 3; };
-        var _loop_1 = function (i) {
+        var isMarkGlyph = function (gid) { return _this.isMarkGlyphClass(gid); };
+        var _loop_2 = function (i) {
             if (!positioned[i])
                 return "continue";
             var gid = glyphIndices[i];
@@ -1000,7 +1309,7 @@ var FontParserWOFF = /** @class */ (function () {
             }
         };
         for (var i = 0; i < glyphIndices.length; i++) {
-            _loop_1(i);
+            _loop_2(i);
         }
         for (var i = 1; i < glyphIndices.length; i++) {
             if (!positioned[i])
@@ -1014,6 +1323,15 @@ var FontParserWOFF = /** @class */ (function () {
                 positioned[i].yOffset += exitAnchor.y - entryAnchor.y;
             }
         }
+        for (var i = 0; i < glyphIndices.length; i++) {
+            if (positioned[i] && this.isMarkGlyphClass(glyphIndices[i])) {
+                positioned[i].xAdvance = 0;
+            }
+        }
+    };
+    FontParserWOFF.prototype.isMarkGlyphClass = function (glyphId) {
+        var _a, _b, _c;
+        return ((_c = (_b = (_a = this.gdef) === null || _a === void 0 ? void 0 : _a.getGlyphClass) === null || _b === void 0 ? void 0 : _b.call(_a, glyphId)) !== null && _c !== void 0 ? _c : 0) === 3;
     };
     FontParserWOFF.prototype.getNameRecord = function (nameId) {
         var _a, _b;

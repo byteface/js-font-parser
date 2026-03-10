@@ -120,9 +120,9 @@
     </div>
     <div class="hint">Tip: use script fonts to see the stroke flow. This demo uses SVG paths derived from glyph outlines.</div>
 
-    <script type="module">
-        import { FontParser } from "../dist/data/FontParser.js";
-        import { SVGFont } from "../dist/render/SVGFont.js";
+    <script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/demo-scaffold.js";
 
         const fontSelect = document.getElementById("fontSelect");

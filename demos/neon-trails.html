@@ -43,9 +43,9 @@
 </div>
 <canvas id="stage" width="1200" height="620"></canvas>
 
+<script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-  import { FontParser } from "../dist/data/FontParser.js";
-  import { Table } from "../dist/table/Table.js";
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 
   const canvas = document.getElementById("stage");
   const ctx = canvas.getContext("2d");
@@ -55,9 +55,23 @@
   const glowInput = document.getElementById("glowInput");
 
   let font = null;
-  let points = [];
+  let segments = [];
 
-  function collectPoints(text, density) {
+  function splitContours(glyph) {
+    const pts = glyph.points.slice(0, Math.max(0, glyph.getPointCount() - 2));
+    const contours = [];
+    let current = [];
+    for (const p of pts) {
+      current.push(p);
+      if (p.endOfContour) {
+        if (current.length > 1) contours.push(current);
+        current = [];
+      }
+    }
+    return contours;
+  }
+
+  function collectSegments(text, density) {
     if (!font) return [];
     const unitsPerEm = typeof font.getUnitsPerEm === "function" ? font.getUnitsPerEm() : 1000;
     const scale = (canvas.height * 0.45) / unitsPerEm;
@@ -71,17 +85,21 @@
         cursorX += canvas.height * 0.12;
         continue;
       }
-      for (let i = 0; i < glyph.points.length; i += density) {
-        const p = glyph.points[i];
-        out.push({
-          x: cursorX + p.x * scale,
-          y: baseline - p.y * scale,
-          vx: (Math.random() - 0.5) * 0.8,
-          vy: (Math.random() - 0.5) * 0.8,
-          tx: cursorX + p.x * scale,
-          ty: baseline - p.y * scale,
-          phase: Math.random() * Math.PI * 2
-        });
+      const contours = splitContours(glyph);
+      for (const contour of contours) {
+        const sampled = contour.filter((_, i) => i % density === 0);
+        if (sampled.length < 2) continue;
+        for (let i = 0; i < sampled.length; i++) {
+          const a = sampled[i];
+          const b = sampled[(i + 1) % sampled.length];
+          out.push({
+            ax: cursorX + a.x * scale,
+            ay: baseline - a.y * scale,
+            bx: cursorX + b.x * scale,
+            by: baseline - b.y * scale,
+            phase: (i / sampled.length) * Math.PI * 2
+          });
+        }
       }
       cursorX += glyph.advanceWidth * scale + 10;
     }
@@ -90,40 +108,50 @@
 
   async function boot() {
     font = await FontParser.load(fontSelect.value);
-    points = collectPoints(textInput.value, Number(densityInput.value));
+    segments = collectSegments(textInput.value, Number(densityInput.value));
   }
 
   function rebuild() {
-    points = collectPoints(textInput.value, Number(densityInput.value));
+    segments = collectSegments(textInput.value, Number(densityInput.value));
+  }
+
+  function drawSegmentGlow(ax, ay, bx, by, width, alphaCore, alphaGlow) {
+    ctx.strokeStyle = `rgba(145, 244, 255, ${alphaCore})`;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.stroke();
+
+    ctx.strokeStyle = `rgba(170, 110, 255, ${alphaGlow})`;
+    ctx.lineWidth = width * 2.8;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.stroke();
   }
 
   function frame(time) {
     const glow = Number(glowInput.value);
-    ctx.fillStyle = "rgba(3,2,10,0.12)";
+    ctx.fillStyle = "rgba(3,2,10,0.16)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.globalCompositeOperation = "lighter";
-    for (const p of points) {
-      const dx = p.tx - p.x;
-      const dy = p.ty - p.y;
-      const wobble = Math.sin(time * 0.0014 + p.phase) * 0.35;
-      p.vx += dx * 0.004 + wobble * 0.03;
-      p.vy += dy * 0.004 + Math.cos(time * 0.0012 + p.phase) * 0.03;
-      p.vx *= 0.92;
-      p.vy *= 0.92;
-      p.x += p.vx;
-      p.y += p.vy;
-
-      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glow);
-      g.addColorStop(0, "rgba(140,255,255,0.95)");
-      g.addColorStop(0.5, "rgba(168,108,255,0.4)");
-      g.addColorStop(1, "rgba(168,108,255,0)");
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, glow, 0, Math.PI * 2);
-      ctx.fill();
+    ctx.shadowColor = "rgba(156, 216, 255, 0.8)";
+    ctx.shadowBlur = glow * 0.9;
+    for (const s of segments) {
+      const wobA = Math.sin(time * 0.0012 + s.phase) * 1.2;
+      const wobB = Math.cos(time * 0.0013 + s.phase * 1.2) * 1.2;
+      const ax = s.ax + wobA;
+      const ay = s.ay + wobB;
+      const bx = s.bx + wobB;
+      const by = s.by + wobA;
+      const pulse = 0.55 + 0.45 * Math.sin(time * 0.001 + s.phase);
+      const width = 1.1 + pulse * 1.5;
+      drawSegmentGlow(ax, ay, bx, by, width, 0.38 + pulse * 0.34, 0.07 + pulse * 0.18);
     }
     ctx.globalCompositeOperation = "source-over";
+    ctx.shadowBlur = 0;
 
     requestAnimationFrame(frame);
   }

@@ -2,8 +2,16 @@ export type Woff2DecodeFn = (data: Uint8Array) => Uint8Array;
 
 let decoder: Woff2DecodeFn | null = null;
 
-export function setWoff2Decoder(fn: Woff2DecodeFn): void {
+export function setWoff2Decoder(fn: Woff2DecodeFn | null): void {
     decoder = fn;
+}
+
+function getOptionalNodeRequire(): ((id: string) => any) | null {
+    try {
+        return Function('return typeof require !== "undefined" ? require : null;')();
+    } catch {
+        return null;
+    }
 }
 
 export function decodeWoff2(data: Uint8Array): Uint8Array {
@@ -19,8 +27,8 @@ export function decodeWoff2(data: Uint8Array): Uint8Array {
 
     try {
         // Node-only: allow optional woff2 package if installed.
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const nodeDecoder = require('woff2');
+        const nodeRequire = getOptionalNodeRequire();
+        const nodeDecoder = nodeRequire ? nodeRequire('woff2') : null;
         if (nodeDecoder && typeof nodeDecoder.decode === 'function') {
             return nodeDecoder.decode(data);
         }

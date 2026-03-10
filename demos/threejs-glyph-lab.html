@@ -56,11 +56,11 @@
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.158.0/build/three.module.js" } }
 </script>
+<script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
   import * as THREE from "three";
   import { OrbitControls } from "https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js";
-  import { FontParser } from "../dist/data/FontParser.js";
-  import { Table } from "../dist/table/Table.js";
 
   const canvas = document.getElementById("stage");
   const fontSelect = document.getElementById("fontSelect");
@@ -124,6 +124,23 @@
     return contours;
   }
 
+  function getGlyphBoundsFromContours(contours) {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const contour of contours) {
+      for (const p of contour) {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      }
+    }
+    if (!Number.isFinite(minX)) return null;
+    return { minX, maxX, minY, maxY, width: maxX - minX };
+  }
+
   function disposeGroup() {
     while (group.children.length) {
       const c = group.children[0];
@@ -164,13 +181,15 @@
 
       const contours = splitContours(glyph);
       let contourId = 0;
+      const bounds = getGlyphBoundsFromContours(contours);
+      const offsetX = bounds ? bounds.minX : 0;
       for (const contour of contours) {
         const sampled = contour.filter((_, i) => i % density === 0);
         if (sampled.length < 2) continue;
 
         for (let i = 0; i < sampled.length; i++) {
           const p = sampled[i];
-          const x = (p.x + cursorX) * scale;
+          const x = (p.x - offsetX + cursorX) * scale;
           const y = p.y * scale;
           const z = (contourId - contours.length * 0.5) * (depth * 0.06);
 
@@ -180,7 +199,7 @@
           pointMeta.push({ onCurve: !!p.onCurve, phase: i * 0.27 + glyphIndex * 0.61, baseZ: z });
 
           const n = sampled[(i + 1) % sampled.length];
-          const nx = (n.x + cursorX) * scale;
+          const nx = (n.x - offsetX + cursorX) * scale;
           const ny = n.y * scale;
           const nz = z;
           linePositions.push(x, y, z, nx, ny, nz);
@@ -191,7 +210,8 @@
         contourId++;
       }
 
-      cursorX += glyph.advanceWidth * scale + 10;
+      const measuredAdvance = Math.max(glyph.advanceWidth, bounds ? bounds.width : 0);
+      cursorX += measuredAdvance + 70;
       glyphIndex++;
     }
 

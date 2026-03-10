@@ -35,13 +35,14 @@
     <label class="row">Trail <span id="tVal" class="v"></span><input id="tInput" type="range" min="3" max="35" value="16" /></label>
     <div class="status" id="status">Loading…</div>
   </section>
-  <canvas id="stage"></canvas>
+  <canvas id="stage" width="1360" height="760"></canvas>
 </div>
 
+<script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-import { FontParser } from '../dist/data/FontParser.js';
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 import { getFontList } from '../tools/shared/font-catalog.js';
-import { collectGlyphPoints, splitContours, drawGlyphPath, getBounds, transformPoints } from './shared/glyph-helpers.js';
+import { collectGlyphPoints, splitContours, drawGlyphPath, getBounds } from './shared/glyph-helpers.js';
 
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
@@ -102,10 +103,15 @@ function rebuild() {
   const b = getBounds(pts);
   if (!b) return;
   const scale = Math.min((canvas.width * 0.62) / Math.max(1, b.width), (canvas.height * 0.62) / Math.max(1, b.height));
-  const centered = transformPoints(pts, -((b.minX + b.maxX) * 0.5), -((b.minY + b.maxY) * 0.5), scale, true)
-    .map((p) => ({ ...p, x: p.x + canvas.width * 0.5, y: p.y + canvas.height * 0.5 }));
-  contours = splitContours(centered);
-  nodes = centered.map((p) => ({ x: p.x, y: p.y, ox: p.x, oy: p.y, vx: 0, vy: 0, onCurve: p.onCurve, trail: [] }));
+  const gx = (b.minX + b.maxX) * 0.5;
+  const gy = (b.minY + b.maxY) * 0.5;
+  const mapped = pts.map((p) => ({
+    ...p,
+    x: (p.x - gx) * scale + canvas.width * 0.5,
+    y: (gy - p.y) * scale + canvas.height * 0.5
+  }));
+  contours = splitContours(mapped);
+  nodes = mapped.map((p) => ({ x: p.x, y: p.y, ox: p.x, oy: p.y, vx: 0, vy: 0, onCurve: p.onCurve, trail: [] }));
   edges = [];
   let base = 0;
   for (const c of contours) {
