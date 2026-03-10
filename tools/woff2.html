@@ -32,9 +32,12 @@
         <input id="sizeInput" type="range" min="48" max="280" value="160" step="4" />
     </label>
     <button id="decoderBtn" type="button">Enable browser decoder</button>
+    <button id="reproBtn" type="button">Repro missing-decoder failure</button>
 </div>
 <div class="hint">Default browser decoder path: <code>woff2-encoder</code> ESM, with <code>wawoff2</code> fallback.</div>
+<div class="hint">Decoder source: <strong id="decoderSource">none</strong></div>
 <div id="status" class="hint"></div>
+<pre id="reproReport" class="hint" style="white-space:pre-wrap;border:1px solid #ddd;padding:8px;border-radius:6px;background:#fafafa;max-height:180px;overflow:auto;">No repro run yet.</pre>
 <canvas id="myDrawing" width="1000" height="420"></canvas>
 
 <script type="module">
@@ -44,6 +47,7 @@
     import { getFontList } from './shared/font-catalog.js';
     import { populateFontSelect, getSelectedFont } from './shared/font-ui.js';
     import { fetchArrayBuffer } from './shared/font-io.js';
+    import { createSharedToolbar, persistInputValue, persistSelectValue } from './shared/shared-toolbar.js';
 
     const canvas = document.getElementById('myDrawing');
     const textInput = document.getElementById('textInput');
@@ -52,6 +56,9 @@
     const sampleSelect = document.getElementById('sampleSelect');
     const sampleLoadBtn = document.getElementById('sampleLoadBtn');
     const decoderBtn = document.getElementById('decoderBtn');
+    const reproBtn = document.getElementById('reproBtn');
+    const decoderSource = document.getElementById('decoderSource');
+    const reproReport = document.getElementById('reproReport');
     const status = document.getElementById('status');
     const ctx = canvas.getContext('2d');
 
@@ -69,12 +76,16 @@
     let font = null;
     let decoderReady = false;
     let decoderLabel = 'none';
+    const TOOL_KEY = "tool:woff2-loader";
 
     populateFontSelect(sampleSelect, sampleFonts);
 
     textInput.addEventListener('input', render);
     sizeInput.addEventListener('input', render);
     sampleSelect.addEventListener('change', applySampleTextFromSelection);
+    persistSelectValue(sampleSelect, TOOL_KEY, "sample");
+    persistInputValue(textInput, TOOL_KEY, "text");
+    persistInputValue(sizeInput, TOOL_KEY, "size");
 
     decoderBtn.addEventListener('click', async () => {
         try {
@@ -82,6 +93,41 @@
             setStatus(status, 'WOFF2 browser decoder is ready.', 'success');
         } catch (err) {
             setStatus(status, `Decoder setup failed: ${err?.message || err}`, 'warning');
+        }
+    });
+
+    reproBtn.addEventListener('click', async () => {
+        const selected = getSelectedFont(sampleSelect, sampleFonts);
+        if (!selected) return;
+        const prevReady = decoderReady;
+        const prevLabel = decoderLabel;
+        const prevGlobalWoff2 = globalThis.WOFF2;
+        const prevGlobalWoff2Alt = globalThis.Woff2Decoder;
+        try {
+            decoderReady = false;
+            decoderLabel = 'none';
+            decoderSource.textContent = decoderLabel;
+            setWoff2Decoder(null);
+            setWoff2DecoderAsync(null);
+            try { globalThis.WOFF2 = null; } catch {}
+            try { globalThis.Woff2Decoder = null; } catch {}
+
+            const bytes = await fetchArrayBuffer(selected.url);
+            try {
+                await FontParserWOFF2.fromArrayBufferAsync(bytes);
+                reproReport.textContent = 'Unexpected: decode succeeded without configured decoder.';
+            } catch (err) {
+                reproReport.textContent = `Expected decoder failure:\n${err?.message || err}`;
+            }
+
+        } catch (err) {
+            reproReport.textContent = `Repro run failed: ${err?.message || err}`;
+        } finally {
+            decoderReady = prevReady;
+            decoderLabel = prevLabel;
+            decoderSource.textContent = decoderLabel;
+            try { globalThis.WOFF2 = prevGlobalWoff2; } catch {}
+            try { globalThis.Woff2Decoder = prevGlobalWoff2Alt; } catch {}
         }
     });
 
@@ -130,6 +176,7 @@
             setWoff2Decoder((bytes) => toUint8Array(globalDecode(toTightArrayBuffer(bytes))));
             decoderReady = true;
             decoderLabel = 'global WOFF2.decode';
+            decoderSource.textContent = decoderLabel;
             return;
         }
 
@@ -139,6 +186,7 @@
             setWoff2DecoderAsync(async (bytes) => toUint8Array(await esmDecoder(toTightArrayBuffer(bytes))));
             decoderReady = true;
             decoderLabel = 'woff2-encoder';
+            decoderSource.textContent = decoderLabel;
             return;
         }
 
@@ -152,6 +200,7 @@
         });
         decoderReady = true;
         decoderLabel = 'wawoff2';
+        decoderSource.textContent = decoderLabel;
     }
 
     async function loadDecoderEsm(url) {
@@ -257,6 +306,40 @@
             }
         });
     }
+
+    createSharedToolbar({
+        mount: document.body,
+        fontSelect: sampleSelect,
+        sizeInput,
+        scriptOptions: [
+            { value: "latin", label: "Latin" },
+            { value: "hebrew", label: "Hebrew" },
+            { value: "arabic", label: "Arabic" },
+            { value: "icons", label: "Icons" }
+        ],
+        onScriptChange: (value) => {
+            if (value === "hebrew") textInput.value = "שלום עולם";
+            else if (value === "arabic") textInput.value = "مرحبا";
+            else if (value === "icons") textInput.value = "\uf007 \uf013 \uf0c0 \uf0f3";
+            else textInput.value = "Hello WOFF2";
+            render();
+        },
+        getExportData: () => ({
+            tool: "woff2-loader",
+            sample: sampleSelect.options[sampleSelect.selectedIndex]?.text || null,
+            sampleUrl: sampleSelect.value,
+            text: textInput.value,
+            size: Number(sizeInput.value),
+            decoderSource: decoderLabel,
+            diagnostics: typeof font?.getDiagnostics === 'function' ? font.getDiagnostics() : []
+        }),
+        exportFilename: "woff2-loader-report.json",
+        getDiagnosticsText: () => {
+            const list = typeof font?.getDiagnostics === 'function' ? font.getDiagnostics() : [];
+            if (!list.length) return "No diagnostics.";
+            return list.slice(0, 30).map((d) => `[${d.phase}/${d.level}] ${d.code}: ${d.message}`).join('\n');
+        }
+    });
 
     // Try to boot decoder + first sample automatically.
     (async () => {

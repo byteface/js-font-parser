@@ -3,6 +3,24 @@
 <head>
     <meta charset="utf-8">
     <title>WOFF Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; }
+        .panel { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+        .report {
+            margin-top: 12px;
+            border: 1px solid #d8dde8;
+            border-radius: 8px;
+            background: #fafbfe;
+            padding: 10px;
+            white-space: pre-wrap;
+            font-family: ui-monospace, Menlo, monospace;
+            font-size: 12px;
+            color: #495166;
+            max-height: 220px;
+            overflow: auto;
+        }
+        canvas { border: 1px dashed #ccc; width: 100%; height: auto; }
+    </style>
 </head>
 <body>
 <div data-nav="main"></div>
@@ -24,34 +42,95 @@
     </label>
 </div>
 <div id="status" style="margin-bottom:12px;color:#444;"></div>
+<div id="timing" style="margin-bottom:12px;color:#444;"></div>
 <canvas id="myDrawing" width="900" height="360"></canvas>
+<pre id="validationReport" class="report">No validation run yet.</pre>
 
 <script type="module">
     import { FontParserWOFF } from '../dist/data/FontParserWOFF.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
     import { clearCanvas } from './shared/canvas-utils.js';
     import { setStatus } from './shared/status-ui.js';
+    import { createSharedToolbar, persistInputValue, persistSelectValue } from './shared/shared-toolbar.js';
+    import { fetchArrayBuffer } from './shared/font-io.js';
 
     const canvas = document.getElementById('myDrawing');
     const textInput = document.getElementById('textInput');
     const fontSelect = document.getElementById('fontSelect');
     const status = document.getElementById('status');
+    const timing = document.getElementById('timing');
+    const validationReport = document.getElementById('validationReport');
     const ctx = canvas.getContext('2d');
 
     let font = null;
-    function loadFont(url) {
+    let lastValidation = null;
+    let lastDecodeMs = null;
+    const TOOL_KEY = "tool:woff-loader";
+
+    function readUInt16(data, offset) {
+        return (data[offset] << 8) | data[offset + 1];
+    }
+    function readUInt32(data, offset) {
+        return ((data[offset] << 24) >>> 0) + (data[offset + 1] << 16) + (data[offset + 2] << 8) + data[offset + 3];
+    }
+
+    function validateWoffBytes(data) {
+        const issues = [];
+        if (!data || data.length < 44) {
+            return { valid: false, issues: ["WOFF too short: missing full header."], numTables: 0, tables: [] };
+        }
+        const signature = String.fromCharCode(data[0], data[1], data[2], data[3]);
+        const length = readUInt32(data, 8);
+        const numTables = readUInt16(data, 12);
+        const totalSfntSize = readUInt32(data, 16);
+        const headerSize = 44;
+        const dirSize = numTables * 20;
+        const tables = [];
+        if (signature !== "wOFF") issues.push(`Unexpected signature: ${signature}`);
+        if (length !== data.length) issues.push(`Header length (${length}) does not match file length (${data.length}).`);
+        if (numTables <= 0) issues.push("numTables is zero.");
+        if (headerSize + dirSize > data.length) issues.push("Table directory exceeds file bounds.");
+        if (totalSfntSize < 12 + (numTables * 16)) issues.push("totalSfntSize is smaller than minimal sfnt header+directory.");
+
+        for (let i = 0; i < numTables; i++) {
+            const base = 44 + i * 20;
+            if (base + 20 > data.length) {
+                issues.push(`Table #${i} directory entry out of bounds.`);
+                continue;
+            }
+            const tag = String.fromCharCode(data[base], data[base + 1], data[base + 2], data[base + 3]);
+            const offset = readUInt32(data, base + 4);
+            const compLength = readUInt32(data, base + 8);
+            const origLength = readUInt32(data, base + 12);
+            const checksum = readUInt32(data, base + 16);
+            const inBounds = offset >= (headerSize + dirSize) && (offset + compLength) <= data.length;
+            if (!inBounds) issues.push(`${tag} offset/compLength out of bounds (off=${offset}, len=${compLength}).`);
+            if (compLength > origLength) issues.push(`${tag} compLength (${compLength}) > origLength (${origLength}).`);
+            tables.push({ tag, offset, compLength, origLength, checksum, inBounds });
+        }
+
+        return { valid: issues.length === 0, issues, signature, length, numTables, totalSfntSize, tables };
+    }
+
+    async function loadFont(url) {
         setStatus(status, `Loading: ${fontSelect.options[fontSelect.selectedIndex].text}`, 'info');
-        FontParserWOFF.load(url)
-            .then(f => {
-                font = f;
-                setStatus(status, `Loaded: ${fontSelect.options[fontSelect.selectedIndex].text}`, 'success');
-                render();
-            })
-            .catch(error => {
-                font = null;
-                clearCanvas(canvas, ctx);
-                setStatus(status, `Failed to load font: ${error?.message || error}`, 'warning');
-            });
+        try {
+            const bytes = new Uint8Array(await fetchArrayBuffer(url));
+            lastValidation = validateWoffBytes(bytes);
+            validationReport.textContent = JSON.stringify(lastValidation, null, 2);
+            const start = performance.now();
+            const f = await FontParserWOFF.load(url);
+            lastDecodeMs = performance.now() - start;
+            timing.textContent = `Decode/parse: ${lastDecodeMs.toFixed(2)} ms`;
+            font = f;
+            setStatus(status, `Loaded: ${fontSelect.options[fontSelect.selectedIndex].text}`, 'success');
+            render();
+        } catch (error) {
+            font = null;
+            clearCanvas(canvas, ctx);
+            timing.textContent = '';
+            setStatus(status, `Failed to load font: ${error?.message || error}`, 'warning');
+        }
     }
 
     loadFont(fontSelect.value);
@@ -65,6 +144,28 @@
             textInput.value = 'Hello WOFF';
         }
         loadFont(fontSelect.value);
+    });
+    persistSelectValue(fontSelect, TOOL_KEY, "font");
+    persistInputValue(textInput, TOOL_KEY, "text");
+
+    createSharedToolbar({
+        mount: document.body,
+        fontSelect,
+        getExportData: () => ({
+            tool: "woff-loader",
+            selectedFont: fontSelect.options[fontSelect.selectedIndex]?.text || null,
+            url: fontSelect.value,
+            text: textInput.value,
+            decodeMs: lastDecodeMs,
+            validation: lastValidation,
+            diagnostics: typeof font?.getDiagnostics === 'function' ? font.getDiagnostics() : []
+        }),
+        exportFilename: "woff-loader-report.json",
+        getDiagnosticsText: () => {
+            const list = typeof font?.getDiagnostics === 'function' ? font.getDiagnostics() : [];
+            if (!list.length) return "No diagnostics.";
+            return list.slice(0, 30).map((d) => `[${d.phase}/${d.level}] ${d.code}: ${d.message}`).join('\n');
+        }
     });
 
     function render() {

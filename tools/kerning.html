@@ -79,6 +79,8 @@
         <table id="heatmap"></table>
       </div>
       <p id="pairSummary" class="muted" style="margin-top:10px;"></p>
+      <p id="pairNegSummary" class="muted"></p>
+      <p id="pairPosSummary" class="muted"></p>
     </section>
   </div>
 
@@ -87,6 +89,7 @@
     import { getFontList } from './shared/font-catalog.js';
     import { createFontLoader } from './shared/font-ui.js';
     import { wireFontSelect } from './shared/tool-scaffold.js';
+    import { createSharedToolbar, persistInputValue } from './shared/shared-toolbar.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
 
     const input = document.getElementById('textInput');
@@ -100,10 +103,35 @@
     const diagnosticsEl = document.getElementById('diagnostics');
     const heatmap = document.getElementById('heatmap');
     const pairSummary = document.getElementById('pairSummary');
+    const pairNegSummary = document.getElementById('pairNegSummary');
+    const pairPosSummary = document.getElementById('pairPosSummary');
 
     const fonts = getFontList('kerning');
     const loadFont = createFontLoader(FontParser.load);
     let font = null;
+    const TOOL_KEY = "tool:kerning";
+    const SCRIPT_PRESETS = {
+      latin: {
+        text: 'AVATAR WA To VA Type Wow, Yay.',
+        chars: 'AVWToY.,tafy'
+      },
+      arabic: {
+        text: 'مرحبا بالعالم',
+        chars: 'مرحبا لعم'
+      },
+      hebrew: {
+        text: 'שלום עולם',
+        chars: 'שלוםעולמ'
+      },
+      devanagari: {
+        text: 'नमस्ते दुनिया',
+        chars: 'नमस्तेदुनिय'
+      },
+      thai: {
+        text: 'ผู้ใหญ่ ใจดี',
+        chars: 'ผู้ใหญใจด'
+      }
+    };
 
     function uniqueChars(value) {
       const chars = [];
@@ -197,6 +225,14 @@
       pairSummary.textContent = nonZero.length > 0
         ? `Strongest pairs in grid: ${top}`
         : 'No non-zero kerning pairs for this character set.';
+      const negatives = nonZero.filter((p) => p.value < 0).sort((a, b) => a.value - b.value).slice(0, 8);
+      const positives = nonZero.filter((p) => p.value > 0).sort((a, b) => b.value - a.value).slice(0, 8);
+      pairNegSummary.textContent = negatives.length
+        ? `Largest negative: ${negatives.map((p) => `${p.pair}:${p.value}`).join(' | ')}`
+        : 'Largest negative: none';
+      pairPosSummary.textContent = positives.length
+        ? `Largest positive: ${positives.map((p) => `${p.pair}:${p.value}`).join(' | ')}`
+        : 'Largest positive: none';
     }
 
     function drawPreviews(text, scale) {
@@ -258,12 +294,47 @@
     input.addEventListener('input', render);
     charsInput.addEventListener('input', render);
     kernInput.addEventListener('input', render);
+    persistInputValue(input, TOOL_KEY, "text");
+    persistInputValue(charsInput, TOOL_KEY, "chars");
+    persistInputValue(kernInput, TOOL_KEY, "scale");
+    const savedFontIndexRaw = localStorage.getItem(`${TOOL_KEY}:font`);
+    const savedFontIndex = Number.isFinite(Number(savedFontIndexRaw)) ? Number(savedFontIndexRaw) : 0;
+
+    createSharedToolbar({
+      mount: document.body,
+      fontSelect,
+      scriptOptions: [
+        { value: "latin", label: "Latin" },
+        { value: "arabic", label: "Arabic" },
+        { value: "hebrew", label: "Hebrew" },
+        { value: "devanagari", label: "Devanagari" },
+        { value: "thai", label: "Thai" }
+      ],
+      onScriptChange: (value) => {
+        const preset = SCRIPT_PRESETS[value] || SCRIPT_PRESETS.latin;
+        input.value = preset.text;
+        charsInput.value = preset.chars;
+        render();
+      },
+      getExportData: () => ({
+        tool: "kerning",
+        text: input.value,
+        chars: charsInput.value,
+        kerningScale: Number(kernInput.value),
+        diagnostics: typeof font?.getDiagnostics === 'function' ? font.getDiagnostics() : []
+      }),
+      exportFilename: "kerning-report.json",
+      getDiagnosticsText: () => diagnosticsEl.textContent || "No diagnostics."
+    });
+
     const selector = wireFontSelect({
       select: fontSelect,
       fonts,
       loadFont,
+      initialIndex: savedFontIndex,
       onLoaded: (loaded) => {
         font = loaded;
+        localStorage.setItem(`${TOOL_KEY}:font`, fontSelect.value);
         render();
       },
       onError: (err) => {

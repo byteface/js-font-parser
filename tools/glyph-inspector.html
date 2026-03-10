@@ -110,13 +110,18 @@
             Character
             <input id="charInput" type="text" value="A" />
         </label>
+        <label>
+            Unicode
+            <input id="unicodeInput" type="text" placeholder="U+0041 or 0x41" />
+        </label>
+        <button id="unicodeBtn">Jump</button>
         <button id="prevBtn">Prev</button>
         <button id="nextBtn">Next</button>
         <label><span>Fill</span><input id="fillToggle" type="checkbox" checked /></label>
         <label><span>Outline</span><input id="outlineToggle" type="checkbox" checked /></label>
         <label><span>Points</span><input id="pointsToggle" type="checkbox" checked /></label>
         <label><span>Handles</span><input id="handlesToggle" type="checkbox" checked /></label>
-        <label><span>Indices</span><input id="indexToggle" type="checkbox" /></label>
+        <label><span>Point Indices</span><input id="indexToggle" type="checkbox" /></label>
         <label><span>Anchors</span><input id="anchorToggle" type="checkbox" checked /></label>
         <label><span>BBox</span><input id="bboxToggle" type="checkbox" checked /></label>
     </div>
@@ -139,10 +144,13 @@
         import { Table } from '../dist/table/Table.js';
         import { getFontList } from './shared/font-catalog.js';
         import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
+        import { createSharedToolbar, persistInputValue } from './shared/shared-toolbar.js';
 
         const fontSelect = document.getElementById('fontSelect');
         const glyphInput = document.getElementById('glyphInput');
         const charInput = document.getElementById('charInput');
+        const unicodeInput = document.getElementById('unicodeInput');
+        const unicodeBtn = document.getElementById('unicodeBtn');
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
         const fillToggle = document.getElementById('fillToggle');
@@ -167,6 +175,19 @@
         const cell = 48;
         let gridCols = 6;
         let selectedGlyphIndex = 0;
+        const TOOL_KEY = "tool:glyph-inspector";
+        const savedFontIndexRaw = localStorage.getItem(`${TOOL_KEY}:font`);
+        const savedFontIndex = Number.isFinite(Number(savedFontIndexRaw)) ? Number(savedFontIndexRaw) : 0;
+
+        function persistCheckbox(input, key) {
+            const saved = localStorage.getItem(key);
+            if (saved != null) {
+                input.checked = saved === '1';
+            }
+            input.addEventListener('change', () => {
+                localStorage.setItem(key, input.checked ? '1' : '0');
+            });
+        }
 
         function clear(ctx, canvas) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -399,6 +420,22 @@
             glyphInput.value = String(selectedGlyphIndex);
             renderGrid();
             renderInspector();
+            if (font?.getGlyph) {
+                const glyph = font.getGlyph(selectedGlyphIndex);
+                if (glyph && typeof glyph.unicode === 'number' && Number.isFinite(glyph.unicode)) {
+                    unicodeInput.value = `U+${glyph.unicode.toString(16).toUpperCase().padStart(4, '0')}`;
+                }
+            }
+        }
+
+        function parseUnicodeToken(raw) {
+            const text = String(raw || '').trim();
+            if (!text) return null;
+            const m = text.match(/^U\+([0-9A-Fa-f]{1,6})$/) || text.match(/^0x([0-9A-Fa-f]{1,6})$/);
+            if (m) return parseInt(m[1], 16);
+            if (/^\d+$/.test(text)) return Number(text);
+            if (Array.from(text).length === 1) return text.codePointAt(0);
+            return null;
         }
 
         gridCanvas.addEventListener('click', (event) => {
@@ -430,13 +467,74 @@
             const idx = font?.getGlyphIndexByChar(ch) ?? 0;
             selectGlyph(idx);
         });
+        unicodeBtn.addEventListener('click', () => {
+            const cp = parseUnicodeToken(unicodeInput.value);
+            if (cp == null || !font) return;
+            let ch = '';
+            try { ch = String.fromCodePoint(cp); } catch { return; }
+            charInput.value = ch;
+            const idx = font.getGlyphIndexByChar(ch) ?? 0;
+            selectGlyph(idx);
+        });
         prevBtn.addEventListener('click', () => selectGlyph(Number(glyphInput.value) - 1));
         nextBtn.addEventListener('click', () => selectGlyph(Number(glyphInput.value) + 1));
         [fillToggle, outlineToggle, pointsToggle, handlesToggle, indexToggle, anchorToggle, bboxToggle].forEach(el => {
             el.addEventListener('change', renderInspector);
         });
 
+        persistInputValue(glyphInput, TOOL_KEY, "glyph");
+        persistInputValue(charInput, TOOL_KEY, "char");
+        persistInputValue(unicodeInput, TOOL_KEY, "unicode");
+        persistCheckbox(fillToggle, `${TOOL_KEY}:fill`);
+        persistCheckbox(outlineToggle, `${TOOL_KEY}:outline`);
+        persistCheckbox(pointsToggle, `${TOOL_KEY}:points`);
+        persistCheckbox(handlesToggle, `${TOOL_KEY}:handles`);
+        persistCheckbox(indexToggle, `${TOOL_KEY}:indices`);
+        persistCheckbox(anchorToggle, `${TOOL_KEY}:anchors`);
+        persistCheckbox(bboxToggle, `${TOOL_KEY}:bbox`);
+
+        createSharedToolbar({
+            mount: document.body,
+            fontSelect,
+            scriptOptions: [
+                { value: "latin", label: "Latin" },
+                { value: "arabic", label: "Arabic" },
+                { value: "hebrew", label: "Hebrew" },
+                { value: "devanagari", label: "Devanagari" },
+                { value: "thai", label: "Thai" }
+            ],
+            onScriptChange: (value) => {
+                if (value === "arabic") charInput.value = "م";
+                else if (value === "hebrew") charInput.value = "ש";
+                else if (value === "devanagari") charInput.value = "क";
+                else if (value === "thai") charInput.value = "ท";
+                else charInput.value = "A";
+                const idx = font?.getGlyphIndexByChar(charInput.value) ?? 0;
+                selectGlyph(idx);
+            },
+            getExportData: () => ({
+                tool: "glyph-inspector",
+                glyphIndex: selectedGlyphIndex,
+                char: charInput.value,
+                unicode: unicodeInput.value,
+                glyphCount,
+                diagnostics: typeof font?.getDiagnostics === 'function' ? font.getDiagnostics() : []
+            }),
+            exportFilename: "glyph-inspector.json",
+            getDiagnosticsText: () => {
+                const list = typeof font?.getDiagnostics === 'function' ? font.getDiagnostics() : [];
+                if (!list.length) return "No diagnostics.";
+                return list.slice(0, 30).map((d) => `[${d.phase}/${d.level}] ${d.code}: ${d.message}`).join('\n');
+            }
+        });
+
         populateFontSelect(fontSelect, fonts);
+        if (fonts.length > 0) {
+            fontSelect.value = String(Math.max(0, Math.min(savedFontIndex, fonts.length - 1)));
+        }
+        fontSelect.addEventListener('change', () => {
+            localStorage.setItem(`${TOOL_KEY}:font`, fontSelect.value);
+        });
         loadAndRender();
     </script>
 </body>

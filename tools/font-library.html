@@ -89,6 +89,22 @@
     <h1>Font Library (CDN)</h1>
     <div class="panel">
         <label>
+            Search
+            <input id="filterInput" type="text" placeholder="name or tag" />
+        </label>
+        <label>
+            Tag
+            <select id="tagFilter">
+                <option value="all">All</option>
+                <option value="serif">Serif</option>
+                <option value="sans">Sans</option>
+                <option value="color">Color</option>
+                <option value="variable">Variable</option>
+                <option value="script">Script</option>
+                <option value="icons">Icons</option>
+            </select>
+        </label>
+        <label>
             Catalog
             <select id="fontSelect"></select>
         </label>
@@ -130,11 +146,14 @@
         import { FontParserWOFF } from "../dist/data/FontParserWOFF.js";
         import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
         import { getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
+        import { createSharedToolbar, persistInputValue, persistSelectValue } from "./shared/shared-toolbar.js";
         import { clearCanvas } from "./shared/canvas-utils.js";
         import { setStatus } from "./shared/status-ui.js";
         import { detectFontMagic, fetchArrayBuffer, fetchText, pickBestFontUrlFromCss } from "./shared/font-io.js";
 
         const fontSelect = document.getElementById("fontSelect");
+        const filterInput = document.getElementById("filterInput");
+        const tagFilter = document.getElementById("tagFilter");
         const urlInput = document.getElementById("urlInput");
         const textInput = document.getElementById("textInput");
         const sizeInput = document.getElementById("sizeInput");
@@ -144,6 +163,10 @@
         const canvas = document.getElementById("canvas");
         const status = document.getElementById("status");
         const ctx = canvas.getContext("2d");
+        let currentFont = null;
+        let currentFontMeta = null;
+        let filteredCatalog = [];
+        let catalogPersistenceBound = false;
 
         const catalog = [
             {
@@ -239,6 +262,43 @@
         ];
 
         const loadedFontCache = new Map();
+        const TOOL_KEY = "tool:font-library";
+
+        function deriveTags(item) {
+            const tags = new Set(item.tags || []);
+            const name = String(item.name || "").toLowerCase();
+            const url = String(item.url || "").toLowerCase();
+            if (name.includes("serif") || name.includes("merriweather")) tags.add("serif");
+            if (name.includes("sans") || name.includes("roboto") || name.includes("inter") || name.includes("open sans")) tags.add("sans");
+            if (name.includes("variable") || name.includes("vf") || url.includes("-vf") || url.includes("[wght]")) tags.add("variable");
+            if (name.includes("arabic")) tags.add("arabic");
+            if (name.includes("hebrew")) tags.add("hebrew");
+            if (name.includes("devanagari")) tags.add("devanagari");
+            if (name.includes("thai")) tags.add("thai");
+            return Array.from(tags);
+        }
+
+        function applyCatalogFilter() {
+            const q = (filterInput.value || "").trim().toLowerCase();
+            const tag = tagFilter.value;
+            filteredCatalog = catalog.filter((item) => {
+                const tags = deriveTags(item);
+                const hay = `${item.name} ${item.url} ${tags.join(" ")}`.toLowerCase();
+                if (q && !hay.includes(q)) return false;
+                if (tag !== "all" && !tags.includes(tag)) return false;
+                return true;
+            });
+            populateFontSelect(fontSelect, filteredCatalog);
+            if (filteredCatalog.length === 0) {
+                setStatus(status, "No fonts match current search/filter.", "warning");
+                return;
+            }
+            if (!catalogPersistenceBound) {
+                persistSelectValue(fontSelect, TOOL_KEY, "catalog");
+                catalogPersistenceBound = true;
+            }
+            loadAndRender();
+        }
 
         async function loadFontFromUrl(url) {
             if (loadedFontCache.has(url)) return loadedFontCache.get(url);
@@ -332,8 +392,9 @@
         }
 
         async function loadAndRender() {
+            if (!filteredCatalog.length) return;
             const customUrl = urlInput.value.trim();
-            const selected = getSelectedFont(fontSelect, catalog);
+            const selected = getSelectedFont(fontSelect, filteredCatalog);
             const inputUrl = customUrl || selected.url;
 
             setStatus(status, `Loading font: ${inputUrl}`, "info");
@@ -344,9 +405,12 @@
                     setStatus(status, `Resolved CSS to font: ${url}`, "info");
                 }
                 const font = await loadFontFromUrl(url);
+                currentFont = font;
+                currentFontMeta = { selected, url };
                 const text = textInput.value || "";
                 renderFont(font, text);
             } catch (err) {
+                currentFont = null;
                 setStatus(status, `Failed to load font. CORS or format issues? ${err}`, "warning");
             }
         }
@@ -364,9 +428,53 @@
         });
         sizeInput.addEventListener("input", loadAndRender);
         modeSelect.addEventListener("change", loadAndRender);
+        filterInput.addEventListener("input", applyCatalogFilter);
+        tagFilter.addEventListener("change", applyCatalogFilter);
 
-        populateFontSelect(fontSelect, catalog);
-        loadAndRender();
+        persistInputValue(filterInput, TOOL_KEY, "search");
+        persistSelectValue(tagFilter, TOOL_KEY, "tag");
+        persistInputValue(urlInput, TOOL_KEY, "url");
+        persistInputValue(textInput, TOOL_KEY, "text");
+        persistSelectValue(modeSelect, TOOL_KEY, "mode");
+        persistInputValue(sizeInput, TOOL_KEY, "size");
+
+        createSharedToolbar({
+            mount: document.body,
+            fontSelect,
+            sizeInput,
+            scriptOptions: [
+                { value: "latin", label: "Latin" },
+                { value: "arabic", label: "Arabic" },
+                { value: "hebrew", label: "Hebrew" },
+                { value: "devanagari", label: "Devanagari" },
+                { value: "icons", label: "Icons" }
+            ],
+            onScriptChange: (value) => {
+                if (value === "arabic") textInput.value = "مرحبا بالعالم";
+                else if (value === "hebrew") textInput.value = "שלום עולם";
+                else if (value === "devanagari") textInput.value = "नमस्ते दुनिया";
+                else if (value === "icons") textInput.value = "\uf007 \uf013 \uf0c7 \uf0f3";
+                else textInput.value = "The quick brown fox jumps over the lazy dog.";
+                loadAndRender();
+            },
+            getExportData: () => ({
+                tool: "font-library",
+                selected: currentFontMeta?.selected?.name || null,
+                sourceUrl: currentFontMeta?.url || null,
+                mode: modeSelect.value,
+                size: Number(sizeInput.value),
+                text: textInput.value,
+                diagnostics: typeof currentFont?.getDiagnostics === "function" ? currentFont.getDiagnostics() : []
+            }),
+            exportFilename: "font-library-report.json",
+            getDiagnosticsText: () => {
+                const list = typeof currentFont?.getDiagnostics === "function" ? currentFont.getDiagnostics() : [];
+                if (!list.length) return "No diagnostics.";
+                return list.slice(0, 30).map((d) => `[${d.phase}/${d.level}] ${d.code}: ${d.message}`).join("\n");
+            }
+        });
+
+        applyCatalogFilter();
     </script>
   <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
