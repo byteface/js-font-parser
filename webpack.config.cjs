@@ -1,9 +1,11 @@
 // webpack.config.cjs
 const path = require('path');
+const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
   mode: 'production',
   entry: './src/index.ts', // Your entry point
+  devtool: false,
   performance: {
     hints: false,
   },
@@ -27,6 +29,24 @@ module.exports = {
         use: 'ts-loader',
         exclude: /node_modules/,
       },
+    ],
+  },
+  optimization: {
+    minimize: true,
+    minimizer: [
+      new TerserPlugin({
+        extractComments: false,
+        terserOptions: {
+          compress: {
+            passes: 2,
+            pure_getters: true,
+          },
+          mangle: true,
+          format: {
+            comments: false,
+          },
+        },
+      }),
     ],
   },
 };

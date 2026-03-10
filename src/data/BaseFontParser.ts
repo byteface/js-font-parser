@@ -1,4 +1,14 @@
 import type { Diagnostic as FontDiagnostic, DiagnosticFilter } from '../types/Diagnostics.js';
+import { Table } from '../table/Table.js';
+import { CursivePosFormat1 } from '../table/CursivePosFormat1.js';
+import { MarkBasePosFormat1 } from '../table/MarkBasePosFormat1.js';
+import { MarkLigPosFormat1 } from '../table/MarkLigPosFormat1.js';
+import { MarkMarkPosFormat1 } from '../table/MarkMarkPosFormat1.js';
+import { PairPosFormat1 } from '../table/PairPosFormat1.js';
+import { PairPosFormat2 } from '../table/PairPosFormat2.js';
+import { PairPosSubtable } from '../table/PairPosSubtable.js';
+import { SinglePosSubtable } from '../table/SinglePosSubtable.js';
+import { detectScriptTags } from '../utils/ScriptDetector.js';
 import {
     clearDiagnostics as clearParserDiagnostics,
     emitDiagnostic as emitParserDiagnostic,
@@ -11,6 +21,10 @@ type DiagnosticState = {
     diagnostics: FontDiagnostic[];
     diagnosticKeys: Set<string>;
 };
+
+type PositionedGlyph = { glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number };
+type MarkAnchorType = 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit';
+type MarkAnchor = { type: MarkAnchorType; classIndex: number; x: number; y: number; componentIndex?: number };
 
 export abstract class BaseFontParser {
     private diagnostics: FontDiagnostic[] = [];
@@ -58,11 +72,11 @@ export abstract class BaseFontParser {
     protected abstract getGsubTableForLayout(): any | null;
     protected abstract getKernTableForLayout(): { getKerningValue?: (leftGlyph: number, rightGlyph: number) => number | null } | null;
     protected abstract getGposTableForLayout(): any | null;
-    protected abstract getGlyphByIndexForLayout(glyphIndex: number): { advanceWidth?: number } | null;
+    protected abstract getGlyphByIndexForLayout(glyphIndex: number): any | null;
     protected abstract isMarkGlyphForLayout(glyphIndex: number): boolean;
     protected abstract applyGposPositioningForLayout(
         glyphIndices: number[],
-        positioned: Array<{ glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number }>,
+        positioned: PositionedGlyph[],
         gposFeatures: string[],
         scriptTags: string[]
     ): void;
@@ -70,6 +84,263 @@ export abstract class BaseFontParser {
     protected abstract getNameRecordForInfo(nameId: number): string;
     protected abstract getOs2TableForInfo(): any | null;
     protected abstract getPostTableForInfo(): any | null;
+    protected abstract getNameTableForShared(): any | null;
+    protected abstract getOs2TableForShared(): any | null;
+    protected abstract getPostTableForShared(): any | null;
+    protected abstract getFvarTableForShared(): any | null;
+    protected abstract getColrTableForShared(): any | null;
+    protected abstract getCpalTableForShared(): any | null;
+    protected abstract getUnitsPerEmForShared(): number;
+    protected abstract setVariationCoordsInternal(coords: number[]): void;
+    protected abstract onVariationCoordsUpdated(coords: number[]): void;
+
+    protected getGposAttachmentAnchors(glyphId: number, subtables?: Array<any>): MarkAnchor[] {
+        const gpos = this.getGposTableForLayout();
+        if (!gpos) return [];
+        const anchors: MarkAnchor[] = [];
+        const activeSubtables = subtables ?? (() => {
+            const lookups = gpos?.lookupList?.getLookups?.() ?? [];
+            const all: any[] = [];
+            for (const lookup of lookups) {
+                if (!lookup) continue;
+                for (let i = 0; i < lookup.getSubtableCount(); i++) {
+                    const st = lookup.getSubtable(i);
+                    if (st) all.push(st);
+                }
+            }
+            return all;
+        })();
+
+        for (const st of activeSubtables) {
+            if (st instanceof MarkBasePosFormat1) {
+                const markIndex = st.markCoverage?.findGlyph(glyphId) ?? -1;
+                if (markIndex >= 0 && st.markArray) {
+                    const record = st.markArray.marks[markIndex];
+                    if (record?.anchor) {
+                        anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                    }
+                }
+                const baseIndex = st.baseCoverage?.findGlyph(glyphId) ?? -1;
+                if (baseIndex >= 0 && st.baseArray) {
+                    const base = st.baseArray.baseRecords[baseIndex];
+                    if (base?.anchors) {
+                        base.anchors.forEach((anchor, classIndex) => {
+                            if (anchor) {
+                                anchors.push({ type: 'base', classIndex, x: anchor.x, y: anchor.y });
+                            }
+                        });
+                    }
+                }
+            }
+            if (st instanceof MarkLigPosFormat1) {
+                const markIndex = st.markCoverage?.findGlyph(glyphId) ?? -1;
+                if (markIndex >= 0 && st.markArray) {
+                    const record = st.markArray.marks[markIndex];
+                    if (record?.anchor) {
+                        anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                    }
+                }
+                const ligIndex = st.ligatureCoverage?.findGlyph(glyphId) ?? -1;
+                if (ligIndex >= 0 && st.ligatureArray) {
+                    const lig = st.ligatureArray.ligatures[ligIndex];
+                    lig?.components?.forEach((component, componentIndex) => {
+                        component.forEach((anchor, classIndex) => {
+                            if (anchor) {
+                                anchors.push({ type: 'ligature', classIndex, x: anchor.x, y: anchor.y, componentIndex });
+                            }
+                        });
+                    });
+                }
+            }
+            if (st instanceof MarkMarkPosFormat1) {
+                const mark1Index = st.mark1Coverage?.findGlyph(glyphId) ?? -1;
+                if (mark1Index >= 0 && st.mark1Array) {
+                    const record = st.mark1Array.marks[mark1Index];
+                    if (record?.anchor) {
+                        anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
+                    }
+                }
+                const mark2Index = st.mark2Coverage?.findGlyph(glyphId) ?? -1;
+                if (mark2Index >= 0 && st.mark2Array) {
+                    const record = st.mark2Array.records[mark2Index];
+                    record?.anchors?.forEach((anchor, classIndex) => {
+                        if (anchor) {
+                            anchors.push({ type: 'mark2', classIndex, x: anchor.x, y: anchor.y });
+                        }
+                    });
+                }
+            }
+            if (st instanceof CursivePosFormat1) {
+                const idx = st.coverage?.findGlyph(glyphId) ?? -1;
+                if (idx >= 0) {
+                    const record = st.entryExitRecords[idx];
+                    if (record?.entry) anchors.push({ type: 'cursive-entry', classIndex: 0, x: record.entry.x, y: record.entry.y });
+                    if (record?.exit) anchors.push({ type: 'cursive-exit', classIndex: 0, x: record.exit.x, y: record.exit.y });
+                }
+            }
+        }
+        return anchors;
+    }
+
+    protected applyGposPositioningShared(
+        glyphIndices: number[],
+        positioned: PositionedGlyph[],
+        gposFeatures: string[],
+        scriptTags: string[]
+    ): void {
+        const gpos = this.getGposTableForLayout();
+        if (!gpos) return;
+        const subtables = gpos.getSubtablesForFeatures(gposFeatures, scriptTags);
+
+        for (const st of subtables) {
+            if (
+                st instanceof SinglePosSubtable ||
+                typeof (st as any).getAdjustment === 'function'
+            ) {
+                for (let i = 0; i < glyphIndices.length; i++) {
+                    if (!positioned[i]) continue;
+                    const adj = (st as any).getAdjustment?.(glyphIndices[i]);
+                    if (!adj) continue;
+                    positioned[i].xOffset += adj.xPlacement ?? 0;
+                    positioned[i].yOffset += adj.yPlacement ?? 0;
+                    positioned[i].xAdvance += adj.xAdvance ?? 0;
+                    positioned[i].yAdvance += adj.yAdvance ?? 0;
+                }
+            }
+            if (
+                st instanceof PairPosSubtable ||
+                st instanceof PairPosFormat1 ||
+                st instanceof PairPosFormat2 ||
+                typeof (st as any).getPairValue === 'function'
+            ) {
+                for (let i = 0; i < glyphIndices.length - 1; i++) {
+                    if (!positioned[i] || !positioned[i + 1]) continue;
+                    const pair = (st as any).getPairValue?.(glyphIndices[i], glyphIndices[i + 1]);
+                    if (!pair) continue;
+                    const v1 = pair.v1 || {};
+                    const v2 = pair.v2 || {};
+                    positioned[i].xOffset += v1.xPlacement ?? 0;
+                    positioned[i].yOffset += v1.yPlacement ?? 0;
+                    positioned[i].xAdvance += v1.xAdvance ?? 0;
+                    positioned[i].yAdvance += v1.yAdvance ?? 0;
+                    positioned[i + 1].xOffset += v2.xPlacement ?? 0;
+                    positioned[i + 1].yOffset += v2.yPlacement ?? 0;
+                    positioned[i + 1].xAdvance += v2.xAdvance ?? 0;
+                    positioned[i + 1].yAdvance += v2.yAdvance ?? 0;
+                }
+                continue;
+            }
+            if (
+                st instanceof MarkBasePosFormat1 ||
+                st instanceof MarkLigPosFormat1 ||
+                st instanceof MarkMarkPosFormat1 ||
+                st instanceof CursivePosFormat1
+            ) {
+                continue;
+            }
+            const constructorName = (st as any)?.constructor?.name ?? "unknown";
+            this.emitDiagnostic(
+                "UNSUPPORTED_GPOS_SUBTABLE",
+                "info",
+                "layout",
+                `Encountered GPOS subtable not currently handled: ${constructorName}.`,
+                { constructorName },
+                `UNSUPPORTED_GPOS_SUBTABLE:${constructorName}`
+            );
+        }
+
+        const markSubtables = subtables.filter((st: any) =>
+            st instanceof MarkBasePosFormat1 ||
+            st instanceof MarkLigPosFormat1 ||
+            st instanceof MarkMarkPosFormat1 ||
+            st instanceof CursivePosFormat1
+        );
+
+        const anchorsCache = new Map<number, MarkAnchor[]>();
+        const getAnchors = (gid: number): MarkAnchor[] => {
+            if (anchorsCache.has(gid)) return anchorsCache.get(gid)!;
+            const anchors = this.getGposAttachmentAnchors(gid, markSubtables);
+            anchorsCache.set(gid, anchors);
+            return anchors;
+        };
+        const getBaseAnchor = (anchors: MarkAnchor[], classIndex: number): MarkAnchor | null => {
+            const candidates = anchors.filter(a =>
+                (a.type === 'base' || a.type === 'ligature' || a.type === 'mark2') && a.classIndex === classIndex
+            );
+            if (candidates.length === 0) return null;
+            const ligatureCandidates = candidates.filter(a => a.type === 'ligature');
+            if (ligatureCandidates.length > 0) {
+                return ligatureCandidates.reduce((best, current) =>
+                    (current.componentIndex ?? -1) > (best.componentIndex ?? -1) ? current : best
+                );
+            }
+            return candidates[0];
+        };
+
+        for (let i = 0; i < glyphIndices.length; i++) {
+            if (!positioned[i]) continue;
+            const anchors = getAnchors(glyphIndices[i]);
+            const markAnchor = anchors.find(a => a.type === 'mark');
+            if (!markAnchor) continue;
+
+            let attached = false;
+            let prev = i - 1;
+            while (prev >= 0) {
+                const prevGid = glyphIndices[prev];
+                if (!this.isMarkGlyphForLayout(prevGid)) {
+                    prev--;
+                    continue;
+                }
+                const prevAnchors = getAnchors(prevGid);
+                const mark2 = prevAnchors.find(a => a.type === 'mark2' && a.classIndex === markAnchor.classIndex);
+                if (mark2) {
+                    positioned[i].xOffset += (positioned[prev]?.xOffset ?? 0) + (mark2.x - markAnchor.x);
+                    positioned[i].yOffset += (positioned[prev]?.yOffset ?? 0) + (mark2.y - markAnchor.y);
+                    positioned[i].xAdvance = 0;
+                    attached = true;
+                    break;
+                }
+                prev--;
+            }
+            if (attached) continue;
+
+            let baseIndex = i - 1;
+            while (baseIndex >= 0) {
+                const baseGid = glyphIndices[baseIndex];
+                if (this.isMarkGlyphForLayout(baseGid)) {
+                    baseIndex--;
+                    continue;
+                }
+                const baseAnchors = getAnchors(baseGid);
+                const baseAnchor = getBaseAnchor(baseAnchors, markAnchor.classIndex);
+                if (baseAnchor) {
+                    positioned[i].xOffset += (positioned[baseIndex]?.xOffset ?? 0) + (baseAnchor.x - markAnchor.x);
+                    positioned[i].yOffset += (positioned[baseIndex]?.yOffset ?? 0) + (baseAnchor.y - markAnchor.y);
+                    positioned[i].xAdvance = 0;
+                    break;
+                }
+                baseIndex--;
+            }
+        }
+
+        for (let i = 1; i < glyphIndices.length; i++) {
+            if (!positioned[i]) continue;
+            const prevAnchors = getAnchors(glyphIndices[i - 1]);
+            const currAnchors = getAnchors(glyphIndices[i]);
+            const exitAnchor = prevAnchors.find(a => a.type === 'cursive-exit');
+            const entryAnchor = currAnchors.find(a => a.type === 'cursive-entry');
+            if (exitAnchor && entryAnchor) {
+                positioned[i].xOffset += exitAnchor.x - entryAnchor.x;
+                positioned[i].yOffset += exitAnchor.y - entryAnchor.y;
+            }
+        }
+
+        for (let i = 0; i < glyphIndices.length; i++) {
+            if (positioned[i] && this.isMarkGlyphForLayout(glyphIndices[i])) {
+                positioned[i].xAdvance = 0;
+            }
+        }
+    }
 
     public getGlyphIndexByChar(char: string): number | null {
         if (!char || char.length === 0) {
@@ -348,5 +619,484 @@ export abstract class BaseFontParser {
             underlineThickness: post.underlineThickness,
             isFixedPitch: post.isFixedPitch
         };
+    }
+
+    public layoutStringAuto(
+        text: string,
+        options: { gpos?: boolean; gposFeatures?: string[] } = {}
+    ): PositionedGlyph[] {
+        const detection = detectScriptTags(text);
+        return this.layoutString(text, {
+            gsubFeatures: detection.features,
+            scriptTags: detection.scripts,
+            gpos: options.gpos ?? true,
+            gposFeatures: options.gposFeatures
+        });
+    }
+
+    public getVariationAxes(): any[] {
+        return (this as any).getFvarTableForShared?.()?.axes ?? [];
+    }
+
+    public setVariationCoords(coords: number[]): void {
+        const copy = coords.slice();
+        if (typeof (this as any).setVariationCoordsInternal === 'function') {
+            (this as any).setVariationCoordsInternal(copy);
+        } else {
+            (this as any).variationCoords = copy;
+        }
+        if (typeof (this as any).onVariationCoordsUpdated === 'function') {
+            (this as any).onVariationCoordsUpdated(copy);
+        }
+    }
+
+    public setVariationByAxes(values: Record<string, number>): void {
+        const fvar = (this as any).getFvarTableForShared?.() ?? (this as any).fvar ?? null;
+        if (!fvar) return;
+        const coords: number[] = [];
+        for (const axis of fvar.axes ?? []) {
+            const tag = axis.name;
+            const value = values[tag] ?? axis.defaultValue;
+            let norm = 0;
+            if (value !== axis.defaultValue) {
+                if (value > axis.defaultValue) {
+                    const span = axis.maxValue - axis.defaultValue;
+                    norm = span !== 0 ? (value - axis.defaultValue) / span : 0;
+                } else {
+                    const span = axis.defaultValue - axis.minValue;
+                    norm = span !== 0 ? (value - axis.defaultValue) / span : 0;
+                }
+            }
+            coords.push(Number.isFinite(norm) ? Math.max(-1, Math.min(1, norm)) : 0);
+        }
+        this.setVariationCoords(coords);
+    }
+
+    public getGlyphPointsByChar(
+        char: string,
+        options: { sampleStep?: number } = {}
+    ): Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean }> {
+        const glyph = this.getGlyphByChar(char);
+        if (!glyph) return [];
+        const sampleStep = Math.max(1, Math.floor(options.sampleStep ?? 1));
+        const points: Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean }> = [];
+        for (let i = 0; i < glyph.getPointCount(); i += sampleStep) {
+            const p = glyph.getPoint(i);
+            if (!p) continue;
+            points.push({
+                x: p.x,
+                y: p.y,
+                onCurve: p.onCurve,
+                endOfContour: p.endOfContour
+            });
+        }
+        return points;
+    }
+
+    public measureText(
+        text: string,
+        options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean; gposFeatures?: string[]; letterSpacing?: number } = {}
+    ): { advanceWidth: number; glyphCount: number } {
+        const layout = this.layoutString(text, options);
+        const letterSpacing = Number.isFinite(options.letterSpacing) ? (options.letterSpacing as number) : 0;
+        let advanceWidth = 0;
+        for (let i = 0; i < layout.length; i++) {
+            const xAdvance = Number.isFinite(layout[i].xAdvance) ? layout[i].xAdvance : 0;
+            advanceWidth += xAdvance;
+            if (letterSpacing !== 0 && i < layout.length - 1) advanceWidth += letterSpacing;
+        }
+        return { advanceWidth: Number.isFinite(advanceWidth) ? advanceWidth : 0, glyphCount: layout.length };
+    }
+
+    public layoutToPoints(
+        text: string,
+        options: {
+            x?: number;
+            y?: number;
+            fontSize?: number;
+            sampleStep?: number;
+            gsubFeatures?: string[];
+            scriptTags?: string[];
+            gpos?: boolean;
+            gposFeatures?: string[];
+            letterSpacing?: number;
+        } = {}
+    ): {
+        points: Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean; glyphIndex: number; pointIndex: number }>;
+        advanceWidth: number;
+        scale: number;
+    } {
+        const layout = this.layoutString(text, options);
+        const sampleBase = Number.isFinite(options.sampleStep) ? (options.sampleStep as number) : 1;
+        const sampleStep = Math.max(1, Math.floor(sampleBase));
+        const unitsPerEm = this.getUnitsPerEmForShared();
+        const safeUnitsPerEm = Number.isFinite(unitsPerEm) && unitsPerEm > 0 ? unitsPerEm : 1000;
+        const fontSize = Number.isFinite(options.fontSize) && (options.fontSize as number) > 0
+            ? (options.fontSize as number)
+            : safeUnitsPerEm;
+        const scale = fontSize / safeUnitsPerEm;
+        const originX = Number.isFinite(options.x) ? (options.x as number) : 0;
+        const originY = Number.isFinite(options.y) ? (options.y as number) : 0;
+        const letterSpacing = Number.isFinite(options.letterSpacing) ? (options.letterSpacing as number) : 0;
+        const points: Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean; glyphIndex: number; pointIndex: number }> = [];
+
+        let penX = 0;
+        for (let i = 0; i < layout.length; i++) {
+            const item = layout[i];
+            const glyph = this.getGlyphByIndexForLayout(item.glyphIndex);
+            if (glyph) {
+                for (let pIndex = 0; pIndex < glyph.getPointCount(); pIndex += sampleStep) {
+                    const p = glyph.getPoint(pIndex);
+                    if (!p) continue;
+                    points.push({
+                        x: originX + (penX + (Number.isFinite(item.xOffset) ? item.xOffset : 0) + p.x) * scale,
+                        y: originY - ((Number.isFinite(item.yOffset) ? item.yOffset : 0) + p.y) * scale,
+                        onCurve: p.onCurve,
+                        endOfContour: p.endOfContour,
+                        glyphIndex: item.glyphIndex,
+                        pointIndex: pIndex
+                    });
+                }
+            }
+            penX += Number.isFinite(item.xAdvance) ? item.xAdvance : 0;
+            if (letterSpacing !== 0 && i < layout.length - 1) penX += letterSpacing;
+        }
+
+        return { points, advanceWidth: Number.isFinite(penX) ? penX : 0, scale: Number.isFinite(scale) ? scale : 1 };
+    }
+
+    public getColorLayersForGlyph(glyphId: number, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
+        const colr = this.getColrTableForShared();
+        if (!colr) return [];
+        const layers = colr.getLayersForGlyph(glyphId);
+        if (layers.length === 0) return [];
+        const palette = this.getCpalTableForShared()?.getPalette(paletteIndex) ?? [];
+        return layers.map((layer: any) => {
+            if (layer.paletteIndex === 0xffff) {
+                return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
+            }
+            const color = palette[layer.paletteIndex];
+            if (!color) {
+                return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
+            }
+            const rgba = `rgba(${color.red}, ${color.green}, ${color.blue}, ${color.alpha / 255})`;
+            return { glyphId: layer.glyphId, color: rgba, paletteIndex: layer.paletteIndex };
+        });
+    }
+
+    public getColorLayersForChar(char: string, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
+        const glyphId = this.getGlyphIndexByChar(char);
+        if (glyphId == null) return [];
+        return this.getColorLayersForGlyph(glyphId, paletteIndex);
+    }
+
+    public getColrV1LayersForGlyph(glyphId: number, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
+        const colr = this.getColrTableForShared();
+        if (!colr || colr.version === 0) return [];
+        const paint = colr.getPaintForGlyph(glyphId);
+        if (!paint) return [];
+        return this.flattenColrV1Paint(paint, paletteIndex);
+    }
+
+    private flattenColrV1Paint(paint: any, paletteIndex: number): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
+        if (!paint) return [];
+        if (paint.format === 1 && Array.isArray(paint.layers)) {
+            return paint.layers.flatMap((p: any) => this.flattenColrV1Paint(p, paletteIndex));
+        }
+        if (paint.format === 10) {
+            const child = paint.paint;
+            if (child && child.format === 2) {
+                const color = this.getCpalTableForShared()?.getPalette(paletteIndex)?.[child.paletteIndex];
+                const rgba = color ? `rgba(${color.red}, ${color.green}, ${color.blue}, ${(color.alpha / 255) * (child.alpha ?? 1)})` : null;
+                return [{ glyphId: paint.glyphID, color: rgba, paletteIndex: child.paletteIndex }];
+            }
+            return this.flattenColrV1Paint(child, paletteIndex).map(layer => ({ ...layer, glyphId: paint.glyphID }));
+        }
+        if (paint.format === 11) {
+            return this.getColrV1LayersForGlyph(paint.glyphID, paletteIndex);
+        }
+        return [];
+    }
+
+    public getNameRecord(nameId: number): string {
+        return this.getNameTableForShared()?.getRecord(nameId) ?? "";
+    }
+
+    public getAllNameRecords(): Array<{ nameId: number; record: string }> {
+        const name = this.getNameTableForShared();
+        if (!name) return [];
+        return (name.records ?? []).map((r: any) => ({ nameId: r.nameId, record: r.record }));
+    }
+
+    public getAllNameRecordsDetailed(): Array<{ nameId: number; record: string; platformId: number; encodingId: number; languageId: number }> {
+        const name = this.getNameTableForShared();
+        if (!name) return [];
+        return (name.records ?? []).map((r: any) => ({
+            nameId: r.nameId,
+            record: r.record,
+            platformId: r.platformId,
+            encodingId: r.encodingId,
+            languageId: r.languageId
+        }));
+    }
+
+    public getFontNames(): {
+        family: string;
+        subfamily: string;
+        fullName: string;
+        postScriptName: string;
+        version: string;
+        uniqueSubfamily: string;
+        manufacturer: string;
+        designer: string;
+        description: string;
+        vendorUrl: string;
+        designerUrl: string;
+        license: string;
+        licenseUrl: string;
+        typographicFamily: string;
+        typographicSubfamily: string;
+    } {
+        return {
+            family: this.getPreferredNameRecord(1),
+            subfamily: this.getPreferredNameRecord(2),
+            uniqueSubfamily: this.getPreferredNameRecord(3),
+            fullName: this.getPreferredNameRecord(4),
+            version: this.getPreferredNameRecord(5),
+            postScriptName: this.getPreferredNameRecord(6),
+            manufacturer: this.getPreferredNameRecord(8),
+            designer: this.getPreferredNameRecord(9),
+            description: this.getPreferredNameRecord(10),
+            vendorUrl: this.getPreferredNameRecord(11),
+            designerUrl: this.getPreferredNameRecord(12),
+            license: this.getPreferredNameRecord(13),
+            licenseUrl: this.getPreferredNameRecord(14),
+            typographicFamily: this.getPreferredNameRecord(16),
+            typographicSubfamily: this.getPreferredNameRecord(17)
+        };
+    }
+
+    public getOs2Metrics(): {
+        version: number;
+        weightClass: number;
+        widthClass: number;
+        fsType: number;
+        fsSelection: number;
+        typoAscender: number;
+        typoDescender: number;
+        typoLineGap: number;
+        winAscent: number;
+        winDescent: number;
+        firstCharIndex: number;
+        lastCharIndex: number;
+        vendorId: string;
+        unicodeRanges: [number, number, number, number];
+        codePageRanges: [number, number];
+        xHeight: number | null;
+        capHeight: number | null;
+        defaultChar: number | null;
+        breakChar: number | null;
+        maxContext: number | null;
+        lowerOpticalPointSize: number | null;
+        upperOpticalPointSize: number | null;
+        panose: {
+            familyType: number;
+            serifStyle: number;
+            weight: number;
+            proportion: number;
+            contrast: number;
+            strokeVariation: number;
+            armStyle: number;
+            letterform: number;
+            midline: number;
+            xHeight: number;
+        } | null;
+    } | null {
+        const os2 = this.getOs2TableForShared();
+        if (!os2) return null;
+        return {
+            version: os2.version,
+            weightClass: os2.usWeightClass,
+            widthClass: os2.usWidthClass,
+            fsType: os2.fsType,
+            fsSelection: os2.fsSelection,
+            typoAscender: os2.sTypoAscender,
+            typoDescender: os2.sTypoDescender,
+            typoLineGap: os2.sTypoLineGap,
+            winAscent: os2.usWinAscent,
+            winDescent: os2.usWinDescent,
+            firstCharIndex: os2.usFirstCharIndex,
+            lastCharIndex: os2.usLastCharIndex,
+            vendorId: this.decodeOs2VendorId(os2.achVendorID),
+            unicodeRanges: [os2.ulUnicodeRange1, os2.ulUnicodeRange2, os2.ulUnicodeRange3, os2.ulUnicodeRange4],
+            codePageRanges: [os2.ulCodePageRange1, os2.ulCodePageRange2],
+            xHeight: os2.version >= 2 ? os2.sxHeight : null,
+            capHeight: os2.version >= 2 ? os2.sCapHeight : null,
+            defaultChar: os2.version >= 2 ? os2.usDefaultChar : null,
+            breakChar: os2.version >= 2 ? os2.usBreakChar : null,
+            maxContext: os2.version >= 2 ? os2.usMaxContext : null,
+            lowerOpticalPointSize: os2.version >= 5 ? os2.usLowerOpticalPointSize : null,
+            upperOpticalPointSize: os2.version >= 5 ? os2.usUpperOpticalPointSize : null,
+            panose: os2.panose
+                ? {
+                    familyType: os2.panose.bFamilyType,
+                    serifStyle: os2.panose.bSerifStyle,
+                    weight: os2.panose.bWeight,
+                    proportion: os2.panose.bProportion,
+                    contrast: os2.panose.bContrast,
+                    strokeVariation: os2.panose.bStrokeVariation,
+                    armStyle: os2.panose.bArmStyle,
+                    letterform: os2.panose.bLetterform,
+                    midline: os2.panose.bMidline,
+                    xHeight: os2.panose.bXHeight
+                }
+                : null
+        };
+    }
+
+    public getPostMetrics(): {
+        version: number;
+        italicAngle: number;
+        underlinePosition: number;
+        underlineThickness: number;
+        isFixedPitch: boolean;
+        rawIsFixedPitch: number;
+    } | null {
+        const post = this.getPostTableForShared();
+        if (!post) return null;
+        return {
+            version: post.version / 65536,
+            italicAngle: post.italicAngle / 65536,
+            underlinePosition: post.underlinePosition,
+            underlineThickness: post.underlineThickness,
+            isFixedPitch: post.isFixedPitch !== 0,
+            rawIsFixedPitch: post.isFixedPitch
+        };
+    }
+
+    public getWeightClass(): number {
+        return this.getOs2TableForShared()?.usWeightClass ?? 0;
+    }
+
+    public getWidthClass(): number {
+        return this.getOs2TableForShared()?.usWidthClass ?? 0;
+    }
+
+    public getFsTypeFlags(): string[] {
+        const fsType = this.getOs2TableForShared()?.fsType ?? 0;
+        if (fsType === 0) return ['installable-embedding'];
+        const flags: string[] = [];
+        if (fsType & 0x0002) flags.push('restricted-license-embedding');
+        if (fsType & 0x0004) flags.push('preview-print-embedding');
+        if (fsType & 0x0008) flags.push('editable-embedding');
+        if (fsType & 0x0100) flags.push('no-subsetting');
+        if (fsType & 0x0200) flags.push('bitmap-embedding-only');
+        return flags;
+    }
+
+    public getFsSelectionFlags(): string[] {
+        const fsSelection = this.getOs2TableForShared()?.fsSelection ?? 0;
+        const flags: string[] = [];
+        if (fsSelection & 0x0001) flags.push('italic');
+        if (fsSelection & 0x0002) flags.push('underscore');
+        if (fsSelection & 0x0004) flags.push('negative');
+        if (fsSelection & 0x0008) flags.push('outlined');
+        if (fsSelection & 0x0010) flags.push('strikeout');
+        if (fsSelection & 0x0020) flags.push('bold');
+        if (fsSelection & 0x0040) flags.push('regular');
+        if (fsSelection & 0x0080) flags.push('use-typo-metrics');
+        if (fsSelection & 0x0100) flags.push('wws');
+        if (fsSelection & 0x0200) flags.push('oblique');
+        return flags;
+    }
+
+    public isItalic(): boolean {
+        const fsSelection = this.getOs2TableForShared()?.fsSelection ?? 0;
+        if (fsSelection & 0x0001) return true;
+        if (fsSelection & 0x0200) return true;
+        if ((this.getPostTableForShared()?.italicAngle ?? 0) !== 0) return true;
+        const subfamily = this.getPreferredNameRecord(2).toLowerCase();
+        return subfamily.includes('italic') || subfamily.includes('oblique');
+    }
+
+    public isBold(): boolean {
+        const fsSelection = this.getOs2TableForShared()?.fsSelection ?? 0;
+        if (fsSelection & 0x0020) return true;
+        if ((this.getOs2TableForShared()?.usWeightClass ?? 0) >= 700) return true;
+        return this.getPreferredNameRecord(2).toLowerCase().includes('bold');
+    }
+
+    public isMonospace(): boolean {
+        return (this.getPostTableForShared()?.isFixedPitch ?? 0) !== 0;
+    }
+
+    public getMetadata(): {
+        names: ReturnType<BaseFontParser['getFontNames']>;
+        nameRecords: ReturnType<BaseFontParser['getAllNameRecordsDetailed']>;
+        os2: ReturnType<BaseFontParser['getOs2Metrics']>;
+        post: ReturnType<BaseFontParser['getPostMetrics']>;
+        style: {
+            isBold: boolean;
+            isItalic: boolean;
+            isMonospace: boolean;
+            weightClass: number;
+            widthClass: number;
+            fsTypeFlags: string[];
+            fsSelectionFlags: string[];
+        };
+    } {
+        return {
+            names: this.getFontNames(),
+            nameRecords: this.getAllNameRecordsDetailed(),
+            os2: this.getOs2Metrics(),
+            post: this.getPostMetrics(),
+            style: {
+                isBold: this.isBold(),
+                isItalic: this.isItalic(),
+                isMonospace: this.isMonospace(),
+                weightClass: this.getWeightClass(),
+                widthClass: this.getWidthClass(),
+                fsTypeFlags: this.getFsTypeFlags(),
+                fsSelectionFlags: this.getFsSelectionFlags()
+            }
+        };
+    }
+
+    private getPreferredNameRecord(nameId: number): string {
+        const name = this.getNameTableForShared();
+        if (!name || (name.records ?? []).length === 0) return '';
+        const candidates = (name.records ?? []).filter((r: any) => r.nameId === nameId && !!r.record && r.record.trim().length > 0);
+        if (candidates.length === 0) return '';
+        const score = (rec: { platformId: number; languageId: number }): number => {
+            let s = 0;
+            if (rec.platformId === Table.platformMicrosoft) s += 100;
+            else if (rec.platformId === Table.platformAppleUnicode) s += 80;
+            else if (rec.platformId === Table.platformMacintosh) s += 60;
+            if (rec.languageId === 0x0409) s += 30;
+            if (rec.languageId === 0) s += 10;
+            return s;
+        };
+        let best = candidates[0];
+        let bestScore = score(best);
+        for (let i = 1; i < candidates.length; i++) {
+            const current = candidates[i];
+            const currentScore = score(current);
+            if (currentScore > bestScore) {
+                best = current;
+                bestScore = currentScore;
+            }
+        }
+        return best.record;
+    }
+
+    private decodeOs2VendorId(vendor: number): string {
+        const n = vendor >>> 0;
+        const text = String.fromCharCode(
+            (n >>> 24) & 0xff,
+            (n >>> 16) & 0xff,
+            (n >>> 8) & 0xff,
+            n & 0xff
+        );
+        return text.replace(/\0/g, '').trim();
     }
 }

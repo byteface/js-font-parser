@@ -22,14 +22,6 @@ import { LigatureSubstFormat1 } from '../table/LigatureSubstFormat1.js';
 import { ColrTable } from '../table/ColrTable.js';
 import { CpalTable } from '../table/CpalTable.js';
 import { GposTable } from '../table/GposTable.js';
-import { MarkBasePosFormat1 } from '../table/MarkBasePosFormat1.js';
-import { MarkLigPosFormat1 } from '../table/MarkLigPosFormat1.js';
-import { MarkMarkPosFormat1 } from '../table/MarkMarkPosFormat1.js';
-import { CursivePosFormat1 } from '../table/CursivePosFormat1.js';
-import { PairPosFormat1 } from '../table/PairPosFormat1.js';
-import { PairPosFormat2 } from '../table/PairPosFormat2.js';
-import { SinglePosSubtable } from '../table/SinglePosSubtable.js';
-import { PairPosSubtable } from '../table/PairPosSubtable.js';
 import { SvgTable } from '../table/SvgTable.js';
 import { FvarTable } from '../table/FvarTable.js';
 import { GvarTable } from '../table/GvarTable.js';
@@ -591,239 +583,12 @@ export class FontParserWOFF extends BaseFontParser {
         return this.head?.unitsPerEm ?? 1000;
     }
 
-    public getGlyphPointsByChar(
-        char: string,
-        options: { sampleStep?: number } = {}
-    ): Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean }> {
-        const glyph = this.getGlyphByChar(char);
-        if (!glyph) return [];
-        const sampleStep = Math.max(1, Math.floor(options.sampleStep ?? 1));
-        const points: Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean }> = [];
-        for (let i = 0; i < glyph.getPointCount(); i += sampleStep) {
-            const p = glyph.getPoint(i);
-            if (!p) continue;
-            points.push({
-                x: p.x,
-                y: p.y,
-                onCurve: p.onCurve,
-                endOfContour: p.endOfContour
-            });
-        }
-        return points;
-    }
-
-    public measureText(
-        text: string,
-        options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean; gposFeatures?: string[]; letterSpacing?: number } = {}
-    ): { advanceWidth: number; glyphCount: number } {
-        const layout = this.layoutString(text, options);
-        const letterSpacing = Number.isFinite(options.letterSpacing) ? (options.letterSpacing as number) : 0;
-        let advanceWidth = 0;
-        for (let i = 0; i < layout.length; i++) {
-            const xAdvance = Number.isFinite(layout[i].xAdvance) ? layout[i].xAdvance : 0;
-            advanceWidth += xAdvance;
-            if (letterSpacing !== 0 && i < layout.length - 1) advanceWidth += letterSpacing;
-        }
-        return { advanceWidth: Number.isFinite(advanceWidth) ? advanceWidth : 0, glyphCount: layout.length };
-    }
-
-    public layoutToPoints(
-        text: string,
-        options: {
-            x?: number;
-            y?: number;
-            fontSize?: number;
-            sampleStep?: number;
-            gsubFeatures?: string[];
-            scriptTags?: string[];
-            gpos?: boolean;
-            gposFeatures?: string[];
-            letterSpacing?: number;
-        } = {}
-    ): {
-        points: Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean; glyphIndex: number; pointIndex: number }>;
-        advanceWidth: number;
-        scale: number;
-    } {
-        const layout = this.layoutString(text, options);
-        const sampleBase = Number.isFinite(options.sampleStep) ? (options.sampleStep as number) : 1;
-        const sampleStep = Math.max(1, Math.floor(sampleBase));
-        const unitsPerEm = this.getUnitsPerEm();
-        const safeUnitsPerEm = Number.isFinite(unitsPerEm) && unitsPerEm > 0 ? unitsPerEm : 1000;
-        const fontSize = Number.isFinite(options.fontSize) && (options.fontSize as number) > 0
-            ? (options.fontSize as number)
-            : safeUnitsPerEm;
-        const scale = fontSize / safeUnitsPerEm;
-        const originX = Number.isFinite(options.x) ? (options.x as number) : 0;
-        const originY = Number.isFinite(options.y) ? (options.y as number) : 0;
-        const letterSpacing = Number.isFinite(options.letterSpacing) ? (options.letterSpacing as number) : 0;
-        const points: Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean; glyphIndex: number; pointIndex: number }> = [];
-
-        let penX = 0;
-        for (let i = 0; i < layout.length; i++) {
-            const item = layout[i];
-            const glyph = this.getGlyph(item.glyphIndex);
-            if (glyph) {
-                for (let pIndex = 0; pIndex < glyph.getPointCount(); pIndex += sampleStep) {
-                    const p = glyph.getPoint(pIndex);
-                    if (!p) continue;
-                    points.push({
-                        x: originX + (penX + (Number.isFinite(item.xOffset) ? item.xOffset : 0) + p.x) * scale,
-                        y: originY - ((Number.isFinite(item.yOffset) ? item.yOffset : 0) + p.y) * scale,
-                        onCurve: p.onCurve,
-                        endOfContour: p.endOfContour,
-                        glyphIndex: item.glyphIndex,
-                        pointIndex: pIndex
-                    });
-                }
-            }
-            penX += Number.isFinite(item.xAdvance) ? item.xAdvance : 0;
-            if (letterSpacing !== 0 && i < layout.length - 1) penX += letterSpacing;
-        }
-
-        return { points, advanceWidth: Number.isFinite(penX) ? penX : 0, scale: Number.isFinite(scale) ? scale : 1 };
-    }
-
-    public getColorLayersForGlyph(glyphId: number, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
-        if (!this.colr) return [];
-        const layers = this.colr.getLayersForGlyph(glyphId);
-        if (layers.length === 0) return [];
-
-        const palette = this.cpal?.getPalette(paletteIndex) ?? [];
-        return layers.map(layer => {
-            if (layer.paletteIndex === 0xffff) {
-                return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
-            }
-            const color = palette[layer.paletteIndex];
-            if (!color) {
-                return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
-            }
-            const rgba = `rgba(${color.red}, ${color.green}, ${color.blue}, ${color.alpha / 255})`;
-            return { glyphId: layer.glyphId, color: rgba, paletteIndex: layer.paletteIndex };
-        });
-    }
-
-    public getColorLayersForChar(char: string, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
-        const glyphId = this.getGlyphIndexByChar(char);
-        if (glyphId == null) return [];
-        return this.getColorLayersForGlyph(glyphId, paletteIndex);
-    }
-
-    public getColrV1LayersForGlyph(glyphId: number, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
-        if (!this.colr || this.colr.version === 0) return [];
-        const paint = this.colr.getPaintForGlyph(glyphId);
-        if (!paint) return [];
-        return this.flattenColrV1Paint(paint, paletteIndex);
-    }
-
-    private flattenColrV1Paint(paint: any, paletteIndex: number): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
-        if (!paint) return [];
-        if (paint.format === 1 && Array.isArray(paint.layers)) {
-            return paint.layers.flatMap((p: any) => this.flattenColrV1Paint(p, paletteIndex));
-        }
-        if (paint.format === 10) {
-            const child = paint.paint;
-            if (child && child.format === 2) {
-                const color = this.cpal?.getPalette(paletteIndex)?.[child.paletteIndex];
-                const rgba = color ? `rgba(${color.red}, ${color.green}, ${color.blue}, ${(color.alpha / 255) * (child.alpha ?? 1)})` : null;
-                return [{ glyphId: paint.glyphID, color: rgba, paletteIndex: child.paletteIndex }];
-            }
-            return this.flattenColrV1Paint(child, paletteIndex).map(layer => ({ ...layer, glyphId: paint.glyphID }));
-        }
-        if (paint.format === 11) {
-            return this.getColrV1LayersForGlyph(paint.glyphID, paletteIndex);
-        }
-        return [];
-    }
 
     public getMarkAnchorsForGlyph(
         glyphId: number,
         subtables?: Array<any>
     ): Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number; componentIndex?: number }> {
-        if (!this.gpos) return [];
-        const anchors: Array<{ type: 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit'; classIndex: number; x: number; y: number; componentIndex?: number }> = [];
-        const activeSubtables = subtables ?? (() => {
-            const lookups = this.gpos?.lookupList?.getLookups?.() ?? [];
-            const all: any[] = [];
-            for (const lookup of lookups) {
-                if (!lookup) continue;
-                for (let i = 0; i < lookup.getSubtableCount(); i++) {
-                    const st = lookup.getSubtable(i);
-                    if (st) all.push(st);
-                }
-            }
-            return all;
-        })();
-
-        for (const st of activeSubtables) {
-                if (st instanceof MarkBasePosFormat1) {
-                    const markIndex = st.markCoverage?.findGlyph(glyphId) ?? -1;
-                    if (markIndex >= 0 && st.markArray) {
-                        const record = st.markArray.marks[markIndex];
-                        if (record?.anchor) {
-                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
-                        }
-                    }
-                    const baseIndex = st.baseCoverage?.findGlyph(glyphId) ?? -1;
-                    if (baseIndex >= 0 && st.baseArray) {
-                        const base = st.baseArray.baseRecords[baseIndex];
-                        if (base?.anchors) {
-                            base.anchors.forEach((anchor, classIndex) => {
-                                if (anchor) {
-                                    anchors.push({ type: 'base', classIndex, x: anchor.x, y: anchor.y });
-                                }
-                            });
-                        }
-                    }
-                }
-                if (st instanceof MarkLigPosFormat1) {
-                    const markIndex = st.markCoverage?.findGlyph(glyphId) ?? -1;
-                    if (markIndex >= 0 && st.markArray) {
-                        const record = st.markArray.marks[markIndex];
-                        if (record?.anchor) {
-                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
-                        }
-                    }
-                    const ligIndex = st.ligatureCoverage?.findGlyph(glyphId) ?? -1;
-                    if (ligIndex >= 0 && st.ligatureArray) {
-                        const lig = st.ligatureArray.ligatures[ligIndex];
-                        lig?.components?.forEach((component, componentIndex) => {
-                            component.forEach((anchor, classIndex) => {
-                                if (anchor) {
-                                    anchors.push({ type: 'ligature', classIndex, x: anchor.x, y: anchor.y, componentIndex });
-                                }
-                            });
-                        });
-                    }
-                }
-                if (st instanceof MarkMarkPosFormat1) {
-                    const mark1Index = st.mark1Coverage?.findGlyph(glyphId) ?? -1;
-                    if (mark1Index >= 0 && st.mark1Array) {
-                        const record = st.mark1Array.marks[mark1Index];
-                        if (record?.anchor) {
-                            anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
-                        }
-                    }
-                    const mark2Index = st.mark2Coverage?.findGlyph(glyphId) ?? -1;
-                    if (mark2Index >= 0 && st.mark2Array) {
-                        const record = st.mark2Array.records[mark2Index];
-                        record?.anchors?.forEach((anchor, classIndex) => {
-                            if (anchor) {
-                                anchors.push({ type: 'mark2', classIndex, x: anchor.x, y: anchor.y });
-                            }
-                        });
-                    }
-                }
-                if (st instanceof CursivePosFormat1) {
-                    const idx = st.coverage?.findGlyph(glyphId) ?? -1;
-                    if (idx >= 0) {
-                        const record = st.entryExitRecords[idx];
-                        if (record?.entry) anchors.push({ type: 'cursive-entry', classIndex: 0, x: record.entry.x, y: record.entry.y });
-                        if (record?.exit) anchors.push({ type: 'cursive-exit', classIndex: 0, x: record.exit.x, y: record.exit.y });
-                    }
-                }
-        }
-        return anchors;
+        return this.getGposAttachmentAnchors(glyphId, subtables);
     }
 
     public async getSvgDocumentForGlyphAsync(glyphId: number): Promise<{ svgText: string | null; isCompressed: boolean }> {
@@ -895,37 +660,6 @@ export class FontParserWOFF extends BaseFontParser {
         return aDelta + (bDelta - aDelta) * clamped;
     }
 
-    public getVariationAxes(): FvarTable['axes'] {
-        return this.fvar?.axes ?? [];
-    }
-
-    public setVariationCoords(coords: number[]): void {
-        this.variationCoords = coords.slice();
-        if (this.colr && typeof (this.colr as any).setVariationCoords === 'function') {
-            (this.colr as any).setVariationCoords(coords);
-        }
-    }
-
-    public setVariationByAxes(values: Record<string, number>): void {
-        if (!this.fvar) return;
-        const coords: number[] = [];
-        for (const axis of this.fvar.axes) {
-            const tag = axis.name;
-            const value = values[tag] ?? axis.defaultValue;
-            let norm = 0;
-            if (value !== axis.defaultValue) {
-                if (value > axis.defaultValue) {
-                    const span = axis.maxValue - axis.defaultValue;
-                    norm = span !== 0 ? (value - axis.defaultValue) / span : 0;
-                } else {
-                    const span = axis.defaultValue - axis.minValue;
-                    norm = span !== 0 ? (value - axis.defaultValue) / span : 0;
-                }
-            }
-            coords.push(Number.isFinite(norm) ? Math.max(-1, Math.min(1, norm)) : 0);
-        }
-        this.setVariationCoords(coords);
-    }
 
     private applyGposPositioningInternal(
         glyphIndices: number[],
@@ -933,169 +667,7 @@ export class FontParserWOFF extends BaseFontParser {
         gposFeatures: string[],
         scriptTags: string[]
     ): void {
-        if (!this.gpos) return;
-        const subtables = this.gpos.getSubtablesForFeatures(gposFeatures, scriptTags);
-
-        for (const st of subtables) {
-            if (
-                st instanceof SinglePosSubtable ||
-                typeof (st as any).getAdjustment === 'function'
-            ) {
-                for (let i = 0; i < glyphIndices.length; i++) {
-                    if (!positioned[i]) continue;
-                    const adj = (st as any).getAdjustment?.(glyphIndices[i]);
-                    if (!adj) continue;
-                    positioned[i].xOffset += adj.xPlacement ?? 0;
-                    positioned[i].yOffset += adj.yPlacement ?? 0;
-                    positioned[i].xAdvance += adj.xAdvance ?? 0;
-                    positioned[i].yAdvance += adj.yAdvance ?? 0;
-                }
-            }
-            if (
-                st instanceof PairPosSubtable ||
-                st instanceof PairPosFormat1 ||
-                st instanceof PairPosFormat2 ||
-                typeof (st as any).getPairValue === 'function'
-            ) {
-                for (let i = 0; i < glyphIndices.length - 1; i++) {
-                    if (!positioned[i] || !positioned[i + 1]) continue;
-                    const pair = (st as any).getPairValue?.(glyphIndices[i], glyphIndices[i + 1]);
-                    if (!pair) continue;
-                    const v1 = pair.v1 || {};
-                    const v2 = pair.v2 || {};
-                    positioned[i].xOffset += v1.xPlacement ?? 0;
-                    positioned[i].yOffset += v1.yPlacement ?? 0;
-                    positioned[i].xAdvance += v1.xAdvance ?? 0;
-                    positioned[i].yAdvance += v1.yAdvance ?? 0;
-                    positioned[i + 1].xOffset += v2.xPlacement ?? 0;
-                    positioned[i + 1].yOffset += v2.yPlacement ?? 0;
-                    positioned[i + 1].xAdvance += v2.xAdvance ?? 0;
-                    positioned[i + 1].yAdvance += v2.yAdvance ?? 0;
-                }
-                continue;
-            }
-            // These attachment subtables are applied in the second pass below.
-            if (
-                st instanceof MarkBasePosFormat1 ||
-                st instanceof MarkLigPosFormat1 ||
-                st instanceof MarkMarkPosFormat1 ||
-                st instanceof CursivePosFormat1
-            ) {
-                continue;
-            }
-            const constructorName = (st as any)?.constructor?.name ?? "unknown";
-            this.emitDiagnostic(
-                "UNSUPPORTED_GPOS_SUBTABLE",
-                "info",
-                "layout",
-                `Encountered GPOS subtable not currently handled: ${constructorName}.`,
-                { constructorName },
-                `UNSUPPORTED_GPOS_SUBTABLE:${constructorName}`
-            );
-        }
-
-        const markSubtables = subtables.filter(st =>
-            st instanceof MarkBasePosFormat1 ||
-            st instanceof MarkLigPosFormat1 ||
-            st instanceof MarkMarkPosFormat1 ||
-            st instanceof CursivePosFormat1
-        );
-
-        const anchorsCache = new Map<number, ReturnType<FontParserWOFF['getMarkAnchorsForGlyph']>>();
-
-        const getAnchors = (gid: number) => {
-            if (anchorsCache.has(gid)) return anchorsCache.get(gid)!;
-            const anchors = this.getMarkAnchorsForGlyph(gid, markSubtables);
-            anchorsCache.set(gid, anchors);
-            return anchors;
-        };
-
-        const getBaseAnchor = (anchors: ReturnType<FontParserWOFF['getMarkAnchorsForGlyph']>, classIndex: number) => {
-            const candidates = anchors.filter(a =>
-                (a.type === 'base' || a.type === 'ligature' || a.type === 'mark2') && a.classIndex === classIndex
-            );
-            if (candidates.length === 0) return null;
-
-            // For marks after ligatures, default to the trailing ligature component anchor.
-            const ligatureCandidates = candidates.filter(a => a.type === 'ligature');
-            if (ligatureCandidates.length > 0) {
-                return ligatureCandidates.reduce((best, current) =>
-                    (current.componentIndex ?? -1) > (best.componentIndex ?? -1) ? current : best
-                );
-            }
-            return candidates[0];
-        };
-
-        const isMarkGlyph = (gid: number) => this.isMarkGlyphClass(gid);
-
-        for (let i = 0; i < glyphIndices.length; i++) {
-            if (!positioned[i]) continue;
-            const gid = glyphIndices[i];
-            const anchors = getAnchors(gid);
-            const markAnchor = anchors.find(a => a.type === 'mark');
-            if (!markAnchor) continue;
-
-            let attached = false;
-            // Prefer mark-to-mark attachment when available.
-            let prev = i - 1;
-            while (prev >= 0) {
-                const prevGid = glyphIndices[prev];
-                if (!isMarkGlyph(prevGid)) {
-                    prev--;
-                    continue;
-                }
-                const prevAnchors = getAnchors(prevGid);
-                const mark2 = prevAnchors.find(a => a.type === 'mark2' && a.classIndex === markAnchor.classIndex);
-                if (mark2) {
-                    // Inherit parent mark placement so stacked marks follow prior attachments.
-                    positioned[i].xOffset += (positioned[prev]?.xOffset ?? 0) + (mark2.x - markAnchor.x);
-                    positioned[i].yOffset += (positioned[prev]?.yOffset ?? 0) + (mark2.y - markAnchor.y);
-                    positioned[i].xAdvance = 0;
-                    attached = true;
-                    break;
-                }
-                prev--;
-            }
-            if (attached) continue;
-
-            // Fall back to base/ligature anchor, skipping marks.
-            let baseIndex = i - 1;
-            while (baseIndex >= 0) {
-                const baseGid = glyphIndices[baseIndex];
-                if (isMarkGlyph(baseGid)) {
-                    baseIndex--;
-                    continue;
-                }
-                const baseAnchors = getAnchors(baseGid);
-                const baseAnchor = getBaseAnchor(baseAnchors, markAnchor.classIndex);
-                if (baseAnchor) {
-                    // Inherit base placement so mark anchors remain stable after prior GPOS shifts.
-                    positioned[i].xOffset += (positioned[baseIndex]?.xOffset ?? 0) + (baseAnchor.x - markAnchor.x);
-                    positioned[i].yOffset += (positioned[baseIndex]?.yOffset ?? 0) + (baseAnchor.y - markAnchor.y);
-                    positioned[i].xAdvance = 0;
-                    break;
-                }
-                baseIndex--;
-            }
-        }
-
-        for (let i = 1; i < glyphIndices.length; i++) {
-            if (!positioned[i]) continue;
-            const prevAnchors = getAnchors(glyphIndices[i - 1]);
-            const currAnchors = getAnchors(glyphIndices[i]);
-            const exitAnchor = prevAnchors.find(a => a.type === 'cursive-exit');
-            const entryAnchor = currAnchors.find(a => a.type === 'cursive-entry');
-            if (exitAnchor && entryAnchor) {
-                positioned[i].xOffset += exitAnchor.x - entryAnchor.x;
-                positioned[i].yOffset += exitAnchor.y - entryAnchor.y;
-            }
-        }
-
-        for (let i = 0; i < glyphIndices.length; i++) {
-            if (positioned[i] && this.isMarkGlyphClass(glyphIndices[i])) {
-                positioned[i].xAdvance = 0;
-            }
-        }
+        this.applyGposPositioningShared(glyphIndices, positioned, gposFeatures, scriptTags);
     }
 
     // Backward-compatible alias used by tests/tools that call this directly.
@@ -1110,294 +682,6 @@ export class FontParserWOFF extends BaseFontParser {
 
     private isMarkGlyphClass(glyphId: number): boolean {
         return (this.gdef?.getGlyphClass?.(glyphId) ?? 0) === 3;
-    }
-
-    public getNameRecord(nameId: number): string {
-        return this.pName?.getRecord(nameId) ?? "";
-    }
-
-    public getAllNameRecords(): Array<{ nameId: number; record: string }> {
-        if (!this.pName) return [];
-        return this.pName.records.map(r => ({ nameId: r.nameId, record: r.record }));
-    }
-
-    public getAllNameRecordsDetailed(): Array<{ nameId: number; record: string; platformId: number; encodingId: number; languageId: number }> {
-        if (!this.pName) return [];
-        return this.pName.records.map(r => ({
-            nameId: r.nameId,
-            record: r.record,
-            platformId: r.platformId,
-            encodingId: r.encodingId,
-            languageId: r.languageId
-        }));
-    }
-
-    public getFontNames(): {
-        family: string;
-        subfamily: string;
-        fullName: string;
-        postScriptName: string;
-        version: string;
-        uniqueSubfamily: string;
-        manufacturer: string;
-        designer: string;
-        description: string;
-        vendorUrl: string;
-        designerUrl: string;
-        license: string;
-        licenseUrl: string;
-        typographicFamily: string;
-        typographicSubfamily: string;
-    } {
-        return {
-            family: this.getPreferredNameRecord(1),
-            subfamily: this.getPreferredNameRecord(2),
-            uniqueSubfamily: this.getPreferredNameRecord(3),
-            fullName: this.getPreferredNameRecord(4),
-            version: this.getPreferredNameRecord(5),
-            postScriptName: this.getPreferredNameRecord(6),
-            manufacturer: this.getPreferredNameRecord(8),
-            designer: this.getPreferredNameRecord(9),
-            description: this.getPreferredNameRecord(10),
-            vendorUrl: this.getPreferredNameRecord(11),
-            designerUrl: this.getPreferredNameRecord(12),
-            license: this.getPreferredNameRecord(13),
-            licenseUrl: this.getPreferredNameRecord(14),
-            typographicFamily: this.getPreferredNameRecord(16),
-            typographicSubfamily: this.getPreferredNameRecord(17)
-        };
-    }
-
-    public getOs2Metrics(): {
-        version: number;
-        weightClass: number;
-        widthClass: number;
-        fsType: number;
-        fsSelection: number;
-        typoAscender: number;
-        typoDescender: number;
-        typoLineGap: number;
-        winAscent: number;
-        winDescent: number;
-        firstCharIndex: number;
-        lastCharIndex: number;
-        vendorId: string;
-        unicodeRanges: [number, number, number, number];
-        codePageRanges: [number, number];
-        xHeight: number | null;
-        capHeight: number | null;
-        defaultChar: number | null;
-        breakChar: number | null;
-        maxContext: number | null;
-        lowerOpticalPointSize: number | null;
-        upperOpticalPointSize: number | null;
-        panose: {
-            familyType: number;
-            serifStyle: number;
-            weight: number;
-            proportion: number;
-            contrast: number;
-            strokeVariation: number;
-            armStyle: number;
-            letterform: number;
-            midline: number;
-            xHeight: number;
-        } | null;
-    } | null {
-        if (!this.os2) return null;
-        return {
-            version: this.os2.version,
-            weightClass: this.os2.usWeightClass,
-            widthClass: this.os2.usWidthClass,
-            fsType: this.os2.fsType,
-            fsSelection: this.os2.fsSelection,
-            typoAscender: this.os2.sTypoAscender,
-            typoDescender: this.os2.sTypoDescender,
-            typoLineGap: this.os2.sTypoLineGap,
-            winAscent: this.os2.usWinAscent,
-            winDescent: this.os2.usWinDescent,
-            firstCharIndex: this.os2.usFirstCharIndex,
-            lastCharIndex: this.os2.usLastCharIndex,
-            vendorId: this.decodeOs2VendorId(this.os2.achVendorID),
-            unicodeRanges: [
-                this.os2.ulUnicodeRange1,
-                this.os2.ulUnicodeRange2,
-                this.os2.ulUnicodeRange3,
-                this.os2.ulUnicodeRange4
-            ],
-            codePageRanges: [
-                this.os2.ulCodePageRange1,
-                this.os2.ulCodePageRange2
-            ],
-            xHeight: this.os2.version >= 2 ? this.os2.sxHeight : null,
-            capHeight: this.os2.version >= 2 ? this.os2.sCapHeight : null,
-            defaultChar: this.os2.version >= 2 ? this.os2.usDefaultChar : null,
-            breakChar: this.os2.version >= 2 ? this.os2.usBreakChar : null,
-            maxContext: this.os2.version >= 2 ? this.os2.usMaxContext : null,
-            lowerOpticalPointSize: this.os2.version >= 5 ? this.os2.usLowerOpticalPointSize : null,
-            upperOpticalPointSize: this.os2.version >= 5 ? this.os2.usUpperOpticalPointSize : null,
-            panose: this.os2.panose
-                ? {
-                    familyType: this.os2.panose.bFamilyType,
-                    serifStyle: this.os2.panose.bSerifStyle,
-                    weight: this.os2.panose.bWeight,
-                    proportion: this.os2.panose.bProportion,
-                    contrast: this.os2.panose.bContrast,
-                    strokeVariation: this.os2.panose.bStrokeVariation,
-                    armStyle: this.os2.panose.bArmStyle,
-                    letterform: this.os2.panose.bLetterform,
-                    midline: this.os2.panose.bMidline,
-                    xHeight: this.os2.panose.bXHeight
-                }
-                : null
-        };
-    }
-
-    public getPostMetrics(): {
-        version: number;
-        italicAngle: number;
-        underlinePosition: number;
-        underlineThickness: number;
-        isFixedPitch: boolean;
-        rawIsFixedPitch: number;
-    } | null {
-        if (!this.post) return null;
-        return {
-            version: this.post.version / 65536,
-            italicAngle: this.post.italicAngle / 65536,
-            underlinePosition: this.post.underlinePosition,
-            underlineThickness: this.post.underlineThickness,
-            isFixedPitch: this.post.isFixedPitch !== 0,
-            rawIsFixedPitch: this.post.isFixedPitch
-        };
-    }
-
-    public getWeightClass(): number {
-        return this.os2?.usWeightClass ?? 0;
-    }
-
-    public getWidthClass(): number {
-        return this.os2?.usWidthClass ?? 0;
-    }
-
-    public getFsTypeFlags(): string[] {
-        const fsType = this.os2?.fsType ?? 0;
-        if (fsType === 0) return ['installable-embedding'];
-        const flags: string[] = [];
-        if (fsType & 0x0002) flags.push('restricted-license-embedding');
-        if (fsType & 0x0004) flags.push('preview-print-embedding');
-        if (fsType & 0x0008) flags.push('editable-embedding');
-        if (fsType & 0x0100) flags.push('no-subsetting');
-        if (fsType & 0x0200) flags.push('bitmap-embedding-only');
-        return flags;
-    }
-
-    public getFsSelectionFlags(): string[] {
-        const fsSelection = this.os2?.fsSelection ?? 0;
-        const flags: string[] = [];
-        if (fsSelection & 0x0001) flags.push('italic');
-        if (fsSelection & 0x0002) flags.push('underscore');
-        if (fsSelection & 0x0004) flags.push('negative');
-        if (fsSelection & 0x0008) flags.push('outlined');
-        if (fsSelection & 0x0010) flags.push('strikeout');
-        if (fsSelection & 0x0020) flags.push('bold');
-        if (fsSelection & 0x0040) flags.push('regular');
-        if (fsSelection & 0x0080) flags.push('use-typo-metrics');
-        if (fsSelection & 0x0100) flags.push('wws');
-        if (fsSelection & 0x0200) flags.push('oblique');
-        return flags;
-    }
-
-    public isItalic(): boolean {
-        const fsSelection = this.os2?.fsSelection ?? 0;
-        if (fsSelection & 0x0001) return true;
-        if (fsSelection & 0x0200) return true;
-        if ((this.post?.italicAngle ?? 0) !== 0) return true;
-        const subfamily = this.getPreferredNameRecord(2).toLowerCase();
-        return subfamily.includes('italic') || subfamily.includes('oblique');
-    }
-
-    public isBold(): boolean {
-        const fsSelection = this.os2?.fsSelection ?? 0;
-        if (fsSelection & 0x0020) return true;
-        if ((this.os2?.usWeightClass ?? 0) >= 700) return true;
-        return this.getPreferredNameRecord(2).toLowerCase().includes('bold');
-    }
-
-    public isMonospace(): boolean {
-        return (this.post?.isFixedPitch ?? 0) !== 0;
-    }
-
-    public getMetadata(): {
-        names: ReturnType<FontParserWOFF['getFontNames']>;
-        nameRecords: ReturnType<FontParserWOFF['getAllNameRecordsDetailed']>;
-        os2: ReturnType<FontParserWOFF['getOs2Metrics']>;
-        post: ReturnType<FontParserWOFF['getPostMetrics']>;
-        style: {
-            isBold: boolean;
-            isItalic: boolean;
-            isMonospace: boolean;
-            weightClass: number;
-            widthClass: number;
-            fsTypeFlags: string[];
-            fsSelectionFlags: string[];
-        };
-    } {
-        return {
-            names: this.getFontNames(),
-            nameRecords: this.getAllNameRecordsDetailed(),
-            os2: this.getOs2Metrics(),
-            post: this.getPostMetrics(),
-            style: {
-                isBold: this.isBold(),
-                isItalic: this.isItalic(),
-                isMonospace: this.isMonospace(),
-                weightClass: this.getWeightClass(),
-                widthClass: this.getWidthClass(),
-                fsTypeFlags: this.getFsTypeFlags(),
-                fsSelectionFlags: this.getFsSelectionFlags()
-            }
-        };
-    }
-
-    private getPreferredNameRecord(nameId: number): string {
-        if (!this.pName || this.pName.records.length === 0) return '';
-        const candidates = this.pName.records.filter(r => r.nameId === nameId && !!r.record && r.record.trim().length > 0);
-        if (candidates.length === 0) return '';
-
-        const score = (rec: { platformId: number; languageId: number }): number => {
-            let s = 0;
-            if (rec.platformId === Table.platformMicrosoft) s += 100;
-            else if (rec.platformId === Table.platformAppleUnicode) s += 80;
-            else if (rec.platformId === Table.platformMacintosh) s += 60;
-
-            if (rec.languageId === 0x0409) s += 30; // English (US)
-            if (rec.languageId === 0) s += 10;
-            return s;
-        };
-
-        let best = candidates[0];
-        let bestScore = score(best);
-        for (let i = 1; i < candidates.length; i++) {
-            const current = candidates[i];
-            const currentScore = score(current);
-            if (currentScore > bestScore) {
-                best = current;
-                bestScore = currentScore;
-            }
-        }
-        return best.record;
-    }
-
-    private decodeOs2VendorId(vendor: number): string {
-        const n = vendor >>> 0;
-        const text = String.fromCharCode(
-            (n >>> 24) & 0xff,
-            (n >>> 16) & 0xff,
-            (n >>> 8) & 0xff,
-            n & 0xff
-        );
-        return text.replace(/\0/g, '').trim();
     }
 
     private getTable(tableType: any): ITable | null {
@@ -1451,5 +735,43 @@ export class FontParserWOFF extends BaseFontParser {
 
     protected getCmapTableForLookup(): any | null {
         return this.cmap as any;
+    }
+
+    protected getNameTableForShared(): any | null {
+        return this.pName;
+    }
+
+    protected getOs2TableForShared(): any | null {
+        return this.os2;
+    }
+
+    protected getPostTableForShared(): any | null {
+        return this.post;
+    }
+
+    protected getFvarTableForShared(): any | null {
+        return this.fvar;
+    }
+
+    protected getColrTableForShared(): any | null {
+        return this.colr;
+    }
+
+    protected getCpalTableForShared(): any | null {
+        return this.cpal;
+    }
+
+    protected getUnitsPerEmForShared(): number {
+        return this.getUnitsPerEm();
+    }
+
+    protected setVariationCoordsInternal(coords: number[]): void {
+        this.variationCoords = coords.slice();
+    }
+
+    protected onVariationCoordsUpdated(coords: number[]): void {
+        if (this.colr && typeof (this.colr as any).setVariationCoords === 'function') {
+            (this.colr as any).setVariationCoords(coords);
+        }
     }
 }
