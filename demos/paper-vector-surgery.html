@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Paper Vector Surgery</title>
+  <style>
+    body{margin:0;background:#f5f7fa;color:#162032;font-family:"Palatino",serif}
+    #paper{width:100vw;height:100vh;display:block}
+    .ui{position:fixed;top:56px;left:12px;z-index:10;background:rgba(255,255,255,.86);border:1px solid #cdd8e7;border-radius:10px;padding:10px;display:flex;gap:8px;align-items:center}
+    select,input{padding:6px;border-radius:7px;border:1px solid #c4d2e3;background:#fff}
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<div class="ui">
+  <label>Font <select id="font"></select></label>
+  <label>Glyph <input id="char" value="K" maxlength="2" size="2"></label>
+</div>
+<canvas id="paper" resize></canvas>
+<script src="https://cdn.jsdelivr.net/npm/paper@0.12.17/dist/paper-full.min.js"></script>
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+  import { CREATIVE_FONTS, populateCreativeFonts, loadFontByUrl, getGlyphGeometry } from './shared/creative-kit.js';
+
+  const fontSel = document.getElementById('font');
+  const charInput = document.getElementById('char');
+  populateCreativeFonts(fontSel);
+
+  paper.setup(document.getElementById('paper'));
+  let groups = [];
+
+  async function rebuild() {
+    for (const g of groups) g.remove();
+    groups = [];
+    const font = await loadFontByUrl(fontSel.value || CREATIVE_FONTS[0].url);
+    const geom = getGlyphGeometry(font, (charInput.value || 'K')[0], {
+      sizePx: Math.min(window.innerHeight * 0.62, 460),
+      centerX: window.innerWidth * 0.5,
+      centerY: window.innerHeight * 0.56
+    });
+
+    for (const contour of geom.contours) {
+      const path = new paper.Path({ strokeColor: '#102a4b', strokeWidth: 1.2, closed: true });
+      for (const p of contour) path.add(new paper.Point(p.x, p.y));
+      path.smooth({ type: 'continuous' });
+
+      const offset = path.clone();
+      offset.scale(1.04);
+      offset.strokeColor = '#3e7cc2';
+      offset.strokeWidth = 1;
+      offset.opacity = 0.45;
+
+      const group = new paper.Group([offset, path]);
+      groups.push(group);
+    }
+  }
+
+  paper.view.onFrame = (ev) => {
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i];
+      const t = ev.time * 0.9 + i * 0.6;
+      g.rotation = Math.sin(t) * 0.25;
+      g.scaling = new paper.Point(1 + Math.sin(t * 1.7) * 0.004, 1 + Math.cos(t * 1.5) * 0.004);
+    }
+  };
+
+  window.addEventListener('resize', rebuild);
+  fontSel.addEventListener('change', rebuild);
+  charInput.addEventListener('input', rebuild);
+  await rebuild();
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

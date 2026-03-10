@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rough Sketch Glyph</title>
+  <style>
+    body{margin:0;background:#faf6ef;color:#1a1a1a;font-family:"Courier New",monospace}
+    canvas{display:block;width:100vw;height:100vh}
+    .ui{position:fixed;top:56px;left:12px;z-index:10;background:rgba(255,255,255,.92);border:1px solid #d7c4a7;border-radius:10px;padding:10px;display:flex;gap:8px;align-items:center}
+    select,input{padding:6px;border-radius:7px;border:1px solid #d7c4a7;background:#fffdf9}
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<div class="ui">
+  <label>Font <select id="font"></select></label>
+  <label>Glyph <input id="char" value="W" maxlength="2" size="2"></label>
+</div>
+<canvas id="cv"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.js"></script>
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+  import { CREATIVE_FONTS, populateCreativeFonts, loadFontByUrl, getGlyphGeometry } from './shared/creative-kit.js';
+
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const rc = rough.canvas(cv);
+  const fontSel = document.getElementById('font');
+  const charInput = document.getElementById('char');
+  populateCreativeFonts(fontSel);
+
+  let contours = [];
+
+  function resize() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.floor(window.innerWidth * dpr);
+    cv.height = Math.floor(window.innerHeight * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  async function rebuild() {
+    const font = await loadFontByUrl(fontSel.value || CREATIVE_FONTS[0].url);
+    const g = getGlyphGeometry(font, (charInput.value || 'W')[0], {
+      sizePx: Math.min(window.innerHeight * 0.62, 470),
+      centerX: window.innerWidth * 0.5,
+      centerY: window.innerHeight * 0.58
+    });
+    contours = g.contours;
+  }
+
+  function frame(t) {
+    requestAnimationFrame(frame);
+    ctx.fillStyle = 'rgba(250,246,239,0.3)';
+    ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+    for (let i = 0; i < contours.length; i++) {
+      const c = contours[i];
+      const jitter = 0.9 + Math.sin(t * 0.0018 + i) * 0.55;
+      const pts = c.map((p) => [p.x + Math.sin(t * 0.001 + i) * 0.8, p.y + Math.cos(t * 0.0013 + i) * 0.8]);
+      rc.polygon(pts, {
+        stroke: '#2a3d5e',
+        strokeWidth: 1.4,
+        roughness: Math.max(0.6, jitter),
+        bowing: 1.0 + jitter * 0.9,
+        fill: i % 2 ? '#d9c7a9' : '#f1e4cf',
+        fillStyle: 'hachure',
+        fillWeight: 0.7,
+        hachureGap: 7
+      });
+    }
+  }
+
+  window.addEventListener('resize', async () => { resize(); await rebuild(); });
+  fontSel.addEventListener('change', rebuild);
+  charInput.addEventListener('input', rebuild);
+  resize();
+  await rebuild();
+  requestAnimationFrame(frame);
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

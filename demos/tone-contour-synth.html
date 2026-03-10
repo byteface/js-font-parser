@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tone Contour Synth</title>
+  <style>
+    body{margin:0;background:#0a0610;color:#f7ecff;font-family:"Avenir Next",sans-serif}
+    canvas{width:100vw;height:100vh;display:block}
+    .ui{position:fixed;top:56px;left:12px;z-index:10;background:rgba(20,12,30,.75);border:1px solid #574176;border-radius:10px;padding:10px;display:flex;gap:8px;align-items:center}
+    select,input,button{padding:6px;border-radius:7px;border:1px solid #574176;background:#221434;color:#fff}
+    button{cursor:pointer}
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<div class="ui">
+  <label>Font <select id="font"></select></label>
+  <label>Glyph <input id="char" value="M" maxlength="2" size="2"></label>
+  <button id="audio">Start Audio</button>
+</div>
+<canvas id="cv"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/tone@15.0.4/build/Tone.js"></script>
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+  import { CREATIVE_FONTS, populateCreativeFonts, loadFontByUrl, getGlyphGeometry, flattenContours, sampleAlongSegments } from './shared/creative-kit.js';
+
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const fontSel = document.getElementById('font');
+  const charInput = document.getElementById('char');
+  const audioBtn = document.getElementById('audio');
+  populateCreativeFonts(fontSel);
+
+  const synth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'triangle' } }).toDestination();
+  let audioOn = false;
+
+  let contours = [];
+  let segments = [];
+
+  async function rebuild() {
+    const font = await loadFontByUrl(fontSel.value || CREATIVE_FONTS[0].url);
+    const g = getGlyphGeometry(font, (charInput.value || 'M')[0], {
+      sizePx: Math.min(window.innerHeight * 0.62, 460),
+      centerX: window.innerWidth * 0.5,
+      centerY: window.innerHeight * 0.56
+    });
+    contours = g.contours;
+    segments = flattenContours(contours);
+  }
+
+  function resize() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.floor(window.innerWidth * dpr);
+    cv.height = Math.floor(window.innerHeight * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function frame(t) {
+    requestAnimationFrame(frame);
+    ctx.fillStyle = 'rgba(10,6,16,0.18)';
+    ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+    ctx.strokeStyle = 'rgba(178,130,255,0.45)';
+    ctx.lineWidth = 1.4;
+    for (const contour of contours) {
+      if (!contour.length) continue;
+      ctx.beginPath();
+      ctx.moveTo(contour[0].x, contour[0].y);
+      for (let i = 1; i < contour.length; i++) ctx.lineTo(contour[i].x, contour[i].y);
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    const runners = 4;
+    for (let i = 0; i < runners; i++) {
+      const p = sampleAlongSegments(segments, t * 0.00007 + i * 0.19);
+      ctx.beginPath();
+      ctx.fillStyle = ['#ff9de6', '#8cd9ff', '#d7b3ff', '#ffe7ab'][i];
+      ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  let seq = null;
+  function schedule() {
+    if (seq) seq.dispose();
+    seq = new Tone.Loop((time) => {
+      if (!segments.length) return;
+      const p = sampleAlongSegments(segments, (Tone.now() * 0.2) % 1);
+      const norm = (window.innerHeight - p.y) / Math.max(1, window.innerHeight);
+      const midi = 42 + Math.floor(norm * 30);
+      synth.triggerAttackRelease(Tone.Frequency(midi, 'midi'), '8n', time, 0.22);
+    }, '8n').start(0);
+  }
+
+  audioBtn.addEventListener('click', async () => {
+    if (!audioOn) {
+      await Tone.start();
+      Tone.getTransport().start();
+      schedule();
+      audioOn = true;
+      audioBtn.textContent = 'Audio Running';
+    }
+  });
+
+  window.addEventListener('resize', async () => { resize(); await rebuild(); });
+  fontSel.addEventListener('change', rebuild);
+  charInput.addEventListener('input', rebuild);
+  resize();
+  await rebuild();
+  requestAnimationFrame(frame);
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

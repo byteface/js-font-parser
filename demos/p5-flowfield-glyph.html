@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>p5 Flowfield Glyph</title>
+  <style>
+    body{margin:0;background:#f4f1ea;font-family:"Georgia",serif;color:#1f2833}
+    #ui{position:fixed;top:56px;left:12px;z-index:20;background:rgba(255,255,255,.85);backdrop-filter:blur(5px);border:1px solid #d0c8b8;border-radius:10px;padding:10px;display:flex;gap:8px;align-items:center}
+    select,input{padding:6px;border:1px solid #c7bea8;border-radius:7px;background:#fff}
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<div id="ui">
+  <label>Font <select id="font"></select></label>
+  <label>Glyph <input id="char" value="S" maxlength="2" size="2"></label>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.10.0/lib/p5.min.js"></script>
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+  import { CREATIVE_FONTS, populateCreativeFonts, loadFontByUrl, getGlyphGeometry } from './shared/creative-kit.js';
+
+  const fontSel = document.getElementById('font');
+  const charInput = document.getElementById('char');
+  populateCreativeFonts(fontSel);
+
+  let particles = [];
+  let font = null;
+  let geom = null;
+
+  class Particle {
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+      this.vx = 0;
+      this.vy = 0;
+      this.seed = Math.random() * 1000;
+    }
+    update(t) {
+      const n = noise(this.x * 0.0022, this.y * 0.0022, t * 0.0003 + this.seed);
+      const ang = n * Math.PI * 6.0;
+      this.vx += Math.cos(ang) * 0.26;
+      this.vy += Math.sin(ang) * 0.26;
+      this.vx *= 0.92;
+      this.vy *= 0.92;
+      this.x += this.vx;
+      this.y += this.vy;
+    }
+    draw() {
+      point(this.x, this.y);
+    }
+  }
+
+  async function rebuild() {
+    font = await loadFontByUrl(fontSel.value || CREATIVE_FONTS[0].url);
+    geom = getGlyphGeometry(font, (charInput.value || 'S')[0], {
+      sizePx: Math.min(window.innerHeight * 0.62, 460),
+      centerX: window.innerWidth * 0.5,
+      centerY: window.innerHeight * 0.56
+    });
+    particles = geom.points.filter((_, i) => i % 2 === 0).map((p) => new Particle(p.x, p.y));
+    background('#f4f1ea');
+  }
+
+  new p5(() => {
+    window.setup = function() {
+      createCanvas(window.innerWidth, window.innerHeight);
+      strokeWeight(1.2);
+      stroke(34, 58, 78, 86);
+      noFill();
+      rebuild();
+    };
+
+    window.draw = function() {
+      fill(244, 241, 234, 18);
+      noStroke();
+      rect(0, 0, width, height);
+      stroke(34, 58, 78, 88);
+      for (const p of particles) {
+        p.update(frameCount);
+        p.draw();
+      }
+      if (geom?.contours?.length) {
+        stroke(169, 121, 63, 85);
+        noFill();
+        for (const c of geom.contours) {
+          beginShape();
+          for (const p of c) vertex(p.x, p.y);
+          endShape(CLOSE);
+        }
+      }
+    };
+
+    window.windowResized = function() {
+      resizeCanvas(window.innerWidth, window.innerHeight);
+      rebuild();
+    };
+  });
+
+  fontSel.addEventListener('change', rebuild);
+  charInput.addEventListener('input', rebuild);
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

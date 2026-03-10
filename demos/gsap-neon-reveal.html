@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GSAP Neon Reveal</title>
+  <style>
+    body{margin:0;background:#05050b;color:#eaf6ff;font-family:"Helvetica Neue",sans-serif}
+    canvas{display:block;width:100vw;height:100vh}
+    .ui{position:fixed;top:56px;left:12px;z-index:9;background:rgba(0,0,0,.62);border:1px solid #30465f;border-radius:10px;padding:10px;display:flex;gap:8px;align-items:center}
+    select,input{background:#0f1420;border:1px solid #30465f;border-radius:7px;color:#fff;padding:6px}
+    button{background:#17365a;color:#fff;border:1px solid #3f6aa0;border-radius:7px;padding:6px 10px;cursor:pointer}
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<div class="ui">
+  <label>Font <select id="font"></select></label>
+  <label>Glyph <input id="char" value="N" maxlength="2" size="2"></label>
+  <button id="play">Replay</button>
+</div>
+<canvas id="cv"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+  import { CREATIVE_FONTS, populateCreativeFonts, loadFontByUrl, getGlyphGeometry, drawContoursPath2D } from './shared/creative-kit.js';
+
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const fontSel = document.getElementById('font');
+  const charInput = document.getElementById('char');
+  const playBtn = document.getElementById('play');
+  populateCreativeFonts(fontSel);
+
+  const state = { reveal: 0, glow: 0, wobble: 0 };
+  let geom = null;
+
+  function resize() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.floor(window.innerWidth * dpr);
+    cv.height = Math.floor(window.innerHeight * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  async function rebuild() {
+    const font = await loadFontByUrl(fontSel.value || CREATIVE_FONTS[0].url);
+    geom = getGlyphGeometry(font, (charInput.value || 'N')[0], {
+      sizePx: Math.min(window.innerHeight * 0.62, 460),
+      centerX: window.innerWidth * 0.5,
+      centerY: window.innerHeight * 0.58
+    });
+    replay();
+  }
+
+  function replay() {
+    gsap.killTweensOf(state);
+    state.reveal = 0;
+    state.glow = 0;
+    gsap.to(state, { reveal: 1, duration: 1.6, ease: 'power3.out' });
+    gsap.to(state, { glow: 1, duration: 0.8, yoyo: true, repeat: 3, ease: 'sine.inOut' });
+    gsap.to(state, { wobble: Math.random() * 100, duration: 1.2, ease: 'sine.inOut' });
+  }
+
+  function render(t) {
+    requestAnimationFrame(render);
+    ctx.fillStyle = 'rgba(5,5,11,0.22)';
+    ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+    if (!geom?.contours?.length) return;
+
+    const wob = Math.sin(t * 0.0012 + state.wobble) * 7;
+    ctx.save();
+    ctx.translate(wob, -wob * 0.25);
+
+    drawContoursPath2D(ctx, geom.contours, true);
+    ctx.clip();
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const grad = ctx.createLinearGradient(0, 0, w * state.reveal, h * 0.4);
+    grad.addColorStop(0, '#39d6ff');
+    grad.addColorStop(0.5, '#7d98ff');
+    grad.addColorStop(1, '#d58eff');
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w * Math.max(0.001, state.reveal), h);
+
+    ctx.restore();
+
+    ctx.save();
+    drawContoursPath2D(ctx, geom.contours, true);
+    ctx.strokeStyle = '#d9f0ff';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#7dd7ff';
+    ctx.shadowBlur = 18 + state.glow * 38;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  window.addEventListener('resize', async () => { resize(); await rebuild(); });
+  fontSel.addEventListener('change', rebuild);
+  charInput.addEventListener('input', rebuild);
+  playBtn.addEventListener('click', replay);
+  resize();
+  await rebuild();
+  requestAnimationFrame(render);
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>
