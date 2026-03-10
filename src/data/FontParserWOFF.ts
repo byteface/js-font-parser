@@ -654,13 +654,14 @@ export class FontParserWOFF {
         options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean; gposFeatures?: string[]; letterSpacing?: number } = {}
     ): { advanceWidth: number; glyphCount: number } {
         const layout = this.layoutString(text, options);
-        const letterSpacing = options.letterSpacing ?? 0;
+        const letterSpacing = Number.isFinite(options.letterSpacing) ? (options.letterSpacing as number) : 0;
         let advanceWidth = 0;
         for (let i = 0; i < layout.length; i++) {
-            advanceWidth += layout[i].xAdvance;
+            const xAdvance = Number.isFinite(layout[i].xAdvance) ? layout[i].xAdvance : 0;
+            advanceWidth += xAdvance;
             if (letterSpacing !== 0 && i < layout.length - 1) advanceWidth += letterSpacing;
         }
-        return { advanceWidth, glyphCount: layout.length };
+        return { advanceWidth: Number.isFinite(advanceWidth) ? advanceWidth : 0, glyphCount: layout.length };
     }
 
     public layoutToPoints(
@@ -682,12 +683,17 @@ export class FontParserWOFF {
         scale: number;
     } {
         const layout = this.layoutString(text, options);
-        const sampleStep = Math.max(1, Math.floor(options.sampleStep ?? 1));
-        const fontSize = options.fontSize ?? this.getUnitsPerEm();
-        const scale = fontSize / this.getUnitsPerEm();
-        const originX = options.x ?? 0;
-        const originY = options.y ?? 0;
-        const letterSpacing = options.letterSpacing ?? 0;
+        const sampleBase = Number.isFinite(options.sampleStep) ? (options.sampleStep as number) : 1;
+        const sampleStep = Math.max(1, Math.floor(sampleBase));
+        const unitsPerEm = this.getUnitsPerEm();
+        const safeUnitsPerEm = Number.isFinite(unitsPerEm) && unitsPerEm > 0 ? unitsPerEm : 1000;
+        const fontSize = Number.isFinite(options.fontSize) && (options.fontSize as number) > 0
+            ? (options.fontSize as number)
+            : safeUnitsPerEm;
+        const scale = fontSize / safeUnitsPerEm;
+        const originX = Number.isFinite(options.x) ? (options.x as number) : 0;
+        const originY = Number.isFinite(options.y) ? (options.y as number) : 0;
+        const letterSpacing = Number.isFinite(options.letterSpacing) ? (options.letterSpacing as number) : 0;
         const points: Array<{ x: number; y: number; onCurve: boolean; endOfContour: boolean; glyphIndex: number; pointIndex: number }> = [];
 
         let penX = 0;
@@ -699,8 +705,8 @@ export class FontParserWOFF {
                     const p = glyph.getPoint(pIndex);
                     if (!p) continue;
                     points.push({
-                        x: originX + (penX + item.xOffset + p.x) * scale,
-                        y: originY - (item.yOffset + p.y) * scale,
+                        x: originX + (penX + (Number.isFinite(item.xOffset) ? item.xOffset : 0) + p.x) * scale,
+                        y: originY - ((Number.isFinite(item.yOffset) ? item.yOffset : 0) + p.y) * scale,
                         onCurve: p.onCurve,
                         endOfContour: p.endOfContour,
                         glyphIndex: item.glyphIndex,
@@ -708,11 +714,11 @@ export class FontParserWOFF {
                     });
                 }
             }
-            penX += item.xAdvance;
+            penX += Number.isFinite(item.xAdvance) ? item.xAdvance : 0;
             if (letterSpacing !== 0 && i < layout.length - 1) penX += letterSpacing;
         }
 
-        return { points, advanceWidth: penX, scale };
+        return { points, advanceWidth: Number.isFinite(penX) ? penX : 0, scale: Number.isFinite(scale) ? scale : 1 };
     }
 
     public getColorLayersForGlyph(glyphId: number, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
@@ -952,17 +958,57 @@ export class FontParserWOFF {
             this.emitDiagnostic("MISSING_TABLE_CMAP", "warning", "parse", "No cmap table available.", undefined, "MISSING_TABLE_CMAP");
             return null;
         }
-        const cmapFormat = this.getBestCmapFormatFor(codePoint);
+        let cmapFormat: any = null;
+        try {
+            cmapFormat = this.getBestCmapFormatFor(codePoint);
+        } catch {
+            this.emitDiagnostic(
+                "CMAP_FORMAT_RESOLVE_FAILED",
+                "warning",
+                "parse",
+                "Failed while resolving preferred cmap format; using fallback format order.",
+                { codePoint },
+                "CMAP_FORMAT_RESOLVE_FAILED"
+            );
+            const fallbackFormats = Array.isArray(this.cmap.formats)
+                ? this.cmap.formats.filter((fmt): fmt is NonNullable<typeof fmt> => fmt != null)
+                : [];
+            cmapFormat = pickBestCmapFormat(fallbackFormats);
+        }
         if (!cmapFormat) {
             this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint });
             return null;
         }
 
-        const glyphIndex = typeof cmapFormat.getGlyphIndex === "function"
-            ? cmapFormat.getGlyphIndex(codePoint)
-            : cmapFormat.mapCharCode(codePoint);
+        let glyphIndex: unknown = null;
+        try {
+            if (typeof cmapFormat.getGlyphIndex === "function") {
+                glyphIndex = cmapFormat.getGlyphIndex(codePoint);
+            } else if (typeof cmapFormat.mapCharCode === "function") {
+                glyphIndex = cmapFormat.mapCharCode(codePoint);
+            } else {
+                this.emitDiagnostic(
+                    "UNSUPPORTED_CMAP_FORMAT",
+                    "warning",
+                    "parse",
+                    "Selected cmap format does not expose getGlyphIndex/mapCharCode.",
+                    { codePoint },
+                    "UNSUPPORTED_CMAP_FORMAT"
+                );
+                return null;
+            }
+        } catch {
+            this.emitDiagnostic(
+                "CMAP_LOOKUP_FAILED",
+                "warning",
+                "parse",
+                "cmap glyph lookup failed for code point.",
+                { codePoint }
+            );
+            return null;
+        }
 
-        if (glyphIndex == null || glyphIndex === 0) return null;
+        if (typeof glyphIndex !== "number" || !Number.isFinite(glyphIndex) || glyphIndex === 0) return null;
         return glyphIndex;
     }
 
@@ -990,8 +1036,12 @@ export class FontParserWOFF {
     public getKerningValueByGlyphs(leftGlyph: number, rightGlyph: number): number {
         if (!this.kern) return 0;
         if (typeof this.kern.getKerningValue === "function") {
-            const value = this.kern.getKerningValue(leftGlyph, rightGlyph);
-            return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+            try {
+                const value = this.kern.getKerningValue(leftGlyph, rightGlyph);
+                return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+            } catch {
+                return 0;
+            }
         }
         return 0;
     }
@@ -1008,8 +1058,12 @@ export class FontParserWOFF {
             for (let i = 0; i < lookup.getSubtableCount(); i++) {
                 const st = lookup.getSubtable(i);
                 if (st instanceof PairPosFormat1 || st instanceof PairPosFormat2) {
-                    const kern = st.getKerning(leftGlyph, rightGlyph);
-                    value += Number.isFinite(kern) ? kern : 0;
+                    try {
+                        const kern = st.getKerning(leftGlyph, rightGlyph);
+                        value += Number.isFinite(kern) ? kern : 0;
+                    } catch {
+                        // Ignore malformed pair subtables and continue.
+                    }
                 }
             }
         }

@@ -28,7 +28,7 @@ var LayoutEngine = /** @class */ (function () {
      */
     LayoutEngine.layoutText = function (font, text, options) {
         var _this = this;
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p;
         if (options === void 0) { options = {}; }
         var maxWidth = Number.isFinite(options.maxWidth) ? options.maxWidth : 0;
         var align = (_a = options.align) !== null && _a !== void 0 ? _a : 'left';
@@ -49,16 +49,51 @@ var LayoutEngine = /** @class */ (function () {
         var direction = resolvedDirection === 'auto'
             ? (this.hasRtl(text) ? 'rtl' : 'ltr')
             : resolvedDirection;
-        var hhea = (_q = font.getTableByType) === null || _q === void 0 ? void 0 : _q.call(font, 0x68686561); // hhea
-        var head = (_r = font.getTableByType) === null || _r === void 0 ? void 0 : _r.call(font, 0x68656164); // head
-        var unitsPerEm = (_s = head === null || head === void 0 ? void 0 : head.unitsPerEm) !== null && _s !== void 0 ? _s : 1000;
-        var computedLineHeight = (((_t = hhea === null || hhea === void 0 ? void 0 : hhea.ascender) !== null && _t !== void 0 ? _t : unitsPerEm * 0.8) - ((_u = hhea === null || hhea === void 0 ? void 0 : hhea.descender) !== null && _u !== void 0 ? _u : -unitsPerEm * 0.2) + ((_v = hhea === null || hhea === void 0 ? void 0 : hhea.lineGap) !== null && _v !== void 0 ? _v : 0));
-        var lineHeight = Number.isFinite(options.lineHeight) ? options.lineHeight : computedLineHeight;
         var emitDiagnostic = function (diagnostic) {
             var _a, _b;
             (_a = options.diagnostics) === null || _a === void 0 ? void 0 : _a.push(diagnostic);
             (_b = options.onDiagnostic) === null || _b === void 0 ? void 0 : _b.call(options, diagnostic);
         };
+        var hhea = null;
+        var head = null;
+        if (typeof font.getTableByType === 'function') {
+            try {
+                hhea = font.getTableByType(0x68686561); // hhea
+            }
+            catch (_q) {
+                emitDiagnostic({
+                    code: 'LAYOUT_CALLBACK_ERROR',
+                    level: 'warning',
+                    phase: 'layout',
+                    message: 'getTableByType callback threw while reading hhea.'
+                });
+            }
+            try {
+                head = font.getTableByType(0x68656164); // head
+            }
+            catch (_r) {
+                emitDiagnostic({
+                    code: 'LAYOUT_CALLBACK_ERROR',
+                    level: 'warning',
+                    phase: 'layout',
+                    message: 'getTableByType callback threw while reading head.'
+                });
+            }
+        }
+        var unitsPerEm = Number.isFinite(head === null || head === void 0 ? void 0 : head.unitsPerEm) && (head === null || head === void 0 ? void 0 : head.unitsPerEm) > 0
+            ? head === null || head === void 0 ? void 0 : head.unitsPerEm
+            : 1000;
+        var ascender = Number.isFinite(hhea === null || hhea === void 0 ? void 0 : hhea.ascender) ? hhea === null || hhea === void 0 ? void 0 : hhea.ascender : unitsPerEm * 0.8;
+        var descender = Number.isFinite(hhea === null || hhea === void 0 ? void 0 : hhea.descender) ? hhea === null || hhea === void 0 ? void 0 : hhea.descender : -unitsPerEm * 0.2;
+        var lineGap = Number.isFinite(hhea === null || hhea === void 0 ? void 0 : hhea.lineGap) ? hhea === null || hhea === void 0 ? void 0 : hhea.lineGap : 0;
+        var fallbackLineHeight = unitsPerEm * 1.2;
+        var rawComputedLineHeight = ascender - descender + lineGap;
+        var computedLineHeight = Number.isFinite(rawComputedLineHeight) && rawComputedLineHeight > 0
+            ? rawComputedLineHeight
+            : fallbackLineHeight;
+        var lineHeight = Number.isFinite(options.lineHeight) && options.lineHeight > 0
+            ? options.lineHeight
+            : computedLineHeight;
         var lines = [];
         var current = [];
         var cursorX = 0;
@@ -101,8 +136,8 @@ var LayoutEngine = /** @class */ (function () {
                 pushLine(false);
             }
             if (maxWidth > 0 && breakWords && tokenWidth > maxWidth) {
-                for (var _w = 0, tokenGlyphs_1 = tokenGlyphs; _w < tokenGlyphs_1.length; _w++) {
-                    var glyph = tokenGlyphs_1[_w];
+                for (var _s = 0, tokenGlyphs_1 = tokenGlyphs; _s < tokenGlyphs_1.length; _s++) {
+                    var glyph = tokenGlyphs_1[_s];
                     if (maxWidth > 0 && cursorX > 0 && cursorX + glyph.advance > maxWidth) {
                         pushLine(false);
                     }
@@ -113,8 +148,8 @@ var LayoutEngine = /** @class */ (function () {
                 }
                 continue;
             }
-            for (var _x = 0, tokenGlyphs_2 = tokenGlyphs; _x < tokenGlyphs_2.length; _x++) {
-                var glyph = tokenGlyphs_2[_x];
+            for (var _t = 0, tokenGlyphs_2 = tokenGlyphs; _t < tokenGlyphs_2.length; _t++) {
+                var glyph = tokenGlyphs_2[_t];
                 glyph.x = cursorX + glyph.x;
                 glyph.y = 0;
                 cursorX += glyph.advance;
@@ -271,8 +306,34 @@ var LayoutEngine = /** @class */ (function () {
         var prevGlyph = null;
         for (var _i = 0, token_1 = token; _i < token_1.length; _i++) {
             var ch = token_1[_i];
-            var glyphIndex = font.getGlyphIndexByChar ? font.getGlyphIndexByChar(ch) : null;
-            var glyph = glyphIndex != null ? font.getGlyph(glyphIndex) : font.getGlyphByChar(ch);
+            var glyphIndex = null;
+            try {
+                glyphIndex = font.getGlyphIndexByChar ? font.getGlyphIndexByChar(ch) : null;
+            }
+            catch (_a) {
+                emitDiagnostic === null || emitDiagnostic === void 0 ? void 0 : emitDiagnostic({
+                    code: 'LAYOUT_CALLBACK_ERROR',
+                    level: 'warning',
+                    phase: 'layout',
+                    message: 'getGlyphIndexByChar callback threw during layout.',
+                    context: { char: ch }
+                });
+                glyphIndex = null;
+            }
+            var glyph = null;
+            try {
+                glyph = glyphIndex != null ? font.getGlyph(glyphIndex) : font.getGlyphByChar(ch);
+            }
+            catch (_b) {
+                emitDiagnostic === null || emitDiagnostic === void 0 ? void 0 : emitDiagnostic({
+                    code: 'LAYOUT_CALLBACK_ERROR',
+                    level: 'warning',
+                    phase: 'layout',
+                    message: 'Glyph fetch callback threw during layout.',
+                    context: { char: ch, glyphIndex: glyphIndex !== null && glyphIndex !== void 0 ? glyphIndex : undefined }
+                });
+                glyph = null;
+            }
             if (!glyph) {
                 emitDiagnostic === null || emitDiagnostic === void 0 ? void 0 : emitDiagnostic({
                     code: 'MISSING_GLYPH',
@@ -285,9 +346,22 @@ var LayoutEngine = /** @class */ (function () {
                 continue;
             }
             var baseAdvance = Number.isFinite(glyph.advanceWidth) ? glyph.advanceWidth : 0;
-            var kern = (useKerning && prevGlyph != null && font.getKerningValueByGlyphs)
-                ? font.getKerningValueByGlyphs(prevGlyph, glyphIndex !== null && glyphIndex !== void 0 ? glyphIndex : 0)
-                : 0;
+            var kern = 0;
+            if (useKerning && prevGlyph != null && font.getKerningValueByGlyphs) {
+                try {
+                    kern = font.getKerningValueByGlyphs(prevGlyph, glyphIndex !== null && glyphIndex !== void 0 ? glyphIndex : 0);
+                }
+                catch (_c) {
+                    emitDiagnostic === null || emitDiagnostic === void 0 ? void 0 : emitDiagnostic({
+                        code: 'LAYOUT_CALLBACK_ERROR',
+                        level: 'warning',
+                        phase: 'layout',
+                        message: 'Kerning callback threw during layout.',
+                        context: { char: ch, glyphIndex: glyphIndex !== null && glyphIndex !== void 0 ? glyphIndex : undefined }
+                    });
+                    kern = 0;
+                }
+            }
             var safeKern = Number.isFinite(kern) ? kern : 0;
             var advance = baseAdvance + letterSpacing + safeKern;
             glyphs.push({ glyphIndex: glyphIndex !== null && glyphIndex !== void 0 ? glyphIndex : 0, x: 0, y: 0, advance: advance, char: ch });

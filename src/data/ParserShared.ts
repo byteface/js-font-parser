@@ -75,13 +75,20 @@ export function getBestCmapFormatFor(cmap: CmapLike | null, codePoint: number): 
         ];
 
     for (const pref of preferred) {
-        const formats = cmap.getCmapFormats(pref.platformId, pref.encodingId);
+        let formats: CmapFormatLike[] = [];
+        try {
+            const resolved = cmap.getCmapFormats(pref.platformId, pref.encodingId);
+            formats = Array.isArray(resolved) ? resolved : [];
+        } catch {
+            formats = [];
+        }
         if (formats.length > 0) {
             return pickBestCmapFormat(formats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0]);
         }
     }
 
-    return cmap.formats.length > 0
-        ? pickBestCmapFormat(cmap.formats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0])
+    const fallbackFormats = Array.isArray(cmap.formats) ? cmap.formats : [];
+    return fallbackFormats.length > 0
+        ? pickBestCmapFormat(fallbackFormats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0])
         : null;
 }

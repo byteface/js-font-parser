@@ -54,12 +54,20 @@ export function getBestCmapFormatFor(cmap, codePoint) {
         ];
     for (var _i = 0, preferred_1 = preferred; _i < preferred_1.length; _i++) {
         var pref = preferred_1[_i];
-        var formats = cmap.getCmapFormats(pref.platformId, pref.encodingId);
+        var formats = [];
+        try {
+            var resolved = cmap.getCmapFormats(pref.platformId, pref.encodingId);
+            formats = Array.isArray(resolved) ? resolved : [];
+        }
+        catch (_a) {
+            formats = [];
+        }
         if (formats.length > 0) {
             return pickBestCmapFormat(formats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0]);
         }
     }
-    return cmap.formats.length > 0
-        ? pickBestCmapFormat(cmap.formats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0])
+    var fallbackFormats = Array.isArray(cmap.formats) ? cmap.formats : [];
+    return fallbackFormats.length > 0
+        ? pickBestCmapFormat(fallbackFormats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0])
         : null;
 }

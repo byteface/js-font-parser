@@ -206,15 +206,39 @@ var FontParserTTF = /** @class */ (function () {
             this.emitDiagnostic("MISSING_TABLE_CMAP", "warning", "parse", "No cmap table available.", undefined, "MISSING_TABLE_CMAP");
             return null;
         }
-        var cmapFormat = this.getBestCmapFormatFor(codePoint);
+        var cmapFormat = null;
+        try {
+            cmapFormat = this.getBestCmapFormatFor(codePoint);
+        }
+        catch (_a) {
+            this.emitDiagnostic("CMAP_FORMAT_RESOLVE_FAILED", "warning", "parse", "Failed while resolving preferred cmap format; using fallback format order.", { codePoint: codePoint }, "CMAP_FORMAT_RESOLVE_FAILED");
+            var fallbackFormats = Array.isArray(this.cmap.formats)
+                ? this.cmap.formats.filter(function (fmt) { return fmt != null; })
+                : [];
+            cmapFormat = pickBestCmapFormat(fallbackFormats);
+        }
         if (!cmapFormat) {
             this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint: codePoint });
             return null;
         }
-        var glyphIndex = typeof cmapFormat.getGlyphIndex === "function"
-            ? cmapFormat.getGlyphIndex(codePoint)
-            : cmapFormat.mapCharCode(codePoint);
-        if (glyphIndex == null || glyphIndex === 0) {
+        var glyphIndex = null;
+        try {
+            if (typeof cmapFormat.getGlyphIndex === "function") {
+                glyphIndex = cmapFormat.getGlyphIndex(codePoint);
+            }
+            else if (typeof cmapFormat.mapCharCode === "function") {
+                glyphIndex = cmapFormat.mapCharCode(codePoint);
+            }
+            else {
+                this.emitDiagnostic("UNSUPPORTED_CMAP_FORMAT", "warning", "parse", "Selected cmap format does not expose getGlyphIndex/mapCharCode.", { codePoint: codePoint }, "UNSUPPORTED_CMAP_FORMAT");
+                return null;
+            }
+        }
+        catch (_b) {
+            this.emitDiagnostic("CMAP_LOOKUP_FAILED", "warning", "parse", "cmap glyph lookup failed for code point.", { codePoint: codePoint });
+            return null;
+        }
+        if (typeof glyphIndex !== "number" || !Number.isFinite(glyphIndex) || glyphIndex === 0) {
             return null;
         }
         return glyphIndex;
@@ -251,8 +275,13 @@ var FontParserTTF = /** @class */ (function () {
         if (!this.kern)
             return 0;
         if (typeof this.kern.getKerningValue === "function") {
-            var value = this.kern.getKerningValue(leftGlyph, rightGlyph);
-            return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+            try {
+                var value = this.kern.getKerningValue(leftGlyph, rightGlyph);
+                return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+            }
+            catch (_a) {
+                return 0;
+            }
         }
         return 0;
     };
@@ -311,8 +340,13 @@ var FontParserTTF = /** @class */ (function () {
             for (var i = 0; i < lookup.getSubtableCount(); i++) {
                 var st = lookup.getSubtable(i);
                 if (st instanceof PairPosFormat1 || st instanceof PairPosFormat2) {
-                    var kern = st.getKerning(leftGlyph, rightGlyph);
-                    value += Number.isFinite(kern) ? kern : 0;
+                    try {
+                        var kern = st.getKerning(leftGlyph, rightGlyph);
+                        value += Number.isFinite(kern) ? kern : 0;
+                    }
+                    catch (_d) {
+                        // Ignore malformed pair subtables and continue.
+                    }
                 }
             }
         }
@@ -816,28 +850,32 @@ var FontParserTTF = /** @class */ (function () {
         return points;
     };
     FontParserTTF.prototype.measureText = function (text, options) {
-        var _a;
         if (options === void 0) { options = {}; }
         var layout = this.layoutString(text, options);
-        var letterSpacing = (_a = options.letterSpacing) !== null && _a !== void 0 ? _a : 0;
+        var letterSpacing = Number.isFinite(options.letterSpacing) ? options.letterSpacing : 0;
         var advanceWidth = 0;
         for (var i = 0; i < layout.length; i++) {
-            advanceWidth += layout[i].xAdvance;
+            var xAdvance = Number.isFinite(layout[i].xAdvance) ? layout[i].xAdvance : 0;
+            advanceWidth += xAdvance;
             if (letterSpacing !== 0 && i < layout.length - 1)
                 advanceWidth += letterSpacing;
         }
-        return { advanceWidth: advanceWidth, glyphCount: layout.length };
+        return { advanceWidth: Number.isFinite(advanceWidth) ? advanceWidth : 0, glyphCount: layout.length };
     };
     FontParserTTF.prototype.layoutToPoints = function (text, options) {
-        var _a, _b, _c, _d, _e;
         if (options === void 0) { options = {}; }
         var layout = this.layoutString(text, options);
-        var sampleStep = Math.max(1, Math.floor((_a = options.sampleStep) !== null && _a !== void 0 ? _a : 1));
-        var fontSize = (_b = options.fontSize) !== null && _b !== void 0 ? _b : this.getUnitsPerEm();
-        var scale = fontSize / this.getUnitsPerEm();
-        var originX = (_c = options.x) !== null && _c !== void 0 ? _c : 0;
-        var originY = (_d = options.y) !== null && _d !== void 0 ? _d : 0;
-        var letterSpacing = (_e = options.letterSpacing) !== null && _e !== void 0 ? _e : 0;
+        var sampleBase = Number.isFinite(options.sampleStep) ? options.sampleStep : 1;
+        var sampleStep = Math.max(1, Math.floor(sampleBase));
+        var unitsPerEm = this.getUnitsPerEm();
+        var safeUnitsPerEm = Number.isFinite(unitsPerEm) && unitsPerEm > 0 ? unitsPerEm : 1000;
+        var fontSize = Number.isFinite(options.fontSize) && options.fontSize > 0
+            ? options.fontSize
+            : safeUnitsPerEm;
+        var scale = fontSize / safeUnitsPerEm;
+        var originX = Number.isFinite(options.x) ? options.x : 0;
+        var originY = Number.isFinite(options.y) ? options.y : 0;
+        var letterSpacing = Number.isFinite(options.letterSpacing) ? options.letterSpacing : 0;
         var points = [];
         var penX = 0;
         for (var i = 0; i < layout.length; i++) {
@@ -849,8 +887,8 @@ var FontParserTTF = /** @class */ (function () {
                     if (!p)
                         continue;
                     points.push({
-                        x: originX + (penX + item.xOffset + p.x) * scale,
-                        y: originY - (item.yOffset + p.y) * scale,
+                        x: originX + (penX + (Number.isFinite(item.xOffset) ? item.xOffset : 0) + p.x) * scale,
+                        y: originY - ((Number.isFinite(item.yOffset) ? item.yOffset : 0) + p.y) * scale,
                         onCurve: p.onCurve,
                         endOfContour: p.endOfContour,
                         glyphIndex: item.glyphIndex,
@@ -858,11 +896,11 @@ var FontParserTTF = /** @class */ (function () {
                     });
                 }
             }
-            penX += item.xAdvance;
+            penX += Number.isFinite(item.xAdvance) ? item.xAdvance : 0;
             if (letterSpacing !== 0 && i < layout.length - 1)
                 penX += letterSpacing;
         }
-        return { points: points, advanceWidth: penX, scale: scale };
+        return { points: points, advanceWidth: Number.isFinite(penX) ? penX : 0, scale: Number.isFinite(scale) ? scale : 1 };
     };
     FontParserTTF.prototype.getColorLayersForGlyph = function (glyphId, paletteIndex) {
         var _a, _b;
