@@ -98,6 +98,7 @@ var FontParserWOFF = /** @class */ (function () {
         // Table directory and tables
         this.tableDir = null;
         this.tables = [];
+        this.tableMap = new Map();
         if ((options === null || options === void 0 ? void 0 : options.format) === 'sfnt') {
             this.parseTTF(byteData);
         }
@@ -397,11 +398,13 @@ var FontParserWOFF = /** @class */ (function () {
         var tf = new TableFactory();
         // Reset any legacy WOFF directory entries so only parsed table objects remain.
         this.tables = [];
+        this.tableMap = new Map();
         this.tableDir = new TableDirectory(byteData);
         for (var i = 0; i < this.tableDir.numTables; i++) {
             var tab = tf.create(this.tableDir.getEntry(i), byteData);
             if (tab !== null) {
                 this.tables.push(tab);
+                this.tableMap.set(tab.getType(), tab);
             }
         }
         // Get references to the tables
@@ -1612,7 +1615,8 @@ var FontParserWOFF = /** @class */ (function () {
     };
     // Return a table by type
     FontParserWOFF.prototype.getTable = function (tableType) {
-        return this.tables.find(function (tab) { return (tab === null || tab === void 0 ? void 0 : tab.getType()) === tableType; }) || null;
+        var _a;
+        return (_a = this.tableMap.get(tableType)) !== null && _a !== void 0 ? _a : null;
     };
     FontParserWOFF.prototype.getBestCmapFormatFor = function (codePoint) {
         return selectBestCmapFormatFor(this.cmap, codePoint);

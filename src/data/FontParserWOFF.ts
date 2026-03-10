@@ -72,6 +72,7 @@ export class FontParserWOFF {
     // Table directory and tables
     private tableDir: TableDirectory | null = null;
     private tables: ITable[] = [];
+    private tableMap = new Map<number, ITable>();
 
     constructor(byteData: ByteArray, options?: { format?: 'woff' | 'sfnt' }) {
         if (options?.format === 'sfnt') {
@@ -362,12 +363,14 @@ export class FontParserWOFF {
         const tf = new TableFactory();
         // Reset any legacy WOFF directory entries so only parsed table objects remain.
         this.tables = [];
+        this.tableMap = new Map<number, ITable>();
         this.tableDir = new TableDirectory(byteData);
         
         for (let i = 0; i < this.tableDir.numTables; i++) {
             const tab = tf.create(this.tableDir.getEntry(i), byteData);
             if (tab !== null) {
                 this.tables.push(tab);
+                this.tableMap.set(tab.getType(), tab);
             }
         }
 
@@ -1695,7 +1698,7 @@ export class FontParserWOFF {
 
     // Return a table by type
     private getTable(tableType: any): ITable | null {
-        return this.tables.find(tab => tab?.getType() === tableType) || null;
+        return this.tableMap.get(tableType) ?? null;
     }
 
     private getBestCmapFormatFor(codePoint: number): any | null {

@@ -91,6 +91,7 @@ var FontParserTTF = /** @class */ (function () {
         // Table directory and tables
         this.tableDir = null;
         this.tables = [];
+        this.tableMap = new Map();
         this.init(byteData);
     }
     // Static load method that returns a Promise
@@ -136,12 +137,14 @@ var FontParserTTF = /** @class */ (function () {
         // Initialize the table directory
         this.tableDir = new TableDirectory(byteData);
         this.tables = [];
+        this.tableMap = new Map();
         // Load each of the tables
         for (var i = 0; i < this.tableDir.numTables; i++) {
             var tf = new TableFactory();
             var tab = tf.create(this.tableDir.getEntry(i), byteData);
             if (tab !== null) {
                 this.tables.push(tab);
+                this.tableMap.set(tab.getType(), tab);
             }
         }
         // Get references to the tables
@@ -1412,7 +1415,8 @@ var FontParserTTF = /** @class */ (function () {
     };
     // Return a table by type
     FontParserTTF.prototype.getTable = function (tableType) {
-        return this.tables.find(function (tab) { return (tab === null || tab === void 0 ? void 0 : tab.getType()) === tableType; }) || null;
+        var _a;
+        return (_a = this.tableMap.get(tableType)) !== null && _a !== void 0 ? _a : null;
     };
     FontParserTTF.prototype.getBestCmapFormatFor = function (codePoint) {
         return selectBestCmapFormatFor(this.cmap, codePoint);

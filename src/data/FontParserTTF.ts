@@ -74,6 +74,7 @@ export class FontParserTTF {
     // Table directory and tables
     private tableDir: TableDirectory | null = null;
     private tables: ITable[] = [];
+    private tableMap = new Map<number, ITable>();
 
     // Static load method that returns a Promise
     static load(url: string): Promise<FontParserTTF> {
@@ -128,6 +129,7 @@ export class FontParserTTF {
         // Initialize the table directory
         this.tableDir = new TableDirectory(byteData);
         this.tables = [];
+        this.tableMap = new Map<number, ITable>();
 
         // Load each of the tables
         for (let i = 0; i < this.tableDir.numTables; i++) {
@@ -135,6 +137,7 @@ export class FontParserTTF {
             const tab = tf.create(this.tableDir.getEntry(i), byteData);
             if (tab !== null) {
                 this.tables.push(tab);
+                this.tableMap.set(tab.getType(), tab);
             }
         }
 
@@ -1538,7 +1541,7 @@ export class FontParserTTF {
 
     // Return a table by type
     private getTable(tableType: any): ITable | null {
-        return this.tables.find(tab => tab?.getType() === tableType) || null;
+        return this.tableMap.get(tableType) ?? null;
     }
 
     private getBestCmapFormatFor(codePoint: number): any | null {

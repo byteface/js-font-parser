@@ -13,6 +13,7 @@ var GsubTable = /** @class */ (function () {
     function GsubTable(de, byte_ar) {
         this.gdef = null;
         this.featureOrderCache = new Map();
+        this.applyFeaturesCache = new Map();
         byte_ar.offset = de.offset;
         byte_ar.readInt();
         var scriptListOffset = byte_ar.readUnsignedShort();
@@ -159,6 +160,14 @@ var GsubTable = /** @class */ (function () {
         var featureOrder = this.getFeatureOrder(featureTags, scriptTags);
         if (!featureOrder || featureOrder.length === 0)
             return glyphs;
+        if (!this.applyFeaturesCache) {
+            this.applyFeaturesCache = new Map();
+        }
+        var cacheKey = this.getApplyFeaturesCacheKey(featureOrder, glyphs);
+        var cached = this.applyFeaturesCache.get(cacheKey);
+        if (cached) {
+            return cached.slice();
+        }
         var out = glyphs.slice();
         for (var _i = 0, featureOrder_1 = featureOrder; _i < featureOrder_1.length; _i++) {
             var featureIndex = featureOrder_1[_i];
@@ -173,6 +182,7 @@ var GsubTable = /** @class */ (function () {
                 out = this.applyLookup(lookupIndex, out);
             }
         }
+        this.cacheAppliedFeatures(cacheKey, out);
         return out;
     };
     GsubTable.prototype.applyLookup = function (lookupIndex, glyphs) {
@@ -297,6 +307,21 @@ var GsubTable = /** @class */ (function () {
         }
         this.featureOrderCache.set(cacheKey, featureOrder);
         return featureOrder;
+    };
+    GsubTable.prototype.getApplyFeaturesCacheKey = function (featureOrder, glyphs) {
+        return "".concat(featureOrder.join(","), "::").concat(glyphs.join(","));
+    };
+    GsubTable.prototype.cacheAppliedFeatures = function (cacheKey, glyphs) {
+        if (!this.applyFeaturesCache) {
+            this.applyFeaturesCache = new Map();
+        }
+        if (this.applyFeaturesCache.size >= 128) {
+            var firstKey = this.applyFeaturesCache.keys().next().value;
+            if (firstKey) {
+                this.applyFeaturesCache.delete(firstKey);
+            }
+        }
+        this.applyFeaturesCache.set(cacheKey, glyphs.slice());
     };
     GsubTable.prototype.getType = function () {
         return Table.GSUB;

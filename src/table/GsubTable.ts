@@ -22,6 +22,7 @@ export class GsubTable implements ITable {
     lookupList: LookupList;
     private gdef: any | null = null;
     private featureOrderCache = new Map<string, number[] | null>();
+    private applyFeaturesCache = new Map<string, number[]>();
 
     constructor(de: DirectoryEntry, byte_ar: ByteArray) {
         byte_ar.offset = de.offset;
@@ -174,6 +175,14 @@ export class GsubTable implements ITable {
     applyFeatures(glyphs: number[], featureTags: string[], scriptTags: string[] = ["DFLT", "latn"]): number[] {
         const featureOrder = this.getFeatureOrder(featureTags, scriptTags);
         if (!featureOrder || featureOrder.length === 0) return glyphs;
+        if (!this.applyFeaturesCache) {
+            this.applyFeaturesCache = new Map<string, number[]>();
+        }
+        const cacheKey = this.getApplyFeaturesCacheKey(featureOrder, glyphs);
+        const cached = this.applyFeaturesCache.get(cacheKey);
+        if (cached) {
+            return cached.slice();
+        }
 
         let out = glyphs.slice();
         for (const featureIndex of featureOrder) {
@@ -188,6 +197,7 @@ export class GsubTable implements ITable {
                 out = this.applyLookup(lookupIndex, out);
             }
         }
+        this.cacheAppliedFeatures(cacheKey, out);
         return out;
     }
 
@@ -305,6 +315,23 @@ export class GsubTable implements ITable {
 
         this.featureOrderCache.set(cacheKey, featureOrder);
         return featureOrder;
+    }
+
+    private getApplyFeaturesCacheKey(featureOrder: number[], glyphs: number[]): string {
+        return `${featureOrder.join(",")}::${glyphs.join(",")}`;
+    }
+
+    private cacheAppliedFeatures(cacheKey: string, glyphs: number[]): void {
+        if (!this.applyFeaturesCache) {
+            this.applyFeaturesCache = new Map<string, number[]>();
+        }
+        if (this.applyFeaturesCache.size >= 128) {
+            const firstKey = this.applyFeaturesCache.keys().next().value;
+            if (firstKey) {
+                this.applyFeaturesCache.delete(firstKey);
+            }
+        }
+        this.applyFeaturesCache.set(cacheKey, glyphs.slice());
     }
 
     getType(): number {

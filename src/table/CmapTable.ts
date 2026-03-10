@@ -11,9 +11,19 @@ export class CmapTable implements ITable {
     version: number;
     numTables: number;
     entries: CmapIndexEntry[];
-    formats: Array<ICmapFormat | null>;
+    private _formats: Array<ICmapFormat | null>;
+    private formatKinds: number[];
+    private loadedFormats: boolean[];
+    private baseOffset: number;
+    private data: Uint8Array;
 
     constructor(de:DirectoryEntry, byteArray: ByteArray) {
+        this.baseOffset = de.offset;
+        this.data = new Uint8Array(
+            byteArray.dataView.buffer,
+            byteArray.dataView.byteOffset,
+            byteArray.dataView.byteLength
+        );
         byteArray.offset = de.offset;
 
         const fp = byteArray.offset;
@@ -27,24 +37,31 @@ export class CmapTable implements ITable {
         }
 
         // Get each of the tables
-        this.formats = [];
+        this._formats = new Array(this.numTables).fill(null);
+        this.formatKinds = new Array(this.numTables).fill(-1);
+        this.loadedFormats = new Array(this.numTables).fill(false);
         for (let j = 0; j < this.numTables; j++) {
-            Debug.log('Theres a table', j);
             byteArray.offset = fp + this.entries[j].offset;
-            const format = byteArray.readUnsignedShort();
-            // const cmf = new CmapFormat(byteArray);
-            const value = CmapFormat.create(format, byteArray);
-            this.formats.push(value);
+            this.formatKinds[j] = byteArray.readUnsignedShort();
         }
 
-        Debug.log(this.toString());
+        if (Debug.enabled) {
+            Debug.log(this.toString());
+        }
+    }
+
+    get formats(): Array<ICmapFormat | null> {
+        for (let i = 0; i < this.numTables; i++) {
+            this.ensureFormatLoaded(i);
+        }
+        return this._formats;
     }
 
     getCmapFormat(platformId: number, encodingId: number): ICmapFormat | null {
         // Find the requested format
         for (let i = 0; i < this.numTables; i++) {
             if (this.entries[i].platformId === platformId && this.entries[i].encodingId === encodingId) {
-                return this.formats[i] ?? null;
+                return this.ensureFormatLoaded(i);
             }
         }
         return null;
@@ -54,7 +71,7 @@ export class CmapTable implements ITable {
         const matches: ICmapFormat[] = [];
         for (let i = 0; i < this.numTables; i++) {
             if (this.entries[i].platformId === platformId && this.entries[i].encodingId === encodingId) {
-                const fmt = this.formats[i];
+                const fmt = this.ensureFormatLoaded(i);
                 if (fmt) matches.push(fmt);
             }
         }
@@ -75,10 +92,28 @@ export class CmapTable implements ITable {
 
         // Get each of the tables
         for (let i = 0; i < this.numTables; i++) {
-            const fmt = this.formats[i];
+            const fmt = this.ensureFormatLoaded(i);
             sb.push(`\t${fmt ? fmt.toString() : "unknown cmap format"}\n`);
         }
 
         return sb.join('');
+    }
+
+    private ensureFormatLoaded(index: number): ICmapFormat | null {
+        if (this.loadedFormats[index]) {
+            return this._formats[index] ?? null;
+        }
+        return this.loadFormat(index);
+    }
+
+    private loadFormat(index: number): ICmapFormat | null {
+        this.loadedFormats[index] = true;
+        const entry = this.entries[index];
+        const byteArray = new ByteArray(this.data);
+        byteArray.offset = this.baseOffset + entry.offset;
+        byteArray.readUnsignedShort();
+        const value = CmapFormat.create(this.formatKinds[index], byteArray);
+        this._formats[index] = value;
+        return value;
     }
 }
