@@ -34,8 +34,9 @@ async function main() {
   const args = parseArgs(process.argv);
   const base = args.base;
   const head = args.head;
+  const targets = args.targets ? path.resolve(args.targets) : path.join(process.cwd(), 'tests/golden/targets.json');
   if (!base || !head) {
-    throw new Error('Usage: node tests/golden/scripts/between-commits.mjs --base <sha> --head <sha> [--out tests/golden/diff]');
+    throw new Error('Usage: node tests/golden/scripts/between-commits.mjs --base <sha> --head <sha> [--targets tests/golden/targets.json] [--out tests/golden/diff]');
   }
 
   const repo = process.cwd();
@@ -50,8 +51,8 @@ async function main() {
     await run('git', ['worktree', 'add', '--detach', wtBase, base], { cwd: repo });
     await run('git', ['worktree', 'add', '--detach', wtHead, head], { cwd: repo });
 
-    await run('node', ['tests/golden/scripts/capture.mjs', '--root', wtBase, '--out', outBase], { cwd: repo });
-    await run('node', ['tests/golden/scripts/capture.mjs', '--root', wtHead, '--out', outHead], { cwd: repo });
+    await run('node', ['tests/golden/scripts/capture.mjs', '--root', wtBase, '--out', outBase, '--targets', targets], { cwd: repo });
+    await run('node', ['tests/golden/scripts/capture.mjs', '--root', wtHead, '--out', outHead, '--targets', targets], { cwd: repo });
 
     await fs.mkdir(outRoot, { recursive: true });
     await run('node', ['tests/golden/scripts/compare.mjs', '--base', outBase, '--head', outHead, '--out', outRoot], { cwd: repo });

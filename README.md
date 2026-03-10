@@ -138,7 +138,25 @@ Important TS import note:
 - `npm run test:perf:enforce`: perf budget gate
 - `npm run test:golden:capture`: capture visual baseline candidate
 - `npm run test:golden:compare`: compare baseline vs current
+- `npm run test:golden:validate`: validate locked golden target list
 - `npm run test:golden:between -- --base <sha> --head <sha>`: visual compare between commits
+
+## Golden Image Gate
+
+The repo has a visual-regression workflow at `.github/workflows/golden-images.yml`.
+
+How it works:
+- validates `tests/golden/targets.json` (required page set),
+- resolves base/head commits,
+- runs heavy Playwright capture+compare only if visual-risk paths changed,
+- uploads diff artifacts (`tests/golden/diff`) when compare runs.
+
+Local commands:
+- `npm run test:golden:validate`
+- `npm run test:golden:between -- --base <sha> --head <sha> --targets tests/golden/targets.json`
+
+To enforce as a hard gate in GitHub, set branch protection to require check
+`Golden Images / visual-regression`.
 
 ## Package Contract
 

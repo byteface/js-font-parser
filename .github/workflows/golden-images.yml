@@ -33,12 +33,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright package
-        run: npm install --no-save playwright
-
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
-
       - name: Resolve SHAs
         id: shas
         shell: bash
@@ -66,15 +60,50 @@ jobs:
           echo "head=$HEAD_SHA" >> "$GITHUB_OUTPUT"
           echo "Using base=$BASE_SHA head=$HEAD_SHA"
 
+      - name: Validate golden target set
+        run: npm run test:golden:validate
+
+      - name: Detect visual-risk changes
+        id: risk
+        shell: bash
+        run: |
+          BASE_SHA="${{ steps.shas.outputs.base }}"
+          HEAD_SHA="${{ steps.shas.outputs.head }}"
+          CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)"
+
+          printf '%s\n' "$CHANGED"
+
+          if printf '%s\n' "$CHANGED" | grep -E -q '^(demos/|tools/|src/layout/|src/render/|src/data/|src/table/|src/utils/|dist-build/|tests/golden/|\.github/workflows/golden-images\.yml)'; then
+            echo "run_visual=true" >> "$GITHUB_OUTPUT"
+            echo "Visual-risk files changed; running golden compare."
+          else
+            echo "run_visual=false" >> "$GITHUB_OUTPUT"
+            echo "No visual-risk files changed; skipping heavy golden capture."
+          fi
+
+      - name: Install Playwright package
+        if: steps.risk.outputs.run_visual == 'true'
+        run: npm install --no-save playwright
+
+      - name: Install Playwright Chromium
+        if: steps.risk.outputs.run_visual == 'true'
+        run: npx playwright install --with-deps chromium
+
       - name: Capture and compare
+        if: steps.risk.outputs.run_visual == 'true'
         run: |
           node tests/golden/scripts/between-commits.mjs \
             --base "${{ steps.shas.outputs.base }}" \
             --head "${{ steps.shas.outputs.head }}" \
+            --targets tests/golden/targets.json \
             --out tests/golden/diff
 
+      - name: Skip note
+        if: steps.risk.outputs.run_visual != 'true'
+        run: echo "Golden compare skipped because this PR did not touch visual-risk paths."
+
       - name: Upload diff artifacts
-        if: always()
+        if: always() && steps.risk.outputs.run_visual == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: golden-image-diff

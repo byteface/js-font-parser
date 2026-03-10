@@ -11,10 +11,9 @@ Prioritized by impact on parser correctness, release confidence, and npm usabili
      - Lock at least one canonical fixture per major script family used in demos/tools.
 
 2. **Golden-image regression as a required gate**
-   - Current status: golden workflow exists and runs, but should be treated as a hard release guard.
+   - Current status: required target set is now locked/validated and CI runs compare for visual-risk paths.
    - Do next:
-     - Define required page set for visual lock.
-     - Ensure CI/branch protection treats golden compare as a required check for high-risk visual/layout changes.
+     - Enable branch protection required status check: `Golden Images / visual-regression`.
 
 ## P1 (Important, After P0)
 
