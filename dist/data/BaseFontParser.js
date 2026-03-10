@@ -1,50 +1,3 @@
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
-    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (g && (g = 0, op[0] && (_ = 0)), _) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
-            }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-    }
-};
 import { matchesDiagnosticFilter } from '../types/Diagnostics.js';
 import { GlyfCompositeDescript } from '../table/GlyfCompositeDescript.js';
 import { Table } from '../table/Table.js';
@@ -60,58 +13,56 @@ import { detectScriptTags } from '../utils/ScriptDetector.js';
 import { TableDirectory } from '../table/TableDirectory.js';
 import { TableFactory } from '../table/TableFactory.js';
 import { GlyphData } from './GlyphData.js';
-var BaseFontParser = /** @class */ (function () {
-    function BaseFontParser() {
-        this.diagnostics = [];
-        this.diagnosticKeys = new Set();
-        this.tableDir = null;
-        this.tables = [];
-        this.os2 = null;
-        this.cmap = null;
-        this.glyf = null;
-        this.cff = null;
-        this.head = null;
-        this.hhea = null;
-        this.hmtx = null;
-        this.loca = null;
-        this.maxp = null;
-        this.pName = null;
-        this.post = null;
-        this.gsub = null;
-        this.kern = null;
-        this.colr = null;
-        this.cpal = null;
-        this.gpos = null;
-        this.gdef = null;
-        this.fvar = null;
-        this.svg = null;
-        this.gvar = null;
-        this.variationCoords = [];
-    }
-    BaseFontParser.prototype.emitDiagnostic = function (code, level, phase, message, context, onceKey) {
+export class BaseFontParser {
+    diagnostics = [];
+    diagnosticKeys = new Set();
+    tableDir = null;
+    tables = [];
+    os2 = null;
+    cmap = null;
+    glyf = null;
+    cff = null;
+    head = null;
+    hhea = null;
+    hmtx = null;
+    loca = null;
+    maxp = null;
+    pName = null;
+    post = null;
+    gsub = null;
+    kern = null;
+    colr = null;
+    cpal = null;
+    gpos = null;
+    gdef = null;
+    fvar = null;
+    svg = null;
+    gvar = null;
+    variationCoords = [];
+    emitDiagnostic(code, level, phase, message, context, onceKey) {
         if (onceKey) {
             if (this.diagnosticKeys.has(onceKey))
                 return;
             this.diagnosticKeys.add(onceKey);
         }
-        this.diagnostics.push({ code: code, level: level, phase: phase, message: message, context: context });
-    };
-    BaseFontParser.prototype.getDiagnostics = function (filter) {
-        return this.diagnostics.filter(function (d) { return matchesDiagnosticFilter(d, filter); }).slice();
-    };
-    BaseFontParser.prototype.clearDiagnostics = function () {
+        this.diagnostics.push({ code, level, phase, message, context });
+    }
+    getDiagnostics(filter) {
+        return this.diagnostics.filter((d) => matchesDiagnosticFilter(d, filter)).slice();
+    }
+    clearDiagnostics() {
         this.diagnostics = [];
         this.diagnosticKeys.clear();
-    };
-    BaseFontParser.prototype.getCmapTableForLookup = function () {
+    }
+    getCmapTableForLookup() {
         return this.cmap;
-    };
-    BaseFontParser.prototype.getBestCmapFormatFor = function (codePoint) {
-        var cmap = this.getCmapTableForLookup();
+    }
+    getBestCmapFormatFor(codePoint) {
+        const cmap = this.getCmapTableForLookup();
         if (!cmap)
             return null;
-        var prefersUcs4 = codePoint > 0xffff;
-        var preferred = prefersUcs4
+        const prefersUcs4 = codePoint > 0xffff;
+        const preferred = prefersUcs4
             ? [
                 { platformId: 3, encodingId: 10 },
                 { platformId: 0, encodingId: 4 },
@@ -128,565 +79,549 @@ var BaseFontParser = /** @class */ (function () {
                 { platformId: 0, encodingId: 4 },
                 { platformId: 1, encodingId: 0 }
             ];
-        for (var _i = 0, preferred_1 = preferred; _i < preferred_1.length; _i++) {
-            var pref = preferred_1[_i];
-            var formats = [];
+        for (const pref of preferred) {
+            let formats = [];
             try {
-                var resolved = cmap.getCmapFormats(pref.platformId, pref.encodingId);
+                const resolved = cmap.getCmapFormats(pref.platformId, pref.encodingId);
                 formats = Array.isArray(resolved) ? resolved : [];
             }
-            catch (_a) {
+            catch {
                 formats = [];
             }
             if (formats.length > 0) {
                 return this.pickBestFormat(formats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0]);
             }
         }
-        var fallbackFormats = Array.isArray(cmap.formats) ? cmap.formats : [];
+        const fallbackFormats = Array.isArray(cmap.formats) ? cmap.formats : [];
         return fallbackFormats.length > 0
             ? this.pickBestFormat(fallbackFormats, prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0])
             : null;
-    };
-    BaseFontParser.prototype.pickBestFormat = function (formats, order) {
-        if (order === void 0) { order = [4, 12, 10, 8, 6, 2, 0]; }
+    }
+    pickBestFormat(formats, order = [4, 12, 10, 8, 6, 2, 0]) {
         if (formats.length === 0)
             return null;
-        var safeFormats = formats.filter(function (f) { return !!f && typeof f === 'object'; });
+        const safeFormats = formats.filter((f) => !!f && typeof f === 'object');
         if (safeFormats.length === 0)
             return null;
-        var _loop_1 = function (fmt) {
-            var found = safeFormats.find(function (f) { return (typeof f.getFormatType === 'function' ? f.getFormatType() : f.format) === fmt; });
+        for (const fmt of order) {
+            const found = safeFormats.find((f) => (typeof f.getFormatType === 'function' ? f.getFormatType() : f.format) === fmt);
             if (found)
-                return { value: found };
-        };
-        for (var _i = 0, order_1 = order; _i < order_1.length; _i++) {
-            var fmt = order_1[_i];
-            var state_1 = _loop_1(fmt);
-            if (typeof state_1 === "object")
-                return state_1.value;
+                return found;
         }
         return safeFormats[0];
-    };
-    BaseFontParser.prototype.getGsubTableForLayout = function () {
+    }
+    isNonRenderingFormatCodePoint(codePoint) {
+        return codePoint === 0x00AD
+            || codePoint === 0x061C
+            || codePoint === 0x200B
+            || codePoint === 0x200E
+            || codePoint === 0x200F
+            || codePoint === 0x2060
+            || codePoint === 0xFEFF;
+    }
+    getGsubTableForLayout() {
         return this.gsub;
-    };
-    BaseFontParser.prototype.getKernTableForLayout = function () {
+    }
+    getKernTableForLayout() {
         return this.kern;
-    };
-    BaseFontParser.prototype.getGposTableForLayout = function () {
+    }
+    getGposTableForLayout() {
         return this.gpos;
-    };
-    BaseFontParser.prototype.getGlyphByIndexForLayout = function (glyphIndex) {
+    }
+    getGlyphByIndexForLayout(glyphIndex) {
         return this.getGlyph(glyphIndex);
-    };
-    BaseFontParser.prototype.isMarkGlyphForLayout = function (glyphIndex) {
+    }
+    isMarkGlyphForLayout(glyphIndex) {
         return this.isMarkGlyphClass(glyphIndex);
-    };
-    BaseFontParser.prototype.applyGposPositioningForLayout = function (glyphIndices, positioned, gposFeatures, scriptTags) {
+    }
+    applyGposPositioningForLayout(glyphIndices, positioned, gposFeatures, scriptTags) {
         this.applyGposPositioningInternal(glyphIndices, positioned, gposFeatures, scriptTags);
-    };
-    BaseFontParser.prototype.getNameRecordForInfo = function (nameId) {
+    }
+    getNameRecordForInfo(nameId) {
         return this.getNameRecord(nameId);
-    };
-    BaseFontParser.prototype.getOs2TableForInfo = function () {
+    }
+    getOs2TableForInfo() {
         return this.os2;
-    };
-    BaseFontParser.prototype.getPostTableForInfo = function () {
+    }
+    getPostTableForInfo() {
         return this.post;
-    };
-    BaseFontParser.prototype.getNameTableForShared = function () {
+    }
+    getNameTableForShared() {
         return this.pName;
-    };
-    BaseFontParser.prototype.getOs2TableForShared = function () {
+    }
+    getOs2TableForShared() {
         return this.os2;
-    };
-    BaseFontParser.prototype.getPostTableForShared = function () {
+    }
+    getPostTableForShared() {
         return this.post;
-    };
-    BaseFontParser.prototype.getFvarTableForShared = function () {
+    }
+    getFvarTableForShared() {
         return this.fvar;
-    };
-    BaseFontParser.prototype.getColrTableForShared = function () {
+    }
+    getColrTableForShared() {
         return this.colr;
-    };
-    BaseFontParser.prototype.getCpalTableForShared = function () {
+    }
+    getCpalTableForShared() {
         return this.cpal;
-    };
-    BaseFontParser.prototype.getUnitsPerEmForShared = function () {
+    }
+    getUnitsPerEmForShared() {
         return this.getUnitsPerEm();
-    };
-    BaseFontParser.prototype.setVariationCoordsInternal = function (coords) {
+    }
+    setVariationCoordsInternal(coords) {
         this.variationCoords = coords.slice();
-    };
-    BaseFontParser.prototype.onVariationCoordsUpdated = function (coords) {
+    }
+    onVariationCoordsUpdated(coords) {
         if (this.colr && typeof this.colr.setVariationCoords === 'function') {
             this.colr.setVariationCoords(coords);
         }
-    };
-    BaseFontParser.prototype.getGlyphShared = function (i, options) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24;
-        var maxGlyphs = (_a = options.maxGlyphs) !== null && _a !== void 0 ? _a : null;
+    }
+    getGlyphShared(i, options) {
+        const maxGlyphs = options.maxGlyphs ?? null;
         if (i < 0 || (maxGlyphs != null && i >= maxGlyphs))
             return null;
-        var glyf = (_b = options.glyf) !== null && _b !== void 0 ? _b : null;
-        var hmtx = (_c = options.hmtx) !== null && _c !== void 0 ? _c : null;
-        var gvar = (_d = options.gvar) !== null && _d !== void 0 ? _d : null;
-        var variationCoords = (_e = options.variationCoords) !== null && _e !== void 0 ? _e : [];
-        var cff = (_f = options.cff) !== null && _f !== void 0 ? _f : null;
-        var cff2 = (_g = options.cff2) !== null && _g !== void 0 ? _g : null;
-        var cffIncludePhantoms = (_h = options.cffIncludePhantoms) !== null && _h !== void 0 ? _h : true;
-        var description = (_k = (_j = glyf === null || glyf === void 0 ? void 0 : glyf.getDescription) === null || _j === void 0 ? void 0 : _j.call(glyf, i)) !== null && _k !== void 0 ? _k : null;
+        const glyf = options.glyf ?? null;
+        const hmtx = options.hmtx ?? null;
+        const gvar = options.gvar ?? null;
+        const variationCoords = options.variationCoords ?? [];
+        const cff = options.cff ?? null;
+        const cff2 = options.cff2 ?? null;
+        const cffIncludePhantoms = options.cffIncludePhantoms ?? true;
+        const description = glyf?.getDescription?.(i) ?? null;
         if (description != null) {
-            var desc = description;
-            var lsb = (_m = (_l = hmtx === null || hmtx === void 0 ? void 0 : hmtx.getLeftSideBearing) === null || _l === void 0 ? void 0 : _l.call(hmtx, i)) !== null && _m !== void 0 ? _m : 0;
-            var advance = (_p = (_o = hmtx === null || hmtx === void 0 ? void 0 : hmtx.getAdvanceWidth) === null || _o === void 0 ? void 0 : _o.call(hmtx, i)) !== null && _p !== void 0 ? _p : 0;
+            let desc = description;
+            let lsb = hmtx?.getLeftSideBearing?.(i) ?? 0;
+            let advance = hmtx?.getAdvanceWidth?.(i) ?? 0;
             if (gvar && variationCoords.length > 0) {
-                var basePointCount = description.getPointCount();
-                var isComposite_1 = description.isComposite();
-                var descriptionComponents = description instanceof GlyfCompositeDescript && Array.isArray(description.components)
+                const basePointCount = description.getPointCount();
+                const isComposite = description.isComposite();
+                const descriptionComponents = description instanceof GlyfCompositeDescript && Array.isArray(description.components)
                     ? description.components
                     : [];
-                var componentCount = isComposite_1 && description instanceof GlyfCompositeDescript
+                const componentCount = isComposite && description instanceof GlyfCompositeDescript
                     ? (descriptionComponents.length > 0 ? descriptionComponents.length : basePointCount)
                     : 0;
-                var transformSlotCount = 0;
-                if (isComposite_1 && description instanceof GlyfCompositeDescript) {
-                    for (var _i = 0, descriptionComponents_1 = descriptionComponents; _i < descriptionComponents_1.length; _i++) {
-                        var comp = descriptionComponents_1[_i];
+                let transformSlotCount = 0;
+                if (isComposite && description instanceof GlyfCompositeDescript) {
+                    for (const comp of descriptionComponents) {
                         transformSlotCount += comp.getTransformSlotCount();
                     }
                 }
-                var compositePointCount = isComposite_1 ? (componentCount + transformSlotCount) : basePointCount;
-                var gvarPointCount = compositePointCount + 4;
-                var deltas = gvar.getDeltasForGlyph(i, variationCoords, gvarPointCount);
+                const compositePointCount = isComposite ? (componentCount + transformSlotCount) : basePointCount;
+                const gvarPointCount = compositePointCount + 4;
+                const deltas = gvar.getDeltasForGlyph(i, variationCoords, gvarPointCount);
                 if (deltas) {
-                    var base_1 = description;
-                    var fullDx_1 = deltas.dx;
-                    var fullDy_1 = deltas.dy;
-                    var dx = [];
-                    var dy = [];
-                    var compDx_1 = null;
-                    var compDy_1 = null;
-                    var compXScale_1 = null;
-                    var compYScale_1 = null;
-                    var compScale01_1 = null;
-                    var compScale10_1 = null;
-                    if (!isComposite_1) {
-                        dx = fullDx_1.slice(0, basePointCount);
-                        dy = fullDy_1.slice(0, basePointCount);
-                        var touched = deltas.touched.slice(0, basePointCount);
+                    const base = description;
+                    const fullDx = deltas.dx;
+                    const fullDy = deltas.dy;
+                    let dx = [];
+                    let dy = [];
+                    let compDx = null;
+                    let compDy = null;
+                    let compXScale = null;
+                    let compYScale = null;
+                    let compScale01 = null;
+                    let compScale10 = null;
+                    if (!isComposite) {
+                        dx = fullDx.slice(0, basePointCount);
+                        dy = fullDy.slice(0, basePointCount);
+                        const touched = deltas.touched.slice(0, basePointCount);
                         while (dx.length < basePointCount)
                             dx.push(0);
                         while (dy.length < basePointCount)
                             dy.push(0);
                         while (touched.length < basePointCount)
                             touched.push(false);
-                        this.applyIupDeltasShared(base_1, dx, dy, touched);
+                        this.applyIupDeltasShared(base, dx, dy, touched);
                     }
-                    else if (base_1 instanceof GlyfCompositeDescript) {
-                        compDx_1 = new Array(componentCount).fill(0);
-                        compDy_1 = new Array(componentCount).fill(0);
-                        compXScale_1 = new Array(componentCount).fill(0);
-                        compYScale_1 = new Array(componentCount).fill(0);
-                        compScale01_1 = new Array(componentCount).fill(0);
-                        compScale10_1 = new Array(componentCount).fill(0);
-                        for (var c = 0; c < componentCount; c++) {
-                            compDx_1[c] = (_q = fullDx_1[c]) !== null && _q !== void 0 ? _q : 0;
-                            compDy_1[c] = (_r = fullDy_1[c]) !== null && _r !== void 0 ? _r : 0;
+                    else if (base instanceof GlyfCompositeDescript) {
+                        compDx = new Array(componentCount).fill(0);
+                        compDy = new Array(componentCount).fill(0);
+                        compXScale = new Array(componentCount).fill(0);
+                        compYScale = new Array(componentCount).fill(0);
+                        compScale01 = new Array(componentCount).fill(0);
+                        compScale10 = new Array(componentCount).fill(0);
+                        for (let c = 0; c < componentCount; c++) {
+                            compDx[c] = fullDx[c] ?? 0;
+                            compDy[c] = fullDy[c] ?? 0;
                         }
-                        var tIndex = componentCount;
-                        for (var c = 0; c < componentCount; c++) {
-                            var comp = descriptionComponents[c];
+                        let tIndex = componentCount;
+                        for (let c = 0; c < componentCount; c++) {
+                            const comp = descriptionComponents[c];
                             if (!comp)
                                 continue;
                             if (comp.hasTwoByTwo()) {
-                                var idx1 = tIndex++;
-                                var idx2 = tIndex++;
-                                compXScale_1[c] = ((_s = fullDx_1[idx1]) !== null && _s !== void 0 ? _s : 0) / 0x4000;
-                                compScale01_1[c] = ((_t = fullDy_1[idx1]) !== null && _t !== void 0 ? _t : 0) / 0x4000;
-                                compScale10_1[c] = ((_u = fullDx_1[idx2]) !== null && _u !== void 0 ? _u : 0) / 0x4000;
-                                compYScale_1[c] = ((_v = fullDy_1[idx2]) !== null && _v !== void 0 ? _v : 0) / 0x4000;
+                                const idx1 = tIndex++;
+                                const idx2 = tIndex++;
+                                compXScale[c] = (fullDx[idx1] ?? 0) / 0x4000;
+                                compScale01[c] = (fullDy[idx1] ?? 0) / 0x4000;
+                                compScale10[c] = (fullDx[idx2] ?? 0) / 0x4000;
+                                compYScale[c] = (fullDy[idx2] ?? 0) / 0x4000;
                             }
                             else if (comp.hasXYScale()) {
-                                var idx = tIndex++;
-                                compXScale_1[c] = ((_w = fullDx_1[idx]) !== null && _w !== void 0 ? _w : 0) / 0x4000;
-                                compYScale_1[c] = ((_x = fullDy_1[idx]) !== null && _x !== void 0 ? _x : 0) / 0x4000;
+                                const idx = tIndex++;
+                                compXScale[c] = (fullDx[idx] ?? 0) / 0x4000;
+                                compYScale[c] = (fullDy[idx] ?? 0) / 0x4000;
                             }
                             else if (comp.hasScale()) {
-                                var idx = tIndex++;
-                                var delta = ((_y = fullDx_1[idx]) !== null && _y !== void 0 ? _y : 0) / 0x4000;
-                                compXScale_1[c] = delta;
-                                compYScale_1[c] = delta;
+                                const idx = tIndex++;
+                                const delta = (fullDx[idx] ?? 0) / 0x4000;
+                                compXScale[c] = delta;
+                                compYScale[c] = delta;
                             }
                         }
                     }
-                    var phantomBase = isComposite_1 ? compositePointCount : basePointCount;
-                    var lsbDelta = (_z = fullDx_1[phantomBase]) !== null && _z !== void 0 ? _z : 0;
-                    var rsbDelta = (_0 = fullDx_1[phantomBase + 1]) !== null && _0 !== void 0 ? _0 : 0;
+                    const phantomBase = isComposite ? compositePointCount : basePointCount;
+                    const lsbDelta = fullDx[phantomBase] ?? 0;
+                    const rsbDelta = fullDx[phantomBase + 1] ?? 0;
                     lsb += lsbDelta;
                     advance += (rsbDelta - lsbDelta);
-                    var minX_1 = Infinity;
-                    var maxX_1 = -Infinity;
-                    var minY_1 = Infinity;
-                    var maxY_1 = -Infinity;
-                    for (var p = 0; p < basePointCount; p++) {
-                        var compositeBase = (isComposite_1 && base_1 instanceof GlyfCompositeDescript) ? base_1 : null;
-                        var compositeComponents = compositeBase && Array.isArray(compositeBase.components) ? compositeBase.components : [];
-                        var comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
-                        var compIndex = comp ? compositeComponents.indexOf(comp) : -1;
-                        var x = base_1.getXCoordinate(p);
-                        var y = base_1.getYCoordinate(p);
+                    let minX = Infinity;
+                    let maxX = -Infinity;
+                    let minY = Infinity;
+                    let maxY = -Infinity;
+                    for (let p = 0; p < basePointCount; p++) {
+                        const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
+                        const compositeComponents = compositeBase && Array.isArray(compositeBase.components) ? compositeBase.components : [];
+                        const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                        const compIndex = comp ? compositeComponents.indexOf(comp) : -1;
+                        let x = base.getXCoordinate(p);
+                        let y = base.getYCoordinate(p);
                         if (comp && compIndex >= 0 && glyf) {
-                            var gd = glyf.getDescription(comp.glyphIndex);
+                            const gd = glyf.getDescription(comp.glyphIndex);
                             if (gd) {
-                                var localIndex = p - comp.firstIndex;
-                                var px = gd.getXCoordinate(localIndex);
-                                var py = gd.getYCoordinate(localIndex);
-                                var xscale = comp.xscale + ((_1 = compXScale_1 === null || compXScale_1 === void 0 ? void 0 : compXScale_1[compIndex]) !== null && _1 !== void 0 ? _1 : 0);
-                                var yscale = comp.yscale + ((_2 = compYScale_1 === null || compYScale_1 === void 0 ? void 0 : compYScale_1[compIndex]) !== null && _2 !== void 0 ? _2 : 0);
-                                var scale01 = comp.scale01 + ((_3 = compScale01_1 === null || compScale01_1 === void 0 ? void 0 : compScale01_1[compIndex]) !== null && _3 !== void 0 ? _3 : 0);
-                                var scale10 = comp.scale10 + ((_4 = compScale10_1 === null || compScale10_1 === void 0 ? void 0 : compScale10_1[compIndex]) !== null && _4 !== void 0 ? _4 : 0);
-                                var ox = comp.xtranslate + ((_5 = compDx_1 === null || compDx_1 === void 0 ? void 0 : compDx_1[compIndex]) !== null && _5 !== void 0 ? _5 : 0);
-                                var oy = comp.ytranslate + ((_6 = compDy_1 === null || compDy_1 === void 0 ? void 0 : compDy_1[compIndex]) !== null && _6 !== void 0 ? _6 : 0);
+                                const localIndex = p - comp.firstIndex;
+                                const px = gd.getXCoordinate(localIndex);
+                                const py = gd.getYCoordinate(localIndex);
+                                const xscale = comp.xscale + (compXScale?.[compIndex] ?? 0);
+                                const yscale = comp.yscale + (compYScale?.[compIndex] ?? 0);
+                                const scale01 = comp.scale01 + (compScale01?.[compIndex] ?? 0);
+                                const scale10 = comp.scale10 + (compScale10?.[compIndex] ?? 0);
+                                const ox = comp.xtranslate + (compDx?.[compIndex] ?? 0);
+                                const oy = comp.ytranslate + (compDy?.[compIndex] ?? 0);
                                 x = (px * xscale) + (py * scale10) + ox;
                                 y = (px * scale01) + (py * yscale) + oy;
                             }
                         }
                         else {
-                            var rawDx = (_7 = fullDx_1[p]) !== null && _7 !== void 0 ? _7 : 0;
-                            var rawDy = (_8 = fullDy_1[p]) !== null && _8 !== void 0 ? _8 : 0;
-                            var transformed = comp && typeof comp.hasTransform === 'function' && comp.hasTransform() && typeof comp.transformDelta === 'function'
+                            const rawDx = fullDx[p] ?? 0;
+                            const rawDy = fullDy[p] ?? 0;
+                            const transformed = comp && typeof comp.hasTransform === 'function' && comp.hasTransform() && typeof comp.transformDelta === 'function'
                                 ? comp.transformDelta(rawDx, rawDy)
                                 : null;
-                            var pointDx = transformed ? ((_9 = transformed.dx) !== null && _9 !== void 0 ? _9 : rawDx) : rawDx;
-                            var pointDy = transformed ? ((_10 = transformed.dy) !== null && _10 !== void 0 ? _10 : rawDy) : rawDy;
-                            var ox = compIndex >= 0 && compDx_1 ? (_11 = compDx_1[compIndex]) !== null && _11 !== void 0 ? _11 : 0 : 0;
-                            var oy = compIndex >= 0 && compDy_1 ? (_12 = compDy_1[compIndex]) !== null && _12 !== void 0 ? _12 : 0 : 0;
-                            x = base_1.getXCoordinate(p) + pointDx + ox;
-                            y = base_1.getYCoordinate(p) + pointDy + oy;
+                            const pointDx = transformed ? (transformed.dx ?? rawDx) : rawDx;
+                            const pointDy = transformed ? (transformed.dy ?? rawDy) : rawDy;
+                            const ox = compIndex >= 0 && compDx ? compDx[compIndex] ?? 0 : 0;
+                            const oy = compIndex >= 0 && compDy ? compDy[compIndex] ?? 0 : 0;
+                            x = base.getXCoordinate(p) + pointDx + ox;
+                            y = base.getYCoordinate(p) + pointDy + oy;
                         }
-                        if (x < minX_1)
-                            minX_1 = x;
-                        if (x > maxX_1)
-                            maxX_1 = x;
-                        if (y < minY_1)
-                            minY_1 = y;
-                        if (y > maxY_1)
-                            maxY_1 = y;
+                        if (x < minX)
+                            minX = x;
+                        if (x > maxX)
+                            maxX = x;
+                        if (y < minY)
+                            minY = y;
+                        if (y > maxY)
+                            maxY = y;
                     }
                     desc = {
-                        getPointCount: function () { return base_1.getPointCount(); },
-                        getContourCount: function () { return base_1.getContourCount(); },
-                        getEndPtOfContours: function (c) { return base_1.getEndPtOfContours(c); },
-                        getFlags: function (p) { return base_1.getFlags(p); },
-                        getXCoordinate: function (p) {
-                            var _a, _b, _c, _d, _e, _f, _g, _h, _j;
-                            var compositeBase = (isComposite_1 && base_1 instanceof GlyfCompositeDescript) ? base_1 : null;
-                            var compositeComponents = compositeBase && Array.isArray(compositeBase.components) ? compositeBase.components : [];
-                            var comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
-                            var compIndex = comp ? compositeComponents.indexOf(comp) : -1;
+                        getPointCount: () => base.getPointCount(),
+                        getContourCount: () => base.getContourCount(),
+                        getEndPtOfContours: (c) => base.getEndPtOfContours(c),
+                        getFlags: (p) => base.getFlags(p),
+                        getXCoordinate: (p) => {
+                            const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
+                            const compositeComponents = compositeBase && Array.isArray(compositeBase.components) ? compositeBase.components : [];
+                            const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            const compIndex = comp ? compositeComponents.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && glyf) {
-                                var gd = glyf.getDescription(comp.glyphIndex);
+                                const gd = glyf.getDescription(comp.glyphIndex);
                                 if (gd) {
-                                    var localIndex = p - comp.firstIndex;
-                                    var px = gd.getXCoordinate(localIndex);
-                                    var py = gd.getYCoordinate(localIndex);
-                                    var xscale = comp.xscale + ((_a = compXScale_1 === null || compXScale_1 === void 0 ? void 0 : compXScale_1[compIndex]) !== null && _a !== void 0 ? _a : 0);
-                                    var yscale = comp.yscale + ((_b = compYScale_1 === null || compYScale_1 === void 0 ? void 0 : compYScale_1[compIndex]) !== null && _b !== void 0 ? _b : 0);
-                                    var scale01 = comp.scale01 + ((_c = compScale01_1 === null || compScale01_1 === void 0 ? void 0 : compScale01_1[compIndex]) !== null && _c !== void 0 ? _c : 0);
-                                    var scale10 = comp.scale10 + ((_d = compScale10_1 === null || compScale10_1 === void 0 ? void 0 : compScale10_1[compIndex]) !== null && _d !== void 0 ? _d : 0);
-                                    var ox_1 = comp.xtranslate + ((_e = compDx_1 === null || compDx_1 === void 0 ? void 0 : compDx_1[compIndex]) !== null && _e !== void 0 ? _e : 0);
-                                    return (px * xscale) + (py * scale10) + ox_1;
+                                    const localIndex = p - comp.firstIndex;
+                                    const px = gd.getXCoordinate(localIndex);
+                                    const py = gd.getYCoordinate(localIndex);
+                                    const xscale = comp.xscale + (compXScale?.[compIndex] ?? 0);
+                                    const yscale = comp.yscale + (compYScale?.[compIndex] ?? 0);
+                                    const scale01 = comp.scale01 + (compScale01?.[compIndex] ?? 0);
+                                    const scale10 = comp.scale10 + (compScale10?.[compIndex] ?? 0);
+                                    const ox = comp.xtranslate + (compDx?.[compIndex] ?? 0);
+                                    return (px * xscale) + (py * scale10) + ox;
                                 }
                             }
-                            var rawDx = (_f = fullDx_1[p]) !== null && _f !== void 0 ? _f : 0;
-                            var rawDy = (_g = fullDy_1[p]) !== null && _g !== void 0 ? _g : 0;
-                            var transformed = comp && typeof comp.hasTransform === 'function' && comp.hasTransform() && typeof comp.transformDelta === 'function'
+                            const rawDx = fullDx[p] ?? 0;
+                            const rawDy = fullDy[p] ?? 0;
+                            const transformed = comp && typeof comp.hasTransform === 'function' && comp.hasTransform() && typeof comp.transformDelta === 'function'
                                 ? comp.transformDelta(rawDx, rawDy)
                                 : null;
-                            var pointDx = transformed ? ((_h = transformed.dx) !== null && _h !== void 0 ? _h : rawDx) : rawDx;
-                            var ox = compIndex >= 0 && compDx_1 ? (_j = compDx_1[compIndex]) !== null && _j !== void 0 ? _j : 0 : 0;
-                            return base_1.getXCoordinate(p) + pointDx + ox;
+                            const pointDx = transformed ? (transformed.dx ?? rawDx) : rawDx;
+                            const ox = compIndex >= 0 && compDx ? compDx[compIndex] ?? 0 : 0;
+                            return base.getXCoordinate(p) + pointDx + ox;
                         },
-                        getYCoordinate: function (p) {
-                            var _a, _b, _c, _d, _e, _f, _g, _h, _j;
-                            var compositeBase = (isComposite_1 && base_1 instanceof GlyfCompositeDescript) ? base_1 : null;
-                            var compositeComponents = compositeBase && Array.isArray(compositeBase.components) ? compositeBase.components : [];
-                            var comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
-                            var compIndex = comp ? compositeComponents.indexOf(comp) : -1;
+                        getYCoordinate: (p) => {
+                            const compositeBase = (isComposite && base instanceof GlyfCompositeDescript) ? base : null;
+                            const compositeComponents = compositeBase && Array.isArray(compositeBase.components) ? compositeBase.components : [];
+                            const comp = compositeBase ? compositeBase.getComponentForPointIndex(p) : null;
+                            const compIndex = comp ? compositeComponents.indexOf(comp) : -1;
                             if (comp && compIndex >= 0 && glyf) {
-                                var gd = glyf.getDescription(comp.glyphIndex);
+                                const gd = glyf.getDescription(comp.glyphIndex);
                                 if (gd) {
-                                    var localIndex = p - comp.firstIndex;
-                                    var px = gd.getXCoordinate(localIndex);
-                                    var py = gd.getYCoordinate(localIndex);
-                                    var xscale = comp.xscale + ((_a = compXScale_1 === null || compXScale_1 === void 0 ? void 0 : compXScale_1[compIndex]) !== null && _a !== void 0 ? _a : 0);
-                                    var yscale = comp.yscale + ((_b = compYScale_1 === null || compYScale_1 === void 0 ? void 0 : compYScale_1[compIndex]) !== null && _b !== void 0 ? _b : 0);
-                                    var scale01 = comp.scale01 + ((_c = compScale01_1 === null || compScale01_1 === void 0 ? void 0 : compScale01_1[compIndex]) !== null && _c !== void 0 ? _c : 0);
-                                    var scale10 = comp.scale10 + ((_d = compScale10_1 === null || compScale10_1 === void 0 ? void 0 : compScale10_1[compIndex]) !== null && _d !== void 0 ? _d : 0);
-                                    var oy_1 = comp.ytranslate + ((_e = compDy_1 === null || compDy_1 === void 0 ? void 0 : compDy_1[compIndex]) !== null && _e !== void 0 ? _e : 0);
-                                    return (px * scale01) + (py * yscale) + oy_1;
+                                    const localIndex = p - comp.firstIndex;
+                                    const px = gd.getXCoordinate(localIndex);
+                                    const py = gd.getYCoordinate(localIndex);
+                                    const xscale = comp.xscale + (compXScale?.[compIndex] ?? 0);
+                                    const yscale = comp.yscale + (compYScale?.[compIndex] ?? 0);
+                                    const scale01 = comp.scale01 + (compScale01?.[compIndex] ?? 0);
+                                    const scale10 = comp.scale10 + (compScale10?.[compIndex] ?? 0);
+                                    const oy = comp.ytranslate + (compDy?.[compIndex] ?? 0);
+                                    return (px * scale01) + (py * yscale) + oy;
                                 }
                             }
-                            var rawDx = (_f = fullDx_1[p]) !== null && _f !== void 0 ? _f : 0;
-                            var rawDy = (_g = fullDy_1[p]) !== null && _g !== void 0 ? _g : 0;
-                            var transformed = comp && typeof comp.hasTransform === 'function' && comp.hasTransform() && typeof comp.transformDelta === 'function'
+                            const rawDx = fullDx[p] ?? 0;
+                            const rawDy = fullDy[p] ?? 0;
+                            const transformed = comp && typeof comp.hasTransform === 'function' && comp.hasTransform() && typeof comp.transformDelta === 'function'
                                 ? comp.transformDelta(rawDx, rawDy)
                                 : null;
-                            var pointDy = transformed ? ((_h = transformed.dy) !== null && _h !== void 0 ? _h : rawDy) : rawDy;
-                            var oy = compIndex >= 0 && compDy_1 ? (_j = compDy_1[compIndex]) !== null && _j !== void 0 ? _j : 0 : 0;
-                            return base_1.getYCoordinate(p) + pointDy + oy;
+                            const pointDy = transformed ? (transformed.dy ?? rawDy) : rawDy;
+                            const oy = compIndex >= 0 && compDy ? compDy[compIndex] ?? 0 : 0;
+                            return base.getYCoordinate(p) + pointDy + oy;
                         },
-                        getXMaximum: function () { return (maxX_1 !== -Infinity ? maxX_1 : base_1.getXMaximum()); },
-                        getXMinimum: function () { return (minX_1 !== Infinity ? minX_1 : base_1.getXMinimum()); },
-                        getYMaximum: function () { return (maxY_1 !== -Infinity ? maxY_1 : base_1.getYMaximum()); },
-                        getYMinimum: function () { return (minY_1 !== Infinity ? minY_1 : base_1.getYMinimum()); },
-                        isComposite: function () { return base_1.isComposite(); },
-                        resolve: function () { return base_1.resolve(); }
+                        getXMaximum: () => (maxX !== -Infinity ? maxX : base.getXMaximum()),
+                        getXMinimum: () => (minX !== Infinity ? minX : base.getXMinimum()),
+                        getYMaximum: () => (maxY !== -Infinity ? maxY : base.getYMaximum()),
+                        getYMinimum: () => (minY !== Infinity ? minY : base.getYMinimum()),
+                        isComposite: () => base.isComposite(),
+                        resolve: () => base.resolve()
                     };
                 }
             }
             return new GlyphData(desc, lsb, advance);
         }
         if (cff2) {
-            var cff2Desc = cff2.getGlyphDescription(i);
+            const cff2Desc = cff2.getGlyphDescription(i);
             if (cff2Desc) {
-                return new GlyphData(cff2Desc, (_14 = (_13 = hmtx === null || hmtx === void 0 ? void 0 : hmtx.getLeftSideBearing) === null || _13 === void 0 ? void 0 : _13.call(hmtx, i)) !== null && _14 !== void 0 ? _14 : 0, (_16 = (_15 = hmtx === null || hmtx === void 0 ? void 0 : hmtx.getAdvanceWidth) === null || _15 === void 0 ? void 0 : _15.call(hmtx, i)) !== null && _16 !== void 0 ? _16 : 0, { isCubic: true, includePhantoms: false });
+                return new GlyphData(cff2Desc, hmtx?.getLeftSideBearing?.(i) ?? 0, hmtx?.getAdvanceWidth?.(i) ?? 0, { isCubic: true, includePhantoms: false });
             }
         }
         if (cff) {
-            var cffDesc = cff.getGlyphDescription(i);
+            const cffDesc = cff.getGlyphDescription(i);
             if (cffDesc) {
-                return new GlyphData(cffDesc, (_18 = (_17 = hmtx === null || hmtx === void 0 ? void 0 : hmtx.getLeftSideBearing) === null || _17 === void 0 ? void 0 : _17.call(hmtx, i)) !== null && _18 !== void 0 ? _18 : 0, (_20 = (_19 = hmtx === null || hmtx === void 0 ? void 0 : hmtx.getAdvanceWidth) === null || _19 === void 0 ? void 0 : _19.call(hmtx, i)) !== null && _20 !== void 0 ? _20 : 0, { isCubic: true, includePhantoms: cffIncludePhantoms });
+                return new GlyphData(cffDesc, hmtx?.getLeftSideBearing?.(i) ?? 0, hmtx?.getAdvanceWidth?.(i) ?? 0, { isCubic: true, includePhantoms: cffIncludePhantoms });
             }
         }
         if (glyf) {
-            var lsb = (_22 = (_21 = hmtx === null || hmtx === void 0 ? void 0 : hmtx.getLeftSideBearing) === null || _21 === void 0 ? void 0 : _21.call(hmtx, i)) !== null && _22 !== void 0 ? _22 : 0;
-            var advance = (_24 = (_23 = hmtx === null || hmtx === void 0 ? void 0 : hmtx.getAdvanceWidth) === null || _23 === void 0 ? void 0 : _23.call(hmtx, i)) !== null && _24 !== void 0 ? _24 : 0;
-            var emptyDesc = {
-                getPointCount: function () { return 0; },
-                getContourCount: function () { return 0; },
-                getEndPtOfContours: function () { return -1; },
-                getFlags: function () { return 0; },
-                getXCoordinate: function () { return 0; },
-                getYCoordinate: function () { return 0; },
-                getXMaximum: function () { return 0; },
-                getXMinimum: function () { return 0; },
-                getYMaximum: function () { return 0; },
-                getYMinimum: function () { return 0; },
-                isComposite: function () { return false; },
-                resolve: function () { }
+            const lsb = hmtx?.getLeftSideBearing?.(i) ?? 0;
+            const advance = hmtx?.getAdvanceWidth?.(i) ?? 0;
+            const emptyDesc = {
+                getPointCount: () => 0,
+                getContourCount: () => 0,
+                getEndPtOfContours: () => -1,
+                getFlags: () => 0,
+                getXCoordinate: () => 0,
+                getYCoordinate: () => 0,
+                getXMaximum: () => 0,
+                getXMinimum: () => 0,
+                getYMaximum: () => 0,
+                getYMinimum: () => 0,
+                isComposite: () => false,
+                resolve: () => { }
             };
             return new GlyphData(emptyDesc, lsb, advance);
         }
         return null;
-    };
-    BaseFontParser.prototype.applyIupDeltasShared = function (base, dx, dy, touched) {
-        var pointCount = base.getPointCount();
+    }
+    applyIupDeltasShared(base, dx, dy, touched) {
+        const pointCount = base.getPointCount();
         if (pointCount === 0)
             return;
-        var endPts = [];
-        for (var c = 0; c < base.getContourCount(); c++) {
+        const endPts = [];
+        for (let c = 0; c < base.getContourCount(); c++) {
             endPts.push(base.getEndPtOfContours(c));
         }
-        var start = 0;
-        var _loop_2 = function (end) {
-            var indices = [];
-            var touchedIndices = [];
-            for (var i = start; i <= end; i++) {
+        let start = 0;
+        for (const end of endPts) {
+            const indices = [];
+            const touchedIndices = [];
+            for (let i = start; i <= end; i++) {
                 indices.push(i);
                 if (touched[i])
                     touchedIndices.push(i);
             }
             if (touchedIndices.length === 0) {
                 start = end + 1;
-                return "continue";
+                continue;
             }
             if (touchedIndices.length === 1) {
-                var idx = touchedIndices[0];
-                for (var _a = 0, indices_1 = indices; _a < indices_1.length; _a++) {
-                    var j = indices_1[_a];
+                const idx = touchedIndices[0];
+                for (const j of indices) {
                     dx[j] = dx[idx];
                     dy[j] = dy[idx];
                 }
                 start = end + 1;
-                return "continue";
+                continue;
             }
-            var contour = indices;
-            var total = contour.length;
-            var order = touchedIndices.map(function (idx) { return contour.indexOf(idx); }).sort(function (a, b) { return a - b; });
-            var coordsX = contour.map(function (idx) { return base.getXCoordinate(idx); });
-            var coordsY = contour.map(function (idx) { return base.getYCoordinate(idx); });
-            for (var t = 0; t < order.length; t++) {
-                var a = order[t];
-                var b = order[(t + 1) % order.length];
-                var idx = (a + 1) % total;
+            const contour = indices;
+            const total = contour.length;
+            const order = touchedIndices.map(idx => contour.indexOf(idx)).sort((a, b) => a - b);
+            const coordsX = contour.map(idx => base.getXCoordinate(idx));
+            const coordsY = contour.map(idx => base.getYCoordinate(idx));
+            for (let t = 0; t < order.length; t++) {
+                const a = order[t];
+                const b = order[(t + 1) % order.length];
+                let idx = (a + 1) % total;
                 while (idx !== b) {
-                    var globalIndex = contour[idx];
-                    var ax = coordsX[a];
-                    var bx = coordsX[b];
-                    var ay = coordsY[a];
-                    var by = coordsY[b];
-                    var px = coordsX[idx];
-                    var py = coordsY[idx];
-                    dx[globalIndex] = this_1.interpolateShared(ax, bx, dx[contour[a]], dx[contour[b]], px);
-                    dy[globalIndex] = this_1.interpolateShared(ay, by, dy[contour[a]], dy[contour[b]], py);
+                    const globalIndex = contour[idx];
+                    const ax = coordsX[a];
+                    const bx = coordsX[b];
+                    const ay = coordsY[a];
+                    const by = coordsY[b];
+                    const px = coordsX[idx];
+                    const py = coordsY[idx];
+                    dx[globalIndex] = this.interpolateShared(ax, bx, dx[contour[a]], dx[contour[b]], px);
+                    dy[globalIndex] = this.interpolateShared(ay, by, dy[contour[a]], dy[contour[b]], py);
                     idx = (idx + 1) % total;
                 }
             }
             start = end + 1;
-        };
-        var this_1 = this;
-        for (var _i = 0, endPts_1 = endPts; _i < endPts_1.length; _i++) {
-            var end = endPts_1[_i];
-            _loop_2(end);
         }
-    };
-    BaseFontParser.prototype.interpolateShared = function (aCoord, bCoord, aDelta, bDelta, pCoord) {
+    }
+    interpolateShared(aCoord, bCoord, aDelta, bDelta, pCoord) {
         if (aCoord === bCoord)
             return aDelta;
-        var t = (pCoord - aCoord) / (bCoord - aCoord);
-        var clamped = Math.max(0, Math.min(1, t));
+        const t = (pCoord - aCoord) / (bCoord - aCoord);
+        const clamped = Math.max(0, Math.min(1, t));
         return aDelta + (bDelta - aDelta) * clamped;
-    };
-    BaseFontParser.prototype.getGposAttachmentAnchors = function (glyphId, subtables) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
-        var gpos = this.getGposTableForLayout();
+    }
+    getGposAttachmentAnchors(glyphId, subtables) {
+        const gpos = this.getGposTableForLayout();
         if (!gpos)
             return [];
-        var anchors = [];
-        var activeSubtables = subtables !== null && subtables !== void 0 ? subtables : (function () {
-            var _a, _b, _c;
-            var lookups = (_c = (_b = (_a = gpos === null || gpos === void 0 ? void 0 : gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : [];
-            var all = [];
-            for (var _i = 0, lookups_1 = lookups; _i < lookups_1.length; _i++) {
-                var lookup = lookups_1[_i];
+        const anchors = [];
+        const activeSubtables = subtables ?? (() => {
+            const lookups = gpos?.lookupList?.getLookups?.() ?? [];
+            const all = [];
+            for (const lookup of lookups) {
                 if (!lookup)
                     continue;
-                for (var i = 0; i < lookup.getSubtableCount(); i++) {
-                    var st = lookup.getSubtable(i);
+                for (let i = 0; i < lookup.getSubtableCount(); i++) {
+                    const st = lookup.getSubtable(i);
                     if (st)
                         all.push(st);
                 }
             }
             return all;
         })();
-        for (var _i = 0, activeSubtables_1 = activeSubtables; _i < activeSubtables_1.length; _i++) {
-            var st = activeSubtables_1[_i];
+        for (const st of activeSubtables) {
             if (st instanceof MarkBasePosFormat1) {
-                var markIndex = (_b = (_a = st.markCoverage) === null || _a === void 0 ? void 0 : _a.findGlyph(glyphId)) !== null && _b !== void 0 ? _b : -1;
+                const markIndex = st.markCoverage?.findGlyph(glyphId) ?? -1;
                 if (markIndex >= 0 && st.markArray) {
-                    var record = st.markArray.marks[markIndex];
-                    if (record === null || record === void 0 ? void 0 : record.anchor) {
+                    const record = st.markArray.marks[markIndex];
+                    if (record?.anchor) {
                         anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
                     }
                 }
-                var baseIndex = (_d = (_c = st.baseCoverage) === null || _c === void 0 ? void 0 : _c.findGlyph(glyphId)) !== null && _d !== void 0 ? _d : -1;
+                const baseIndex = st.baseCoverage?.findGlyph(glyphId) ?? -1;
                 if (baseIndex >= 0 && st.baseArray) {
-                    var base = st.baseArray.baseRecords[baseIndex];
-                    if (base === null || base === void 0 ? void 0 : base.anchors) {
-                        base.anchors.forEach(function (anchor, classIndex) {
+                    const base = st.baseArray.baseRecords[baseIndex];
+                    if (base?.anchors) {
+                        base.anchors.forEach((anchor, classIndex) => {
                             if (anchor) {
-                                anchors.push({ type: 'base', classIndex: classIndex, x: anchor.x, y: anchor.y });
+                                anchors.push({ type: 'base', classIndex, x: anchor.x, y: anchor.y });
                             }
                         });
                     }
                 }
             }
             if (st instanceof MarkLigPosFormat1) {
-                var markIndex = (_f = (_e = st.markCoverage) === null || _e === void 0 ? void 0 : _e.findGlyph(glyphId)) !== null && _f !== void 0 ? _f : -1;
+                const markIndex = st.markCoverage?.findGlyph(glyphId) ?? -1;
                 if (markIndex >= 0 && st.markArray) {
-                    var record = st.markArray.marks[markIndex];
-                    if (record === null || record === void 0 ? void 0 : record.anchor) {
+                    const record = st.markArray.marks[markIndex];
+                    if (record?.anchor) {
                         anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
                     }
                 }
-                var ligIndex = (_h = (_g = st.ligatureCoverage) === null || _g === void 0 ? void 0 : _g.findGlyph(glyphId)) !== null && _h !== void 0 ? _h : -1;
+                const ligIndex = st.ligatureCoverage?.findGlyph(glyphId) ?? -1;
                 if (ligIndex >= 0 && st.ligatureArray) {
-                    var lig = st.ligatureArray.ligatures[ligIndex];
-                    (_j = lig === null || lig === void 0 ? void 0 : lig.components) === null || _j === void 0 ? void 0 : _j.forEach(function (component, componentIndex) {
-                        component.forEach(function (anchor, classIndex) {
+                    const lig = st.ligatureArray.ligatures[ligIndex];
+                    lig?.components?.forEach((component, componentIndex) => {
+                        component.forEach((anchor, classIndex) => {
                             if (anchor) {
-                                anchors.push({ type: 'ligature', classIndex: classIndex, x: anchor.x, y: anchor.y, componentIndex: componentIndex });
+                                anchors.push({ type: 'ligature', classIndex, x: anchor.x, y: anchor.y, componentIndex });
                             }
                         });
                     });
                 }
             }
             if (st instanceof MarkMarkPosFormat1) {
-                var mark1Index = (_l = (_k = st.mark1Coverage) === null || _k === void 0 ? void 0 : _k.findGlyph(glyphId)) !== null && _l !== void 0 ? _l : -1;
+                const mark1Index = st.mark1Coverage?.findGlyph(glyphId) ?? -1;
                 if (mark1Index >= 0 && st.mark1Array) {
-                    var record = st.mark1Array.marks[mark1Index];
-                    if (record === null || record === void 0 ? void 0 : record.anchor) {
+                    const record = st.mark1Array.marks[mark1Index];
+                    if (record?.anchor) {
                         anchors.push({ type: 'mark', classIndex: record.markClass, x: record.anchor.x, y: record.anchor.y });
                     }
                 }
-                var mark2Index = (_o = (_m = st.mark2Coverage) === null || _m === void 0 ? void 0 : _m.findGlyph(glyphId)) !== null && _o !== void 0 ? _o : -1;
+                const mark2Index = st.mark2Coverage?.findGlyph(glyphId) ?? -1;
                 if (mark2Index >= 0 && st.mark2Array) {
-                    var record = st.mark2Array.records[mark2Index];
-                    (_p = record === null || record === void 0 ? void 0 : record.anchors) === null || _p === void 0 ? void 0 : _p.forEach(function (anchor, classIndex) {
+                    const record = st.mark2Array.records[mark2Index];
+                    record?.anchors?.forEach((anchor, classIndex) => {
                         if (anchor) {
-                            anchors.push({ type: 'mark2', classIndex: classIndex, x: anchor.x, y: anchor.y });
+                            anchors.push({ type: 'mark2', classIndex, x: anchor.x, y: anchor.y });
                         }
                     });
                 }
             }
             if (st instanceof CursivePosFormat1) {
-                var idx = (_r = (_q = st.coverage) === null || _q === void 0 ? void 0 : _q.findGlyph(glyphId)) !== null && _r !== void 0 ? _r : -1;
+                const idx = st.coverage?.findGlyph(glyphId) ?? -1;
                 if (idx >= 0) {
-                    var record = st.entryExitRecords[idx];
-                    if (record === null || record === void 0 ? void 0 : record.entry)
+                    const record = st.entryExitRecords[idx];
+                    if (record?.entry)
                         anchors.push({ type: 'cursive-entry', classIndex: 0, x: record.entry.x, y: record.entry.y });
-                    if (record === null || record === void 0 ? void 0 : record.exit)
+                    if (record?.exit)
                         anchors.push({ type: 'cursive-exit', classIndex: 0, x: record.exit.x, y: record.exit.y });
                 }
             }
         }
         return anchors;
-    };
-    BaseFontParser.prototype.applyGposPositioningShared = function (glyphIndices, positioned, gposFeatures, scriptTags) {
-        var _this = this;
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1;
-        var gpos = this.getGposTableForLayout();
+    }
+    applyGposPositioningShared(glyphIndices, positioned, gposFeatures, scriptTags) {
+        const gpos = this.getGposTableForLayout();
         if (!gpos)
             return;
-        var subtables = gpos.getSubtablesForFeatures(gposFeatures, scriptTags);
-        for (var _i = 0, subtables_1 = subtables; _i < subtables_1.length; _i++) {
-            var st = subtables_1[_i];
+        const subtables = gpos.getSubtablesForFeatures(gposFeatures, scriptTags);
+        for (const st of subtables) {
             if (st instanceof SinglePosSubtable ||
                 typeof st.getAdjustment === 'function') {
-                for (var i = 0; i < glyphIndices.length; i++) {
+                for (let i = 0; i < glyphIndices.length; i++) {
                     if (!positioned[i])
                         continue;
-                    var adj = (_b = (_a = st).getAdjustment) === null || _b === void 0 ? void 0 : _b.call(_a, glyphIndices[i]);
+                    const adj = st.getAdjustment?.(glyphIndices[i]);
                     if (!adj)
                         continue;
-                    positioned[i].xOffset += (_c = adj.xPlacement) !== null && _c !== void 0 ? _c : 0;
-                    positioned[i].yOffset += (_d = adj.yPlacement) !== null && _d !== void 0 ? _d : 0;
-                    positioned[i].xAdvance += (_e = adj.xAdvance) !== null && _e !== void 0 ? _e : 0;
-                    positioned[i].yAdvance += (_f = adj.yAdvance) !== null && _f !== void 0 ? _f : 0;
+                    positioned[i].xOffset += adj.xPlacement ?? 0;
+                    positioned[i].yOffset += adj.yPlacement ?? 0;
+                    positioned[i].xAdvance += adj.xAdvance ?? 0;
+                    positioned[i].yAdvance += adj.yAdvance ?? 0;
                 }
             }
             if (st instanceof PairPosSubtable ||
                 st instanceof PairPosFormat1 ||
                 st instanceof PairPosFormat2 ||
                 typeof st.getPairValue === 'function') {
-                for (var i = 0; i < glyphIndices.length - 1; i++) {
+                for (let i = 0; i < glyphIndices.length - 1; i++) {
                     if (!positioned[i] || !positioned[i + 1])
                         continue;
-                    var pair = (_h = (_g = st).getPairValue) === null || _h === void 0 ? void 0 : _h.call(_g, glyphIndices[i], glyphIndices[i + 1]);
+                    const pair = st.getPairValue?.(glyphIndices[i], glyphIndices[i + 1]);
                     if (!pair)
                         continue;
-                    var v1 = pair.v1 || {};
-                    var v2 = pair.v2 || {};
-                    positioned[i].xOffset += (_j = v1.xPlacement) !== null && _j !== void 0 ? _j : 0;
-                    positioned[i].yOffset += (_k = v1.yPlacement) !== null && _k !== void 0 ? _k : 0;
-                    positioned[i].xAdvance += (_l = v1.xAdvance) !== null && _l !== void 0 ? _l : 0;
-                    positioned[i].yAdvance += (_m = v1.yAdvance) !== null && _m !== void 0 ? _m : 0;
-                    positioned[i + 1].xOffset += (_o = v2.xPlacement) !== null && _o !== void 0 ? _o : 0;
-                    positioned[i + 1].yOffset += (_p = v2.yPlacement) !== null && _p !== void 0 ? _p : 0;
-                    positioned[i + 1].xAdvance += (_q = v2.xAdvance) !== null && _q !== void 0 ? _q : 0;
-                    positioned[i + 1].yAdvance += (_r = v2.yAdvance) !== null && _r !== void 0 ? _r : 0;
+                    const v1 = pair.v1 || {};
+                    const v2 = pair.v2 || {};
+                    positioned[i].xOffset += v1.xPlacement ?? 0;
+                    positioned[i].yOffset += v1.yPlacement ?? 0;
+                    positioned[i].xAdvance += v1.xAdvance ?? 0;
+                    positioned[i].yAdvance += v1.yAdvance ?? 0;
+                    positioned[i + 1].xOffset += v2.xPlacement ?? 0;
+                    positioned[i + 1].yOffset += v2.yPlacement ?? 0;
+                    positioned[i + 1].xAdvance += v2.xAdvance ?? 0;
+                    positioned[i + 1].yAdvance += v2.yAdvance ?? 0;
                 }
                 continue;
             }
@@ -696,55 +631,51 @@ var BaseFontParser = /** @class */ (function () {
                 st instanceof CursivePosFormat1) {
                 continue;
             }
-            var constructorName = (_t = (_s = st === null || st === void 0 ? void 0 : st.constructor) === null || _s === void 0 ? void 0 : _s.name) !== null && _t !== void 0 ? _t : "unknown";
-            this.emitDiagnostic("UNSUPPORTED_GPOS_SUBTABLE", "info", "layout", "Encountered GPOS subtable not currently handled: ".concat(constructorName, "."), { constructorName: constructorName }, "UNSUPPORTED_GPOS_SUBTABLE:".concat(constructorName));
+            const constructorName = st?.constructor?.name ?? "unknown";
+            this.emitDiagnostic("UNSUPPORTED_GPOS_SUBTABLE", "info", "layout", `Encountered GPOS subtable not currently handled: ${constructorName}.`, { constructorName }, `UNSUPPORTED_GPOS_SUBTABLE:${constructorName}`);
         }
-        var markSubtables = subtables.filter(function (st) {
-            return st instanceof MarkBasePosFormat1 ||
-                st instanceof MarkLigPosFormat1 ||
-                st instanceof MarkMarkPosFormat1 ||
-                st instanceof CursivePosFormat1;
-        });
-        var anchorsCache = new Map();
-        var getAnchors = function (gid) {
+        const markSubtables = subtables.filter((st) => st instanceof MarkBasePosFormat1 ||
+            st instanceof MarkLigPosFormat1 ||
+            st instanceof MarkMarkPosFormat1 ||
+            st instanceof CursivePosFormat1);
+        const anchorsCache = new Map();
+        const getAnchors = (gid) => {
             if (anchorsCache.has(gid))
                 return anchorsCache.get(gid);
-            var anchors = _this.getGposAttachmentAnchors(gid, markSubtables);
+            const anchors = this.getGposAttachmentAnchors(gid, markSubtables);
             anchorsCache.set(gid, anchors);
             return anchors;
         };
-        var getBaseAnchor = function (anchors, classIndex) {
-            var candidates = anchors.filter(function (a) {
-                return (a.type === 'base' || a.type === 'ligature' || a.type === 'mark2') && a.classIndex === classIndex;
-            });
+        const getBaseAnchor = (anchors, classIndex) => {
+            const candidates = anchors.filter(a => (a.type === 'base' || a.type === 'ligature' || a.type === 'mark2') && a.classIndex === classIndex);
             if (candidates.length === 0)
                 return null;
-            var ligatureCandidates = candidates.filter(function (a) { return a.type === 'ligature'; });
+            const ligatureCandidates = candidates.filter(a => a.type === 'ligature');
             if (ligatureCandidates.length > 0) {
-                return ligatureCandidates.reduce(function (best, current) { var _a, _b; return ((_a = current.componentIndex) !== null && _a !== void 0 ? _a : -1) > ((_b = best.componentIndex) !== null && _b !== void 0 ? _b : -1) ? current : best; });
+                return ligatureCandidates.reduce((best, current) => (current.componentIndex ?? -1) > (best.componentIndex ?? -1) ? current : best);
             }
             return candidates[0];
         };
-        var _loop_3 = function (i) {
+        for (let i = 0; i < glyphIndices.length; i++) {
             if (!positioned[i])
-                return "continue";
-            var anchors = getAnchors(glyphIndices[i]);
-            var markAnchor = anchors.find(function (a) { return a.type === 'mark'; });
+                continue;
+            const anchors = getAnchors(glyphIndices[i]);
+            const markAnchor = anchors.find(a => a.type === 'mark');
             if (!markAnchor)
-                return "continue";
-            var attached = false;
-            var prev = i - 1;
+                continue;
+            let attached = false;
+            let prev = i - 1;
             while (prev >= 0) {
-                var prevGid = glyphIndices[prev];
-                if (!this_2.isMarkGlyphForLayout(prevGid)) {
+                const prevGid = glyphIndices[prev];
+                if (!this.isMarkGlyphForLayout(prevGid)) {
                     prev--;
                     continue;
                 }
-                var prevAnchors = getAnchors(prevGid);
-                var mark2 = prevAnchors.find(function (a) { return a.type === 'mark2' && a.classIndex === markAnchor.classIndex; });
+                const prevAnchors = getAnchors(prevGid);
+                const mark2 = prevAnchors.find(a => a.type === 'mark2' && a.classIndex === markAnchor.classIndex);
                 if (mark2) {
-                    positioned[i].xOffset += ((_v = (_u = positioned[prev]) === null || _u === void 0 ? void 0 : _u.xOffset) !== null && _v !== void 0 ? _v : 0) + (mark2.x - markAnchor.x);
-                    positioned[i].yOffset += ((_x = (_w = positioned[prev]) === null || _w === void 0 ? void 0 : _w.yOffset) !== null && _x !== void 0 ? _x : 0) + (mark2.y - markAnchor.y);
+                    positioned[i].xOffset += (positioned[prev]?.xOffset ?? 0) + (mark2.x - markAnchor.x);
+                    positioned[i].yOffset += (positioned[prev]?.yOffset ?? 0) + (mark2.y - markAnchor.y);
                     positioned[i].xAdvance = 0;
                     attached = true;
                     break;
@@ -752,72 +683,66 @@ var BaseFontParser = /** @class */ (function () {
                 prev--;
             }
             if (attached)
-                return "continue";
-            var baseIndex = i - 1;
+                continue;
+            let baseIndex = i - 1;
             while (baseIndex >= 0) {
-                var baseGid = glyphIndices[baseIndex];
-                if (this_2.isMarkGlyphForLayout(baseGid)) {
+                const baseGid = glyphIndices[baseIndex];
+                if (this.isMarkGlyphForLayout(baseGid)) {
                     baseIndex--;
                     continue;
                 }
-                var baseAnchors = getAnchors(baseGid);
-                var baseAnchor = getBaseAnchor(baseAnchors, markAnchor.classIndex);
+                const baseAnchors = getAnchors(baseGid);
+                const baseAnchor = getBaseAnchor(baseAnchors, markAnchor.classIndex);
                 if (baseAnchor) {
-                    positioned[i].xOffset += ((_z = (_y = positioned[baseIndex]) === null || _y === void 0 ? void 0 : _y.xOffset) !== null && _z !== void 0 ? _z : 0) + (baseAnchor.x - markAnchor.x);
-                    positioned[i].yOffset += ((_1 = (_0 = positioned[baseIndex]) === null || _0 === void 0 ? void 0 : _0.yOffset) !== null && _1 !== void 0 ? _1 : 0) + (baseAnchor.y - markAnchor.y);
+                    positioned[i].xOffset += (positioned[baseIndex]?.xOffset ?? 0) + (baseAnchor.x - markAnchor.x);
+                    positioned[i].yOffset += (positioned[baseIndex]?.yOffset ?? 0) + (baseAnchor.y - markAnchor.y);
                     positioned[i].xAdvance = 0;
                     break;
                 }
                 baseIndex--;
             }
-        };
-        var this_2 = this;
-        for (var i = 0; i < glyphIndices.length; i++) {
-            _loop_3(i);
         }
-        for (var i = 1; i < glyphIndices.length; i++) {
+        for (let i = 1; i < glyphIndices.length; i++) {
             if (!positioned[i])
                 continue;
-            var prevAnchors = getAnchors(glyphIndices[i - 1]);
-            var currAnchors = getAnchors(glyphIndices[i]);
-            var exitAnchor = prevAnchors.find(function (a) { return a.type === 'cursive-exit'; });
-            var entryAnchor = currAnchors.find(function (a) { return a.type === 'cursive-entry'; });
+            const prevAnchors = getAnchors(glyphIndices[i - 1]);
+            const currAnchors = getAnchors(glyphIndices[i]);
+            const exitAnchor = prevAnchors.find(a => a.type === 'cursive-exit');
+            const entryAnchor = currAnchors.find(a => a.type === 'cursive-entry');
             if (exitAnchor && entryAnchor) {
                 positioned[i].xOffset += exitAnchor.x - entryAnchor.x;
                 positioned[i].yOffset += exitAnchor.y - entryAnchor.y;
             }
         }
-        for (var i = 0; i < glyphIndices.length; i++) {
+        for (let i = 0; i < glyphIndices.length; i++) {
             if (positioned[i] && this.isMarkGlyphForLayout(glyphIndices[i])) {
                 positioned[i].xAdvance = 0;
             }
         }
-    };
-    BaseFontParser.prototype.applyGposPositioningInternal = function (glyphIndices, positioned, gposFeatures, scriptTags) {
+    }
+    applyGposPositioningInternal(glyphIndices, positioned, gposFeatures, scriptTags) {
         this.applyGposPositioningShared(glyphIndices, positioned, gposFeatures, scriptTags);
-    };
-    BaseFontParser.prototype.applyGposPositioning = function (glyphIndices, positioned, gposFeatures, scriptTags) {
+    }
+    applyGposPositioning(glyphIndices, positioned, gposFeatures, scriptTags) {
         this.applyGposPositioningInternal(glyphIndices, positioned, gposFeatures, scriptTags);
-    };
-    BaseFontParser.prototype.isMarkGlyphClass = function (glyphId) {
-        var _a, _b, _c;
-        return ((_c = (_b = (_a = this.gdef) === null || _a === void 0 ? void 0 : _a.getGlyphClass) === null || _b === void 0 ? void 0 : _b.call(_a, glyphId)) !== null && _c !== void 0 ? _c : 0) === 3;
-    };
-    BaseFontParser.prototype.getTable = function (tableType) {
-        return this.tables.find(function (tab) { var _a; return ((_a = tab === null || tab === void 0 ? void 0 : tab.getType) === null || _a === void 0 ? void 0 : _a.call(tab)) === tableType; }) || null;
-    };
-    BaseFontParser.prototype.parseSfntTables = function (byteData) {
-        var tf = new TableFactory();
+    }
+    isMarkGlyphClass(glyphId) {
+        return (this.gdef?.getGlyphClass?.(glyphId) ?? 0) === 3;
+    }
+    getTable(tableType) {
+        return this.tables.find(tab => tab?.getType?.() === tableType) || null;
+    }
+    parseSfntTables(byteData) {
+        const tf = new TableFactory();
         this.tables = [];
         this.tableDir = new TableDirectory(byteData);
-        for (var i = 0; i < this.tableDir.numTables; i++) {
-            var tab = tf.create(this.tableDir.getEntry(i), byteData);
+        for (let i = 0; i < this.tableDir.numTables; i++) {
+            const tab = tf.create(this.tableDir.getEntry(i), byteData);
             if (tab !== null)
                 this.tables.push(tab);
         }
-    };
-    BaseFontParser.prototype.wireCommonTables = function () {
-        var _a, _b, _c, _d;
+    }
+    wireCommonTables() {
         this.os2 = this.getTable(Table.OS_2);
         this.cmap = this.getTable(Table.cmap);
         this.glyf = this.getTable(Table.glyf);
@@ -838,20 +763,18 @@ var BaseFontParser = /** @class */ (function () {
         this.svg = this.getTable(Table.SVG);
         this.fvar = this.getTable(Table.fvar);
         this.gvar = this.getTable(Table.gvar);
-        var maybeGsubWithGdef = this.gsub;
-        if (this.gsub && this.gdef && typeof (maybeGsubWithGdef === null || maybeGsubWithGdef === void 0 ? void 0 : maybeGsubWithGdef.setGdef) === 'function') {
+        const maybeGsubWithGdef = this.gsub;
+        if (this.gsub && this.gdef && typeof maybeGsubWithGdef?.setGdef === 'function') {
             maybeGsubWithGdef.setGdef(this.gdef);
         }
         if (this.fvar && this.fvar.axes.length > 0) {
-            var defaults = {};
-            for (var _i = 0, _e = this.fvar.axes; _i < _e.length; _i++) {
-                var axis = _e[_i];
+            const defaults = {};
+            for (const axis of this.fvar.axes)
                 defaults[axis.name] = axis.defaultValue;
-            }
             this.setVariationByAxes(defaults);
         }
         if (this.hmtx && this.maxp) {
-            this.hmtx.run((_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.numberOfHMetrics) !== null && _b !== void 0 ? _b : 0, this.maxp.numGlyphs - ((_d = (_c = this.hhea) === null || _c === void 0 ? void 0 : _c.numberOfHMetrics) !== null && _d !== void 0 ? _d : 0));
+            this.hmtx.run(this.hhea?.numberOfHMetrics ?? 0, this.maxp.numGlyphs - (this.hhea?.numberOfHMetrics ?? 0));
         }
         if (this.loca && this.maxp && this.head) {
             this.loca.run(this.maxp.numGlyphs, this.head.indexToLocFormat === 0);
@@ -859,8 +782,8 @@ var BaseFontParser = /** @class */ (function () {
         if (this.glyf && this.loca && this.maxp) {
             this.glyf.run(this.maxp.numGlyphs, this.loca);
         }
-    };
-    BaseFontParser.prototype.getGlyphIndexByChar = function (char) {
+    }
+    getGlyphIndexByChar(char) {
         if (!char || char.length === 0) {
             this.emitDiagnostic("INVALID_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar expects a character.");
             return null;
@@ -868,32 +791,34 @@ var BaseFontParser = /** @class */ (function () {
         if (Array.from(char).length > 1) {
             this.emitDiagnostic("MULTI_CHAR_INPUT", "warning", "parse", "getGlyphIndexByChar received multiple characters; using the first code point.", undefined, "MULTI_CHAR_INPUT");
         }
-        var codePoint = char.codePointAt(0);
+        const codePoint = char.codePointAt(0);
         if (codePoint == null) {
             this.emitDiagnostic("CODE_POINT_RESOLVE_FAILED", "warning", "parse", "Failed to resolve code point for character.");
             return null;
         }
-        var cmap = this.getCmapTableForLookup();
+        if (this.isNonRenderingFormatCodePoint(codePoint))
+            return null;
+        const cmap = this.getCmapTableForLookup();
         if (!cmap) {
             this.emitDiagnostic("MISSING_TABLE_CMAP", "warning", "parse", "No cmap table available.", undefined, "MISSING_TABLE_CMAP");
             return null;
         }
-        var cmapFormat = null;
+        let cmapFormat = null;
         try {
             cmapFormat = this.getBestCmapFormatFor(codePoint);
         }
-        catch (_a) {
-            this.emitDiagnostic("CMAP_FORMAT_RESOLVE_FAILED", "warning", "parse", "Failed while resolving preferred cmap format; using fallback format order.", { codePoint: codePoint }, "CMAP_FORMAT_RESOLVE_FAILED");
-            var fallbackFormats = Array.isArray(cmap.formats)
-                ? cmap.formats.filter(function (fmt) { return fmt != null; })
+        catch {
+            this.emitDiagnostic("CMAP_FORMAT_RESOLVE_FAILED", "warning", "parse", "Failed while resolving preferred cmap format; using fallback format order.", { codePoint }, "CMAP_FORMAT_RESOLVE_FAILED");
+            const fallbackFormats = Array.isArray(cmap.formats)
+                ? cmap.formats.filter((fmt) => fmt != null)
                 : [];
             cmapFormat = this.pickBestFormat(fallbackFormats);
         }
         if (!cmapFormat) {
-            this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint: codePoint });
+            this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint });
             return null;
         }
-        var glyphIndex = null;
+        let glyphIndex = null;
         try {
             if (typeof cmapFormat.getGlyphIndex === "function") {
                 glyphIndex = cmapFormat.getGlyphIndex(codePoint);
@@ -902,39 +827,36 @@ var BaseFontParser = /** @class */ (function () {
                 glyphIndex = cmapFormat.mapCharCode(codePoint);
             }
             else {
-                this.emitDiagnostic("UNSUPPORTED_CMAP_FORMAT", "warning", "parse", "Selected cmap format does not expose getGlyphIndex/mapCharCode.", { codePoint: codePoint }, "UNSUPPORTED_CMAP_FORMAT");
+                this.emitDiagnostic("UNSUPPORTED_CMAP_FORMAT", "warning", "parse", "Selected cmap format does not expose getGlyphIndex/mapCharCode.", { codePoint }, "UNSUPPORTED_CMAP_FORMAT");
                 return null;
             }
         }
-        catch (_b) {
-            this.emitDiagnostic("CMAP_LOOKUP_FAILED", "warning", "parse", "cmap glyph lookup failed for code point.", { codePoint: codePoint });
+        catch {
+            this.emitDiagnostic("CMAP_LOOKUP_FAILED", "warning", "parse", "cmap glyph lookup failed for code point.", { codePoint });
             return null;
         }
         if (typeof glyphIndex !== "number" || !Number.isFinite(glyphIndex) || glyphIndex === 0)
             return null;
         return glyphIndex;
-    };
-    BaseFontParser.prototype.getGlyphByChar = function (char) {
-        var idx = this.getGlyphIndexByChar(char);
+    }
+    getGlyphByChar(char) {
+        const idx = this.getGlyphIndexByChar(char);
         if (idx == null)
             return null;
         return this.getGlyphByIndexForLayout(idx);
-    };
-    BaseFontParser.prototype.getGlyphIndicesForString = function (text) {
-        var glyphs = [];
-        for (var _i = 0, _a = Array.from(text); _i < _a.length; _i++) {
-            var ch = _a[_i];
-            var idx = this.getGlyphIndexByChar(ch);
+    }
+    getGlyphIndicesForString(text) {
+        const glyphs = [];
+        for (const ch of Array.from(text)) {
+            const idx = this.getGlyphIndexByChar(ch);
             if (idx != null)
                 glyphs.push(idx);
         }
         return glyphs;
-    };
-    BaseFontParser.prototype.getGlyphIndicesForStringWithGsub = function (text, featureTags, scriptTags) {
-        if (featureTags === void 0) { featureTags = ["liga"]; }
-        if (scriptTags === void 0) { scriptTags = ["DFLT", "latn"]; }
-        var glyphs = this.getGlyphIndicesForString(text);
-        var gsub = this.getGsubTableForLayout();
+    }
+    getGlyphIndicesForStringWithGsub(text, featureTags = ["liga"], scriptTags = ["DFLT", "latn"]) {
+        const glyphs = this.getGlyphIndicesForString(text);
+        const gsub = this.getGsubTableForLayout();
         if (!gsub || glyphs.length === 0) {
             if (!gsub && glyphs.length > 0) {
                 this.emitDiagnostic("MISSING_TABLE_GSUB", "info", "layout", "GSUB table not present; using direct glyph mapping.", undefined, "MISSING_TABLE_GSUB");
@@ -942,81 +864,78 @@ var BaseFontParser = /** @class */ (function () {
             return glyphs;
         }
         return gsub.applyFeatures(glyphs, featureTags, scriptTags);
-    };
-    BaseFontParser.prototype.getKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
-        var kernTable = this.getKernTableForLayout();
+    }
+    getKerningValueByGlyphs(leftGlyph, rightGlyph) {
+        const kernTable = this.getKernTableForLayout();
         if (!kernTable)
             return 0;
         if (typeof kernTable.getKerningValue === "function") {
             try {
-                var value = kernTable.getKerningValue(leftGlyph, rightGlyph);
+                const value = kernTable.getKerningValue(leftGlyph, rightGlyph);
                 return typeof value === 'number' && Number.isFinite(value) ? value : 0;
             }
-            catch (_a) {
+            catch {
                 return 0;
             }
         }
         return 0;
-    };
-    BaseFontParser.prototype.getGposKerningValueByGlyphs = function (leftGlyph, rightGlyph) {
-        var _a, _b, _c;
-        var gpos = this.getGposTableForLayout();
+    }
+    getGposKerningValueByGlyphs(leftGlyph, rightGlyph) {
+        const gpos = this.getGposTableForLayout();
         if (!gpos) {
             this.emitDiagnostic("MISSING_TABLE_GPOS", "info", "layout", "GPOS table not present; kerning defaults to 0.", undefined, "MISSING_TABLE_GPOS");
             return 0;
         }
-        var lookups = (_c = (_b = (_a = gpos.lookupList) === null || _a === void 0 ? void 0 : _a.getLookups) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : [];
-        var value = 0;
-        for (var _i = 0, lookups_2 = lookups; _i < lookups_2.length; _i++) {
-            var lookup = lookups_2[_i];
+        const lookups = gpos.lookupList?.getLookups?.() ?? [];
+        let value = 0;
+        for (const lookup of lookups) {
             if (!lookup || lookup.getType() !== 2)
                 continue;
-            for (var i = 0; i < lookup.getSubtableCount(); i++) {
-                var st = lookup.getSubtable(i);
-                if (typeof (st === null || st === void 0 ? void 0 : st.getKerning) === 'function') {
+            for (let i = 0; i < lookup.getSubtableCount(); i++) {
+                const st = lookup.getSubtable(i);
+                if (typeof st?.getKerning === 'function') {
                     try {
-                        var kern = st.getKerning(leftGlyph, rightGlyph);
+                        const kern = st.getKerning(leftGlyph, rightGlyph);
                         value += Number.isFinite(kern) ? kern : 0;
                     }
-                    catch (_d) {
+                    catch {
                         // Ignore malformed pair subtables and continue.
                     }
                 }
             }
         }
         return Number.isFinite(value) ? value : 0;
-    };
-    BaseFontParser.prototype.getKerningValue = function (leftChar, rightChar) {
-        var left = this.getGlyphIndexByChar(leftChar);
-        var right = this.getGlyphIndexByChar(rightChar);
+    }
+    getKerningValue(leftChar, rightChar) {
+        const left = this.getGlyphIndexByChar(leftChar);
+        const right = this.getGlyphIndexByChar(rightChar);
         if (left == null || right == null)
             return 0;
-        var kern = this.getKerningValueByGlyphs(left, right);
+        const kern = this.getKerningValueByGlyphs(left, right);
         if (kern !== 0)
             return kern;
         return this.getGposKerningValueByGlyphs(left, right);
-    };
-    BaseFontParser.prototype.layoutString = function (text, options) {
-        var _a, _b, _c, _d;
-        if (options === void 0) { options = {}; }
-        var gsubFeatures = (_a = options.gsubFeatures) !== null && _a !== void 0 ? _a : ["liga"];
-        var scriptTags = (_b = options.scriptTags) !== null && _b !== void 0 ? _b : ["DFLT", "latn"];
-        var gposFeatures = (_c = options.gposFeatures) !== null && _c !== void 0 ? _c : ["kern", "mark", "mkmk", "curs"];
-        var glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
-        var positioned = [];
-        for (var i = 0; i < glyphIndices.length; i++) {
-            var glyphIndex = glyphIndices[i];
-            var glyph = this.getGlyphByIndexForLayout(glyphIndex);
-            var kern = 0;
-            if (i < glyphIndices.length - 1) {
+    }
+    layoutString(text, options = {}) {
+        const gsubFeatures = options.gsubFeatures ?? ["liga"];
+        const scriptTags = options.scriptTags ?? ["DFLT", "latn"];
+        const kerningEnabled = options.kerning ?? true;
+        const gposFeatures = options.gposFeatures ?? (kerningEnabled ? ["kern", "mark", "mkmk", "curs"] : ["mark", "mkmk", "curs"]);
+        const glyphIndices = this.getGlyphIndicesForStringWithGsub(text, gsubFeatures, scriptTags);
+        const positioned = [];
+        for (let i = 0; i < glyphIndices.length; i++) {
+            const glyphIndex = glyphIndices[i];
+            const glyph = this.getGlyphByIndexForLayout(glyphIndex);
+            let kern = 0;
+            if (kerningEnabled && i < glyphIndices.length - 1) {
                 kern = this.getKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
-                if (kern === 0) {
+                if (kern === 0 && !options.gpos) {
                     kern = this.getGposKerningValueByGlyphs(glyphIndex, glyphIndices[i + 1]);
                 }
             }
             positioned.push({
-                glyphIndex: glyphIndex,
-                xAdvance: this.isMarkGlyphForLayout(glyphIndex) ? 0 : ((_d = glyph === null || glyph === void 0 ? void 0 : glyph.advanceWidth) !== null && _d !== void 0 ? _d : 0) + kern,
+                glyphIndex,
+                xAdvance: this.isMarkGlyphForLayout(glyphIndex) ? 0 : (glyph?.advanceWidth ?? 0) + kern,
                 xOffset: 0,
                 yOffset: 0,
                 yAdvance: 0
@@ -1029,39 +948,31 @@ var BaseFontParser = /** @class */ (function () {
             this.applyGposPositioningForLayout(glyphIndices, positioned, gposFeatures, scriptTags);
         }
         return positioned;
-    };
-    BaseFontParser.prototype.getTableByType = function (tableType) {
+    }
+    getTableByType(tableType) {
         return this.getTable(tableType);
-    };
-    BaseFontParser.prototype.getNumGlyphs = function () {
-        var _a, _b;
-        return (_b = (_a = this.maxp) === null || _a === void 0 ? void 0 : _a.numGlyphs) !== null && _b !== void 0 ? _b : 0;
-    };
-    BaseFontParser.prototype.getAscent = function () {
-        var _a, _b;
-        return (_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.ascender) !== null && _b !== void 0 ? _b : 0;
-    };
-    BaseFontParser.prototype.getDescent = function () {
-        var _a, _b;
-        return (_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.descender) !== null && _b !== void 0 ? _b : 0;
-    };
-    BaseFontParser.prototype.getUnitsPerEm = function () {
-        var _a, _b;
-        return (_b = (_a = this.head) === null || _a === void 0 ? void 0 : _a.unitsPerEm) !== null && _b !== void 0 ? _b : 1000;
-    };
-    BaseFontParser.prototype.getMarkAnchorsForGlyph = function (glyphId, subtables) {
+    }
+    getNumGlyphs() {
+        return this.maxp?.numGlyphs ?? 0;
+    }
+    getAscent() {
+        return this.hhea?.ascender ?? 0;
+    }
+    getDescent() {
+        return this.hhea?.descender ?? 0;
+    }
+    getUnitsPerEm() {
+        return this.head?.unitsPerEm ?? 1000;
+    }
+    getMarkAnchorsForGlyph(glyphId, subtables) {
         return this.getGposAttachmentAnchors(glyphId, subtables);
-    };
-    BaseFontParser.prototype.getSvgDocumentForGlyphAsync = function (glyphId) {
-        return __awaiter(this, void 0, void 0, function () {
-            return __generator(this, function (_a) {
-                if (!this.svg)
-                    return [2 /*return*/, { svgText: null, isCompressed: false }];
-                return [2 /*return*/, this.svg.getSvgDocumentForGlyphAsync(glyphId)];
-            });
-        });
-    };
-    BaseFontParser.prototype.getNameInfo = function () {
+    }
+    async getSvgDocumentForGlyphAsync(glyphId) {
+        if (!this.svg)
+            return { svgText: null, isCompressed: false };
+        return this.svg.getSvgDocumentForGlyphAsync(glyphId);
+    }
+    getNameInfo() {
         return {
             family: this.getNameRecordForInfo(1),
             subfamily: this.getNameRecordForInfo(2),
@@ -1074,13 +985,13 @@ var BaseFontParser = /** @class */ (function () {
             typoFamily: this.getNameRecordForInfo(16),
             typoSubfamily: this.getNameRecordForInfo(17)
         };
-    };
-    BaseFontParser.prototype.getOs2Info = function () {
-        var os2 = this.getOs2TableForInfo();
+    }
+    getOs2Info() {
+        const os2 = this.getOs2TableForInfo();
         if (!os2)
             return null;
-        var vendorRaw = os2.achVendorID >>> 0;
-        var vendorId = String.fromCharCode((vendorRaw >>> 24) & 0xff, (vendorRaw >>> 16) & 0xff, (vendorRaw >>> 8) & 0xff, vendorRaw & 0xff).replace(/\0/g, '');
+        const vendorRaw = os2.achVendorID >>> 0;
+        const vendorId = String.fromCharCode((vendorRaw >>> 24) & 0xff, (vendorRaw >>> 16) & 0xff, (vendorRaw >>> 8) & 0xff, vendorRaw & 0xff).replace(/\0/g, '');
         return {
             weightClass: os2.usWeightClass,
             widthClass: os2.usWidthClass,
@@ -1091,12 +1002,12 @@ var BaseFontParser = /** @class */ (function () {
             winDescent: os2.usWinDescent,
             unicodeRanges: [os2.ulUnicodeRange1, os2.ulUnicodeRange2, os2.ulUnicodeRange3, os2.ulUnicodeRange4],
             codePageRanges: [os2.ulCodePageRange1, os2.ulCodePageRange2],
-            vendorId: vendorId,
+            vendorId,
             fsSelection: os2.fsSelection
         };
-    };
-    BaseFontParser.prototype.getPostInfo = function () {
-        var post = this.getPostTableForInfo();
+    }
+    getPostInfo() {
+        const post = this.getPostTableForInfo();
         if (!post)
             return null;
         return {
@@ -1105,24 +1016,22 @@ var BaseFontParser = /** @class */ (function () {
             underlineThickness: post.underlineThickness,
             isFixedPitch: post.isFixedPitch
         };
-    };
-    BaseFontParser.prototype.layoutStringAuto = function (text, options) {
-        var _a;
-        if (options === void 0) { options = {}; }
-        var detection = detectScriptTags(text);
+    }
+    layoutStringAuto(text, options = {}) {
+        const detection = detectScriptTags(text);
         return this.layoutString(text, {
             gsubFeatures: detection.features,
             scriptTags: detection.scripts,
-            gpos: (_a = options.gpos) !== null && _a !== void 0 ? _a : true,
-            gposFeatures: options.gposFeatures
+            gpos: options.gpos ?? true,
+            gposFeatures: options.gposFeatures,
+            kerning: options.kerning
         });
-    };
-    BaseFontParser.prototype.getVariationAxes = function () {
-        var _a, _b, _c, _d;
-        return (_d = (_c = (_b = (_a = this).getFvarTableForShared) === null || _b === void 0 ? void 0 : _b.call(_a)) === null || _c === void 0 ? void 0 : _c.axes) !== null && _d !== void 0 ? _d : [];
-    };
-    BaseFontParser.prototype.setVariationCoords = function (coords) {
-        var copy = coords.slice();
+    }
+    getVariationAxes() {
+        return this.getFvarTableForShared?.()?.axes ?? [];
+    }
+    setVariationCoords(coords) {
+        const copy = coords.slice();
         if (typeof this.setVariationCoordsInternal === 'function') {
             this.setVariationCoordsInternal(copy);
         }
@@ -1132,42 +1041,38 @@ var BaseFontParser = /** @class */ (function () {
         if (typeof this.onVariationCoordsUpdated === 'function') {
             this.onVariationCoordsUpdated(copy);
         }
-    };
-    BaseFontParser.prototype.setVariationByAxes = function (values) {
-        var _a, _b, _c, _d, _e, _f;
-        var fvar = (_d = (_c = (_b = (_a = this).getFvarTableForShared) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : this.fvar) !== null && _d !== void 0 ? _d : null;
+    }
+    setVariationByAxes(values) {
+        const fvar = this.getFvarTableForShared?.() ?? this.fvar ?? null;
         if (!fvar)
             return;
-        var coords = [];
-        for (var _i = 0, _g = (_e = fvar.axes) !== null && _e !== void 0 ? _e : []; _i < _g.length; _i++) {
-            var axis = _g[_i];
-            var tag = axis.name;
-            var value = (_f = values[tag]) !== null && _f !== void 0 ? _f : axis.defaultValue;
-            var norm = 0;
+        const coords = [];
+        for (const axis of fvar.axes ?? []) {
+            const tag = axis.name;
+            const value = values[tag] ?? axis.defaultValue;
+            let norm = 0;
             if (value !== axis.defaultValue) {
                 if (value > axis.defaultValue) {
-                    var span = axis.maxValue - axis.defaultValue;
+                    const span = axis.maxValue - axis.defaultValue;
                     norm = span !== 0 ? (value - axis.defaultValue) / span : 0;
                 }
                 else {
-                    var span = axis.defaultValue - axis.minValue;
+                    const span = axis.defaultValue - axis.minValue;
                     norm = span !== 0 ? (value - axis.defaultValue) / span : 0;
                 }
             }
             coords.push(Number.isFinite(norm) ? Math.max(-1, Math.min(1, norm)) : 0);
         }
         this.setVariationCoords(coords);
-    };
-    BaseFontParser.prototype.getGlyphPointsByChar = function (char, options) {
-        var _a;
-        if (options === void 0) { options = {}; }
-        var glyph = this.getGlyphByChar(char);
+    }
+    getGlyphPointsByChar(char, options = {}) {
+        const glyph = this.getGlyphByChar(char);
         if (!glyph)
             return [];
-        var sampleStep = Math.max(1, Math.floor((_a = options.sampleStep) !== null && _a !== void 0 ? _a : 1));
-        var points = [];
-        for (var i = 0; i < glyph.getPointCount(); i += sampleStep) {
-            var p = glyph.getPoint(i);
+        const sampleStep = Math.max(1, Math.floor(options.sampleStep ?? 1));
+        const points = [];
+        for (let i = 0; i < glyph.getPointCount(); i += sampleStep) {
+            const p = glyph.getPoint(i);
             if (!p)
                 continue;
             points.push({
@@ -1178,42 +1083,40 @@ var BaseFontParser = /** @class */ (function () {
             });
         }
         return points;
-    };
-    BaseFontParser.prototype.measureText = function (text, options) {
-        if (options === void 0) { options = {}; }
-        var layout = this.layoutString(text, options);
-        var letterSpacing = Number.isFinite(options.letterSpacing) ? options.letterSpacing : 0;
-        var advanceWidth = 0;
-        for (var i = 0; i < layout.length; i++) {
-            var xAdvance = Number.isFinite(layout[i].xAdvance) ? layout[i].xAdvance : 0;
+    }
+    measureText(text, options = {}) {
+        const layout = this.layoutString(text, options);
+        const letterSpacing = Number.isFinite(options.letterSpacing) ? options.letterSpacing : 0;
+        let advanceWidth = 0;
+        for (let i = 0; i < layout.length; i++) {
+            const xAdvance = Number.isFinite(layout[i].xAdvance) ? layout[i].xAdvance : 0;
             advanceWidth += xAdvance;
             if (letterSpacing !== 0 && i < layout.length - 1)
                 advanceWidth += letterSpacing;
         }
         return { advanceWidth: Number.isFinite(advanceWidth) ? advanceWidth : 0, glyphCount: layout.length };
-    };
-    BaseFontParser.prototype.layoutToPoints = function (text, options) {
-        if (options === void 0) { options = {}; }
-        var layout = this.layoutString(text, options);
-        var sampleBase = Number.isFinite(options.sampleStep) ? options.sampleStep : 1;
-        var sampleStep = Math.max(1, Math.floor(sampleBase));
-        var unitsPerEm = this.getUnitsPerEmForShared();
-        var safeUnitsPerEm = Number.isFinite(unitsPerEm) && unitsPerEm > 0 ? unitsPerEm : 1000;
-        var fontSize = Number.isFinite(options.fontSize) && options.fontSize > 0
+    }
+    layoutToPoints(text, options = {}) {
+        const layout = this.layoutString(text, options);
+        const sampleBase = Number.isFinite(options.sampleStep) ? options.sampleStep : 1;
+        const sampleStep = Math.max(1, Math.floor(sampleBase));
+        const unitsPerEm = this.getUnitsPerEmForShared();
+        const safeUnitsPerEm = Number.isFinite(unitsPerEm) && unitsPerEm > 0 ? unitsPerEm : 1000;
+        const fontSize = Number.isFinite(options.fontSize) && options.fontSize > 0
             ? options.fontSize
             : safeUnitsPerEm;
-        var scale = fontSize / safeUnitsPerEm;
-        var originX = Number.isFinite(options.x) ? options.x : 0;
-        var originY = Number.isFinite(options.y) ? options.y : 0;
-        var letterSpacing = Number.isFinite(options.letterSpacing) ? options.letterSpacing : 0;
-        var points = [];
-        var penX = 0;
-        for (var i = 0; i < layout.length; i++) {
-            var item = layout[i];
-            var glyph = this.getGlyphByIndexForLayout(item.glyphIndex);
+        const scale = fontSize / safeUnitsPerEm;
+        const originX = Number.isFinite(options.x) ? options.x : 0;
+        const originY = Number.isFinite(options.y) ? options.y : 0;
+        const letterSpacing = Number.isFinite(options.letterSpacing) ? options.letterSpacing : 0;
+        const points = [];
+        let penX = 0;
+        for (let i = 0; i < layout.length; i++) {
+            const item = layout[i];
+            const glyph = this.getGlyphByIndexForLayout(item.glyphIndex);
             if (glyph) {
-                for (var pIndex = 0; pIndex < glyph.getPointCount(); pIndex += sampleStep) {
-                    var p = glyph.getPoint(pIndex);
+                for (let pIndex = 0; pIndex < glyph.getPointCount(); pIndex += sampleStep) {
+                    const p = glyph.getPoint(pIndex);
                     if (!p)
                         continue;
                     points.push({
@@ -1230,94 +1133,85 @@ var BaseFontParser = /** @class */ (function () {
             if (letterSpacing !== 0 && i < layout.length - 1)
                 penX += letterSpacing;
         }
-        return { points: points, advanceWidth: Number.isFinite(penX) ? penX : 0, scale: Number.isFinite(scale) ? scale : 1 };
-    };
-    BaseFontParser.prototype.getColorLayersForGlyph = function (glyphId, paletteIndex) {
-        var _a, _b;
-        if (paletteIndex === void 0) { paletteIndex = 0; }
-        var colr = this.getColrTableForShared();
+        return { points, advanceWidth: Number.isFinite(penX) ? penX : 0, scale: Number.isFinite(scale) ? scale : 1 };
+    }
+    getColorLayersForGlyph(glyphId, paletteIndex = 0) {
+        const colr = this.getColrTableForShared();
         if (!colr)
             return [];
-        var layers = colr.getLayersForGlyph(glyphId);
+        const layers = colr.getLayersForGlyph(glyphId);
         if (layers.length === 0)
             return [];
-        var palette = (_b = (_a = this.getCpalTableForShared()) === null || _a === void 0 ? void 0 : _a.getPalette(paletteIndex)) !== null && _b !== void 0 ? _b : [];
-        return layers.map(function (layer) {
+        const palette = this.getCpalTableForShared()?.getPalette(paletteIndex) ?? [];
+        return layers.map((layer) => {
             if (layer.paletteIndex === 0xffff) {
                 return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
             }
-            var color = palette[layer.paletteIndex];
+            const color = palette[layer.paletteIndex];
             if (!color) {
                 return { glyphId: layer.glyphId, color: null, paletteIndex: layer.paletteIndex };
             }
-            var rgba = "rgba(".concat(color.red, ", ").concat(color.green, ", ").concat(color.blue, ", ").concat(color.alpha / 255, ")");
+            const rgba = `rgba(${color.red}, ${color.green}, ${color.blue}, ${color.alpha / 255})`;
             return { glyphId: layer.glyphId, color: rgba, paletteIndex: layer.paletteIndex };
         });
-    };
-    BaseFontParser.prototype.getColorLayersForChar = function (char, paletteIndex) {
-        if (paletteIndex === void 0) { paletteIndex = 0; }
-        var glyphId = this.getGlyphIndexByChar(char);
+    }
+    getColorLayersForChar(char, paletteIndex = 0) {
+        const glyphId = this.getGlyphIndexByChar(char);
         if (glyphId == null)
             return [];
         return this.getColorLayersForGlyph(glyphId, paletteIndex);
-    };
-    BaseFontParser.prototype.getColrV1LayersForGlyph = function (glyphId, paletteIndex) {
-        if (paletteIndex === void 0) { paletteIndex = 0; }
-        var colr = this.getColrTableForShared();
+    }
+    getColrV1LayersForGlyph(glyphId, paletteIndex = 0) {
+        const colr = this.getColrTableForShared();
         if (!colr || colr.version === 0)
             return [];
-        var paint = colr.getPaintForGlyph(glyphId);
+        const paint = colr.getPaintForGlyph(glyphId);
         if (!paint)
             return [];
         return this.flattenColrV1Paint(paint, paletteIndex);
-    };
-    BaseFontParser.prototype.flattenColrV1Paint = function (paint, paletteIndex) {
-        var _this = this;
-        var _a, _b, _c;
+    }
+    flattenColrV1Paint(paint, paletteIndex) {
         if (!paint)
             return [];
         if (paint.format === 1 && Array.isArray(paint.layers)) {
-            return paint.layers.flatMap(function (p) { return _this.flattenColrV1Paint(p, paletteIndex); });
+            return paint.layers.flatMap((p) => this.flattenColrV1Paint(p, paletteIndex));
         }
         if (paint.format === 10) {
-            var child = paint.paint;
+            const child = paint.paint;
             if (child && child.format === 2) {
-                var color = (_b = (_a = this.getCpalTableForShared()) === null || _a === void 0 ? void 0 : _a.getPalette(paletteIndex)) === null || _b === void 0 ? void 0 : _b[child.paletteIndex];
-                var rgba = color ? "rgba(".concat(color.red, ", ").concat(color.green, ", ").concat(color.blue, ", ").concat((color.alpha / 255) * ((_c = child.alpha) !== null && _c !== void 0 ? _c : 1), ")") : null;
+                const color = this.getCpalTableForShared()?.getPalette(paletteIndex)?.[child.paletteIndex];
+                const rgba = color ? `rgba(${color.red}, ${color.green}, ${color.blue}, ${(color.alpha / 255) * (child.alpha ?? 1)})` : null;
                 return [{ glyphId: paint.glyphID, color: rgba, paletteIndex: child.paletteIndex }];
             }
-            return this.flattenColrV1Paint(child, paletteIndex).map(function (layer) { return (__assign(__assign({}, layer), { glyphId: paint.glyphID })); });
+            return this.flattenColrV1Paint(child, paletteIndex).map(layer => ({ ...layer, glyphId: paint.glyphID }));
         }
         if (paint.format === 11) {
             return this.getColrV1LayersForGlyph(paint.glyphID, paletteIndex);
         }
         return [];
-    };
-    BaseFontParser.prototype.getNameRecord = function (nameId) {
-        var _a, _b;
-        return (_b = (_a = this.getNameTableForShared()) === null || _a === void 0 ? void 0 : _a.getRecord(nameId)) !== null && _b !== void 0 ? _b : "";
-    };
-    BaseFontParser.prototype.getAllNameRecords = function () {
-        var _a;
-        var name = this.getNameTableForShared();
+    }
+    getNameRecord(nameId) {
+        return this.getNameTableForShared()?.getRecord(nameId) ?? "";
+    }
+    getAllNameRecords() {
+        const name = this.getNameTableForShared();
         if (!name)
             return [];
-        return ((_a = name.records) !== null && _a !== void 0 ? _a : []).map(function (r) { return ({ nameId: r.nameId, record: r.record }); });
-    };
-    BaseFontParser.prototype.getAllNameRecordsDetailed = function () {
-        var _a;
-        var name = this.getNameTableForShared();
+        return (name.records ?? []).map((r) => ({ nameId: r.nameId, record: r.record }));
+    }
+    getAllNameRecordsDetailed() {
+        const name = this.getNameTableForShared();
         if (!name)
             return [];
-        return ((_a = name.records) !== null && _a !== void 0 ? _a : []).map(function (r) { return ({
+        return (name.records ?? []).map((r) => ({
             nameId: r.nameId,
             record: r.record,
             platformId: r.platformId,
             encodingId: r.encodingId,
             languageId: r.languageId
-        }); });
-    };
-    BaseFontParser.prototype.getFontNames = function () {
+        }));
+    }
+    getFontNames() {
         return {
             family: this.getPreferredNameRecord(1),
             subfamily: this.getPreferredNameRecord(2),
@@ -1335,9 +1229,9 @@ var BaseFontParser = /** @class */ (function () {
             typographicFamily: this.getPreferredNameRecord(16),
             typographicSubfamily: this.getPreferredNameRecord(17)
         };
-    };
-    BaseFontParser.prototype.getOs2Metrics = function () {
-        var os2 = this.getOs2TableForShared();
+    }
+    getOs2Metrics() {
+        const os2 = this.getOs2TableForShared();
         if (!os2)
             return null;
         return {
@@ -1378,9 +1272,9 @@ var BaseFontParser = /** @class */ (function () {
                 }
                 : null
         };
-    };
-    BaseFontParser.prototype.getPostMetrics = function () {
-        var post = this.getPostTableForShared();
+    }
+    getPostMetrics() {
+        const post = this.getPostTableForShared();
         if (!post)
             return null;
         return {
@@ -1391,21 +1285,18 @@ var BaseFontParser = /** @class */ (function () {
             isFixedPitch: post.isFixedPitch !== 0,
             rawIsFixedPitch: post.isFixedPitch
         };
-    };
-    BaseFontParser.prototype.getWeightClass = function () {
-        var _a, _b;
-        return (_b = (_a = this.getOs2TableForShared()) === null || _a === void 0 ? void 0 : _a.usWeightClass) !== null && _b !== void 0 ? _b : 0;
-    };
-    BaseFontParser.prototype.getWidthClass = function () {
-        var _a, _b;
-        return (_b = (_a = this.getOs2TableForShared()) === null || _a === void 0 ? void 0 : _a.usWidthClass) !== null && _b !== void 0 ? _b : 0;
-    };
-    BaseFontParser.prototype.getFsTypeFlags = function () {
-        var _a, _b;
-        var fsType = (_b = (_a = this.getOs2TableForShared()) === null || _a === void 0 ? void 0 : _a.fsType) !== null && _b !== void 0 ? _b : 0;
+    }
+    getWeightClass() {
+        return this.getOs2TableForShared()?.usWeightClass ?? 0;
+    }
+    getWidthClass() {
+        return this.getOs2TableForShared()?.usWidthClass ?? 0;
+    }
+    getFsTypeFlags() {
+        const fsType = this.getOs2TableForShared()?.fsType ?? 0;
         if (fsType === 0)
             return ['installable-embedding'];
-        var flags = [];
+        const flags = [];
         if (fsType & 0x0002)
             flags.push('restricted-license-embedding');
         if (fsType & 0x0004)
@@ -1417,11 +1308,10 @@ var BaseFontParser = /** @class */ (function () {
         if (fsType & 0x0200)
             flags.push('bitmap-embedding-only');
         return flags;
-    };
-    BaseFontParser.prototype.getFsSelectionFlags = function () {
-        var _a, _b;
-        var fsSelection = (_b = (_a = this.getOs2TableForShared()) === null || _a === void 0 ? void 0 : _a.fsSelection) !== null && _b !== void 0 ? _b : 0;
-        var flags = [];
+    }
+    getFsSelectionFlags() {
+        const fsSelection = this.getOs2TableForShared()?.fsSelection ?? 0;
+        const flags = [];
         if (fsSelection & 0x0001)
             flags.push('italic');
         if (fsSelection & 0x0002)
@@ -1443,33 +1333,30 @@ var BaseFontParser = /** @class */ (function () {
         if (fsSelection & 0x0200)
             flags.push('oblique');
         return flags;
-    };
-    BaseFontParser.prototype.isItalic = function () {
-        var _a, _b, _c, _d;
-        var fsSelection = (_b = (_a = this.getOs2TableForShared()) === null || _a === void 0 ? void 0 : _a.fsSelection) !== null && _b !== void 0 ? _b : 0;
+    }
+    isItalic() {
+        const fsSelection = this.getOs2TableForShared()?.fsSelection ?? 0;
         if (fsSelection & 0x0001)
             return true;
         if (fsSelection & 0x0200)
             return true;
-        if (((_d = (_c = this.getPostTableForShared()) === null || _c === void 0 ? void 0 : _c.italicAngle) !== null && _d !== void 0 ? _d : 0) !== 0)
+        if ((this.getPostTableForShared()?.italicAngle ?? 0) !== 0)
             return true;
-        var subfamily = this.getPreferredNameRecord(2).toLowerCase();
+        const subfamily = this.getPreferredNameRecord(2).toLowerCase();
         return subfamily.includes('italic') || subfamily.includes('oblique');
-    };
-    BaseFontParser.prototype.isBold = function () {
-        var _a, _b, _c, _d;
-        var fsSelection = (_b = (_a = this.getOs2TableForShared()) === null || _a === void 0 ? void 0 : _a.fsSelection) !== null && _b !== void 0 ? _b : 0;
+    }
+    isBold() {
+        const fsSelection = this.getOs2TableForShared()?.fsSelection ?? 0;
         if (fsSelection & 0x0020)
             return true;
-        if (((_d = (_c = this.getOs2TableForShared()) === null || _c === void 0 ? void 0 : _c.usWeightClass) !== null && _d !== void 0 ? _d : 0) >= 700)
+        if ((this.getOs2TableForShared()?.usWeightClass ?? 0) >= 700)
             return true;
         return this.getPreferredNameRecord(2).toLowerCase().includes('bold');
-    };
-    BaseFontParser.prototype.isMonospace = function () {
-        var _a, _b;
-        return ((_b = (_a = this.getPostTableForShared()) === null || _a === void 0 ? void 0 : _a.isFixedPitch) !== null && _b !== void 0 ? _b : 0) !== 0;
-    };
-    BaseFontParser.prototype.getMetadata = function () {
+    }
+    isMonospace() {
+        return (this.getPostTableForShared()?.isFixedPitch ?? 0) !== 0;
+    }
+    getMetadata() {
         return {
             names: this.getFontNames(),
             nameRecords: this.getAllNameRecordsDetailed(),
@@ -1485,17 +1372,16 @@ var BaseFontParser = /** @class */ (function () {
                 fsSelectionFlags: this.getFsSelectionFlags()
             }
         };
-    };
-    BaseFontParser.prototype.getPreferredNameRecord = function (nameId) {
-        var _a, _b;
-        var name = this.getNameTableForShared();
-        if (!name || ((_a = name.records) !== null && _a !== void 0 ? _a : []).length === 0)
+    }
+    getPreferredNameRecord(nameId) {
+        const name = this.getNameTableForShared();
+        if (!name || (name.records ?? []).length === 0)
             return '';
-        var candidates = ((_b = name.records) !== null && _b !== void 0 ? _b : []).filter(function (r) { return r.nameId === nameId && !!r.record && r.record.trim().length > 0; });
+        const candidates = (name.records ?? []).filter((r) => r.nameId === nameId && !!r.record && r.record.trim().length > 0);
         if (candidates.length === 0)
             return '';
-        var score = function (rec) {
-            var s = 0;
+        const score = (rec) => {
+            let s = 0;
             if (rec.platformId === Table.platformMicrosoft)
                 s += 100;
             else if (rec.platformId === Table.platformAppleUnicode)
@@ -1508,23 +1394,21 @@ var BaseFontParser = /** @class */ (function () {
                 s += 10;
             return s;
         };
-        var best = candidates[0];
-        var bestScore = score(best);
-        for (var i = 1; i < candidates.length; i++) {
-            var current = candidates[i];
-            var currentScore = score(current);
+        let best = candidates[0];
+        let bestScore = score(best);
+        for (let i = 1; i < candidates.length; i++) {
+            const current = candidates[i];
+            const currentScore = score(current);
             if (currentScore > bestScore) {
                 best = current;
                 bestScore = currentScore;
             }
         }
         return best.record;
-    };
-    BaseFontParser.prototype.decodeOs2VendorId = function (vendor) {
-        var n = vendor >>> 0;
-        var text = String.fromCharCode((n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff);
+    }
+    decodeOs2VendorId(vendor) {
+        const n = vendor >>> 0;
+        const text = String.fromCharCode((n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff);
         return text.replace(/\0/g, '').trim();
-    };
-    return BaseFontParser;
-}());
-export { BaseFontParser };
+    }
+}

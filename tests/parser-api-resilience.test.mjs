@@ -109,4 +109,3 @@ test('round11 edge: layoutToPoints should keep finite result when getUnitsPerEm 
   assert.equal(Number.isFinite(out.points[0].x), true);
   assert.equal(Number.isFinite(out.points[0].y), true);
 });
-
