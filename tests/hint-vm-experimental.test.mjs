@@ -707,3 +707,21 @@ test('hint vm experimental: MIRP keeps original direction when autoFlip=true', (
   vm.runPrograms(glyph, [program], { cvtValues: [-16] });
   assert.equal(glyph.points[1].x, 16);
 });
+
+test('hint vm experimental: reserved legacy opcodes are explicit no-ops (no unsupported count)', () => {
+  const vm = new TrueTypeHintVM();
+  const glyph = makeGlyph([{ x: 5, y: 7, onCurve: true, endOfContour: true }]);
+  const program = [0x28, 0x7B, 0x83, 0x84, 0x8F];
+  const result = vm.runPrograms(glyph, [program], { cvtValues: [] });
+  assert.equal(result.unsupportedOpcodeCount, 0);
+  assert.equal(glyph.points[0].x, 5);
+  assert.equal(glyph.points[0].y, 7);
+});
+
+test('hint vm experimental: undefined custom opcode range (0x90-0xAF) is explicit no-op', () => {
+  const vm = new TrueTypeHintVM();
+  const glyph = makeGlyph([{ x: 10, y: 0, onCurve: true, endOfContour: true }]);
+  const result = vm.runPrograms(glyph, [[0x90, 0xAF]], { cvtValues: [] });
+  assert.equal(result.unsupportedOpcodeCount, 0);
+  assert.equal(glyph.points[0].x, 10);
+});

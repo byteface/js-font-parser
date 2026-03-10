@@ -631,6 +631,11 @@ export class TrueTypeHintVM {
                 ip += 1;
                 continue;
             }
+            if (opcode === 0x28 || opcode === 0x7b || opcode === 0x83 || opcode === 0x84 || opcode === 0x8f) {
+                // Reserved/legacy opcodes: explicit no-op boundary for deterministic behavior.
+                ip += 1;
+                continue;
+            }
             if (opcode === 0x4f) {
                 // DEBUG has no VM-side geometry effect here.
                 ip += 1;
@@ -863,6 +868,17 @@ export class TrueTypeHintVM {
                 const pointIndex = this.pop(state);
                 const cvtIndex = this.pop(state);
                 this.moveRelativePoint(state, pointIndex, cvtIndex, opcode, state.zp1);
+                ip += 1;
+                continue;
+            }
+            if (opcode >= 0x90 && opcode <= 0xaf) {
+                // Custom opcode range: execute IDEF body when defined, else explicit no-op boundary.
+                const custom = state.instructionDefs.get(opcode);
+                if (custom && state.callDepth < MAX_CALL_DEPTH) {
+                    state.callDepth++;
+                    this.executeProgram(custom, state);
+                    state.callDepth--;
+                }
                 ip += 1;
                 continue;
             }
