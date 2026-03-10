@@ -70,39 +70,11 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 import { ByteArray } from '../utils/ByteArray.js';
-import { Table } from '../table/Table.js';
-import { TableDirectory } from '../table/TableDirectory.js';
-import { TableFactory } from '../table/TableFactory.js';
 import { BaseFontParser } from './BaseFontParser.js';
 var FontParserWOFF = /** @class */ (function (_super) {
     __extends(FontParserWOFF, _super);
     function FontParserWOFF(byteData, options) {
         var _this = _super.call(this) || this;
-        // Define properties
-        _this.os2 = null;
-        _this.cmap = null;
-        _this.glyf = null;
-        _this.cff = null;
-        _this.head = null;
-        _this.hhea = null;
-        _this.hmtx = null;
-        _this.loca = null;
-        _this.maxp = null;
-        _this.pName = null;
-        _this.post = null;
-        _this.gsub = null;
-        _this.kern = null;
-        _this.colr = null;
-        _this.cpal = null;
-        _this.gpos = null;
-        _this.gdef = null;
-        _this.svg = null;
-        _this.fvar = null;
-        _this.gvar = null;
-        _this.variationCoords = [];
-        // Table directory and tables
-        _this.tableDir = null;
-        _this.tables = [];
         if ((options === null || options === void 0 ? void 0 : options.format) === 'sfnt') {
             _this.parseTTF(byteData);
         }
@@ -376,61 +348,8 @@ var FontParserWOFF = /** @class */ (function (_super) {
         });
     };
     FontParserWOFF.prototype.parseTTF = function (byteData) {
-        var _a, _b, _c, _d;
-        // Load TTF tables from the extracted byte data
-        var tf = new TableFactory();
-        // Reset any legacy WOFF directory entries so only parsed table objects remain.
-        this.tables = [];
-        this.tableDir = new TableDirectory(byteData);
-        for (var i = 0; i < this.tableDir.numTables; i++) {
-            var tab = tf.create(this.tableDir.getEntry(i), byteData);
-            if (tab !== null) {
-                this.tables.push(tab);
-            }
-        }
-        // Get references to the tables
-        this.os2 = this.getTable(Table.OS_2);
-        this.cmap = this.getTable(Table.cmap);
-        this.glyf = this.getTable(Table.glyf);
-        this.cff = this.getTable(Table.CFF);
-        this.head = this.getTable(Table.head);
-        this.hhea = this.getTable(Table.hhea);
-        this.hmtx = this.getTable(Table.hmtx);
-        this.loca = this.getTable(Table.loca);
-        this.maxp = this.getTable(Table.maxp);
-        this.pName = this.getTable(Table.pName);
-        this.post = this.getTable(Table.post);
-        this.gsub = this.getTable(Table.GSUB);
-        this.kern = this.getTable(Table.kern);
-        this.colr = this.getTable(Table.COLR);
-        this.cpal = this.getTable(Table.CPAL);
-        this.gpos = this.getTable(Table.GPOS);
-        this.gdef = this.getTable(Table.GDEF);
-        var maybeGsubWithGdef = this.gsub;
-        if (this.gsub && this.gdef && typeof maybeGsubWithGdef.setGdef === 'function') {
-            maybeGsubWithGdef.setGdef(this.gdef);
-        }
-        this.svg = this.getTable(Table.SVG);
-        this.fvar = this.getTable(Table.fvar);
-        this.gvar = this.getTable(Table.gvar);
-        if (this.fvar && this.fvar.axes.length > 0) {
-            var defaults = {};
-            for (var _i = 0, _e = this.fvar.axes; _i < _e.length; _i++) {
-                var axis = _e[_i];
-                defaults[axis.name] = axis.defaultValue;
-            }
-            this.setVariationByAxes(defaults);
-        }
-        // Initialize the tables
-        if (this.hmtx && this.maxp) {
-            this.hmtx.run((_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.numberOfHMetrics) !== null && _b !== void 0 ? _b : 0, this.maxp.numGlyphs - ((_d = (_c = this.hhea) === null || _c === void 0 ? void 0 : _c.numberOfHMetrics) !== null && _d !== void 0 ? _d : 0));
-        }
-        if (this.loca && this.maxp && this.head) {
-            this.loca.run(this.maxp.numGlyphs, this.head.indexToLocFormat === 0);
-        }
-        if (this.glyf && this.loca && this.maxp) {
-            this.glyf.run(this.maxp.numGlyphs, this.loca);
-        }
+        this.parseSfntTables(byteData);
+        this.wireCommonTables();
     };
     // Get a glyph description by index
     FontParserWOFF.prototype.getGlyph = function (i) {
@@ -450,113 +369,6 @@ var FontParserWOFF = /** @class */ (function (_super) {
     };
     FontParserWOFF.prototype.interpolate = function (aCoord, bCoord, aDelta, bDelta, pCoord) {
         return this.interpolateShared(aCoord, bCoord, aDelta, bDelta, pCoord);
-    };
-    // Get the number of glyphs
-    FontParserWOFF.prototype.getNumGlyphs = function () {
-        var _a, _b;
-        return (_b = (_a = this.maxp) === null || _a === void 0 ? void 0 : _a.numGlyphs) !== null && _b !== void 0 ? _b : 0;
-    };
-    // Get the ascent value
-    FontParserWOFF.prototype.getAscent = function () {
-        var _a, _b;
-        return (_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.ascender) !== null && _b !== void 0 ? _b : 0;
-    };
-    // Get the descent value
-    FontParserWOFF.prototype.getDescent = function () {
-        var _a, _b;
-        return (_b = (_a = this.hhea) === null || _a === void 0 ? void 0 : _a.descender) !== null && _b !== void 0 ? _b : 0;
-    };
-    FontParserWOFF.prototype.getUnitsPerEm = function () {
-        var _a, _b;
-        return (_b = (_a = this.head) === null || _a === void 0 ? void 0 : _a.unitsPerEm) !== null && _b !== void 0 ? _b : 1000;
-    };
-    FontParserWOFF.prototype.getMarkAnchorsForGlyph = function (glyphId, subtables) {
-        return this.getGposAttachmentAnchors(glyphId, subtables);
-    };
-    FontParserWOFF.prototype.getSvgDocumentForGlyphAsync = function (glyphId) {
-        return __awaiter(this, void 0, void 0, function () {
-            return __generator(this, function (_a) {
-                if (!this.svg)
-                    return [2 /*return*/, { svgText: null, isCompressed: false }];
-                return [2 /*return*/, this.svg.getSvgDocumentForGlyphAsync(glyphId)];
-            });
-        });
-    };
-    FontParserWOFF.prototype.applyGposPositioningInternal = function (glyphIndices, positioned, gposFeatures, scriptTags) {
-        this.applyGposPositioningShared(glyphIndices, positioned, gposFeatures, scriptTags);
-    };
-    // Backward-compatible alias used by tests/tools that call this directly.
-    FontParserWOFF.prototype.applyGposPositioning = function (glyphIndices, positioned, gposFeatures, scriptTags) {
-        this.applyGposPositioningInternal(glyphIndices, positioned, gposFeatures, scriptTags);
-    };
-    FontParserWOFF.prototype.isMarkGlyphClass = function (glyphId) {
-        var _a, _b, _c;
-        return ((_c = (_b = (_a = this.gdef) === null || _a === void 0 ? void 0 : _a.getGlyphClass) === null || _b === void 0 ? void 0 : _b.call(_a, glyphId)) !== null && _c !== void 0 ? _c : 0) === 3;
-    };
-    FontParserWOFF.prototype.getTable = function (tableType) {
-        return this.tables.find(function (tab) { return (tab === null || tab === void 0 ? void 0 : tab.getType()) === tableType; }) || null;
-    };
-    FontParserWOFF.prototype.getGsubTableForLayout = function () {
-        return this.gsub;
-    };
-    FontParserWOFF.prototype.getKernTableForLayout = function () {
-        return this.kern;
-    };
-    FontParserWOFF.prototype.getGposTableForLayout = function () {
-        return this.gpos;
-    };
-    FontParserWOFF.prototype.getGlyphByIndexForLayout = function (glyphIndex) {
-        return this.getGlyph(glyphIndex);
-    };
-    FontParserWOFF.prototype.isMarkGlyphForLayout = function (glyphIndex) {
-        return this.isMarkGlyphClass(glyphIndex);
-    };
-    FontParserWOFF.prototype.applyGposPositioningForLayout = function (glyphIndices, positioned, gposFeatures, scriptTags) {
-        this.applyGposPositioningInternal(glyphIndices, positioned, gposFeatures, scriptTags);
-    };
-    FontParserWOFF.prototype.getTableByTypeInternal = function (tableType) {
-        return this.getTable(tableType);
-    };
-    FontParserWOFF.prototype.getNameRecordForInfo = function (nameId) {
-        return this.getNameRecord(nameId);
-    };
-    FontParserWOFF.prototype.getOs2TableForInfo = function () {
-        return this.os2;
-    };
-    FontParserWOFF.prototype.getPostTableForInfo = function () {
-        return this.post;
-    };
-    FontParserWOFF.prototype.getCmapTableForLookup = function () {
-        return this.cmap;
-    };
-    FontParserWOFF.prototype.getNameTableForShared = function () {
-        return this.pName;
-    };
-    FontParserWOFF.prototype.getOs2TableForShared = function () {
-        return this.os2;
-    };
-    FontParserWOFF.prototype.getPostTableForShared = function () {
-        return this.post;
-    };
-    FontParserWOFF.prototype.getFvarTableForShared = function () {
-        return this.fvar;
-    };
-    FontParserWOFF.prototype.getColrTableForShared = function () {
-        return this.colr;
-    };
-    FontParserWOFF.prototype.getCpalTableForShared = function () {
-        return this.cpal;
-    };
-    FontParserWOFF.prototype.getUnitsPerEmForShared = function () {
-        return this.getUnitsPerEm();
-    };
-    FontParserWOFF.prototype.setVariationCoordsInternal = function (coords) {
-        this.variationCoords = coords.slice();
-    };
-    FontParserWOFF.prototype.onVariationCoordsUpdated = function (coords) {
-        if (this.colr && typeof this.colr.setVariationCoords === 'function') {
-            this.colr.setVariationCoords(coords);
-        }
     };
     FontParserWOFF.WOFF_SIGNATURE = 0x774f4646;
     return FontParserWOFF;
