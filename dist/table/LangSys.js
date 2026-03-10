@@ -9,6 +9,7 @@ var LangSys = /** @class */ (function () {
         for (var i = 0; i < this.featureCount; i++) {
             this.featureIndex[i] = byteArray.readUnsignedShort();
         }
+        this.featureIndexSet = new Set(this.featureIndex);
     }
     /**
      * Checks if a feature is indexed
@@ -16,12 +17,7 @@ var LangSys = /** @class */ (function () {
      * @returns True if the feature index exists, otherwise false
      */
     LangSys.prototype.isFeatureIndexed = function (n) {
-        for (var i = 0; i < this.featureCount; i++) {
-            if (this.featureIndex[i] === n) {
-                return true;
-            }
-        }
-        return false;
+        return this.featureIndexSet.has(n);
     };
     LangSys.prototype.getRequiredFeatureIndex = function () {
         return this.reqFeatureIndex;

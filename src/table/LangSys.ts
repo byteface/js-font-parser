@@ -7,6 +7,7 @@ export class LangSys {
     private reqFeatureIndex: number;
     private featureCount: number;
     private featureIndex: number[];
+    private featureIndexSet: Set<number>;
 
     /** Creates a new LangSys */
     constructor(byteArray: ByteArray) {
@@ -17,6 +18,7 @@ export class LangSys {
         for (let i = 0; i < this.featureCount; i++) {
             this.featureIndex[i] = byteArray.readUnsignedShort();
         }
+        this.featureIndexSet = new Set(this.featureIndex);
     }
 
     /**
@@ -25,12 +27,7 @@ export class LangSys {
      * @returns True if the feature index exists, otherwise false
      */
     public isFeatureIndexed(n: number): boolean {
-        for (let i = 0; i < this.featureCount; i++) {
-            if (this.featureIndex[i] === n) {
-                return true;
-            }
-        }
-        return false;
+        return this.featureIndexSet.has(n);
     }
 
     public getRequiredFeatureIndex(): number {

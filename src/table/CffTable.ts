@@ -8,19 +8,29 @@ import { CffGlyphDescription } from './CffGlyphDescription.js';
 import { IGlyphDescription } from './IGlyphDescription.js';
 
 type CffPoint = { x: number; y: number; onCurve: boolean; endOfContour: boolean };
+type CffPrivateInfo = { subrs: Uint8Array[]; nominalWidthX: number; defaultWidthX: number };
+type CffPrivateInfoState = CffPrivateInfo | null;
+type CffPrivateInfoSource = { fdDictBytes: Uint8Array } | null;
 
 export class CffTable implements ITable {
     private baseOffset: number;
+    private data: Uint8Array;
     private charStrings: Uint8Array[] = [];
     private globalSubrs: Uint8Array[] = [];
     private localSubrs: Uint8Array[] = [];
     private fdSelect: number[] = [];
-    private privateInfos: Array<{ subrs: Uint8Array[]; nominalWidthX: number; defaultWidthX: number }> = [];
+    private privateInfos: CffPrivateInfoState[] = [];
+    private privateInfoSources: CffPrivateInfoSource[] = [];
     private nominalWidthX: number = 0;
     private defaultWidthX: number = 0;
 
     constructor(de: DirectoryEntry, byte_ar: ByteArray) {
         this.baseOffset = de.offset;
+        this.data = new Uint8Array(
+            byte_ar.dataView.buffer,
+            byte_ar.dataView.byteOffset,
+            byte_ar.dataView.byteLength
+        );
         byte_ar.offset = de.offset;
 
         const major = byte_ar.readUnsignedByte();
@@ -68,25 +78,8 @@ export class CffTable implements ITable {
         // CID-keyed CFF: use FDArray/FDSelect
         if (ros && fdArrayOffset > 0) {
             const fdArrayIndex = CffIndex.read(byte_ar, this.baseOffset + fdArrayOffset);
-            this.privateInfos = fdArrayIndex.objects.map(bytes => {
-                const fdDict = CffDict.parse(bytes);
-                const info = fdDict.getArray('private');
-                if (!info || info.length < 2) return { subrs: [], nominalWidthX: 0, defaultWidthX: 0 };
-                const size = info[0];
-                const offset = info[1];
-                const privateStart = this.baseOffset + offset;
-                byte_ar.offset = privateStart;
-                const privateBytes = byte_ar.readBytes(size);
-                const privateDict = CffDict.parse(privateBytes);
-                const nominalWidthX = privateDict.getNumber('nominalWidthX', 0);
-                const defaultWidthX = privateDict.getNumber('defaultWidthX', 0);
-                const subrsOffset = privateDict.getNumber('subrs', 0);
-                if (subrsOffset > 0) {
-                    const subrsIndex = CffIndex.read(byte_ar, privateStart + subrsOffset);
-                    return { subrs: subrsIndex.objects, nominalWidthX, defaultWidthX };
-                }
-                return { subrs: [], nominalWidthX, defaultWidthX };
-            });
+            this.privateInfoSources = fdArrayIndex.objects.map(fdDictBytes => ({ fdDictBytes }));
+            this.privateInfos = new Array(this.privateInfoSources.length).fill(null);
         }
         if (charStringsOffset > 0) {
             const charStringsIndex = CffIndex.read(byte_ar, this.baseOffset + charStringsOffset);
@@ -107,8 +100,7 @@ export class CffTable implements ITable {
     getGlyphDescription(glyphId: number): IGlyphDescription | null {
         const charString = this.charStrings[glyphId];
         if (!charString) return null;
-        const fdIndex = this.fdSelect[glyphId] ?? 0;
-        const localSubrs = this.privateInfos[fdIndex]?.subrs ?? this.localSubrs;
+        const localSubrs = this.getLocalSubrsForGlyph(glyphId);
         const { points, endPts } = this.parseCharString(charString, localSubrs);
         return new CffGlyphDescription(points, endPts);
     }
@@ -120,8 +112,7 @@ export class CffTable implements ITable {
     debugCharString(glyphId: number): Array<{ op: string; args: number[]; note?: string }> | null {
         const charString = this.charStrings[glyphId];
         if (!charString) return null;
-        const fdIndex = this.fdSelect[glyphId] ?? 0;
-        const localSubrs = this.privateInfos[fdIndex]?.subrs ?? this.localSubrs;
+        const localSubrs = this.getLocalSubrsForGlyph(glyphId);
         const gBias = this.getSubrBias(this.globalSubrs);
         const lBias = this.getSubrBias(localSubrs);
         const ops: Array<{ op: string; args: number[]; note?: string }> = [];
@@ -226,6 +217,54 @@ export class CffTable implements ITable {
 
         parse(charString, 0);
         return ops;
+    }
+
+    private getLocalSubrsForGlyph(glyphId: number): Uint8Array[] {
+        const fdIndex = this.fdSelect[glyphId] ?? 0;
+        return this.getPrivateInfo(fdIndex)?.subrs ?? this.localSubrs;
+    }
+
+    private getPrivateInfo(fdIndex: number): CffPrivateInfoState {
+        if (!this.privateInfos) {
+            this.privateInfos = [];
+        }
+        if (!this.privateInfoSources) {
+            this.privateInfoSources = [];
+        }
+        if (fdIndex < 0 || fdIndex >= this.privateInfoSources.length) {
+            return null;
+        }
+        const cached = this.privateInfos[fdIndex];
+        if (cached) {
+            return cached;
+        }
+        const source = this.privateInfoSources[fdIndex];
+        if (!source) {
+            return null;
+        }
+
+        const fdDict = CffDict.parse(source.fdDictBytes);
+        const info = fdDict.getArray('private');
+        if (!info || info.length < 2) {
+            const empty = { subrs: [], nominalWidthX: 0, defaultWidthX: 0 };
+            this.privateInfos[fdIndex] = empty;
+            return empty;
+        }
+
+        const size = info[0];
+        const offset = info[1];
+        const privateStart = this.baseOffset + offset;
+        const privateBytes = this.data.subarray(privateStart, privateStart + size);
+        const privateDict = CffDict.parse(privateBytes);
+        const nominalWidthX = privateDict.getNumber('nominalWidthX', 0);
+        const defaultWidthX = privateDict.getNumber('defaultWidthX', 0);
+        const subrsOffset = privateDict.getNumber('subrs', 0);
+        const subrs = subrsOffset > 0
+            ? CffIndex.read(new ByteArray(this.data), privateStart + subrsOffset).objects
+            : [];
+        const loaded = { subrs, nominalWidthX, defaultWidthX };
+        this.privateInfos[fdIndex] = loaded;
+        return loaded;
     }
 
     private getSubrBias(subrs: Uint8Array[]): number {

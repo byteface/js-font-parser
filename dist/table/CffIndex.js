@@ -33,7 +33,7 @@ var CffIndex = /** @class */ (function () {
         for (var i = 0; i < count; i++) {
             var start = dataStart + offsets[i] - 1;
             var end = dataStart + offsets[i + 1] - 1;
-            objects.push(data.slice(start, end));
+            objects.push(data.subarray(start, end));
         }
         byte_ar.offset = dataStart + offsets[count] - 1;
         if (offset != null) {

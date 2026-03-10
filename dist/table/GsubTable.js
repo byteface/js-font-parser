@@ -12,6 +12,7 @@ import { AlternateSubst } from "./AlternateSubst.js";
 var GsubTable = /** @class */ (function () {
     function GsubTable(de, byte_ar) {
         this.gdef = null;
+        this.featureOrderCache = new Map();
         byte_ar.offset = de.offset;
         byte_ar.readInt();
         var scriptListOffset = byte_ar.readUnsignedShort();
@@ -153,36 +154,18 @@ var GsubTable = /** @class */ (function () {
         return subtables;
     };
     GsubTable.prototype.applyFeatures = function (glyphs, featureTags, scriptTags) {
+        var _a, _b;
         if (scriptTags === void 0) { scriptTags = ["DFLT", "latn"]; }
-        var script = this.findPreferredScript(scriptTags);
-        var langSys = this.getDefaultLangSys(script);
-        if (!langSys)
+        var featureOrder = this.getFeatureOrder(featureTags, scriptTags);
+        if (!featureOrder || featureOrder.length === 0)
             return glyphs;
-        var tagSet = new Set(featureTags);
-        var featureRecords = this.featureList.getFeatureRecords();
-        var requiredIndex = langSys.getRequiredFeatureIndex();
-        var orderedFeatureIndices = langSys.getFeatureIndices();
-        var featureOrder = [];
-        if (requiredIndex != null && requiredIndex !== 0xffff) {
-            featureOrder.push(requiredIndex);
-        }
-        for (var _i = 0, orderedFeatureIndices_1 = orderedFeatureIndices; _i < orderedFeatureIndices_1.length; _i++) {
-            var idx = orderedFeatureIndices_1[_i];
-            if (idx === requiredIndex)
-                continue;
-            featureOrder.push(idx);
-        }
         var out = glyphs.slice();
-        for (var _a = 0, featureOrder_1 = featureOrder; _a < featureOrder_1.length; _a++) {
-            var featureIndex = featureOrder_1[_a];
-            var record = featureRecords[featureIndex];
-            if (!record)
-                continue;
-            var tag = this.tagToString(record.getTag());
-            var isRequired = featureIndex === requiredIndex;
-            if (!isRequired && !tagSet.has(tag))
-                continue;
-            var feature = this.featureList.features[featureIndex];
+        for (var _i = 0, featureOrder_1 = featureOrder; _i < featureOrder_1.length; _i++) {
+            var featureIndex = featureOrder_1[_i];
+            var featureListAny = this.featureList;
+            var feature = (_b = (_a = featureListAny.features) === null || _a === void 0 ? void 0 : _a[featureIndex]) !== null && _b !== void 0 ? _b : (typeof featureListAny.getFeatureByIndex === "function"
+                ? featureListAny.getFeatureByIndex(featureIndex)
+                : null);
             if (!feature)
                 continue;
             for (var i = 0; i < feature.getLookupCount(); i++) {
@@ -277,6 +260,43 @@ var GsubTable = /** @class */ (function () {
     };
     GsubTable.prototype.tagToString = function (tag) {
         return String.fromCharCode((tag >> 24) & 0xff, (tag >> 16) & 0xff, (tag >> 8) & 0xff, tag & 0xff);
+    };
+    GsubTable.prototype.getFeatureOrder = function (featureTags, scriptTags) {
+        if (!this.featureOrderCache) {
+            this.featureOrderCache = new Map();
+        }
+        var cacheKey = "".concat(scriptTags.join(","), "::").concat(featureTags.join(","));
+        var cached = this.featureOrderCache.get(cacheKey);
+        if (cached !== undefined)
+            return cached;
+        var script = this.findPreferredScript(scriptTags);
+        var langSys = this.getDefaultLangSys(script);
+        if (!langSys) {
+            this.featureOrderCache.set(cacheKey, null);
+            return null;
+        }
+        var tagSet = new Set(featureTags);
+        var featureRecords = this.featureList.getFeatureRecords();
+        var requiredIndex = langSys.getRequiredFeatureIndex();
+        var orderedFeatureIndices = langSys.getFeatureIndices();
+        var featureOrder = [];
+        if (requiredIndex != null && requiredIndex !== 0xffff) {
+            featureOrder.push(requiredIndex);
+        }
+        for (var _i = 0, orderedFeatureIndices_1 = orderedFeatureIndices; _i < orderedFeatureIndices_1.length; _i++) {
+            var idx = orderedFeatureIndices_1[_i];
+            if (idx === requiredIndex)
+                continue;
+            var record = featureRecords[idx];
+            if (!record)
+                continue;
+            var tag = this.tagToString(record.getTag());
+            if (!tagSet.has(tag))
+                continue;
+            featureOrder.push(idx);
+        }
+        this.featureOrderCache.set(cacheKey, featureOrder);
+        return featureOrder;
     };
     GsubTable.prototype.getType = function () {
         return Table.GSUB;

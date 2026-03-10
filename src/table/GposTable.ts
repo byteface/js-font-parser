@@ -20,6 +20,7 @@ export class GposTable implements ITable, ILookupSubtableFactory {
     scriptList: ScriptList;
     featureList: FeatureList;
     lookupList: LookupList;
+    private subtableCache: Map<string, LookupSubtable[]>;
 
     constructor(de: DirectoryEntry, byte_ar: ByteArray) {
         byte_ar.offset = de.offset;
@@ -32,6 +33,7 @@ export class GposTable implements ITable, ILookupSubtableFactory {
         this.scriptList = new ScriptList(byte_ar, de.offset + scriptListOffset);
         this.featureList = new FeatureList(byte_ar, de.offset + featureListOffset);
         this.lookupList = new LookupList(byte_ar, de.offset + lookupListOffset, this);
+        this.subtableCache = new Map<string, LookupSubtable[]>();
     }
 
     public read(_type: number, _byte_ar: ByteArray, _offset: number): LookupSubtable | null {
@@ -68,6 +70,13 @@ export class GposTable implements ITable, ILookupSubtableFactory {
     }
 
     getSubtablesForFeatures(featureTags: string[], scriptTags: string[] = ["DFLT", "latn"]): LookupSubtable[] {
+        if (!this.subtableCache) {
+            this.subtableCache = new Map<string, LookupSubtable[]>();
+        }
+        const cacheKey = `${scriptTags.join(",")}::${featureTags.join(",")}`;
+        const cached = this.subtableCache.get(cacheKey);
+        if (cached) return cached;
+
         const script = this.findPreferredScript(scriptTags);
         const langSys = this.getDefaultLangSys(script);
         if (!langSys) return [];
@@ -85,6 +94,7 @@ export class GposTable implements ITable, ILookupSubtableFactory {
                 }
             }
         }
+        this.subtableCache.set(cacheKey, subtables);
         return subtables;
     }
 
