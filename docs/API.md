@@ -1,6 +1,6 @@
 # API
 
-Current public API for loading and inspecting TTF/OTF/WOFF/WOFF2 fonts.
+Current public API for a browser-focused typography engine that loads, shapes, inspects, and renders TTF/OTF/WOFF/WOFF2 fonts.
 
 ## Package Exports
 

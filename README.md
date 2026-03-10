@@ -1,10 +1,11 @@
 # JS Font Parser
 
-Parse and inspect font files in JavaScript, then render and experiment with glyph geometry.
+A high-quality browser typography engine for JavaScript: parse fonts, shape text, inspect tables, and render glyphs with real outline access.
 
 This project is for:
-- font parsing, outline/table inspection, shaping/layout experiments
-- demo/tooling workflows where you need direct access to points/contours/tables
+- browser typography, shaping, layout, and rendering workflows
+- font parsing, outline/table inspection, and variable/color font experiments
+- demo/tooling workflows where you need direct access to points, contours, metrics, and tables
 
 This project is not a full browser text engine replacement.
 
@@ -28,6 +29,8 @@ Open:
 - `http://localhost:8080/tools/index.html`
 
 ## Install and Use
+
+`js-font-parser` is best thought of as a browser-focused typography engine and font toolkit. It gives you font loading, glyph access, shaping/layout helpers, SVG/canvas rendering helpers, and low-level table access in one package.
 
 ### Node / Bundler
 
@@ -54,6 +57,12 @@ const svg = SVGFont.exportStringSvg(font, 'Hello');
 - OTF/CFF: supported
 - WOFF: supported
 - WOFF2: supported when a decoder is provided at runtime
+
+Core strengths:
+- browser typography and direct glyph rendering
+- GSUB/GPOS-aware shaping and layout helpers
+- outline, metrics, metadata, and table inspection
+- variable fonts, color fonts, and creative coding workflows
 
 WOFF2 decoder hook:
 - `setWoff2Decoder(...)`, or
