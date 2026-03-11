@@ -95,7 +95,9 @@
   </div>
 
   <script src="../dist-build/fontparser.min.js"></script>
-  <script>
+  <script type="module">
+    import { attachFontSourceControl } from './shared/font-ui.js';
+
     const { FontParser, CanvasRenderer } = window.FontParser || {};
 
     const FONT_OPTIONS = [
@@ -126,6 +128,18 @@
       opt.textContent = f.name;
       fontSelect.appendChild(opt);
     });
+    attachFontSourceControl(fontSelect);
+
+    function getSelectedFontOption() {
+      const control = fontSelect.__fontSourceControl;
+      return control?.modeSelect?.value === 'custom' && control.customUrl
+        ? {
+            name: control.customName || 'Custom font',
+            url: control.customUrl,
+            text: textInput.value || 'Hamburgefonts AV'
+          }
+        : (FONT_OPTIONS[Number(fontSelect.value)] || FONT_OPTIONS[0]);
+    }
 
     [textInput, sizeInput, gridSelect].forEach((el) => {
       el.addEventListener('input', render);
@@ -133,14 +147,16 @@
     });
 
     fontSelect.addEventListener('change', async () => {
-      const selected = FONT_OPTIONS[Number(fontSelect.value)] || FONT_OPTIONS[0];
-      textInput.value = selected.text;
+      const selected = getSelectedFontOption();
+      if (!selected.url?.startsWith?.('blob:')) {
+        textInput.value = selected.text;
+      }
       await loadSelectedFont();
       render();
     });
 
     function updateStats() {
-      const selected = FONT_OPTIONS[Number(fontSelect.value)] || FONT_OPTIONS[0];
+      const selected = getSelectedFontOption();
       fontInfo.textContent = `font: ${selected.name}`;
       sizeInfo.textContent = `size: ${sizeInput.value}px`;
     }
@@ -150,7 +166,7 @@
         status.textContent = 'error: dist-build bundle not loaded';
         return;
       }
-      const selected = FONT_OPTIONS[Number(fontSelect.value)] || FONT_OPTIONS[0];
+      const selected = getSelectedFontOption();
       if (fontCache.has(selected.url)) {
         activeFont = fontCache.get(selected.url);
         status.textContent = 'loaded from cache';

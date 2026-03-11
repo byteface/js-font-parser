@@ -15,7 +15,7 @@
     .panel { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:12px; }
     .controls { display:grid; gap:8px; margin-bottom:10px; }
     label { display:block; font-size:12px; color:var(--muted); }
-    input[type="text"], select { width:100%; padding:8px 10px; border-radius:9px; border:1px solid var(--border); font:inherit; }
+    input[type="text"], input[type="file"], select { width:100%; padding:8px 10px; border-radius:9px; border:1px solid var(--border); font:inherit; }
     input[type="range"] { width:100%; margin:2px 0 8px; }
     .row { display:grid; grid-template-columns:1fr auto; align-items:center; gap:8px; }
     .chip { border:1px solid var(--border); border-radius:999px; padding:2px 8px; font-size:12px; color:var(--muted); }
@@ -48,7 +48,8 @@
     <section class="panel">
       <div class="controls">
         <label for="fontSelect">Font</label>
-        <select id="fontSelect"></select>
+        <select id="fontSelect" data-font-source-ui="off"></select>
+        <input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2" />
         <label for="textInput">Preview text</label>
         <input id="textInput" type="text" value="AVATAR WA To VA Type Wow, Yay." />
         <label for="charsInput">Heatmap character set (unique chars used in grid)</label>
@@ -95,6 +96,7 @@
     const input = document.getElementById('textInput');
     const charsInput = document.getElementById('charsInput');
     const fontSelect = document.getElementById('fontSelect');
+    const fontFileInput = document.getElementById('fontFileInput');
     const kernInput = document.getElementById('kernInput');
     const kernStrength = document.getElementById('kernStrength');
     const plainCanvas = document.getElementById('plain');
@@ -109,6 +111,7 @@
     const fonts = getFontList('kerning');
     const loadFont = createFontLoader(FontParser.load);
     let font = null;
+    let customFontUrl = null;
     const TOOL_KEY = "tool:kerning";
     const SCRIPT_PRESETS = {
       latin: {
@@ -339,6 +342,30 @@
       },
       onError: (err) => {
         kernInfo.textContent = `Failed to load font: ${err?.message ?? err}`;
+      }
+    });
+
+    fontFileInput.addEventListener('change', async () => {
+      if (customFontUrl) URL.revokeObjectURL(customFontUrl);
+      customFontUrl = fontFileInput.files?.[0] ? URL.createObjectURL(fontFileInput.files[0]) : null;
+      if (!customFontUrl) {
+        selector.run();
+        return;
+      }
+      try {
+        font = await loadFont(customFontUrl);
+        kernInfo.textContent = `Loaded custom font: ${fontFileInput.files?.[0]?.name || 'Custom font'}`;
+        render();
+      } catch (err) {
+        kernInfo.textContent = `Failed to load custom font: ${err?.message ?? err}`;
+      }
+    });
+
+    fontSelect.addEventListener('change', () => {
+      if (fontFileInput.value) {
+        fontFileInput.value = '';
+        if (customFontUrl) URL.revokeObjectURL(customFontUrl);
+        customFontUrl = null;
       }
     });
 

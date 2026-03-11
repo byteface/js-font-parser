@@ -51,6 +51,7 @@
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
     import { clearCanvas } from './shared/canvas-utils.js';
     import { setStatus } from './shared/status-ui.js';
+    import { attachFontSourceControl } from './shared/font-ui.js';
     import { createSharedToolbar, persistInputValue, persistSelectValue } from './shared/shared-toolbar.js';
     import { fetchArrayBuffer } from './shared/font-io.js';
 
@@ -66,6 +67,26 @@
     let lastValidation = null;
     let lastDecodeMs = null;
     const TOOL_KEY = "tool:woff-loader";
+    const woffFonts = [
+        { name: 'Ubuntu (woff)', url: '../truetypefonts/ubuntu.woff' },
+        { name: 'Ubuntu Webfont (woff)', url: '../truetypefonts/ubuntu-webfont.woff' },
+        { name: 'Font Awesome 4.7 (woff)', url: '../truetypefonts/curated-extra/FontAwesome-4.7.0.woff' },
+        { name: 'Open Sans (CDN)', url: 'https://cdn.jsdelivr.net/fontsource/fonts/open-sans@latest/latin-400-normal.woff' }
+    ];
+    attachFontSourceControl(fontSelect);
+
+    function getSelectedFontOption() {
+        const control = fontSelect.__fontSourceControl;
+        if (control?.customUrl) {
+            return {
+                name: control.customName || 'Custom font',
+                url: control.customUrl,
+                isCustom: true
+            };
+        }
+        const selected = woffFonts[fontSelect.selectedIndex] || woffFonts[0];
+        return selected;
+    }
 
     function readUInt16(data, offset) {
         return (data[offset] << 8) | data[offset + 1];
@@ -113,7 +134,8 @@
     }
 
     async function loadFont(url) {
-        setStatus(status, `Loading: ${fontSelect.options[fontSelect.selectedIndex].text}`, 'info');
+        const selected = getSelectedFontOption();
+        setStatus(status, `Loading: ${selected.name}`, 'info');
         try {
             const bytes = new Uint8Array(await fetchArrayBuffer(url));
             lastValidation = validateWoffBytes(bytes);
@@ -123,7 +145,7 @@
             lastDecodeMs = performance.now() - start;
             timing.textContent = `Decode/parse: ${lastDecodeMs.toFixed(2)} ms`;
             font = f;
-            setStatus(status, `Loaded: ${fontSelect.options[fontSelect.selectedIndex].text}`, 'success');
+            setStatus(status, `Loaded: ${selected.name}`, 'success');
             render();
         } catch (error) {
             font = null;
@@ -133,17 +155,18 @@
         }
     }
 
-    loadFont(fontSelect.value);
+    loadFont(getSelectedFontOption().url);
 
     textInput.addEventListener('input', render);
     fontSelect.addEventListener('change', () => {
-        if (fontSelect.value.includes('FontAwesome')) {
+        const selected = getSelectedFontOption();
+        if (!selected.isCustom && selected.url.includes('FontAwesome')) {
             // Pick common FA codepoints so the demo visibly renders something.
             textInput.value = '\uf17b  \uf013  \uf0c0';
-        } else {
+        } else if (!selected.isCustom) {
             textInput.value = 'Hello WOFF';
         }
-        loadFont(fontSelect.value);
+        loadFont(selected.url);
     });
     persistSelectValue(fontSelect, TOOL_KEY, "font");
     persistInputValue(textInput, TOOL_KEY, "text");
@@ -153,8 +176,8 @@
         fontSelect,
         getExportData: () => ({
             tool: "woff-loader",
-            selectedFont: fontSelect.options[fontSelect.selectedIndex]?.text || null,
-            url: fontSelect.value,
+            selectedFont: getSelectedFontOption().name,
+            url: getSelectedFontOption().url,
             text: textInput.value,
             decodeMs: lastDecodeMs,
             validation: lastValidation,

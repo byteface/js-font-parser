@@ -105,7 +105,7 @@
   <script type="module">
     import { FontParser } from "../dist/data/FontParser.js";
     import { getFontList } from "./shared/font-catalog.js";
-    import { createFontLoader, populateFontSelect } from "./shared/font-ui.js";
+    import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
 
     const fonts = getFontList("unicodeCoverage");
 
@@ -191,16 +191,29 @@
       };
     }
 
-    async function loadFontAndCoverage(fontIndex) {
-      const fontConfig = fonts[fontIndex] ?? fonts[0];
-      const cacheKey = `${fontConfig.name}::${fontConfig.url}`;
+    async function loadFontAndCoverage(fontConfig) {
+      const selected = fontConfig ?? fonts[0];
+      const cacheKey = selected.isCustom
+        ? `custom::${selected.name}::${selected.url}`
+        : `${selected.name}::${selected.url}`;
       if (coverageCache.has(cacheKey)) return coverageCache.get(cacheKey);
 
-      const font = await loadFont(fontConfig.url);
+      const font = await loadFont(selected.url);
       const coverageByBlock = blocks.map((block) => ({ block, ...getCoverageDataForBlock(font, block) }));
-      const payload = { font, coverageByBlock };
+      const payload = { font, coverageByBlock, selected };
       coverageCache.set(cacheKey, payload);
       return payload;
+    }
+
+    async function render() {
+      const selectedFont = getSelectedFont(fontSelect, fonts);
+      const selectedBlockIndex = Number(blockSelect.value) || 0;
+
+      const { font, coverageByBlock } = await loadFontAndCoverage(selectedFont);
+      const coverageEntry = coverageByBlock[selectedBlockIndex] ?? coverageByBlock[0];
+
+      renderBlock(font, coverageEntry);
+      renderSummary(coverageByBlock);
     }
 
     function setStatsText(textParts) {
@@ -299,17 +312,6 @@
         tr.innerHTML = `<td colspan="5" class="note">No blocks under ${threshold}% coverage.</td>`;
         summary.appendChild(tr);
       }
-    }
-
-    async function render() {
-      const fontIndex = Number(fontSelect.value) || 0;
-      const selectedBlockIndex = Number(blockSelect.value) || 0;
-
-      const { font, coverageByBlock } = await loadFontAndCoverage(fontIndex);
-      const coverageEntry = coverageByBlock[selectedBlockIndex] ?? coverageByBlock[0];
-
-      renderBlock(font, coverageEntry);
-      renderSummary(coverageByBlock);
     }
 
     function populate() {

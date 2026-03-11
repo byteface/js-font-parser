@@ -332,8 +332,8 @@ export class BaseFontParser {
                             }
                         }
                         else {
-                            const rawDx = fullDx[p] ?? 0;
-                            const rawDy = fullDy[p] ?? 0;
+                            const rawDx = isComposite ? (fullDx[p] ?? 0) : (dx[p] ?? 0);
+                            const rawDy = isComposite ? (fullDy[p] ?? 0) : (dy[p] ?? 0);
                             const transformed = comp && typeof comp.hasTransform === 'function' && comp.hasTransform() && typeof comp.transformDelta === 'function'
                                 ? comp.transformDelta(rawDx, rawDy)
                                 : null;
@@ -377,8 +377,8 @@ export class BaseFontParser {
                                     return (px * xscale) + (py * scale10) + ox;
                                 }
                             }
-                            const rawDx = fullDx[p] ?? 0;
-                            const rawDy = fullDy[p] ?? 0;
+                            const rawDx = isComposite ? (fullDx[p] ?? 0) : (dx[p] ?? 0);
+                            const rawDy = isComposite ? (fullDy[p] ?? 0) : (dy[p] ?? 0);
                             const transformed = comp && typeof comp.hasTransform === 'function' && comp.hasTransform() && typeof comp.transformDelta === 'function'
                                 ? comp.transformDelta(rawDx, rawDy)
                                 : null;
@@ -405,8 +405,8 @@ export class BaseFontParser {
                                     return (px * scale01) + (py * yscale) + oy;
                                 }
                             }
-                            const rawDx = fullDx[p] ?? 0;
-                            const rawDy = fullDy[p] ?? 0;
+                            const rawDx = isComposite ? (fullDx[p] ?? 0) : (dx[p] ?? 0);
+                            const rawDy = isComposite ? (fullDy[p] ?? 0) : (dy[p] ?? 0);
                             const transformed = comp && typeof comp.hasTransform === 'function' && comp.hasTransform() && typeof comp.transformDelta === 'function'
                                 ? comp.transformDelta(rawDx, rawDy)
                                 : null;

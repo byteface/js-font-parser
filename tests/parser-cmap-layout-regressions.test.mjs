@@ -155,6 +155,45 @@ test('parser/layout: gvar phantom-only deltas update metrics without moving outl
   assert.equal(glyph.getPoint(1).x, 30);
 });
 
+test('parser/layout: simple gvar glyphs use IUP-interpolated deltas for untouched points', () => {
+  const parser = createTtfParserMock();
+  const description = {
+    getPointCount: () => 4,
+    getContourCount: () => 1,
+    getEndPtOfContours: () => 3,
+    getFlags: () => 1,
+    getXCoordinate: (point) => [0, 10, 20, 30][point],
+    getYCoordinate: () => 0,
+    getXMaximum: () => 30,
+    getXMinimum: () => 0,
+    getYMaximum: () => 0,
+    getYMinimum: () => 0,
+    isComposite: () => false,
+    resolve: () => {}
+  };
+
+  parser.glyf = { getDescription: () => description };
+  parser.hmtx = {
+    getLeftSideBearing: () => 0,
+    getAdvanceWidth: () => 100
+  };
+  parser.variationCoords = [0.5];
+  parser.gvar = {
+    getDeltasForGlyph: () => ({
+      dx: [0, 0, 0, 30, 0, 0],
+      dy: [0, 0, 0, 0, 0, 0],
+      touched: [true, false, false, true]
+    })
+  };
+
+  const glyph = parser.getGlyph(0);
+  assert.ok(glyph);
+  assert.equal(glyph.getPoint(0).x, 0);
+  assert.equal(glyph.getPoint(1).x, 20);
+  assert.equal(glyph.getPoint(2).x, 40);
+  assert.equal(glyph.getPoint(3).x, 60);
+});
+
 test('layout engine: mixed bidi with soft hyphen and newline stays deterministic', () => {
   const font = createLayoutFontMock();
   const text = 'אבג hyphen\u00ADation\nXYZ שלום';

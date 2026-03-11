@@ -443,7 +443,8 @@
     if (diagnostics.length && filtered.length === 0) {
       ui.diagnostics.textContent = 'No diagnostics match current filters.';
     }
-    ui.renderStatus.textContent = `Rendered ${new Date().toLocaleTimeString()} | Font: ${fonts[Number(ui.fontSelect.value)]?.name ?? 'unknown'}`;
+    const selectedFont = getSelectedFont(ui.fontSelect, fonts);
+    ui.renderStatus.textContent = `Rendered ${new Date().toLocaleTimeString()} | Font: ${selectedFont?.name ?? 'unknown'}`;
   }
 
   async function boot() {
@@ -454,7 +455,7 @@
 
   ui.fontSelect.addEventListener('change', boot);
   ui.renderBtn.addEventListener('click', async () => {
-    const f = fonts[Number(ui.fontSelect.value)] ?? fonts[0];
+    const f = getSelectedFont(ui.fontSelect, fonts);
     // Force a fresh parser instance so the button always performs a visible re-run.
     cache.delete(f.url);
     font = await loadFont(f.url);

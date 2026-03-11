@@ -103,6 +103,31 @@ test('fixture smoke: curated variable fonts expose variation axes and survive ax
   }
 });
 
+test('fixture smoke: Noto SEA variable fonts keep Latin stems straight at max weight', () => {
+  const fixtures = [
+    'truetypefonts/curated-extra/NotoSansThai-VF.ttf',
+    'truetypefonts/curated-extra/NotoSansKhmer-VF.ttf',
+    'truetypefonts/curated-extra/NotoSansLao-VF.ttf'
+  ];
+
+  for (const fixture of fixtures) {
+    const bytes = readBytes(fixture);
+    const font = FontParser.fromArrayBuffer(toArrayBuffer(bytes));
+    const axes = font.getVariationAxes();
+    const maxValues = Object.fromEntries(axes.map((axis) => [axis.name, axis.maxValue]));
+    font.setVariationByAxes(maxValues);
+    const glyph = font.getGlyphByChar('L');
+    assert.ok(glyph, `expected Latin L glyph for ${fixture}`);
+    const bottomLeft = glyph.getPoint(0);
+    const topLeft = glyph.getPoint(1);
+    assert.ok(bottomLeft && topLeft, `expected left stem points for ${fixture}`);
+    assert.ok(
+      Math.abs(bottomLeft.x - topLeft.x) <= 2,
+      `expected left stem to stay vertical for ${fixture}, got ${bottomLeft.x} vs ${topLeft.x}`
+    );
+  }
+});
+
 test('fixture smoke: CFF2 variable OTF fixtures survive axis extremes and update outlines', () => {
   const cff2Fixtures = [
     'truetypefonts/curated/SourceSerif4Variable-Roman.otf',

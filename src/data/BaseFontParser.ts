@@ -399,8 +399,8 @@ export abstract class BaseFontParser {
                                 y = (px * scale01) + (py * yscale) + oy;
                             }
                         } else {
-                            const rawDx = fullDx[p] ?? 0;
-                            const rawDy = fullDy[p] ?? 0;
+                            const rawDx = isComposite ? (fullDx[p] ?? 0) : (dx[p] ?? 0);
+                            const rawDy = isComposite ? (fullDy[p] ?? 0) : (dy[p] ?? 0);
                             const transformed = comp && typeof (comp as any).hasTransform === 'function' && (comp as any).hasTransform() && typeof (comp as any).transformDelta === 'function'
                                 ? (comp as any).transformDelta(rawDx, rawDy)
                                 : null;
@@ -441,8 +441,8 @@ export abstract class BaseFontParser {
                                     return (px * xscale) + (py * scale10) + ox;
                                 }
                             }
-                            const rawDx = fullDx[p] ?? 0;
-                            const rawDy = fullDy[p] ?? 0;
+                            const rawDx = isComposite ? (fullDx[p] ?? 0) : (dx[p] ?? 0);
+                            const rawDy = isComposite ? (fullDy[p] ?? 0) : (dy[p] ?? 0);
                             const transformed = comp && typeof (comp as any).hasTransform === 'function' && (comp as any).hasTransform() && typeof (comp as any).transformDelta === 'function'
                                 ? (comp as any).transformDelta(rawDx, rawDy)
                                 : null;
@@ -469,8 +469,8 @@ export abstract class BaseFontParser {
                                     return (px * scale01) + (py * yscale) + oy;
                                 }
                             }
-                            const rawDx = fullDx[p] ?? 0;
-                            const rawDy = fullDy[p] ?? 0;
+                            const rawDx = isComposite ? (fullDx[p] ?? 0) : (dx[p] ?? 0);
+                            const rawDy = isComposite ? (fullDy[p] ?? 0) : (dy[p] ?? 0);
                             const transformed = comp && typeof (comp as any).hasTransform === 'function' && (comp as any).hasTransform() && typeof (comp as any).transformDelta === 'function'
                                 ? (comp as any).transformDelta(rawDx, rawDy)
                                 : null;

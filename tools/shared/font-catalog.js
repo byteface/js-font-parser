@@ -245,7 +245,12 @@ export const FONT_LISTS = {
     { name: 'DiscoMo CS', url: PATHS.discomoCs },
     { name: 'DiscoMo HU', url: PATHS.discomoHu },
     { name: 'DiscoMo TR', url: PATHS.discomoTr },
-    { name: 'DiscoMo RO', url: PATHS.discomoRo }
+    { name: 'DiscoMo RO', url: PATHS.discomoRo },
+    { name: 'Noto Sans', url: PATHS.notoSans },
+    { name: 'Source Sans 3', url: PATHS.sourceSans3 },
+    { name: 'Arimo Variable', url: PATHS.arimoVar },
+    { name: 'Source Serif 4 Variable', url: PATHS.sourceSerifVar },
+    { name: 'Playwrite GB S Variable', url: PATHS.playwriteVar }
   ],
   unicodeCoverage: [
     { name: 'DiscoMo', url: PATHS.discomo },

@@ -33,7 +33,7 @@
             letter-spacing: 0.08em;
             color: #4e5a6b;
         }
-        select, input[type="text"], input[type="number"] {
+        select, input[type="text"], input[type="number"], input[type="file"] {
             padding: 8px 10px;
             border-radius: 8px;
             border: 1px solid #dbe2e7;
@@ -100,7 +100,8 @@
     <div class="panel">
         <label>
             Font
-            <select id="fontSelect"></select>
+            <select id="fontSelect" data-font-source-ui="off"></select>
+            <input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2" />
         </label>
         <label>
             Glyph Index
@@ -147,6 +148,7 @@
         import { createSharedToolbar, persistInputValue } from './shared/shared-toolbar.js';
 
         const fontSelect = document.getElementById('fontSelect');
+        const fontFileInput = document.getElementById('fontFileInput');
         const glyphInput = document.getElementById('glyphInput');
         const charInput = document.getElementById('charInput');
         const unicodeInput = document.getElementById('unicodeInput');
@@ -170,6 +172,7 @@
         const fonts = getFontList('allGlyphs');
 
         const loadFont = createFontLoader(FontParser.load);
+        let customFontUrl = null;
         let font = null;
         let glyphCount = 0;
         const cell = 48;
@@ -451,7 +454,9 @@
         });
 
         async function loadAndRender() {
-            const selected = getSelectedFont(fontSelect, fonts);
+            const selected = customFontUrl
+                ? { name: fontFileInput.files?.[0]?.name || 'Custom font', url: customFontUrl, isCustom: true }
+                : getSelectedFont(fontSelect, fonts);
             font = await loadFont(selected.url);
             glyphCount = font.getNumGlyphs();
             gridCols = Math.max(4, Math.floor(gridCanvas.width / cell));
@@ -460,6 +465,11 @@
         }
 
         fontSelect.addEventListener('change', loadAndRender);
+        fontFileInput.addEventListener('change', () => {
+            if (customFontUrl) URL.revokeObjectURL(customFontUrl);
+            customFontUrl = fontFileInput.files?.[0] ? URL.createObjectURL(fontFileInput.files[0]) : null;
+            loadAndRender();
+        });
         glyphInput.addEventListener('input', () => selectGlyph(Number(glyphInput.value)));
         charInput.addEventListener('input', () => {
             const ch = Array.from(charInput.value || '')[0] || '';
@@ -533,6 +543,11 @@
             fontSelect.value = String(Math.max(0, Math.min(savedFontIndex, fonts.length - 1)));
         }
         fontSelect.addEventListener('change', () => {
+            if (fontFileInput.value) {
+                fontFileInput.value = '';
+                if (customFontUrl) URL.revokeObjectURL(customFontUrl);
+                customFontUrl = null;
+            }
             localStorage.setItem(`${TOOL_KEY}:font`, fontSelect.value);
         });
         loadAndRender();

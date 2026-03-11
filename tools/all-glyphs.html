@@ -81,14 +81,6 @@
             <select id="fontSelect"></select>
         </label>
         <label>
-            Fill Rule
-            <select id="fillRuleSelect">
-                <option value="auto">Auto</option>
-                <option value="nonzero">Nonzero</option>
-                <option value="evenodd">Even-odd</option>
-            </select>
-        </label>
-        <label>
             Cell Size
             <input id="cellInput" type="range" min="40" max="160" value="100" />
         </label>
@@ -127,7 +119,6 @@
         import { setStatus } from "./shared/status-ui.js";
 
         const fontSelect = document.getElementById("fontSelect");
-        const fillRuleSelect = document.getElementById("fillRuleSelect");
         const cellInput = document.getElementById("cellInput");
         const scaleInput = document.getElementById("scaleInput");
         const indexInput = document.getElementById("indexInput");
@@ -172,12 +163,6 @@
             return { minx, miny, maxx, maxy };
         }
 
-        function getFillRule() {
-            const value = fillRuleSelect.value;
-            if (value === "nonzero" || value === "evenodd") return value;
-            return null;
-        }
-
         function drawGlyphPoints(ctx, glyph, x, y, scale) {
             if (!ctx || !glyph) return;
             const radius = 6 / scale;
@@ -202,7 +187,6 @@
             const showIndex = indexInput.checked;
             const showPoints = pointsInput.checked;
             const debugGlyphIndex = Number(debugGlyphInput.value);
-            const fillRule = getFillRule();
 
             const hasGlyf = !!font.getTableByType(Table.glyf);
             const hasCff = !!font.getTableByType(Table.CFF);
@@ -252,8 +236,7 @@
                         x: x + cell * 0.5 - (centerX * scale),
                         y: baselineY,
                         scale,
-                        styles: { fillStyle: "#2f2a22", strokeStyle: "#2f2a22", lineWidth: 1 },
-                        fillRule: fillRule || undefined
+                        styles: { fillStyle: "#2f2a22", strokeStyle: "#2f2a22", lineWidth: 1 }
                     });
                     if (showPoints && Number.isFinite(debugGlyphIndex) && debugGlyphIndex === i) {
                         drawGlyphPoints(
@@ -308,7 +291,6 @@
             }
         });
         fontSelect.addEventListener("change", render);
-        fillRuleSelect.addEventListener("change", render);
         cellInput.addEventListener("input", render);
         scaleInput.addEventListener("input", render);
         indexInput.addEventListener("change", render);
