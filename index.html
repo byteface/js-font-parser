@@ -47,40 +47,35 @@
       overflow: clip;
     }
 
-    .hero-top {
-      padding: 20px 20px 12px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px 20px;
-      align-items: end;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--line);
-      background: linear-gradient(180deg, #163140, #122935);
-    }
-
-    .kicker {
+    .page-kicker {
       display: inline-block;
+      margin: 0 0 -2px 6px;
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: .18em;
       color: var(--accent-2);
-      margin-bottom: 10px;
-      font-weight: 600;
+      font-weight: 700;
     }
 
-    h1 {
-      margin: 0;
-      font-family: "Rockwell", "Avenir Next", serif;
-      font-size: clamp(28px, 4.2vw, 56px);
-      line-height: 1;
-      letter-spacing: .02em;
+    .hero-top {
+      padding: 12px 20px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 20px;
+      align-items: start;
+      justify-content: space-between;
+      background: linear-gradient(180deg, #14303d, #112733);
+    }
+
+    .hero-copy {
+      max-width: 72ch;
     }
 
     .sub {
-      margin: 10px 0 0;
+      margin: 0;
       color: var(--muted);
-      font-size: 15px;
-      max-width: 70ch;
+      font-size: 14px;
+      line-height: 1.45;
     }
 
     .hero-links {
@@ -107,24 +102,45 @@
     }
 
     .hero-canvas-wrap {
-      padding: 12px 14px 14px;
+      position: relative;
+      padding: 14px 14px 8px;
       border-bottom: 1px solid var(--line);
     }
 
     #heroCanvas {
       width: 100%;
-      height: min(48vw, 470px);
-      min-height: 280px;
+      height: min(38vw, 360px);
+      min-height: 220px;
       border-radius: 12px;
       border: 1px solid #345464;
       background: #0f2029;
       display: block;
     }
 
+    .canvas-tools,
+    .canvas-stats {
+      position: absolute;
+      right: 28px;
+      z-index: 2;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+      max-width: min(46%, 520px);
+      justify-content: flex-end;
+    }
+
+    .canvas-tools {
+      top: 28px;
+    }
+
+    .canvas-stats {
+      bottom: 22px;
+    }
+
     .controls {
       padding: 14px;
       display: grid;
-      gap: 12px;
+      gap: 8px;
       background: linear-gradient(180deg, #11232d, #0f1d25);
     }
 
@@ -141,9 +157,20 @@
     }
 
     .field label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
       font-size: 12px;
       color: var(--muted);
       letter-spacing: .02em;
+    }
+
+    .slider-value {
+      color: var(--ink);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      opacity: 0.9;
     }
 
     .field input,
@@ -161,13 +188,6 @@
     .field input[type="range"] { padding: 0; }
     .field input[type="color"] { padding: 2px; min-height: 36px; }
 
-    .switches {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px 20px;
-      padding-top: 4px;
-    }
-
     .switches label {
       display: inline-flex;
       align-items: center;
@@ -175,22 +195,21 @@
       font-size: 13px;
       color: var(--muted);
       user-select: none;
-    }
-
-    .stats {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 2px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(70, 103, 120, 0.8);
+      background: rgba(14, 28, 36, 0.84);
+      backdrop-filter: blur(4px);
     }
 
     .stat {
       border: 1px solid #355666;
-      background: #162c37;
+      background: rgba(22, 44, 55, 0.86);
       color: #c9d9e1;
       border-radius: 999px;
       padding: 5px 10px;
       font-size: 12px;
+      backdrop-filter: blur(4px);
     }
 
     .cards {
@@ -225,11 +244,21 @@
 </head>
 <body>
   <main class="shell">
+    <span class="page-kicker">Introducing</span>
     <section class="hero">
+      <div class="hero-canvas-wrap">
+        <canvas id="heroCanvas" width="1280" height="520"></canvas>
+        <div class="canvas-tools switches">
+          <label><input id="useKerning" type="checkbox" checked /> Use kerning</label>
+          <label><input id="showMetrics" type="checkbox" checked /> Show ascender/descender rulers</label>
+          <label><input id="showGrid" type="checkbox" checked /> Show baseline grid</label>
+          <label><input id="showShadow" type="checkbox" checked /> Enable shadow</label>
+        </div>
+        <div id="stats" class="canvas-stats"></div>
+      </div>
+
       <header class="hero-top">
-        <div>
-          <span class="kicker">Introducing</span>
-          <h1>JS FONT PARSER</h1>
+        <div class="hero-copy">
           <p class="sub">A high-quality browser typography engine for JavaScript: parse fonts, shape text, inspect tables, and render glyphs with real outline access.</p>
         </div>
         <nav class="hero-links">
@@ -237,10 +266,6 @@
           <a class="btn alt" href="tools/index.html">Open Tools</a>
         </nav>
       </header>
-
-      <div class="hero-canvas-wrap">
-        <canvas id="heroCanvas" width="1280" height="520"></canvas>
-      </div>
 
       <section class="controls">
         <div class="control-grid">
@@ -253,19 +278,19 @@
             <select id="fontSelect"></select>
           </div>
           <div class="field">
-            <label for="fontSize">Font Size (px)</label>
-            <input id="fontSize" type="range" min="48" max="260" step="2" value="146" />
+            <label for="fontSize"><span>Font Size (px)</span><span class="slider-value" data-value-for="fontSize"></span></label>
+            <input id="fontSize" type="range" min="48" max="260" step="2" value="102" />
           </div>
           <div class="field">
-            <label for="spacing">Letter Spacing (px)</label>
-            <input id="spacing" type="range" min="-6" max="32" step="1" value="4" />
+            <label for="spacing"><span>Letter Spacing (px)</span><span class="slider-value" data-value-for="spacing"></span></label>
+            <input id="spacing" type="range" min="-6" max="32" step="1" value="-6" />
           </div>
           <div class="field">
-            <label for="kerning">Kerning Strength</label>
+            <label for="kerning"><span>Kerning Strength</span><span class="slider-value" data-value-for="kerning"></span></label>
             <input id="kerning" type="range" min="0" max="2" step="0.05" value="1" />
           </div>
           <div class="field">
-            <label for="lineHeight">Line Height</label>
+            <label for="lineHeight"><span>Line Height</span><span class="slider-value" data-value-for="lineHeight"></span></label>
             <input id="lineHeight" type="range" min="0.8" max="2.2" step="0.05" value="1.24" />
           </div>
           <div class="field">
@@ -285,23 +310,14 @@
             <input id="shadowColor" type="color" value="#ff9354" />
           </div>
           <div class="field">
-            <label for="shadowBlur">Shadow Blur</label>
+            <label for="shadowBlur"><span>Shadow Blur</span><span class="slider-value" data-value-for="shadowBlur"></span></label>
             <input id="shadowBlur" type="range" min="0" max="40" step="1" value="13" />
           </div>
           <div class="field">
-            <label for="lineWidth">Stroke Width</label>
+            <label for="lineWidth"><span>Stroke Width</span><span class="slider-value" data-value-for="lineWidth"></span></label>
             <input id="lineWidth" type="range" min="0" max="7" step="0.25" value="0.9" />
           </div>
         </div>
-
-        <div class="switches">
-          <label><input id="useKerning" type="checkbox" checked /> Use kerning</label>
-          <label><input id="showMetrics" type="checkbox" checked /> Show ascender/descender rulers</label>
-          <label><input id="showGrid" type="checkbox" checked /> Show baseline grid</label>
-          <label><input id="showShadow" type="checkbox" checked /> Enable shadow</label>
-        </div>
-
-        <div id="stats" class="stats"></div>
       </section>
     </section>
 
@@ -314,9 +330,9 @@
         <strong>Tools</strong>
         <span>Inspection surfaces for coverage, kerning, metadata, GSUB/GPOS, tables, and shaping checks.</span>
       </a>
-      <a class="card" href="proj/fontparser/README.md">
-        <strong>CLI</strong>
-        <span>Use the command-line explorer for metadata, language coverage, subsetting, SVG export, and stats.</span>
+      <a class="card" href="https://github.com/byteface/js-font-parser">
+        <strong>GitHub</strong>
+        <span>Browse the source, issues, test coverage, fixtures, and package details in the main repository.</span>
       </a>
     </section>
 
@@ -533,6 +549,7 @@
 
     function render() {
       if (!font) return;
+      updateSliderValues();
       const ratio = resizeCanvasToDisplaySize(ui.canvas);
       const ctx = ui.canvas.getContext('2d');
       if (!ctx) return;
@@ -616,7 +633,16 @@
       render();
     }
 
+    function updateSliderValues() {
+      document.querySelectorAll('[data-value-for]').forEach((node) => {
+        const input = document.getElementById(node.dataset.valueFor);
+        if (!input) return;
+        node.textContent = input.value;
+      });
+    }
+
     populateFonts();
+    updateSliderValues();
     changeFont().catch((err) => {
       ui.stats.innerHTML = `<span class="stat">Failed to load font: ${err.message}</span>`;
     });

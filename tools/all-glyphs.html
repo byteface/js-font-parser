@@ -100,6 +100,14 @@
             Debug Glyph
             <input id="debugGlyphInput" type="number" min="0" placeholder="Index" />
         </label>
+        <label>
+            Start Glyph
+            <input id="startInput" type="number" min="0" value="0" />
+        </label>
+        <label>
+            Max Glyphs
+            <input id="limitInput" type="number" min="64" max="4096" step="64" value="1024" />
+        </label>
         <button id="renderBtn">Render</button>
         <button id="debugBtn">Log CFF Ops</button>
     </div>
@@ -124,6 +132,8 @@
         const indexInput = document.getElementById("indexInput");
         const pointsInput = document.getElementById("pointsInput");
         const debugGlyphInput = document.getElementById("debugGlyphInput");
+        const startInput = document.getElementById("startInput");
+        const limitInput = document.getElementById("limitInput");
         const renderBtn = document.getElementById("renderBtn");
         const debugBtn = document.getElementById("debugBtn");
         const canvas = document.getElementById("canvas");
@@ -163,6 +173,27 @@
             return { minx, miny, maxx, maxy };
         }
 
+        function buildGlyphToUnicodeMap(font) {
+            const cmap = font.getTableByType?.(Table.cmap);
+            const formats = Array.isArray(cmap?.formats) ? cmap.formats : [];
+            const map = new Map();
+            for (let cp = 0; cp <= 0xFFFF; cp++) {
+                let gid = null;
+                for (const format of formats) {
+                    if (!format || typeof format.mapCharCode !== "function") continue;
+                    const value = format.mapCharCode(cp);
+                    if (Number.isInteger(value) && value > 0) {
+                        gid = value;
+                        break;
+                    }
+                }
+                if (gid != null && !map.has(gid)) {
+                    map.set(gid, cp);
+                }
+            }
+            return map;
+        }
+
         function drawGlyphPoints(ctx, glyph, x, y, scale) {
             if (!ctx || !glyph) return;
             const radius = 6 / scale;
@@ -187,6 +218,8 @@
             const showIndex = indexInput.checked;
             const showPoints = pointsInput.checked;
             const debugGlyphIndex = Number(debugGlyphInput.value);
+            const startGlyph = Math.max(0, Math.floor(Number(startInput.value) || 0));
+            const maxGlyphs = Math.max(64, Math.floor(Number(limitInput.value) || 1024));
 
             const hasGlyf = !!font.getTableByType(Table.glyf);
             const hasCff = !!font.getTableByType(Table.CFF);
@@ -205,8 +238,11 @@
             const scale = (cell * scaleFactor) / emHeight;
 
             const glyphCount = font.getNumGlyphs();
+            const endGlyph = Math.min(glyphCount, startGlyph + maxGlyphs);
+            const visibleGlyphs = Math.max(0, endGlyph - startGlyph);
+            const unicodeMap = buildGlyphToUnicodeMap(font);
             const cols = Math.max(1, Math.floor(canvas.width / cell));
-            const rows = Math.ceil(glyphCount / cols);
+            const rows = Math.max(1, Math.ceil(visibleGlyphs / cols));
             const height = rows * cell + 40;
 
             canvas.height = height;
@@ -217,9 +253,10 @@
             ctx.font = "11px serif";
             ctx.fillStyle = "#5d5648";
 
-            for (let i = 0; i < glyphCount; i++) {
-                const col = i % cols;
-                const row = Math.floor(i / cols);
+            for (let localIndex = 0; localIndex < visibleGlyphs; localIndex++) {
+                const i = startGlyph + localIndex;
+                const col = localIndex % cols;
+                const row = Math.floor(localIndex / cols);
                 const x = col * cell;
                 const y = row * cell;
 
@@ -252,9 +289,23 @@
                 if (showIndex) {
                     ctx.fillText(String(i), x + 6, y + 14);
                 }
+
+                const codePoint = unicodeMap.get(i);
+                if (Number.isInteger(codePoint)) {
+                    ctx.save();
+                    ctx.font = "10px sans-serif";
+                    ctx.fillStyle = "#908877";
+                    ctx.textAlign = "right";
+                    ctx.fillText(`U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}`, x + cell - 6, y + cell - 8);
+                    ctx.restore();
+                }
             }
 
-            setStatus(status, `Glyphs: ${glyphCount} | Columns: ${cols} | Rows: ${rows}`, "info");
+            setStatus(
+                status,
+                `Showing glyphs ${startGlyph}–${Math.max(startGlyph, endGlyph - 1)} of ${glyphCount} | Columns: ${cols} | Rows: ${rows}`,
+                visibleGlyphs < glyphCount ? "warning" : "info"
+            );
         }
 
         async function render() {
@@ -295,6 +346,8 @@
         scaleInput.addEventListener("input", render);
         indexInput.addEventListener("change", render);
         pointsInput.addEventListener("change", render);
+        startInput.addEventListener("input", render);
+        limitInput.addEventListener("input", render);
 
         populateFontSelect(fontSelect, fonts);
         render();

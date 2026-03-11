@@ -69,8 +69,8 @@
 <script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
 const { FontParser, CanvasRenderer } = window.FontParser;
-import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/demo-scaffold.js";
-import { getFontList } from "../tools/shared/font-catalog.js";
+import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
+import { getFontList } from "./shared/font-catalog.js";
 
 const fontSelect = document.getElementById("fontSelect");
 const charCountInput = document.getElementById("charCount");
