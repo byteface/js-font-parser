@@ -70,6 +70,7 @@ const PATHS = {
   firaSansWoff: '../truetypefonts/curated-extra/FiraSans-Regular.woff',
   sourceCodeProRegularExtra: '../truetypefonts/curated-extra/SourceCodePro-Regular.otf',
   sourceCodeProBoldExtra: '../truetypefonts/curated-extra/SourceCodePro-Bold.otf',
+  dseg7ClassicMiniBold: '../truetypefonts/curated-extra/DSEG7ClassicMini-Bold.ttf',
   fontAwesome47Ttf: '../truetypefonts/curated-extra/FontAwesome-4.7.0.ttf',
   fontAwesome47Woff: '../truetypefonts/curated-extra/FontAwesome-4.7.0.woff',
   woff2NotoSansSubset: '../truetypefonts/curated-extra/woff2/NotoSans-Regular-subset.woff2',
@@ -134,6 +135,13 @@ export const FONT_LISTS = {
     { name: 'NotoSerifCJKjp-Regular.otf', url: PATHS.notoSerifCjkJp },
     { name: 'NotoSerifCJKkr-Regular.otf', url: PATHS.notoSerifCjkKr },
     { name: 'SourceCodePro-Bold.otf', url: PATHS.sourceCodeProBoldExtra }
+  ],
+  digitalDisplay: [
+    { name: 'DSEG7 Classic Mini Bold', url: PATHS.dseg7ClassicMiniBold },
+    { name: 'Gotham Narrow Ultra (OTF)', url: PATHS.gothamNarrow },
+    { name: 'Minecraft', url: PATHS.minecraft },
+    { name: 'Source Code Pro Bold (OTF)', url: PATHS.sourceCodeProBoldExtra },
+    { name: 'Roboto Variable', url: PATHS.robotoVar }
   ],
   shapingCore: [
     { name: 'Noto Sans', url: PATHS.notoSans },

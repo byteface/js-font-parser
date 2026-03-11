@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SVG Lab</title>
+  <style>
+    :root {
+      --bg: #f6f4f1;
+      --ink: #1e1f24;
+      --muted: #5e6574;
+      --panel: #ffffff;
+      --border: #e3e1db;
+      --accent: #2b5d88;
+    }
+    body { margin: 0; font-family: "Merriweather", serif; background: var(--bg); color: var(--ink); }
+    header { padding: 22px 20px 10px; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    p { margin: 0 0 14px; color: var(--muted); }
+    .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); padding: 12px 20px 24px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+    h2 { margin: 0 0 6px; font-size: 18px; }
+    .sub { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+    label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+    input, select, button, textarea { border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; background: #fff; color: var(--ink); }
+    button { cursor: pointer; background: var(--accent); color: #fff; border-color: #204566; }
+    textarea { width: 100%; min-height: 220px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; box-sizing: border-box; }
+    .preview { border: 1px dashed var(--border); border-radius: 10px; min-height: 260px; display: flex; align-items: center; justify-content: center; background: #fbfaf8; }
+    .preview svg { width: 100%; height: 100%; max-height: 420px; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<header>
+  <h1>SVG Lab</h1>
+  <p>Two different SVG workflows: <strong>generated outlines</strong> from glyph points, and <strong>embedded SVG glyphs</strong> from a font's SVG table.</p>
+</header>
+
+<section class="grid">
+  <div class="panel">
+    <h2>Outline Export</h2>
+    <div class="sub">Build SVG paths from parsed glyph outlines (works without an SVG table).</div>
+    <div class="row">
+      <label>Font
+        <select id="outlineFont"></select>
+      </label>
+      <label>Text
+        <input id="outlineText" value="Hello World" />
+      </label>
+      <button id="outlineExportBtn" type="button">Generate</button>
+    </div>
+    <div class="preview" id="outlinePreview"></div>
+    <textarea id="outlineOutput" spellcheck="false"></textarea>
+  </div>
+
+  <div class="panel">
+    <h2>SVG Table Viewer</h2>
+    <div class="sub">Render embedded SVG glyph documents from the font's <code>SVG </code> table.</div>
+    <div class="row">
+      <input id="svgFileInput" type="file" accept=".otf,.ttf" />
+      <button id="svgLoadSample" type="button">Load Twemoji SVG Sample</button>
+    </div>
+    <div class="row">
+      <button id="svgPrevGlyph" type="button">Prev SVG</button>
+      <button id="svgNextGlyph" type="button">Next SVG</button>
+      <label>Char <input id="svgCharInput" value="A" /></label>
+      <label>Glyph ID <input id="svgGlyphInput" type="text" value="" /></label>
+    </div>
+    <div class="hint">If table payloads are compressed, browser support for <code>DecompressionStream</code> is required.</div>
+    <div id="svgInfo" class="hint"></div>
+    <div class="preview" id="svgPreview"></div>
+  </div>
+</section>
+
+<script type="module">
+  import { FontParser } from "../dist/data/FontParser.js";
+  import { SVGFont } from "../dist/render/SVGFont.js";
+  import { Table } from "../dist/table/Table.js";
+  import { fetchArrayBuffer } from "./shared/font-io.js";
+  import { setStatus } from "./shared/status-ui.js";
+  import { getFontList } from "./shared/font-catalog.js";
+
+  const outlineFont = document.getElementById("outlineFont");
+  const outlineText = document.getElementById("outlineText");
+  const outlineExportBtn = document.getElementById("outlineExportBtn");
+  const outlinePreview = document.getElementById("outlinePreview");
+  const outlineOutput = document.getElementById("outlineOutput");
+
+  const svgFileInput = document.getElementById("svgFileInput");
+  const svgLoadSample = document.getElementById("svgLoadSample");
+  const svgPrevGlyph = document.getElementById("svgPrevGlyph");
+  const svgNextGlyph = document.getElementById("svgNextGlyph");
+  const svgCharInput = document.getElementById("svgCharInput");
+  const svgGlyphInput = document.getElementById("svgGlyphInput");
+  const svgPreview = document.getElementById("svgPreview");
+  const svgInfo = document.getElementById("svgInfo");
+
+  let outlineFontObj = null;
+  let svgFontObj = null;
+  let svgRanges = [];
+  let svgRangeIndex = 0;
+
+  const outlineFonts = getFontList("demoCore")
+    .concat(getFontList("kerning").slice(0, 6))
+    .filter((f, i, arr) => arr.findIndex((x) => x.url === f.url) === i);
+
+  for (let i = 0; i < outlineFonts.length; i++) {
+    const opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = outlineFonts[i].name;
+    outlineFont.appendChild(opt);
+  }
+
+  async function loadOutlineFont() {
+    const idx = Number(outlineFont.value) || 0;
+    outlineFontObj = await FontParser.load(outlineFonts[idx].url);
+    renderOutlineSvg();
+  }
+
+  function renderOutlineSvg() {
+    if (!outlineFontObj) return;
+    const svg = SVGFont.exportStringSvg(outlineFontObj, outlineText.value || "Hello World", {
+      scale: 0.08,
+      stroke: "#111",
+      fill: "none"
+    });
+    outlineOutput.value = svg;
+    outlinePreview.innerHTML = svg;
+  }
+
+  async function renderSvgTableGlyph() {
+    if (!svgFontObj) return;
+    const char = svgCharInput.value || "A";
+    const glyphId = svgGlyphInput.value ? Number(svgGlyphInput.value) : svgFontObj.getGlyphIndexByChar?.(char);
+    if (glyphId == null || Number.isNaN(glyphId)) {
+      svgPreview.textContent = "No glyph index found.";
+      setStatus(svgInfo, "No glyph index found for current input.", "warning");
+      return;
+    }
+
+    const svgTable = svgFontObj.getTableByType(Table.SVG);
+    if (!svgTable || typeof svgTable.getSvgDocumentForGlyphAsync !== "function") {
+      svgPreview.textContent = "SVG table not found in this font.";
+      setStatus(svgInfo, "SVG table not present in this font.", "warning");
+      return;
+    }
+
+    const result = await svgTable.getSvgDocumentForGlyphAsync(glyphId);
+    if (!result.svgText) {
+      svgPreview.textContent = result.isCompressed ? "SVG data is compressed; decompression failed." : "No SVG glyph found.";
+      setStatus(svgInfo, "No SVG payload for this glyph.", "warning");
+      return;
+    }
+
+    const rawText = result.svgText;
+    const svgStart = rawText.indexOf("<svg");
+    const cleaned = svgStart >= 0 ? rawText.slice(svgStart) : rawText;
+    const doc = new DOMParser().parseFromString(cleaned, "image/svg+xml");
+    const svgEl = doc.querySelector("svg");
+    svgPreview.innerHTML = "";
+    if (!svgEl) {
+      svgPreview.textContent = "SVG glyph parsed, but no <svg> root found.";
+      setStatus(svgInfo, "SVG payload parsed but root element was missing.", "warning");
+      return;
+    }
+    if (!svgEl.getAttribute("viewBox")) {
+      const width = parseFloat(svgEl.getAttribute("width") || "");
+      const height = parseFloat(svgEl.getAttribute("height") || "");
+      if (Number.isFinite(width) && Number.isFinite(height)) {
+        svgEl.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      }
+    }
+    svgEl.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    svgPreview.appendChild(svgEl);
+    setStatus(svgInfo, `Rendered glyph ${glyphId}`, "success");
+  }
+
+  svgFileInput.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setStatus(svgInfo, `Loading ${file.name}...`, "info");
+    try {
+      const buf = await file.arrayBuffer();
+      svgFontObj = FontParser.fromArrayBuffer(buf);
+      setStatus(svgInfo, `Loaded ${file.name}`, "success");
+      await renderSvgTableGlyph();
+    } catch (err) {
+      svgFontObj = null;
+      svgPreview.textContent = "Failed to parse selected font.";
+      setStatus(svgInfo, `Failed to parse ${file.name}: ${err?.message || err}`, "warning");
+    }
+  });
+
+  svgLoadSample.addEventListener("click", async () => {
+    setStatus(svgInfo, "Loading Twemoji SVG sample...", "info");
+    try {
+      const buf = await fetchArrayBuffer("../truetypefonts/svg/TwitterColorEmoji-SVGinOT-15.1.0/TwitterColorEmoji-SVGinOT.ttf");
+      svgFontObj = FontParser.fromArrayBuffer(buf);
+      svgCharInput.value = "😀";
+      svgGlyphInput.value = "";
+      const svgTable = svgFontObj.getTableByType(Table.SVG);
+      svgRanges = Array.isArray(svgTable?.entries) ? svgTable.entries : [];
+      svgRangeIndex = 0;
+      if (svgRanges.length) {
+        svgGlyphInput.value = String(svgRanges[0].startGlyphId);
+        setStatus(svgInfo, `SVG entries: ${svgRanges.length}`, "success");
+      } else {
+        setStatus(svgInfo, "Sample loaded, but no SVG entries found.", "warning");
+      }
+      await renderSvgTableGlyph();
+    } catch (err) {
+      svgFontObj = null;
+      svgPreview.textContent = "Failed to load sample font.";
+      setStatus(svgInfo, `Failed to load sample font: ${err?.message || err}`, "warning");
+    }
+  });
+
+  svgPrevGlyph.addEventListener("click", async () => {
+    if (!svgRanges.length) return;
+    svgRangeIndex = (svgRangeIndex - 1 + svgRanges.length) % svgRanges.length;
+    svgGlyphInput.value = String(svgRanges[svgRangeIndex].startGlyphId);
+    await renderSvgTableGlyph();
+  });
+
+  svgNextGlyph.addEventListener("click", async () => {
+    if (!svgRanges.length) return;
+    svgRangeIndex = (svgRangeIndex + 1) % svgRanges.length;
+    svgGlyphInput.value = String(svgRanges[svgRangeIndex].startGlyphId);
+    await renderSvgTableGlyph();
+  });
+
+  svgCharInput.addEventListener("input", () => {
+    svgGlyphInput.value = "";
+    renderSvgTableGlyph();
+  });
+  svgGlyphInput.addEventListener("input", renderSvgTableGlyph);
+
+  outlineFont.addEventListener("change", loadOutlineFont);
+  outlineText.addEventListener("change", renderOutlineSvg);
+  outlineExportBtn.addEventListener("click", renderOutlineSvg);
+
+  loadOutlineFont();
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

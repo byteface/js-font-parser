@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vine Glyph Growth</title>
+  <style>
+    :root { --ink:#dff9de; --muted:#9dc2a2; --line:rgba(147,224,156,.35); }
+    body { margin:0; color:var(--ink); font-family:"Avenir Next",sans-serif; background:radial-gradient(circle at 18% 8%,#1f4024 0,transparent 34%),linear-gradient(150deg,#060f07,#112017); }
+    .wrap { width:min(1260px,calc(100vw - 20px)); margin:10px auto 20px; display:grid; grid-template-columns:320px 1fr; gap:12px; }
+    .panel { border:1px solid var(--line); border-radius:12px; background:rgba(10,24,13,.78); padding:12px; }
+    h1 { margin:0 0 6px; font-size:22px; }
+    p { margin:0 0 12px; color:var(--muted); font-size:13px; }
+    label { display:block; color:var(--muted); font-size:12px; margin-bottom:10px; }
+    select, input { width:100%; margin-top:6px; background:#0c1a11; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:8px 10px; box-sizing:border-box; }
+    button { width:100%; background:#274f2d; color:#e8ffe5; border:1px solid #3a7442; border-radius:8px; padding:8px 10px; cursor:pointer; }
+    canvas { width:100%; height:min(76vh,700px); display:block; border:1px solid var(--line); border-radius:12px; background:linear-gradient(#09130c,#081108); }
+    @media (max-width:960px) { .wrap { grid-template-columns:1fr; } canvas { height:min(62vh,580px); } }
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+<div class="wrap">
+  <section class="panel">
+    <h1>Vine Glyph Growth</h1>
+    <p>Glyph strokes become growing vines that sprout leaves as they climb.</p>
+    <label>Font <select id="fontSelect"></select></label>
+    <label>Text <input id="textInput" value="VINE" /></label>
+    <label>Growth Speed <input id="speedInput" type="range" min="2" max="30" value="11" /></label>
+    <label>Leaf Density <input id="leafInput" type="range" min="2" max="80" value="24" /></label>
+    <label>Vine Thickness <input id="thicknessInput" type="range" min="4" max="26" value="12" /></label>
+    <label>Branching <input id="branchInput" type="range" min="0" max="24" value="12" /></label>
+    <label>Wind <input id="windInput" type="range" min="0" max="20" value="7" /></label>
+    <label>Palette
+      <select id="paletteSelect">
+        <option value="vine">Vine</option>
+        <option value="trunk">Trunk</option>
+      </select>
+    </label>
+    <button id="restartBtn" type="button">Regrow</button>
+  </section>
+  <canvas id="stage" width="1400" height="760"></canvas>
+</div>
+
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+const { FontParser } = window.FontParser;
+import { getFontList } from "../tools/shared/font-catalog.js";
+import { collectGlyphPoints, splitContours, sampleContour, getBounds } from "./shared/glyph-helpers.js";
+
+const canvas = document.getElementById("stage");
+const ctx = canvas.getContext("2d");
+const fontSelect = document.getElementById("fontSelect");
+const textInput = document.getElementById("textInput");
+const speedInput = document.getElementById("speedInput");
+const leafInput = document.getElementById("leafInput");
+const thicknessInput = document.getElementById("thicknessInput");
+const branchInput = document.getElementById("branchInput");
+const windInput = document.getElementById("windInput");
+const paletteSelect = document.getElementById("paletteSelect");
+const restartBtn = document.getElementById("restartBtn");
+
+let dpr = 1;
+let font = null;
+let vines = [];
+let bgSeeds = [];
+let lastTime = performance.now();
+
+const palettes = {
+  vine: {
+    stem: "#67c26f",
+    highlight: "rgba(187,245,177,0.42)",
+    leafA: "#b9f59e",
+    leafB: "#3f9e53",
+    seed: "rgba(170,220,165,"
+  },
+  trunk: {
+    stem: "#7f5b3b",
+    highlight: "rgba(206,172,126,0.28)",
+    leafA: "#d7a76f",
+    leafB: "#7f5534",
+    seed: "rgba(198,168,133,"
+  }
+};
+
+const fontOptions = getFontList("languageSupport")
+  .filter((f) => !/2006 Team|DevilInside/i.test(f.name))
+  .filter((fontOption, index, all) => all.findIndex((item) => item.url === fontOption.url) === index);
+for (const f of fontOptions) {
+  const opt = document.createElement("option");
+  opt.value = f.url;
+  opt.textContent = f.name;
+  fontSelect.appendChild(opt);
+}
+
+function resize() {
+  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  bgSeeds = Array.from({ length: 120 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 2 + 0.6,
+    a: Math.random() * 0.15 + 0.04,
+    s: Math.random() * 0.5 + 0.2
+  }));
+  rebuild();
+}
+
+function makeGlyphContours(glyph, scale, x, baselineY) {
+  const pts = collectGlyphPoints(glyph);
+  if (!pts.length) return [];
+  const bounds = getBounds(pts);
+  if (!bounds) return [];
+  const mapped = pts.map((p) => ({
+    ...p,
+    x: x + (p.x - bounds.minX) * scale,
+    y: baselineY - p.y * scale
+  }));
+  return splitContours(mapped)
+    .map((c) => sampleContour(c, 0.14))
+    .filter((c) => c.length > 8);
+}
+
+function rebuild() {
+  if (!font) return;
+  vines = [];
+  const text = Array.from((textInput.value || "VINE").toUpperCase());
+  const glyphs = [];
+  let maxHeight = 0;
+  for (const ch of text) {
+    const g = ch === " " ? null : font.getGlyphByChar(ch);
+    if (!g) {
+      glyphs.push({ ch, glyph: null, width: 280 });
+      continue;
+    }
+    const pts = collectGlyphPoints(g);
+    const b = getBounds(pts);
+    const w = Math.max(200, g.advanceWidth || (b ? b.width + 120 : 260));
+    const h = b ? b.height : 700;
+    maxHeight = Math.max(maxHeight, h);
+    glyphs.push({ ch, glyph: g, width: w });
+  }
+  if (maxHeight <= 0) maxHeight = 900;
+
+  const scale = Math.min((canvas.height * 0.5) / maxHeight, 0.45);
+  const totalWidth = glyphs.reduce((s, it) => s + it.width * scale, 0);
+  let x = (canvas.width - totalWidth) * 0.5;
+  const baselineY = canvas.height * 0.72;
+  for (const it of glyphs) {
+    if (it.glyph) {
+      const contours = makeGlyphContours(it.glyph, scale, x, baselineY);
+      for (const points of contours) {
+        vines.push(makeVine(points));
+      }
+    }
+    x += it.width * scale;
+  }
+}
+
+function loadFont() {
+  if (!fontSelect.value) return;
+  FontParser.load(fontSelect.value)
+    .then((f) => {
+      font = f;
+      rebuild();
+    })
+    .catch((e) => console.error("vine-growth font load failed:", e));
+}
+
+function getPalette() {
+  return palettes[paletteSelect.value] || palettes.vine;
+}
+
+function createBranch(points, startIndex) {
+  if (startIndex < 6 || startIndex > points.length - 10) return null;
+  const origin = points[startIndex];
+  const a = points[Math.max(0, startIndex - 2)];
+  const b = points[Math.min(points.length - 1, startIndex + 2)];
+  const tangent = Math.atan2(b.y - a.y, b.x - a.x);
+  const side = Math.random() < 0.5 ? -1 : 1;
+  let angle = tangent + side * (0.45 + Math.random() * 0.4);
+  let x = origin.x;
+  let y = origin.y;
+  const branchPoints = [{ x, y }];
+  const branchIntensity = Number(branchInput.value);
+  const steps = 7 + Math.floor(Math.random() * 7) + Math.floor(branchIntensity * 0.35);
+  const stepSize = (canvas.height / 760) * dpr * (5 + Math.random() * 4);
+  for (let i = 0; i < steps; i++) {
+    angle += (Math.random() - 0.5) * 0.22;
+    angle += ((-Math.PI * 0.5) - angle) * 0.08;
+    x += Math.cos(angle) * stepSize;
+    y += Math.sin(angle) * stepSize - stepSize * 0.14;
+    branchPoints.push({ x, y });
+  }
+  return {
+    points: branchPoints,
+    startAt: startIndex,
+    grow: 0,
+    leafCursor: 2,
+    leaves: [],
+    speedFactor: 0.82 + Math.random() * 0.24,
+    width: 0.6 + Math.random() * 0.32
+  };
+}
+
+function makeVine(points) {
+  const branchIntensity = Number(branchInput.value);
+  const branchCount = Math.max(0, Math.floor(points.length / 90) + Math.floor(branchIntensity / 4));
+  const branches = [];
+  for (let i = 0; i < branchCount; i++) {
+    const startIndex = 10 + Math.floor(Math.random() * Math.max(1, points.length - 24));
+    const branch = createBranch(points, startIndex);
+    if (branch) branches.push(branch);
+  }
+  return {
+    points,
+    grow: 0,
+    leafCursor: 5,
+    leaves: [],
+    speedFactor: 1,
+    width: 1,
+    branches
+  };
+}
+
+function drawLeaf(x, y, ang, size, phase, life, t) {
+  const sway = Math.sin(t * 0.0016 + phase) * (Number(windInput.value) * 0.0018);
+  const a = ang + sway;
+  const len = size * (0.55 + life * 0.55);
+  const w = len * 0.62;
+  const palette = getPalette();
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(a);
+  ctx.globalAlpha = Math.max(0, Math.min(1, life));
+  const grad = ctx.createLinearGradient(0, -w, 0, w);
+  grad.addColorStop(0, palette.leafA);
+  grad.addColorStop(1, palette.leafB);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.bezierCurveTo(len * 0.35, -w, len * 0.9, -w * 0.25, len, 0);
+  ctx.bezierCurveTo(len * 0.9, w * 0.25, len * 0.35, w, 0, 0);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawPath(points, end, lineWidth, strokeStyle) {
+  if (!points.length) return;
+  const full = Math.floor(end);
+  const frac = end - full;
+  let lastPoint = points[Math.min(points.length - 1, full)];
+  if (full < points.length - 1 && frac > 0) {
+    const next = points[full + 1];
+    lastPoint = {
+      x: lastPoint.x + (next.x - lastPoint.x) * frac,
+      y: lastPoint.y + (next.y - lastPoint.y) * frac
+    };
+  }
+  const visible = points.slice(0, Math.min(points.length, full + 1));
+  if (!visible.length) return;
+  if (visible.length === 1) visible.push(lastPoint);
+  else visible[visible.length - 1] = lastPoint;
+
+  ctx.strokeStyle = strokeStyle;
+  ctx.lineWidth = lineWidth;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(visible[0].x, visible[0].y);
+  if (visible.length === 2) {
+    ctx.lineTo(visible[1].x, visible[1].y);
+  } else {
+    for (let i = 1; i < visible.length - 1; i++) {
+      const midX = (visible[i].x + visible[i + 1].x) * 0.5;
+      const midY = (visible[i].y + visible[i + 1].y) * 0.5;
+      ctx.quadraticCurveTo(visible[i].x, visible[i].y, midX, midY);
+    }
+    ctx.lineTo(lastPoint.x, lastPoint.y);
+  }
+  ctx.stroke();
+}
+
+function updateLeaves(vine, end, leafChance) {
+  const pts = vine.points;
+  while (vine.leafCursor < end) {
+    if (Math.random() < leafChance) {
+      const i = vine.leafCursor;
+      const a = pts[Math.max(0, i - 1)];
+      const b = pts[Math.min(pts.length - 1, i + 1)];
+      const ang = Math.atan2(b.y - a.y, b.x - a.x) + (Math.random() < 0.5 ? -Math.PI * 0.5 : Math.PI * 0.5);
+      vine.leaves.push({
+        idx: i,
+        ang,
+        size: (Math.random() * 7 + 6) * dpr * (0.85 + vine.width * 0.25),
+        phase: Math.random() * 10,
+        life: 0.04
+      });
+    }
+    vine.leafCursor += 1 + Math.floor(Math.random() * 3);
+  }
+}
+
+function renderVine(vine, dt, growthSpeed, leafChance, time, palette) {
+  const pts = vine.points;
+  if (!pts.length) return;
+  const thickness = Number(thicknessInput.value) / 12;
+  vine.grow = Math.min(pts.length - 1, vine.grow + growthSpeed * vine.speedFactor * (dt * 0.055));
+  const end = Math.max(1, vine.grow);
+  updateLeaves(vine, end, leafChance);
+
+  drawPath(pts, end, 1.2 * dpr * vine.width * thickness, palette.stem);
+  drawPath(pts, end, 0.7 * dpr * vine.width * thickness, palette.highlight);
+
+  for (const leaf of vine.leaves) {
+    if (leaf.idx > end) continue;
+    leaf.life = Math.min(1, leaf.life + 0.018);
+    const p = pts[leaf.idx];
+    drawLeaf(p.x, p.y, leaf.ang, leaf.size, leaf.phase, leaf.life, time);
+  }
+}
+
+function frame(time) {
+  const dt = Math.min(40, time - lastTime);
+  lastTime = time;
+  const palette = getPalette();
+
+  const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  g.addColorStop(0, "#0a140d");
+  g.addColorStop(1, "#081008");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (const s of bgSeeds) {
+    s.y += s.s * 0.05;
+    if (s.y > canvas.height + 10) s.y = -10;
+    ctx.fillStyle = `${palette.seed}${s.a})`;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const speed = Number(speedInput.value) * 0.02;
+  const leafChance = Number(leafInput.value) * 0.0075;
+
+  for (const vine of vines) {
+    renderVine(vine, dt, speed, leafChance, time, palette);
+    for (const branch of vine.branches) {
+      if (vine.grow < branch.startAt) continue;
+      renderVine(branch, dt, speed, leafChance * 0.65, time, palette);
+    }
+  }
+
+  requestAnimationFrame(frame);
+}
+
+fontSelect.addEventListener("change", loadFont);
+textInput.addEventListener("change", rebuild);
+restartBtn.addEventListener("click", rebuild);
+paletteSelect.addEventListener("change", () => {
+  lastTime = performance.now();
+});
+thicknessInput.addEventListener("input", () => {
+  lastTime = performance.now();
+});
+branchInput.addEventListener("input", rebuild);
+window.addEventListener("resize", resize);
+
+if (fontOptions.length) fontSelect.value = fontOptions[0].url;
+resize();
+loadFont();
+requestAnimationFrame(frame);
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

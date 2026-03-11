@@ -24,7 +24,7 @@ interface RepelClip {
     minDist: number;
     k: number;
 }
-declare class Particle {
+export declare class Particle {
     x: number;
     y: number;
     width: number;

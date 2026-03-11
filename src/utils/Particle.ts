@@ -29,7 +29,7 @@ interface RepelClip {
     k: number;         // The repulsion strength
 }
 
-class Particle {
+export class Particle {
     // Properties
     x: number = 0;
     y: number = 0;

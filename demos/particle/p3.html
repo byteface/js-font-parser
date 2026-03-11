@@ -4,33 +4,184 @@
     <meta charset="utf-8">
     <title>Particle p3</title>
     <style>
-        body { margin: 0; background: #0d0f14; color: #e6e6e6; font-family: Arial, sans-serif; }
-        .label { padding: 10px 16px; }
+        :root {
+            --bg: #070d17;
+            --ink: #eaf2ff;
+            --muted: #93a9c9;
+            --panel: rgba(10, 18, 32, 0.84);
+            --line: rgba(128, 175, 255, 0.16);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background:
+                radial-gradient(circle at 12% 10%, rgba(103, 134, 255, 0.18), transparent 24%),
+                radial-gradient(circle at 88% 12%, rgba(255, 114, 190, 0.14), transparent 24%),
+                linear-gradient(180deg, #050913 0%, #070d17 100%);
+            color: var(--ink);
+            font-family: "IBM Plex Sans", system-ui, sans-serif;
+        }
+        .ui {
+            position: fixed;
+            top: 58px;
+            left: 16px;
+            z-index: 10;
+            width: min(260px, calc(100vw - 32px));
+            max-height: calc(100vh - 74px);
+            overflow-y: auto;
+            display: grid;
+            gap: 10px;
+            padding: 12px;
+            border-radius: 18px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+        }
+        .ui.collapsed .panelBody { display: none; }
+        .bar {
+            display:flex;
+            align-items:flex-start;
+            justify-content:space-between;
+            gap:10px;
+        }
+        .title strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 20px;
+            letter-spacing: -0.03em;
+        }
+        .title span {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.35;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        label {
+            display: grid;
+            gap: 4px;
+            color: var(--muted);
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+        label.full { grid-column: 1 / -1; }
+        input, select {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 10px 12px;
+            color: var(--ink);
+            background: rgba(6, 11, 20, 0.88);
+            font: inherit;
+        }
+        input[type="range"] {
+            padding: 0;
+            accent-color: #7fd0ff;
+        }
+        .panelActions {
+            display:flex;
+            gap:8px;
+        }
+        .panelActions button {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 6px 10px;
+            color: var(--ink);
+            background: rgba(255,255,255,0.05);
+            font: inherit;
+            cursor: pointer;
+        }
+        .chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .chip {
+            padding: 5px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--muted);
+            font-size: 12px;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        @media (max-width: 760px) {
+            .grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 <div data-nav="main" data-nav-root="../.."></div>
 
-<div class="label">p3 - Quill, random glyph, wander</div>
-<canvas id="myDrawing" width="2000" height="1200"></canvas>
+<section class="ui">
+    <div class="bar">
+        <div class="title">
+            <strong>Particle Bloom</strong>
+            <span>Spring-held bloom with randomized starts. Fold the panel away and just let it breathe.</span>
+        </div>
+        <div class="panelActions">
+            <button id="randomizeButton" type="button">Shuffle</button>
+            <button id="togglePanelButton" type="button">Hide</button>
+        </div>
+    </div>
+    <div class="panelBody">
+    <div class="grid">
+        <label class="full">Font
+            <select id="fontSelect"></select>
+        </label>
+        <label class="full">Text
+            <input id="textInput" value="Q" maxlength="8" />
+        </label>
+        <label>Scale
+            <input id="scaleInput" type="range" min="12" max="36" value="24" />
+        </label>
+        <label>Scatter
+            <input id="scatterInput" type="range" min="0" max="120" value="26" />
+        </label>
+        <label>Spring
+            <input id="springInput" type="range" min="2" max="40" value="14" />
+        </label>
+        <label>Gravity
+            <input id="gravInput" type="range" min="-20" max="20" value="0" />
+        </label>
+        <label>Mouse Pull
+            <input id="mousePullInput" type="range" min="0" max="60" value="18" />
+        </label>
+        <label>Mouse Repel
+            <input id="mouseRepelInput" type="range" min="0" max="220" value="92" />
+        </label>
+        <label>Wander
+            <input id="wanderInput" type="range" min="0" max="30" value="10" />
+        </label>
+        <label>Max Speed
+            <input id="speedInput" type="range" min="2" max="40" value="18" />
+        </label>
+        <label>Trail
+            <input id="trailInput" type="range" min="2" max="40" value="12" />
+        </label>
+        <label>Connect
+            <input id="connectInput" type="range" min="20" max="220" value="88" />
+        </label>
+    </div>
+    <div class="chips">
+        <div class="chip" id="particleChip">0 particles</div>
+        <div class="chip" id="fontChip">loading…</div>
+    </div>
+    </div>
+</section>
+
+<canvas id="myDrawing"></canvas>
 <script src="../../dist-build/fontparser.min.js"></script>
-<script type="module">
-    import { setupParticleDemo } from './particle-utils.js';
-    setupParticleDemo({
-        fontUrl: '../../truetypefonts/Quill.ttf',
-        canvasId: 'myDrawing',
-        color: '#ffffff',
-        scale: 0.25,
-        char: "Q",
-        maxSpeed: 20,
-        damp: 0.6,
-        wander: 0.6,
-        gravToMouse: true,
-        gravStrength: 1000,
-        edgeBehavior: 'bounce',
-        pointSize: 2
-    });
-</script>
-  <script type="module" src="../../tools/shared/main-nav.js"></script>
+<script type="module" src="./p3-scene.js"></script>
+<script type="module" src="../../tools/shared/main-nav.js"></script>
 </body>
 </html>

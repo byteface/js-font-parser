@@ -222,3 +222,4 @@ class Particle {
         }
     }
 }
+export { Particle };
