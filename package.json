@@ -1,6 +1,6 @@
 {
   "name": "js-font-parser",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A high-quality browser typography engine for parsing, shaping, and rendering fonts in JavaScript.",
   "type": "module",
   "sideEffects": false,
