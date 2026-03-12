@@ -31,7 +31,12 @@ async function importDecoderModule(specifier) {
   if (!specifier) {
     throw inputError("--woff2-decoder requires a module name or file path.");
   }
-  const isPathLike = specifier.startsWith(".") || specifier.startsWith("/") || specifier.startsWith("file:");
+  const isPathLike =
+    specifier.startsWith(".") ||
+    specifier.startsWith("/") ||
+    specifier.startsWith("\\\\") ||
+    specifier.startsWith("file:") ||
+    path.win32.isAbsolute(specifier);
   if (isPathLike) {
     const resolved = specifier.startsWith("file:")
       ? specifier
@@ -71,4 +76,3 @@ export async function configureWoff2Decoder(specifier, setSyncDecoder, setAsyncD
   setAsyncDecoder(async (data) => toUint8Array(await decode(data)));
   return { specifier: String(specifier) };
 }
-

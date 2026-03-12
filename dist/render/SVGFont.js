@@ -22,7 +22,7 @@ export class SVGFont {
         for (let i = 0; i < count; i++) {
             const point = glyph.getPoint(startIndex + i);
             if (!point)
-                return "";
+                break;
             points.push(point);
         }
         if (points.length === 0)
@@ -38,6 +38,8 @@ export class SVGFont {
                     y: (last.y + first.y) / 2
                 });
         let d = `M ${(startPoint.x * scale) + offsetX} ${(-startPoint.y * scale) + offsetY} `;
+        if (points.length < 2)
+            return `${d}Z `;
         let index = first.onCurve ? 1 : 0;
         while (index < points.length) {
             const current = points[index];

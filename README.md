@@ -1,5 +1,11 @@
 # JS Font Parser
 
+[![CI](https://github.com/byteface/js-font-parser/actions/workflows/ci.yml/badge.svg)](https://github.com/byteface/js-font-parser/actions/workflows/ci.yml)
+[![Quality](https://github.com/byteface/js-font-parser/actions/workflows/quality.yml/badge.svg)](https://github.com/byteface/js-font-parser/actions/workflows/quality.yml)
+[![Golden Images](https://github.com/byteface/js-font-parser/actions/workflows/golden-images.yml/badge.svg)](https://github.com/byteface/js-font-parser/actions/workflows/golden-images.yml)
+[![Node >=20](https://img.shields.io/badge/node-%3E%3D20-2f6f3e)](https://nodejs.org/)
+[![License: ISC](https://img.shields.io/badge/license-ISC-1f4b99)](./LICENSE)
+
 A high-quality browser typography engine for JavaScript: parse fonts, shape text, inspect tables, and render glyphs with real outline access.
 
 This project is for:

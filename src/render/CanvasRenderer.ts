@@ -128,7 +128,7 @@ export class CanvasRenderer {
         const points: Array<ReturnType<GlyphData['getPoint']>> = [];
         for (let i = 0; i < count; i++) {
             const point = glyph.getPoint(startIndex + i);
-            if (!point) return;
+            if (!point) break;
             points.push(point);
         }
         if (points.length === 0) return;
@@ -145,6 +145,7 @@ export class CanvasRenderer {
                 });
 
         context.moveTo(startPoint.x, startPoint.y);
+        if (points.length < 2) return;
 
         let index = first.onCurve ? 1 : 0;
         while (index < points.length) {
