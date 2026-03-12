@@ -26,6 +26,8 @@ The suite is grouped by concern rather than by discovery order.
   CJK fixture coverage and large-font stress checks (cmap breadth, high-index glyph safety, long-run layout stability).
 - `indic-script-confidence.test.mjs`
   Script-focused confidence checks for Tamil, Malayalam, Telugu, and Sinhala shaping/layout invariants.
+- `sea-script-confidence.test.mjs`
+  Khmer, Myanmar, and Lao confidence checks with explicit shaping/layout invariants.
 - `layout-spacing-cmap.test.mjs`
   LayoutEngine spacing and cmap-specific edge cases.
 - `coverage-extra.test.mjs`

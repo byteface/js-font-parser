@@ -70,11 +70,16 @@ export declare abstract class BaseFontParser {
         getGlyphClass?: (glyphId: number) => number;
     } | null;
     protected fvar: any | null;
+    protected avar: any | null;
     protected svg: any | null;
     protected ebdt: any | null;
     protected eblc: any | null;
     protected ebsc: any | null;
     protected gvar: any | null;
+    protected hvar: any | null;
+    protected vvar: any | null;
+    protected mvar: any | null;
+    protected stat: any | null;
     protected cvt: any | null;
     protected fpgm: any | null;
     protected prep: any | null;

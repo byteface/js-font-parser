@@ -1,5 +1,12 @@
 import { Table } from "./Table.js";
 export class VvarTable {
+    majorVersion;
+    minorVersion;
+    itemVariationStoreOffset;
+    advanceHeightMappingOffset;
+    topSideBearingMappingOffset;
+    bottomSideBearingMappingOffset;
+    verticalOriginMappingOffset;
     constructor(de, byte_ar) {
         byte_ar.offset = de.offset;
         this.majorVersion = byte_ar.readUnsignedShort();

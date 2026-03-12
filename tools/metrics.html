@@ -147,6 +147,7 @@
       const descent = safeNumber(font.getDescent?.()) ?? -Math.round(upm * 0.2);
       const hhea = font.getTableByType?.(Table.hhea);
       const os2 = font.getOs2Metrics?.() || {};
+      const vertical = font.getVerticalMetrics?.() || null;
       const lineGap = safeNumber(hhea?.lineGap) ?? 0;
       const xHeight = safeNumber(os2?.xHeight);
       const capHeight = safeNumber(os2?.capHeight);
@@ -197,6 +198,10 @@
       const typoGap = safeNumber(os2?.typoLineGap);
       const winAsc = safeNumber(os2?.usWinAscent);
       const winDesc = safeNumber(os2?.usWinDescent);
+      const vAsc = safeNumber(vertical?.ascender);
+      const vDesc = safeNumber(vertical?.descender);
+      const vGap = safeNumber(vertical?.lineGap);
+      const vAdvanceMax = safeNumber(vertical?.advanceHeightMax);
 
       ui.metricsGrid.innerHTML = '';
       addMetric('Font', names.fullName || names.fontFamily || 'unknown');
@@ -214,6 +219,10 @@
       addMetric('OS/2 Typo Gap', typoGap);
       addMetric('Win Ascent', winAsc);
       addMetric('Win Descent', winDesc);
+      addMetric('V Ascender', vAsc);
+      addMetric('V Descender', vDesc);
+      addMetric('V Line Gap', vGap);
+      addMetric('V Advance Max', vAdvanceMax);
 
       ui.tableDump.textContent = [
         `Sample: ${JSON.stringify(text)}`,
@@ -221,6 +230,7 @@
         `Advance width: ${Math.round(advanceTotal)}`,
         `Ascent/Descent: ${ascent} / ${descent}`,
         `Line gap: ${lineGap}`,
+        `Vertical metrics: ${vertical ? `${vertical.ascender} / ${vertical.descender} / ${vertical.lineGap}` : 'n/a'}`,
         `Name: ${names.fullName || names.fontFamily || 'unknown'}`,
         `Family/Subfamily: ${names.fontFamily || 'n/a'} / ${names.fontSubfamily || 'n/a'}`
       ].join('\n');

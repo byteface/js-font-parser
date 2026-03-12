@@ -1,7 +1,7 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
 import { ITable } from "./ITable.js";
-export type AvarMap = {
+type AvarMap = {
     from: number;
     to: number;
 };
@@ -15,3 +15,4 @@ export declare class AvarTable implements ITable {
     mapCoord(axisIndex: number, normalized: number): number;
     getType(): number;
 }
+export {};

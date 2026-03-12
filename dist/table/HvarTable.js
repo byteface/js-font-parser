@@ -1,5 +1,11 @@
 import { Table } from "./Table.js";
 export class HvarTable {
+    majorVersion;
+    minorVersion;
+    itemVariationStoreOffset;
+    advanceWidthMappingOffset;
+    leftSideBearingMappingOffset;
+    rightSideBearingMappingOffset;
     constructor(de, byte_ar) {
         byte_ar.offset = de.offset;
         this.majorVersion = byte_ar.readUnsignedShort();

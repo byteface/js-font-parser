@@ -272,3 +272,20 @@ test('renderers: CanvasRenderer.drawColorString matches emoji glyph positions fo
   const uniqueXs = Array.from(new Set(xs));
   assert.deepEqual(uniqueXs, expectedLayoutXs(font, '😀😀'));
 });
+
+test('renderers: CanvasRenderer.drawStringWithKerning matches Inter ligature positions', () => {
+  const font = loadFont('truetypefonts/curated/Inter-VF.ttf');
+  assert.deepEqual(captureCanvasXs(font, 'office'), expectedLayoutXs(font, 'office'));
+});
+
+test('renderers: CanvasRenderer.drawStringWithKerning matches Amiri Arabic positioning', () => {
+  const font = loadFont('truetypefonts/gpos/amiri/Amiri-Regular.ttf');
+  assert.deepEqual(captureCanvasXs(font, 'مُحَمَّد'), expectedLayoutXs(font, 'مُحَمَّد'));
+});
+
+test('renderers: CanvasRenderer.drawColorString matches Twitter SVG emoji positions', () => {
+  const font = loadFont('truetypefonts/svg/TwitterColorEmoji-SVGinOT-15.1.0/TwitterColorEmoji-SVGinOT.ttf');
+  const xs = captureColorCanvasXs(font, '😀😀');
+  const uniqueXs = Array.from(new Set(xs));
+  assert.deepEqual(uniqueXs, expectedLayoutXs(font, '😀😀'));
+});

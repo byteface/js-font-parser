@@ -1,12 +1,12 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
 import { ITable } from "./ITable.js";
-export type StatAxis = {
+type StatAxis = {
     tag: string;
     nameId: number;
     ordering: number;
 };
-export type StatAxisValue = {
+type StatAxisValue = {
     format: number;
     axisIndex?: number;
     flags?: number;
@@ -36,3 +36,4 @@ export declare class StatTable implements ITable {
     private readAxisValue;
     getType(): number;
 }
+export {};

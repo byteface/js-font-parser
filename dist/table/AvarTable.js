@@ -1,5 +1,10 @@
 import { Table } from "./Table.js";
 export class AvarTable {
+    majorVersion;
+    minorVersion;
+    reserved;
+    axisCount;
+    segmentMaps;
     constructor(de, byte_ar) {
         byte_ar.offset = de.offset;
         this.majorVersion = byte_ar.readUnsignedShort();

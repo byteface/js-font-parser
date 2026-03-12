@@ -1,5 +1,15 @@
 import { Table } from "./Table.js";
 export class StatTable {
+    majorVersion;
+    minorVersion;
+    designAxisSize;
+    designAxisCount;
+    designAxesOffset;
+    axisValueCount;
+    offsetToAxisValueOffsets;
+    elidedFallbackNameId;
+    designAxes;
+    axisValues;
     constructor(de, byte_ar) {
         const start = de.offset;
         byte_ar.offset = start;
@@ -35,7 +45,13 @@ export class StatTable {
         const format = byte_ar.readUnsignedShort();
         let out = { format };
         if (format === 1) {
-            out = { format, axisIndex: byte_ar.readUnsignedShort(), flags: byte_ar.readUnsignedShort(), valueNameId: byte_ar.readUnsignedShort(), value: byte_ar.readFixed() };
+            out = {
+                format,
+                axisIndex: byte_ar.readUnsignedShort(),
+                flags: byte_ar.readUnsignedShort(),
+                valueNameId: byte_ar.readUnsignedShort(),
+                value: byte_ar.readFixed()
+            };
         }
         else if (format === 2) {
             out = {
@@ -64,7 +80,10 @@ export class StatTable {
             const valueNameId = byte_ar.readUnsignedShort();
             const axisValues = [];
             for (let i = 0; i < axisCount; i++) {
-                axisValues.push({ axisIndex: byte_ar.readUnsignedShort(), value: byte_ar.readFixed() });
+                axisValues.push({
+                    axisIndex: byte_ar.readUnsignedShort(),
+                    value: byte_ar.readFixed()
+                });
             }
             out = { format, flags, valueNameId, axisValues };
         }

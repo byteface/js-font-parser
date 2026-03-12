@@ -211,3 +211,13 @@ test('kerning behavior: kerning API no longer returns sentinel values for Devana
   assert.equal(value, kerningDelta(font, 'Yo'));
   assert.notEqual(value, -32768);
 });
+
+test('kerning behavior: Inter variable kerning API matches layout delta for AV', () => {
+  const font = loadFont('truetypefonts/curated/Inter-VF.ttf');
+  assert.equal(font.getKerningValue('A', 'V'), kerningDelta(font, 'AV'));
+});
+
+test('kerning behavior: IBM Plex Serif kerning API matches layout delta for To', () => {
+  const font = loadFont('truetypefonts/curated/IBMPlexSerif-Regular.ttf');
+  assert.equal(font.getKerningValue('T', 'o'), kerningDelta(font, 'To'));
+});

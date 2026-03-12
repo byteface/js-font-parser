@@ -1,7 +1,7 @@
 import { ByteArray } from "../utils/ByteArray.js";
 import { DirectoryEntry } from "./DirectoryEntry.js";
 import { ITable } from "./ITable.js";
-export type MvarRecord = {
+type MvarRecord = {
     tag: string;
     deltaSetOuterIndex: number;
     deltaSetInnerIndex: number;
@@ -17,3 +17,4 @@ export declare class MvarTable implements ITable {
     constructor(de: DirectoryEntry, byte_ar: ByteArray);
     getType(): number;
 }
+export {};
