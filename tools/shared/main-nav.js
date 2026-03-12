@@ -1,3 +1,13 @@
+function normalizeRoot(root) {
+  const value = String(root || '..').trim();
+  if (!/^\.{1,2}(?:\/[\w.-]+)*$/.test(value)) return '..';
+  return value.replace(/\/+$/, '') || '..';
+}
+
+function buildHref(root, path) {
+  return `${normalizeRoot(root)}${path}`;
+}
+
 function buildNav(root) {
   const nav = document.createElement('div');
   nav.style.position = 'sticky';
@@ -12,14 +22,14 @@ function buildNav(root) {
   nav.style.alignItems = 'center';
 
   const demos = document.createElement('a');
-  demos.href = `${root}/demos/index.html`;
+  demos.href = buildHref(root, '/demos/index.html');
   demos.textContent = 'Demos';
   demos.style.color = '#2c3e50';
   demos.style.textDecoration = 'none';
   demos.style.fontWeight = '600';
 
   const tools = document.createElement('a');
-  tools.href = `${root}/tools/index.html`;
+  tools.href = buildHref(root, '/tools/index.html');
   tools.textContent = 'Tools';
   tools.style.color = '#2c3e50';
   tools.style.textDecoration = 'none';
@@ -47,7 +57,7 @@ function buildToolTabs(root) {
   const makeTab = (href, label, title) => {
     const link = document.createElement('a');
     link.href = href;
-    link.textContent = label;
+    link.appendChild(document.createTextNode(label));
     link.title = title;
     link.style.border = '1px solid rgba(66, 76, 96, 0.28)';
     link.style.borderBottom = 'none';
@@ -62,8 +72,8 @@ function buildToolTabs(root) {
     return link;
   };
 
-  tabs.appendChild(makeTab(`${root}/tools/index.html`, '🔧', 'Back to tools home'));
-  tabs.appendChild(makeTab(`${root}/demos/index.html`, '🎞', 'Browse demos'));
+  tabs.appendChild(makeTab(buildHref(root, '/tools/index.html'), '🔧', 'Back to tools home'));
+  tabs.appendChild(makeTab(buildHref(root, '/demos/index.html'), '🎞', 'Browse demos'));
   wrap.appendChild(tabs);
   return wrap;
 }

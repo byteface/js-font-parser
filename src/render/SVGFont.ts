@@ -10,6 +10,14 @@ export interface SVGExportOptions {
 }
 
 export class SVGFont {
+    private static escapeXmlAttr(value: string | number): string {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
     static glyphToPath(glyph: GlyphData, scale: number, offsetX: number, offsetY: number): string {
         let d = "";
         let firstindex = 0;
@@ -129,10 +137,16 @@ export class SVGFont {
 
         const width = Math.max(1, penX);
         const viewBox = `0 ${-ascent * scale} ${width} ${height * scale}`;
+        const safeWidth = this.escapeXmlAttr(width);
+        const safeHeight = this.escapeXmlAttr(height * scale);
+        const safeViewBox = this.escapeXmlAttr(viewBox);
+        const safePath = this.escapeXmlAttr(combinedPath);
+        const safeStroke = this.escapeXmlAttr(stroke);
+        const safeFill = this.escapeXmlAttr(fill);
 
         return `<?xml version="1.0" encoding="UTF-8"?>\n` +
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height * scale}" viewBox="${viewBox}">` +
-            `<path d="${combinedPath}" stroke="${stroke}" fill="${fill}"/>` +
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${safeWidth}" height="${safeHeight}" viewBox="${safeViewBox}">` +
+            `<path d="${safePath}" stroke="${safeStroke}" fill="${safeFill}"/>` +
             `</svg>`;
     }
 

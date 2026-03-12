@@ -1,5 +1,12 @@
 import { Table } from '../table/Table.js';
 export class SVGFont {
+    static escapeXmlAttr(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
     static glyphToPath(glyph, scale, offsetX, offsetY) {
         let d = "";
         let firstindex = 0;
@@ -104,9 +111,15 @@ export class SVGFont {
         const height = ascent - descent;
         const width = Math.max(1, penX);
         const viewBox = `0 ${-ascent * scale} ${width} ${height * scale}`;
+        const safeWidth = this.escapeXmlAttr(width);
+        const safeHeight = this.escapeXmlAttr(height * scale);
+        const safeViewBox = this.escapeXmlAttr(viewBox);
+        const safePath = this.escapeXmlAttr(combinedPath);
+        const safeStroke = this.escapeXmlAttr(stroke);
+        const safeFill = this.escapeXmlAttr(fill);
         return `<?xml version="1.0" encoding="UTF-8"?>\n` +
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height * scale}" viewBox="${viewBox}">` +
-            `<path d="${combinedPath}" stroke="${stroke}" fill="${fill}"/>` +
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${safeWidth}" height="${safeHeight}" viewBox="${safeViewBox}">` +
+            `<path d="${safePath}" stroke="${safeStroke}" fill="${safeFill}"/>` +
             `</svg>`;
     }
     static exportFontSummarySvg(font, options = {}) {
