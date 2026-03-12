@@ -20,16 +20,15 @@
   </style>
 </head>
 <body>
-<div data-nav="main"></div>
+<div id="fontDrawerMount"></div>
 
   <header>
     <h1>Language Support</h1>
     <p>Checks required character sets against the font's cmap.</p>
   </header>
+  <select id="fontSelect" hidden data-font-source-ui="off"></select>
   <div class="panel">
-    <label>Font
-      <select id="fontSelect"></select>
-    </label>
+    <div class="note">Use the top-left font drawer to switch catalog fonts, load a local file, or test a remote font URL.</div>
   </div>
   <div class="panel">
     <table>
@@ -53,9 +52,9 @@
     import { FontParser } from "../dist/data/FontParser.js";
     import { getSupportedLanguages } from "../dist/utils/LanguageSupport.js";
     import { getFontList } from "./shared/font-catalog.js";
-    import { createFontLoader } from "./shared/font-ui.js";
-    import { wireFontSelect } from "./shared/tool-scaffold.js";
+    import { createFontDrawer, createFontLoader, getSelectedFont } from "./shared/font-ui.js";
 
+    const fontDrawerMount = document.getElementById("fontDrawerMount");
     const fontSelect = document.getElementById("fontSelect");
     const rows = document.getElementById("rows");
 
@@ -76,17 +75,24 @@
         rows.appendChild(tr);
       });
     }
-    const selector = wireFontSelect({
-      select: fontSelect,
-      fonts,
-      loadFont,
-      onLoaded: (font) => render(font),
-      onError: (err) => {
+    async function loadAndRender() {
+      try {
+        const selected = getSelectedFont(fontSelect, fonts);
+        const font = await loadFont(selected.url);
+        render(font);
+      } catch (err) {
         rows.innerHTML = `<tr><td colspan="5">Failed to load font: ${err}</td></tr>`;
       }
+    }
+    createFontDrawer({
+      mount: fontDrawerMount,
+      select: fontSelect,
+      fonts,
+      allowUrl: true,
+      title: "Font"
     });
-    selector.run();
+    fontSelect.addEventListener("change", loadAndRender);
+    loadAndRender();
   </script>
-  <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

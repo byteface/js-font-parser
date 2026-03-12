@@ -46,18 +46,16 @@
   </style>
 </head>
 <body>
-<div data-nav="main"></div>
+  <div id="fontDrawerMount"></div>
 
   <header>
     <h1>Unicode Coverage</h1>
     <p>Inspect Unicode block coverage, find missing glyphs, and jump quickly across script ranges.</p>
   </header>
+  <select id="fontSelect" hidden data-font-source-ui="off"></select>
 
   <div class="panel">
     <div class="controls">
-      <label>Font
-        <select id="fontSelect"></select>
-      </label>
       <label>Block
         <select id="blockSelect"></select>
       </label>
@@ -105,7 +103,7 @@
   <script type="module">
     import { FontParser } from "../dist/data/FontParser.js";
     import { getFontList } from "./shared/font-catalog.js";
-    import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
+    import { createFontDrawer, createFontLoader, getSelectedFont } from "./shared/font-ui.js";
 
     const fonts = getFontList("unicodeCoverage");
 
@@ -144,6 +142,7 @@
       { name: "Transport and Map Symbols", start: 0x1F680, end: 0x1F6FF }
     ];
 
+    const fontDrawerMount = document.getElementById("fontDrawerMount");
     const fontSelect = document.getElementById("fontSelect");
     const blockSelect = document.getElementById("blockSelect");
     const cellModeSelect = document.getElementById("cellModeSelect");
@@ -315,7 +314,13 @@
     }
 
     function populate() {
-      populateFontSelect(fontSelect, fonts);
+      createFontDrawer({
+        mount: fontDrawerMount,
+        select: fontSelect,
+        fonts,
+        allowUrl: true,
+        title: "Font"
+      });
 
       blocks.forEach((b, i) => {
         const opt = document.createElement("option");
@@ -334,6 +339,5 @@
     populate();
     render();
   </script>
-  <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

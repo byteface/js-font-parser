@@ -26,18 +26,16 @@
   </style>
 </head>
 <body>
-<div data-nav="main"></div>
+<div id="fontDrawerMount"></div>
 
 <header>
   <h1>OpenType Lab</h1>
   <p>Unified GSUB/GPOS tool: feature inventory, ligature substitutions, mark attachment, and shaping diagnostics.</p>
 </header>
+<select id="fontSelect" hidden data-font-source-ui="off"></select>
 
 <div class="panel">
-  <div class="row">
-    <label>Font
-      <select id="fontSelect"></select>
-    </label>
+    <div class="row">
     <label>Sample text
       <input id="sampleInput" value="office بِسْمِ اللهِ" style="min-width:320px" />
     </label>
@@ -175,7 +173,7 @@
   import { detectScriptTags } from '../dist/utils/ScriptDetector.js';
   import { getFontList } from './shared/font-catalog.js';
   import { Table } from '../dist/table/Table.js';
-  import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
+  import { createFontDrawer, createFontLoader, getSelectedFont } from './shared/font-ui.js';
 
   const baseFonts = getFontList('featureMatrix');
   const extraOtfUrls = [
@@ -255,6 +253,7 @@
   let font = null;
 
   const ui = {
+    fontDrawerMount: document.getElementById('fontDrawerMount'),
     fontSelect: document.getElementById('fontSelect'),
     sampleInput: document.getElementById('sampleInput'),
     scriptTags: document.getElementById('scriptTags'),
@@ -471,9 +470,14 @@
   ui.diagPhase.addEventListener('change', renderAll);
   ui.diagCode.addEventListener('input', renderAll);
 
-  populateFontSelect(ui.fontSelect, fonts);
+  createFontDrawer({
+    mount: ui.fontDrawerMount,
+    select: ui.fontSelect,
+    fonts,
+    allowUrl: true,
+    title: 'Font'
+  });
   boot();
 </script>
-<script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

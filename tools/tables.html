@@ -34,14 +34,12 @@
   </style>
 </head>
 <body>
-<div data-nav="main"></div>
+  <div id="fontDrawerMount"></div>
   <header>
     <h1>Font Table Explorer</h1>
     <p>Inspect parsed table summaries alongside raw table bytes and offsets.</p>
+    <select id="fontSelect" hidden data-font-source-ui="off"></select>
     <div class="controls">
-      <label>Font
-        <select id="fontSelect"></select>
-      </label>
       <label>Hex bytes shown
         <input id="byteLimit" type="number" min="64" max="16384" step="64" value="2048" />
       </label>
@@ -62,10 +60,10 @@
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { getFontList } from './shared/font-catalog.js';
-    import { createFontLoader } from './shared/font-ui.js';
-    import { wireFontSelect } from './shared/tool-scaffold.js';
+    import { createFontDrawer, createFontLoader, getSelectedFont } from './shared/font-ui.js';
     import { fetchArrayBuffer } from './shared/font-io.js';
 
+    const fontDrawerMount = document.getElementById('fontDrawerMount');
     const fontSelect = document.getElementById('fontSelect');
     const byteLimit = document.getElementById('byteLimit');
     const tableList = document.getElementById('tableList');
@@ -208,20 +206,25 @@
       renderDetail();
     }
 
-    const selector = wireFontSelect({
-      select: fontSelect,
-      fonts,
-      loadFont,
-      onLoaded: async (font, selected) => {
+    async function loadAndRender() {
+      try {
+        const selected = getSelectedFont(fontSelect, fonts);
+        const font = await loadFont(selected.url);
         await loadFontSelection(font, selected);
-      },
-      onError: (err) => {
+      } catch (err) {
         detail.innerHTML = `<div class="meta">Failed to load font: ${err.message ?? err}</div>`;
       }
-    });
+    }
     byteLimit.addEventListener('input', renderDetail);
-    selector.run();
+    createFontDrawer({
+      mount: fontDrawerMount,
+      select: fontSelect,
+      fonts,
+      allowUrl: true,
+      title: 'Font'
+    });
+    fontSelect.addEventListener('change', loadAndRender);
+    loadAndRender();
   </script>
-  <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

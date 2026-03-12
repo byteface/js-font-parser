@@ -4,7 +4,8 @@
     <meta charset="utf-8">
     <title>WOFF2 Loader</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 24px; }
+        body { font-family: Arial, sans-serif; margin: 0; }
+        .page { padding: 18px 24px 24px; }
         .panel { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
         canvas { border: 1px dashed #ccc; width: 100%; height: auto; }
         .hint { font-size: 12px; color: #666; margin-top: 6px; }
@@ -13,7 +14,7 @@
 </head>
 <body>
 <div data-nav="main"></div>
-
+<div class="page">
 <h1>WOFF2 Loader</h1>
 <div class="panel">
     <label>Sample WOFF2:
@@ -39,6 +40,7 @@
 <div id="status" class="hint"></div>
 <pre id="reproReport" class="hint" style="white-space:pre-wrap;border:1px solid #ddd;padding:8px;border-radius:6px;background:#fafafa;max-height:180px;overflow:auto;">No repro run yet.</pre>
 <canvas id="myDrawing" width="1000" height="420"></canvas>
+</div>
 
 <script type="module">
     import { FontParserWOFF2, CanvasRenderer, setWoff2Decoder, setWoff2DecoderAsync } from '../dist/index.js';

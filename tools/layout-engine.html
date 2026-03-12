@@ -6,10 +6,13 @@
     <style>
         :root { color-scheme: light; }
         body {
-            margin: 24px;
+            margin: 0;
             font-family: "Source Serif Pro", "Georgia", serif;
             background: radial-gradient(circle at 20% 10%, #ffffff, #f1f4f8);
             color: #14171a;
+        }
+        .page {
+            padding: 18px 24px 24px;
         }
         h1 { margin: 0 0 10px 0; font-size: 28px; }
         .panel {
@@ -73,14 +76,12 @@
     </style>
 </head>
 <body>
-<div data-nav="main"></div>
+    <div id="fontDrawerMount"></div>
+    <div class="page">
+    <select id="fontSelect" hidden data-font-source-ui="off"></select>
 
     <h1>Layout Engine</h1>
     <div class="panel">
-        <label>
-            Font
-            <select id="fontSelect"></select>
-        </label>
         <label>
             Width
             <input id="widthInput" type="range" min="280" max="900" value="640" />
@@ -171,15 +172,16 @@
     <div class="hint">Layout uses font metrics + kerning. Adjust width, direction, and alignment to see line breaking.</div>
     <div id="diagnostics" class="diag">No diagnostics.</div>
     <canvas id="canvas" width="980" height="520"></canvas>
+    </div>
 
     <script type="module">
         import { FontParser } from '../dist/data/FontParser.js';
         import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
         import { LayoutEngine } from '../dist/layout/LayoutEngine.js';
         import { getFontList } from './shared/font-catalog.js';
-        import { createFontLoader } from './shared/font-ui.js';
-        import { wireFontSelect } from './shared/tool-scaffold.js';
+        import { createFontDrawer, createFontLoader, getSelectedFont } from './shared/font-ui.js';
 
+        const fontDrawerMount = document.getElementById('fontDrawerMount');
         const fontSelect = document.getElementById('fontSelect');
         const widthInput = document.getElementById('widthInput');
         const alignSelect = document.getElementById('alignSelect');
@@ -274,18 +276,15 @@
             renderDiagnostics(fontDiagnostics, layoutDiagnostics);
         }
 
-        const selector = wireFontSelect({
-            select: fontSelect,
-            fonts,
-            loadFont,
-            onLoaded: (loaded) => {
-                font = loaded;
+        async function loadAndRender() {
+            try {
+                const selected = getSelectedFont(fontSelect, fonts);
+                font = await loadFont(selected.url);
                 render();
-            },
-            onError: (err) => {
+            } catch (err) {
                 diagnosticsEl.textContent = `Failed to load font: ${err?.message ?? err}`;
             }
-        });
+        }
 
         widthInput.addEventListener('input', render);
         alignSelect.addEventListener('change', render);
@@ -301,7 +300,15 @@
         bidiSelect.addEventListener('change', render);
         hyphenSelect.addEventListener('change', render);
         textInput.addEventListener('input', render);
-        selector.run();
+        createFontDrawer({
+            mount: fontDrawerMount,
+            select: fontSelect,
+            fonts,
+            allowUrl: true,
+            title: 'Font'
+        });
+        fontSelect.addEventListener('change', loadAndRender);
+        loadAndRender();
     </script>
 </body>
 </html>

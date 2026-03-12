@@ -6,10 +6,13 @@
     <style>
         :root { color-scheme: light; }
         body {
-            margin: 24px;
+            margin: 0;
             font-family: "Georgia", "Times New Roman", serif;
             background: radial-gradient(circle at top, #f2f6ff 0%, #e7ecf7 50%, #dce2f2 100%);
             color: #1b1b1b;
+        }
+        .page {
+            padding: 18px 24px 24px;
         }
         h1 { margin: 0 0 10px 0; font-size: 28px; }
         .panel {
@@ -85,8 +88,9 @@
 </head>
 <body>
 <div data-nav="main"></div>
-
-    <h1>Font Library (CDN)</h1>
+    <div class="page">
+    <h1>Font Library (Remote Preview)</h1>
+    <p>Preview remote font files from URL locations, especially WOFF-based CDN links, or load a local font file directly.</p>
     <div class="panel">
         <label>
             Search
@@ -110,7 +114,11 @@
         </label>
         <label>
             Or URL
-            <input id="urlInput" type="text" placeholder="https://.../font.ttf" />
+            <input id="urlInput" type="text" placeholder="https://.../font.woff" />
+        </label>
+        <label>
+            Or File
+            <input id="fileInput" type="file" accept=".ttf,.otf,.woff,.woff2" />
         </label>
         <label>
             Text
@@ -140,13 +148,14 @@
             <a href="https://fonts.google.com/" target="_blank" rel="noreferrer">Google Fonts</a>
         </div>
     </div>
+    </div>
 
     <script type="module">
         import { FontParser } from "../dist/data/FontParser.js";
         import { FontParserWOFF } from "../dist/data/FontParserWOFF.js";
         import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
         import { getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
-        import { createSharedToolbar, persistInputValue, persistSelectValue } from "./shared/shared-toolbar.js";
+        import { persistInputValue, persistSelectValue } from "./shared/shared-toolbar.js";
         import { clearCanvas } from "./shared/canvas-utils.js";
         import { setStatus } from "./shared/status-ui.js";
         import { detectFontMagic, fetchArrayBuffer, fetchText, pickBestFontUrlFromCss } from "./shared/font-io.js";
@@ -155,6 +164,7 @@
         const filterInput = document.getElementById("filterInput");
         const tagFilter = document.getElementById("tagFilter");
         const urlInput = document.getElementById("urlInput");
+        const fileInput = document.getElementById("fileInput");
         const textInput = document.getElementById("textInput");
         const sizeInput = document.getElementById("sizeInput");
         const modeSelect = document.getElementById("modeSelect");
@@ -167,6 +177,7 @@
         let currentFontMeta = null;
         let filteredCatalog = [];
         let catalogPersistenceBound = false;
+        let customFileFont = null;
 
         const catalog = [
             {
@@ -347,6 +358,11 @@
             return parsed;
         }
 
+        async function loadFontFromFile(file) {
+            const buf = await file.arrayBuffer();
+            return FontParser.fromArrayBuffer(buf);
+        }
+
         async function resolveInputToFontUrl(rawInputUrl) {
             const lower = rawInputUrl.toLowerCase();
             if (!lower.endsWith(".css")) return rawInputUrl;
@@ -397,16 +413,24 @@
             const selected = getSelectedFont(fontSelect, filteredCatalog);
             const inputUrl = customUrl || selected.url;
 
-            setStatus(status, `Loading font: ${inputUrl}`, "info");
+            setStatus(status, customFileFont ? `Loading local font: ${customFileFont.file.name}` : `Loading font: ${inputUrl}`, "info");
 
             try {
-                const url = await resolveInputToFontUrl(inputUrl);
-                if (url !== inputUrl) {
-                    setStatus(status, `Resolved CSS to font: ${url}`, "info");
+                let font;
+                let resolvedUrl = inputUrl;
+                if (customFileFont) {
+                    font = customFileFont.font;
+                } else {
+                    resolvedUrl = await resolveInputToFontUrl(inputUrl);
+                    if (resolvedUrl !== inputUrl) {
+                        setStatus(status, `Resolved CSS to font: ${resolvedUrl}`, "info");
+                    }
+                    font = await loadFontFromUrl(resolvedUrl);
                 }
-                const font = await loadFontFromUrl(url);
                 currentFont = font;
-                currentFontMeta = { selected, url };
+                currentFontMeta = customFileFont
+                    ? { selected: { name: customFileFont.file.name }, url: "(local file)" }
+                    : { selected, url: resolvedUrl };
                 const text = textInput.value || "";
                 renderFont(font, text);
             } catch (err) {
@@ -424,7 +448,25 @@
         renderBtn.addEventListener("click", loadAndRender);
         fontSelect.addEventListener("change", () => {
             urlInput.value = "";
+            if (fileInput.value) fileInput.value = "";
+            customFileFont = null;
             loadAndRender();
+        });
+        fileInput.addEventListener("change", async () => {
+            const file = fileInput.files?.[0];
+            if (!file) {
+                customFileFont = null;
+                return;
+            }
+            urlInput.value = "";
+            try {
+                const font = await loadFontFromFile(file);
+                customFileFont = { file, font };
+                loadAndRender();
+            } catch (err) {
+                customFileFont = null;
+                setStatus(status, `Failed to load local font: ${err}`, "warning");
+            }
         });
         sizeInput.addEventListener("input", loadAndRender);
         modeSelect.addEventListener("change", loadAndRender);
@@ -437,42 +479,6 @@
         persistInputValue(textInput, TOOL_KEY, "text");
         persistSelectValue(modeSelect, TOOL_KEY, "mode");
         persistInputValue(sizeInput, TOOL_KEY, "size");
-
-        createSharedToolbar({
-            mount: document.body,
-            fontSelect,
-            sizeInput,
-            scriptOptions: [
-                { value: "latin", label: "Latin" },
-                { value: "arabic", label: "Arabic" },
-                { value: "hebrew", label: "Hebrew" },
-                { value: "devanagari", label: "Devanagari" },
-                { value: "icons", label: "Icons" }
-            ],
-            onScriptChange: (value) => {
-                if (value === "arabic") textInput.value = "مرحبا بالعالم";
-                else if (value === "hebrew") textInput.value = "שלום עולם";
-                else if (value === "devanagari") textInput.value = "नमस्ते दुनिया";
-                else if (value === "icons") textInput.value = "\uf007 \uf013 \uf0c7 \uf0f3";
-                else textInput.value = "The quick brown fox jumps over the lazy dog.";
-                loadAndRender();
-            },
-            getExportData: () => ({
-                tool: "font-library",
-                selected: currentFontMeta?.selected?.name || null,
-                sourceUrl: currentFontMeta?.url || null,
-                mode: modeSelect.value,
-                size: Number(sizeInput.value),
-                text: textInput.value,
-                diagnostics: typeof currentFont?.getDiagnostics === "function" ? currentFont.getDiagnostics() : []
-            }),
-            exportFilename: "font-library-report.json",
-            getDiagnosticsText: () => {
-                const list = typeof currentFont?.getDiagnostics === "function" ? currentFont.getDiagnostics() : [];
-                if (!list.length) return "No diagnostics.";
-                return list.slice(0, 30).map((d) => `[${d.phase}/${d.level}] ${d.code}: ${d.message}`).join("\n");
-            }
-        });
 
         applyCatalogFilter();
     </script>

@@ -78,12 +78,13 @@
   </style>
 </head>
 <body>
-<div data-nav="main"></div>
+  <div id="fontDrawerMount"></div>
 
   <header>
     <h1>SVG Export</h1>
     <p>Export a string to SVG paths using the parser.</p>
   </header>
+  <select id="fontSelect" hidden data-font-source-ui="off"></select>
   <div class="wrap">
     <div class="panel">
       <input id="textInput" value="Hello World" />
@@ -98,18 +99,40 @@
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { SVGFont } from '../dist/render/SVGFont.js';
+    import { getFontList } from './shared/font-catalog.js';
+    import { createFontDrawer, createFontLoader, getSelectedFont } from './shared/font-ui.js';
 
+    const fontDrawerMount = document.getElementById('fontDrawerMount');
     const preview = document.getElementById('preview');
     const output = document.getElementById('svgOutput');
     const btn = document.getElementById('exportBtn');
     const input = document.getElementById('textInput');
+    const fontSelect = document.getElementById('fontSelect');
 
+    const fonts = getFontList('demoCore').filter((entry) => !/2006 Team/i.test(entry.name));
+    const loadFont = createFontLoader((url) => FontParser.load(url));
     let cachedFont = null;
 
-    FontParser.load('../truetypefonts/DiscoMo.ttf').then(font => {
-      cachedFont = font;
-      render();
+    async function loadAndRender() {
+      try {
+        const selected = getSelectedFont(fontSelect, fonts);
+        cachedFont = await loadFont(selected.url);
+        render();
+      } catch (err) {
+        output.value = `Failed to load font: ${err?.message || err}`;
+        preview.textContent = 'Failed to load font.';
+      }
+    }
+
+    createFontDrawer({
+      mount: fontDrawerMount,
+      select: fontSelect,
+      fonts,
+      allowUrl: true,
+      title: 'Font'
     });
+    fontSelect.addEventListener('change', loadAndRender);
+    loadAndRender();
 
     function render() {
       if (!cachedFont) return;
@@ -120,7 +143,7 @@
     }
 
     btn.addEventListener('click', render);
+    input.addEventListener('input', render);
   </script>
-  <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

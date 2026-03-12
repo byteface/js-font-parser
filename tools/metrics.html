@@ -12,204 +12,239 @@
     p { margin:0 0 14px; color:var(--muted); }
     .wrap { display:grid; gap:16px; padding:16px 20px 32px; }
     .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; }
-    .controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
+    .controls { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
     label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
-    select, input { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); box-sizing:border-box; }
-    .compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    canvas { width:100%; height:240px; border:1px dashed var(--border); border-radius:10px; background:#fffaf5; }
-    .meta { font-family:ui-monospace, Menlo, monospace; font-size:12px; color:var(--muted); white-space:pre-wrap; background:#fbf8f3; border:1px solid var(--border); border-radius:10px; padding:10px; margin-top:8px; }
-    @media (max-width: 900px) { .compare-grid { grid-template-columns:1fr; } }
+    input { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border); box-sizing:border-box; }
+    canvas { width:100%; height:280px; border:1px dashed var(--border); border-radius:10px; background:#fffaf5; }
+    .metrics-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
+    .metric-card {
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:#fbf8f3;
+      padding:10px 12px;
+    }
+    .metric-card strong {
+      display:block;
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:0.08em;
+      color:var(--muted);
+      margin-bottom:4px;
+    }
+    .metric-card span {
+      font-size:18px;
+      color:var(--ink);
+    }
+    .meta {
+      font-family:ui-monospace, Menlo, monospace;
+      font-size:12px;
+      color:var(--muted);
+      white-space:pre-wrap;
+      background:#fbf8f3;
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:10px;
+      margin-top:8px;
+    }
+    .note { color:var(--muted); font-size:12px; }
   </style>
 </head>
 <body>
-<div data-nav="main"></div>
+  <div id="fontDrawerMount"></div>
   <header>
     <h1>Metrics Inspector</h1>
-    <p>Compare two fonts side-by-side for glyph and text metrics, baseline, ascender, descender, x-height, and cap-height.</p>
+    <p>Preview one font with baseline guides, typographic metrics, text advance, and table values that are useful for spacing and layout checks.</p>
   </header>
   <div class="wrap">
     <section class="panel">
       <div class="controls">
         <div>
-          <label for="fontA">Font A</label>
-          <select id="fontA"></select>
-        </div>
-        <div>
-          <label for="fontB">Font B</label>
-          <select id="fontB"></select>
+          <label for="sampleInput">Sample Text</label>
+          <input id="sampleInput" value="Hamburgefons 012345 ÅÁÉÖÑ" />
         </div>
         <div>
           <label for="scaleInput">Scale</label>
           <input id="scaleInput" type="number" min="0.02" max="0.6" step="0.01" value="0.12" />
         </div>
-        <div>
-          <label for="charInput">Single Character</label>
-          <input id="charInput" value="A" maxlength="2" />
-        </div>
-        <div style="grid-column: span 2;">
-          <label for="textInput">Sentence</label>
-          <input id="textInput" value="The quick brown fox jumps over the lazy dog" />
-        </div>
       </div>
     </section>
 
     <section class="panel">
-      <div class="compare-grid">
-        <div>
-          <canvas id="charCanvasA" width="900" height="260"></canvas>
-          <div id="charMetaA" class="meta"></div>
-        </div>
-        <div>
-          <canvas id="charCanvasB" width="900" height="260"></canvas>
-          <div id="charMetaB" class="meta"></div>
-        </div>
-      </div>
+      <canvas id="previewCanvas" width="1200" height="320"></canvas>
+      <div class="note">Guides: baseline, ascender, descender, x-height, cap-height, and advance end.</div>
     </section>
 
     <section class="panel">
-      <div class="compare-grid">
-        <div>
-          <canvas id="textCanvasA" width="900" height="260"></canvas>
-          <div id="textMetaA" class="meta"></div>
-        </div>
-        <div>
-          <canvas id="textCanvasB" width="900" height="260"></canvas>
-          <div id="textMetaB" class="meta"></div>
-        </div>
-      </div>
+      <div id="metricsGrid" class="metrics-grid"></div>
+      <div id="tableDump" class="meta"></div>
     </section>
   </div>
 
   <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
+    import { Table } from '../dist/table/Table.js';
     import { getFontList } from './shared/font-catalog.js';
-    import { createFontLoader, populateFontSelect } from './shared/font-ui.js';
-    import { loadSelectedFont } from './shared/tool-scaffold.js';
-
-    const ui = {
-      fontA: document.getElementById('fontA'),
-      fontB: document.getElementById('fontB'),
-      scaleInput: document.getElementById('scaleInput'),
-      charInput: document.getElementById('charInput'),
-      textInput: document.getElementById('textInput'),
-      charCanvasA: document.getElementById('charCanvasA'),
-      charCanvasB: document.getElementById('charCanvasB'),
-      textCanvasA: document.getElementById('textCanvasA'),
-      textCanvasB: document.getElementById('textCanvasB'),
-      charMetaA: document.getElementById('charMetaA'),
-      charMetaB: document.getElementById('charMetaB'),
-      textMetaA: document.getElementById('textMetaA'),
-      textMetaB: document.getElementById('textMetaB')
-    };
+    import { createFontDrawer, createFontLoader, getSelectedFont } from './shared/font-ui.js';
 
     const fonts = getFontList('featureMatrix');
     const loadFont = createFontLoader(FontParser.load);
-    let fontA = null;
-    let fontB = null;
 
-    function populate() {
-      populateFontSelect(ui.fontA, fonts);
-      populateFontSelect(ui.fontB, fonts);
-      ui.fontA.value = "0";
-      ui.fontB.value = String(fonts.length > 1 ? 1 : 0);
+    const ui = {
+      fontDrawerMount: document.getElementById('fontDrawerMount'),
+      fontSelect: document.createElement('select'),
+      sampleInput: document.getElementById('sampleInput'),
+      scaleInput: document.getElementById('scaleInput'),
+      previewCanvas: document.getElementById('previewCanvas'),
+      metricsGrid: document.getElementById('metricsGrid'),
+      tableDump: document.getElementById('tableDump')
+    };
+
+    ui.fontSelect.id = 'fontSelect';
+    ui.fontSelect.hidden = true;
+    ui.fontSelect.dataset.fontSourceUi = 'off';
+    document.body.appendChild(ui.fontSelect);
+
+    let font = null;
+
+    function safeNumber(value) {
+      return Number.isFinite(value) ? value : null;
     }
 
-    function drawRulers(ctx, width, baselineY, ascenderY, descenderY, xHeightY, capHeightY) {
+    function addMetric(label, value) {
+      const card = document.createElement('div');
+      card.className = 'metric-card';
+      card.innerHTML = `<strong>${label}</strong><span>${value ?? 'n/a'}</span>`;
+      ui.metricsGrid.appendChild(card);
+    }
+
+    function drawGuide(ctx, y, width, color, label) {
+      if (!Number.isFinite(y)) return;
       ctx.save();
+      ctx.strokeStyle = color;
       ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = '#c7b9aa';
-      [[baselineY, '#af814f'], [ascenderY, '#4b8ba1'], [descenderY, '#9e5858'], [xHeightY, '#7895bf'], [capHeightY, '#89a064']]
-        .forEach(([y, color]) => {
-          if (typeof y !== 'number' || !Number.isFinite(y)) return;
-          ctx.strokeStyle = color;
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(width, y);
-          ctx.stroke();
-        });
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = color;
+      ctx.font = '12px sans-serif';
+      ctx.fillText(label, 12, Math.max(14, y - 6));
       ctx.restore();
     }
 
-    function renderChar(font, canvas, metaEl, color) {
+    function renderMetrics() {
+      if (!font) return;
+      const canvas = ui.previewCanvas;
       const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const scale = parseFloat(ui.scaleInput.value);
-      const ch = ui.charInput.value || 'A';
-      const glyph = font.getGlyphByChar(ch);
-      if (!glyph) {
-        metaEl.textContent = `Missing glyph for "${ch}"`;
-        return;
-      }
+      const text = ui.sampleInput.value || '';
+      const scale = parseFloat(ui.scaleInput.value) || 0.12;
 
-      const ascent = font.getAscent();
-      const descent = font.getDescent();
-      const os2 = font.getOs2Metrics?.() || null;
-      const baselineY = 180;
+      const upm = safeNumber(font.getUnitsPerEm?.()) ?? 1000;
+      const ascent = safeNumber(font.getAscent?.()) ?? Math.round(upm * 0.8);
+      const descent = safeNumber(font.getDescent?.()) ?? -Math.round(upm * 0.2);
+      const hhea = font.getTableByType?.(Table.hhea);
+      const os2 = font.getOs2Metrics?.() || {};
+      const lineGap = safeNumber(hhea?.lineGap) ?? 0;
+      const xHeight = safeNumber(os2?.xHeight);
+      const capHeight = safeNumber(os2?.capHeight);
+
+      const baselineY = 210;
       const ascY = baselineY - ascent * scale;
       const descY = baselineY - descent * scale;
-      const xHeightY = os2?.xHeight != null ? baselineY - os2.xHeight * scale : NaN;
-      const capHeightY = os2?.capHeight != null ? baselineY - os2.capHeight * scale : NaN;
-      drawRulers(ctx, canvas.width, baselineY, ascY, descY, xHeightY, capHeightY);
+      const xHeightY = xHeight != null ? baselineY - xHeight * scale : NaN;
+      const capHeightY = capHeight != null ? baselineY - capHeight * scale : NaN;
 
-      CanvasRenderer.drawGlyphToContext(ctx, glyph, {
-        x: 80,
-        y: baselineY,
-        scale,
-        styles: { fillStyle: color, strokeStyle: color, lineWidth: 1 }
-      });
-
-      metaEl.textContent = `Glyph index: ${font.getGlyphIndexByChar(ch)}\nAdvance width: ${glyph.advanceWidth}\nLeft side bearing: ${glyph.leftSideBearing}\nAscent: ${ascent}\nDescent: ${descent}\nxHeight: ${os2?.xHeight ?? 'n/a'}\nCapHeight: ${os2?.capHeight ?? 'n/a'}`;
-    }
-
-    function renderText(font, canvas, metaEl, color) {
-      const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const scale = parseFloat(ui.scaleInput.value);
-      const text = ui.textInput.value || '';
-      const ascent = font.getAscent();
-      const descent = font.getDescent();
-      const os2 = font.getOs2Metrics?.() || null;
-      const baselineY = 180;
-      const ascY = baselineY - ascent * scale;
-      const descY = baselineY - descent * scale;
-      const xHeightY = os2?.xHeight != null ? baselineY - os2.xHeight * scale : NaN;
-      const capHeightY = os2?.capHeight != null ? baselineY - os2.capHeight * scale : NaN;
-      drawRulers(ctx, canvas.width, baselineY, ascY, descY, xHeightY, capHeightY);
+      ctx.fillStyle = '#fffaf5';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      drawGuide(ctx, baselineY, canvas.width, '#af814f', 'baseline');
+      drawGuide(ctx, ascY, canvas.width, '#4b8ba1', 'ascender');
+      drawGuide(ctx, descY, canvas.width, '#9e5858', 'descender');
+      drawGuide(ctx, xHeightY, canvas.width, '#7895bf', 'x-height');
+      drawGuide(ctx, capHeightY, canvas.width, '#89a064', 'cap-height');
 
       const layout = font.layoutString(text, { gsubFeatures: ['liga'] });
       CanvasRenderer.drawLayout(font, layout, canvas, {
         x: 40,
         y: baselineY,
         scale,
-        styles: { fillStyle: color, strokeStyle: color, lineWidth: 1 }
+        styles: { fillStyle: '#1e1b16', strokeStyle: '#1e1b16', lineWidth: 1 }
       });
 
-      const advanceTotal = layout.reduce((sum, g) => sum + g.xAdvance, 0);
-      metaEl.textContent = `Glyphs: ${layout.length}\nAdvance sum: ${advanceTotal}\nAscent: ${ascent}\nDescent: ${descent}\nxHeight: ${os2?.xHeight ?? 'n/a'}\nCapHeight: ${os2?.capHeight ?? 'n/a'}`;
+      const advanceTotal = layout.reduce((sum, g) => sum + (g.xAdvance ?? 0), 0);
+      const advanceX = 40 + advanceTotal * scale;
+      ctx.save();
+      ctx.strokeStyle = '#7b4d2a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(advanceX, 36);
+      ctx.lineTo(advanceX, canvas.height - 26);
+      ctx.stroke();
+      ctx.fillStyle = '#7b4d2a';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('advance end', Math.min(canvas.width - 90, advanceX + 8), 26);
+      ctx.restore();
+
+      const names = font.getNameInfo?.() || {};
+      const glyphs = safeNumber(font.getNumGlyphs?.());
+      const avgWidth = safeNumber(os2?.averageCharWidth);
+      const typoAsc = safeNumber(os2?.typoAscender);
+      const typoDesc = safeNumber(os2?.typoDescender);
+      const typoGap = safeNumber(os2?.typoLineGap);
+      const winAsc = safeNumber(os2?.usWinAscent);
+      const winDesc = safeNumber(os2?.usWinDescent);
+
+      ui.metricsGrid.innerHTML = '';
+      addMetric('Font', names.fullName || names.fontFamily || 'unknown');
+      addMetric('Glyphs', glyphs);
+      addMetric('UPM', upm);
+      addMetric('Advance', Math.round(advanceTotal));
+      addMetric('Ascender', ascent);
+      addMetric('Descender', descent);
+      addMetric('Line Gap', lineGap);
+      addMetric('x-Height', xHeight);
+      addMetric('Cap Height', capHeight);
+      addMetric('Avg Width', avgWidth);
+      addMetric('OS/2 Typo Asc', typoAsc);
+      addMetric('OS/2 Typo Desc', typoDesc);
+      addMetric('OS/2 Typo Gap', typoGap);
+      addMetric('Win Ascent', winAsc);
+      addMetric('Win Descent', winDesc);
+
+      ui.tableDump.textContent = [
+        `Sample: ${JSON.stringify(text)}`,
+        `Glyph count: ${layout.length}`,
+        `Advance width: ${Math.round(advanceTotal)}`,
+        `Ascent/Descent: ${ascent} / ${descent}`,
+        `Line gap: ${lineGap}`,
+        `Name: ${names.fullName || names.fontFamily || 'unknown'}`,
+        `Family/Subfamily: ${names.fontFamily || 'n/a'} / ${names.fontSubfamily || 'n/a'}`
+      ].join('\n');
     }
 
-    function render() {
-      if (!fontA || !fontB) return;
-      renderChar(fontA, ui.charCanvasA, ui.charMetaA, '#1e1b16');
-      renderChar(fontB, ui.charCanvasB, ui.charMetaB, '#5b2f1c');
-      renderText(fontA, ui.textCanvasA, ui.textMetaA, '#1e1b16');
-      renderText(fontB, ui.textCanvasB, ui.textMetaB, '#5b2f1c');
+    async function loadSelected() {
+      const selected = getSelectedFont(ui.fontSelect, fonts);
+      font = await loadFont(selected.url);
+      renderMetrics();
     }
 
-    async function loadBoth() {
-      ({ font: fontA } = await loadSelectedFont(ui.fontA, fonts, loadFont));
-      ({ font: fontB } = await loadSelectedFont(ui.fontB, fonts, loadFont));
-      render();
-    }
+    createFontDrawer({
+      mount: ui.fontDrawerMount,
+      select: ui.fontSelect,
+      fonts,
+      allowUrl: true,
+      title: 'Font'
+    });
 
-    populate();
-    loadBoth();
+    ui.fontSelect.addEventListener('change', loadSelected);
+    ui.sampleInput.addEventListener('input', renderMetrics);
+    ui.scaleInput.addEventListener('input', renderMetrics);
 
-    [ui.fontA, ui.fontB].forEach(el => el.addEventListener('change', loadBoth));
-    [ui.scaleInput, ui.charInput, ui.textInput].forEach(el => el.addEventListener('input', render));
+    loadSelected();
   </script>
-  <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

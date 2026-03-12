@@ -4,7 +4,9 @@
     <meta charset="utf-8">
     <title>Font Metadata</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 30px; color: #222; }
+        body { font-family: Arial, sans-serif; margin: 0; color: #222; }
+        .page { padding: 0 30px 30px; }
+        h1 { margin: 0 0 12px; }
         select { padding: 6px; margin-bottom: 12px; }
         table { border-collapse: collapse; width: 100%; max-width: 900px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
@@ -13,19 +15,18 @@
     </style>
 </head>
 <body>
-<div data-nav="main"></div>
-
+<div id="fontDrawerMount"></div>
+<div class="page">
 <h1>Font Metadata</h1>
 <div class="note">Reads name/OS2/post convenience APIs and the raw name records.</div>
-<label for="fontSelect">Font:</label>
-<select id="fontSelect"></select>
+<select id="fontSelect" hidden data-font-source-ui="off"></select>
 <div id="output"></div>
+</div>
 
 <script type="module">
     import { FontParser } from '../dist/data/FontParser.js';
     import { getFontList } from './shared/font-catalog.js';
-    import { createFontLoader } from './shared/font-ui.js';
-    import { wireFontSelect } from './shared/tool-scaffold.js';
+    import { createFontDrawer, createFontLoader, getSelectedFont } from './shared/font-ui.js';
 
     const fonts = getFontList('metadata');
     const loadFontByUrl = createFontLoader((url) => FontParser.load(url));
@@ -50,23 +51,36 @@
         17: 'Typographic Subfamily'
     };
 
+    const fontDrawerMount = document.getElementById('fontDrawerMount');
     const select = document.getElementById('fontSelect');
     const output = document.getElementById('output');
 
-    const selector = wireFontSelect({
+    createFontDrawer({
+        mount: fontDrawerMount,
         select,
         fonts,
-        loadFont: (url) => loadFontByUrl(url),
-        onLoaded: (font) => {
-            const records = font.getAllNameRecords();
-            renderRecords(records, font);
-        },
-        onError: (err) => {
+        allowUrl: true,
+        title: 'Font'
+    });
+
+    async function loadSelectedFont() {
+        const selected = getSelectedFont(select, fonts);
+        const font = await loadFontByUrl(selected.url);
+        const records = font.getAllNameRecords();
+        renderRecords(records, font);
+    }
+
+    output.innerHTML = 'Loading...';
+    select.addEventListener('change', async () => {
+        try {
+            await loadSelectedFont();
+        } catch (err) {
             output.textContent = `Failed to load font: ${err}`;
         }
     });
-    output.innerHTML = 'Loading...';
-    selector.run();
+    loadSelectedFont().catch((err) => {
+        output.textContent = `Failed to load font: ${err}`;
+    });
 
     function renderRecords(records, font) {
         if (!records.length) {
@@ -123,6 +137,5 @@
         output.appendChild(table);
     }
 </script>
-<script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

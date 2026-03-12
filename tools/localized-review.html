@@ -21,18 +21,16 @@
   </style>
 </head>
 <body>
-<div data-nav="main"></div>
+  <div id="fontDrawerMount"></div>
 
   <header>
     <h1>Localized Glyph Review</h1>
     <p>Shows localized fonts and highlights composed characters for visual inspection.</p>
   </header>
+  <select id="fontSelect" hidden data-font-source-ui="off"></select>
 
   <div class="panel">
     <div class="row">
-      <div class="label">Font</div>
-      <select id="fontSelect" data-font-source-ui="off"></select>
-      <input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2" />
       <div class="label">Language</div>
       <select id="sampleSelect"></select>
     </div>
@@ -69,7 +67,7 @@
     import { Table } from "../dist/table/Table.js";
     import { listLanguages, supportsLanguage } from "../dist/utils/LanguageSupport.js";
     import { getFontList } from "./shared/font-catalog.js";
-    import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
+    import { createFontDrawer, createFontLoader, getSelectedFont } from "./shared/font-ui.js";
 
     const fonts = getFontList('localizedReview');
     const loadFont = createFontLoader((url) => FontParser.load(url));
@@ -83,8 +81,8 @@
       { code: "es", label: "Spanish", text: "¡Feliz cumpleaños!" }
     ];
 
+    const fontDrawerMount = document.getElementById("fontDrawerMount");
     const fontSelect = document.getElementById("fontSelect");
-    const fontFileInput = document.getElementById("fontFileInput");
     const sampleSelect = document.getElementById("sampleSelect");
     const preview = document.getElementById("preview");
     const highlight = document.getElementById("highlight");
@@ -94,8 +92,6 @@
     const languages = listLanguages();
     let currentFont = null;
     let currentFontInfo = null;
-    let customFontUrl = null;
-
     samples.forEach((s, i) => {
       const opt = document.createElement("option");
       opt.value = String(i);
@@ -156,9 +152,7 @@
     }
 
     async function loadAndRender() {
-      const selected = customFontUrl
-        ? { name: fontFileInput.files?.[0]?.name || "Custom font", url: customFontUrl, isCustom: true }
-        : getSelectedFont(fontSelect, fonts);
+      const selected = getSelectedFont(fontSelect, fonts);
       try {
         currentFont = await loadFont(selected.url);
         currentFontInfo = selected;
@@ -173,23 +167,15 @@
     }
 
     sampleSelect.addEventListener("change", render);
-    fontSelect.addEventListener("change", () => {
-      if (fontFileInput.value) {
-        fontFileInput.value = "";
-        if (customFontUrl) URL.revokeObjectURL(customFontUrl);
-        customFontUrl = null;
-      }
-      loadAndRender();
+    createFontDrawer({
+      mount: fontDrawerMount,
+      select: fontSelect,
+      fonts,
+      allowUrl: true,
+      title: 'Font'
     });
-    fontFileInput.addEventListener("change", () => {
-      if (customFontUrl) URL.revokeObjectURL(customFontUrl);
-      customFontUrl = fontFileInput.files?.[0] ? URL.createObjectURL(fontFileInput.files[0]) : null;
-      loadAndRender();
-    });
-
-    populateFontSelect(fontSelect, fonts);
+    fontSelect.addEventListener("change", loadAndRender);
     loadAndRender();
   </script>
-  <script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

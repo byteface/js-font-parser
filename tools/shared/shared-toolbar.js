@@ -98,6 +98,7 @@ function ensureBaseStyles() {
 export function createSharedToolbar({
   mount,
   fontSelect,
+  includeFontSelect = true,
   sizeInput = null,
   scriptOptions = [],
   onScriptChange = null,
@@ -138,7 +139,7 @@ export function createSharedToolbar({
     return mirror;
   }
 
-  if (fontSelect) {
+  if (fontSelect && includeFontSelect) {
     const group = document.createElement("div");
     group.className = "shared-toolbar-group";
     const label = document.createElement("label");

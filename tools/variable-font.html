@@ -6,10 +6,13 @@
     <style>
         :root { color-scheme: light; }
         body {
-            margin: 24px;
+            margin: 0;
             font-family: "Fraunces", "Georgia", serif;
             background: radial-gradient(circle at 20% 10%, #ffffff, #eef2f6);
             color: #15171b;
+        }
+        .page {
+            padding: 18px 24px 24px;
         }
         h1 { margin: 0 0 10px 0; font-size: 28px; }
         .panel {
@@ -66,14 +69,12 @@
     </style>
 </head>
 <body>
-<div data-nav="main"></div>
+    <div id="fontDrawerMount"></div>
+    <div class="page">
+    <select id="fontSelect" hidden data-font-source-ui="off"></select>
 
     <h1>Variable Font Explorer</h1>
     <div class="panel">
-        <label>
-            Font
-            <select id="fontSelect"></select>
-        </label>
         <label>
             Text
             <input id="textInput" value="VARIABLE" />
@@ -135,15 +136,17 @@
             <canvas id="probeCanvas" width="260" height="260"></canvas>
         </div>
     </div>
+    </div>
 
     <script type="module">
         import { FontParser } from '../dist/data/FontParser.js';
         import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
         import { Table } from '../dist/table/Table.js';
         import { getFontList } from './shared/font-catalog.js';
-        import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
+        import { createFontDrawer, createFontLoader, getSelectedFont } from './shared/font-ui.js';
         import { setStatus } from './shared/status-ui.js';
 
+        const fontDrawerMount = document.getElementById('fontDrawerMount');
         const fontSelect = document.getElementById('fontSelect');
         const textInput = document.getElementById('textInput');
         const compositeSample = document.getElementById('compositeSample');
@@ -683,7 +686,13 @@
         axesMaxBtn.addEventListener('click', () => setAllAxes('max'));
         axesResetBtn.addEventListener('click', () => setAllAxes('default'));
 
-        populateFontSelect(fontSelect, fonts);
+        createFontDrawer({
+            mount: fontDrawerMount,
+            select: fontSelect,
+            fonts,
+            allowUrl: true,
+            title: 'Font'
+        });
         loadAndRender();
     </script>
 </body>

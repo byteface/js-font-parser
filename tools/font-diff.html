@@ -84,24 +84,122 @@
     tr:last-child td { border-bottom: 0; }
     .ok { color: #1d7a42; font-weight: 700; }
     .warn { color: #a9442f; font-weight: 700; }
+    .font-diff-drawer {
+      position: sticky;
+      top: 0;
+      z-index: 25;
+      display: grid;
+      justify-items: start;
+      margin: 0 20px 14px;
+    }
+    .font-diff-tabs {
+      display: flex;
+      gap: 8px;
+      align-items: start;
+    }
+    .font-diff-tab {
+      border: 1px solid rgba(66, 76, 96, 0.28);
+      border-bottom: none;
+      background: rgba(255, 255, 255, 0.94);
+      color: #233044;
+      border-radius: 0 0 12px 12px;
+      padding: 8px 11px 9px;
+      font: 700 15px/1 serif;
+      text-decoration: none;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(20, 30, 60, 0.12);
+    }
+    .font-diff-drawer-panel {
+      width: min(1080px, calc(100vw - 40px));
+      display: grid;
+      grid-template-columns: repeat(2, minmax(260px, 1fr));
+      gap: 14px;
+      padding: 14px 16px;
+      margin-top: 2px;
+      border: 1px solid rgba(66, 76, 96, 0.2);
+      border-radius: 14px 0 14px 14px;
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 18px 36px rgba(20, 30, 60, 0.16);
+      max-height: 260px;
+      overflow: hidden;
+      transition: transform 220ms ease, opacity 220ms ease, max-height 220ms ease, padding 220ms ease, margin-top 220ms ease;
+      transform-origin: top left;
+    }
+    .font-diff-drawer:not(.open) .font-diff-drawer-panel {
+      transform: translateY(-14px);
+      opacity: 0;
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      margin-top: 0;
+      pointer-events: none;
+      border-width: 0 1px 1px;
+    }
+    .font-diff-drawer-group {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+    .font-diff-drawer-group label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .font-diff-drawer-group input,
+    .font-diff-drawer-group select,
+    .font-diff-drawer-group button {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 14px;
+    }
+    .font-diff-url-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: end;
+    }
   </style>
 </head>
 <body>
-<div data-nav="main"></div>
+<div id="fontDrawer" class="font-diff-drawer">
+  <div class="font-diff-tabs">
+    <a class="font-diff-tab" href="./index.html" aria-label="Back to tools home">🔧</a>
+    <button id="fontDrawerToggle" type="button" class="font-diff-tab" aria-label="Toggle font drawer">Aa</button>
+  </div>
+  <div class="font-diff-drawer-panel">
+    <div class="font-diff-drawer-group">
+      <label>Font A Catalog</label>
+      <select id="fontA" hidden data-font-source-ui="off"></select>
+      <input id="fontAFile" type="file" accept=".ttf,.otf,.woff,.woff2" />
+      <div class="font-diff-url-row">
+        <input id="fontAUrl" type="text" placeholder="https://.../fontA.woff" />
+        <button id="fontALoadUrl" type="button">Load URL</button>
+      </div>
+    </div>
+    <div class="font-diff-drawer-group">
+      <label>Font B Catalog</label>
+      <select id="fontB" hidden data-font-source-ui="off"></select>
+      <input id="fontBFile" type="file" accept=".ttf,.otf,.woff,.woff2" />
+      <div class="font-diff-url-row">
+        <input id="fontBUrl" type="text" placeholder="https://.../fontB.woff" />
+        <button id="fontBLoadUrl" type="button">Load URL</button>
+      </div>
+    </div>
+  </div>
+</div>
 <header>
   <h1>Font Diff</h1>
   <p>Compare two fonts on the same input text: mapping, metrics, and rendering.</p>
 </header>
 
 <div class="panel">
-  <label>
-    Font A
-    <select id="fontA"></select>
-  </label>
-  <label>
-    Font B
-    <select id="fontB"></select>
-  </label>
   <label>
     Text
     <input id="textInput" type="text" value="Hamburgefons ÅÁÉÖÑ æœ مرحبا नमस्ते" />
@@ -147,10 +245,18 @@
   import { FontParser } from '../dist/data/FontParser.js';
   import { CanvasRenderer } from '../dist/render/CanvasRenderer.js';
   import { getFontList } from './shared/font-catalog.js';
-  import { createFontLoader, getSelectedFont, populateFontSelect } from './shared/font-ui.js';
+  import { createFontLoader, populateFontSelect } from './shared/font-ui.js';
 
+  const fontDrawer = document.getElementById('fontDrawer');
+  const fontDrawerToggle = document.getElementById('fontDrawerToggle');
   const fontASelect = document.getElementById('fontA');
   const fontBSelect = document.getElementById('fontB');
+  const fontAFile = document.getElementById('fontAFile');
+  const fontBFile = document.getElementById('fontBFile');
+  const fontAUrl = document.getElementById('fontAUrl');
+  const fontBUrl = document.getElementById('fontBUrl');
+  const fontALoadUrl = document.getElementById('fontALoadUrl');
+  const fontBLoadUrl = document.getElementById('fontBLoadUrl');
   const textInput = document.getElementById('textInput');
   const sizeInput = document.getElementById('sizeInput');
   const runBtn = document.getElementById('runBtn');
@@ -165,12 +271,42 @@
   const ctxD = canvasDiff.getContext('2d');
   const catalog = getFontList('allGlyphs');
   const loadFont = createFontLoader(FontParser.load);
+  let customFontA = null;
+  let customFontB = null;
 
-  function fillSelects() {
-    populateFontSelect(fontASelect, catalog);
-    populateFontSelect(fontBSelect, catalog);
-    fontASelect.selectedIndex = Math.max(0, catalog.findIndex(f => /DiscoMo/.test(f.name)));
-    fontBSelect.selectedIndex = Math.max(1, catalog.findIndex(f => /Noto Sans Regular/.test(f.name)));
+  populateFontSelect(fontASelect, catalog);
+  populateFontSelect(fontBSelect, catalog);
+
+  fontASelect.selectedIndex = Math.max(0, catalog.findIndex(f => /DiscoMo/.test(f.name)));
+  fontBSelect.selectedIndex = Math.max(1, catalog.findIndex(f => /Noto Sans Regular/.test(f.name)));
+  fontASelect.hidden = false;
+  fontBSelect.hidden = false;
+
+  fontDrawerToggle.addEventListener('click', () => {
+    fontDrawer.classList.toggle('open');
+  });
+
+  function revokeObjectUrl(url) {
+    if (url && String(url).startsWith('blob:')) URL.revokeObjectURL(url);
+  }
+
+  function selectedFont(select, customUrl, fallbackName) {
+    if (customUrl) return { name: fallbackName, url: customUrl, isCustom: true };
+    return catalog[Number(select.value)] || catalog[0];
+  }
+
+  function loadUrlInto(side) {
+    if (side === 'A') {
+      revokeObjectUrl(customFontA);
+      customFontA = fontAUrl.value.trim() || null;
+      fontAFile.value = '';
+      run();
+      return;
+    }
+    revokeObjectUrl(customFontB);
+    customFontB = fontBUrl.value.trim() || null;
+    fontBFile.value = '';
+    run();
   }
 
   function clear(ctx, w, h) {
@@ -256,8 +392,8 @@
     runBtn.disabled = true;
     runBtn.textContent = 'Loading...';
     try {
-      const aSelected = getSelectedFont(fontASelect, catalog);
-      const bSelected = getSelectedFont(fontBSelect, catalog);
+      const aSelected = selectedFont(fontASelect, customFontA, fontAFile.files?.[0]?.name || fontAUrl.value.trim() || 'Custom font A');
+      const bSelected = selectedFont(fontBSelect, customFontB, fontBFile.files?.[0]?.name || fontBUrl.value.trim() || 'Custom font B');
       const aUrl = aSelected.url;
       const bUrl = bSelected.url;
       const fontA = await loadFont(aUrl);
@@ -295,12 +431,48 @@
   runBtn.addEventListener('click', run);
   textInput.addEventListener('input', run);
   sizeInput.addEventListener('input', run);
-  fontASelect.addEventListener('change', run);
-  fontBSelect.addEventListener('change', run);
+  fontASelect.addEventListener('change', () => {
+    if (customFontA) revokeObjectUrl(customFontA);
+    customFontA = null;
+    fontAFile.value = '';
+    fontAUrl.value = '';
+    run();
+  });
+  fontBSelect.addEventListener('change', () => {
+    if (customFontB) revokeObjectUrl(customFontB);
+    customFontB = null;
+    fontBFile.value = '';
+    fontBUrl.value = '';
+    run();
+  });
+  fontAFile.addEventListener('change', () => {
+    if (customFontA) revokeObjectUrl(customFontA);
+    customFontA = fontAFile.files?.[0] ? URL.createObjectURL(fontAFile.files[0]) : null;
+    fontAUrl.value = '';
+    run();
+  });
+  fontBFile.addEventListener('change', () => {
+    if (customFontB) revokeObjectUrl(customFontB);
+    customFontB = fontBFile.files?.[0] ? URL.createObjectURL(fontBFile.files[0]) : null;
+    fontBUrl.value = '';
+    run();
+  });
+  fontALoadUrl.addEventListener('click', () => loadUrlInto('A'));
+  fontBLoadUrl.addEventListener('click', () => loadUrlInto('B'));
+  fontAUrl.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      loadUrlInto('A');
+    }
+  });
+  fontBUrl.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      loadUrlInto('B');
+    }
+  });
 
-  fillSelects();
   run();
 </script>
-<script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

@@ -24,17 +24,15 @@
   </style>
 </head>
 <body>
-<div data-nav="main"></div>
+<div id="fontDrawerMount"></div>
 
 <header>
   <h1>Render Speed Lab</h1>
   <p>Stress-test glyph rendering volume and timing. Increase characters, shrink text, and benchmark throughput.</p>
 </header>
+<select id="fontSelect" hidden data-font-source-ui="off"></select>
 
 <div class="panel">
-  <label>Font
-    <select id="fontSelect"></select>
-  </label>
   <label>Characters
     <input id="charCount" type="range" min="80" max="18000" value="1800" />
   </label>
@@ -69,9 +67,10 @@
 <script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
 const { FontParser, CanvasRenderer } = window.FontParser;
-import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
+import { createFontDrawer, createFontLoader, getSelectedFont } from "./shared/font-ui.js";
 import { getFontList } from "./shared/font-catalog.js";
 
+const fontDrawerMount = document.getElementById("fontDrawerMount");
 const fontSelect = document.getElementById("fontSelect");
 const charCountInput = document.getElementById("charCount");
 const fontSizeInput = document.getElementById("fontSize");
@@ -286,9 +285,14 @@ fontSizeInput.addEventListener("input", redraw);
 lineHeightInput.addEventListener("input", redraw);
 autoFitInput.addEventListener("change", redraw);
 
-populateFontSelect(fontSelect, fonts);
+createFontDrawer({
+  mount: fontDrawerMount,
+  select: fontSelect,
+  fonts,
+  allowUrl: true,
+  title: "Font"
+});
 boot();
 </script>
-<script type="module" src="../tools/shared/main-nav.js"></script>
 </body>
 </html>

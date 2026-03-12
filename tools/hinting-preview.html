@@ -56,15 +56,13 @@
   </style>
 </head>
 <body>
-  <div data-nav="main"></div>
+  <div id="fontDrawerMount"></div>
   <div class="wrap">
     <h1>Hint VM Preview</h1>
     <p class="sub">Real parser mode comparison: left uses hinting disabled, right enables <code>vm-experimental</code> for <code>fpgm/prep/glyph</code> instruction execution.</p>
 
     <div class="controls">
-      <label>Font
-        <select id="fontSelect"></select>
-      </label>
+      <select id="fontSelect" hidden data-font-source-ui="off"></select>
       <label>Text
         <input id="textInput" value="Hamburgefonts AV" />
       </label>
@@ -96,7 +94,7 @@
 
   <script src="../dist-build/fontparser.min.js"></script>
   <script type="module">
-    import { attachFontSourceControl } from './shared/font-ui.js';
+    import { createFontDrawer, getSelectedFont } from './shared/font-ui.js';
 
     const { FontParser, CanvasRenderer } = window.FontParser || {};
 
@@ -108,6 +106,7 @@
       { name: 'Noto Naskh Arabic (TTF)', url: '../truetypefonts/noto/NotoNaskhArabic-Regular.ttf', text: 'مرحبا عالم' }
     ];
 
+    const fontDrawerMount = document.getElementById('fontDrawerMount');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const fontSelect = document.getElementById('fontSelect');
@@ -122,23 +121,24 @@
     const fontCache = new Map();
     let activeFont = null;
 
-    FONT_OPTIONS.forEach((f, i) => {
-      const opt = document.createElement('option');
-      opt.value = String(i);
-      opt.textContent = f.name;
-      fontSelect.appendChild(opt);
+    createFontDrawer({
+      mount: fontDrawerMount,
+      select: fontSelect,
+      fonts: FONT_OPTIONS,
+      allowUrl: true,
+      title: 'Font'
     });
-    attachFontSourceControl(fontSelect);
 
     function getSelectedFontOption() {
-      const control = fontSelect.__fontSourceControl;
-      return control?.modeSelect?.value === 'custom' && control.customUrl
-        ? {
-            name: control.customName || 'Custom font',
-            url: control.customUrl,
-            text: textInput.value || 'Hamburgefonts AV'
-          }
-        : (FONT_OPTIONS[Number(fontSelect.value)] || FONT_OPTIONS[0]);
+      const selected = getSelectedFont(fontSelect, FONT_OPTIONS);
+      if (selected?.isCustom) {
+        return {
+          name: selected.name || 'Custom font',
+          url: selected.url,
+          text: textInput.value || 'Hamburgefonts AV'
+        };
+      }
+      return selected || FONT_OPTIONS[0];
     }
 
     [textInput, sizeInput, gridSelect].forEach((el) => {

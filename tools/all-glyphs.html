@@ -6,10 +6,13 @@
     <style>
         :root { color-scheme: light; }
         body {
-            margin: 24px;
+            margin: 0;
             font-family: "Georgia", "Times New Roman", serif;
             background: radial-gradient(circle at top, #f6f6f2 0%, #ecebe4 50%, #e1dfd4 100%);
             color: #1b1b1b;
+        }
+        .page {
+            padding: 18px 24px 24px;
         }
         h1 { margin: 0 0 10px 0; font-size: 28px; }
         .panel {
@@ -69,17 +72,94 @@
             font-size: 12px;
         }
         .warn { color: #a33a2a; }
+        .glyph-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(28, 24, 18, 0.58);
+            z-index: 80;
+            padding: 24px;
+        }
+        .glyph-modal.open { display: flex; }
+        .glyph-modal-card {
+            width: min(920px, 96vw);
+            max-height: 88vh;
+            overflow: auto;
+            background: #fffdfa;
+            border: 1px solid #d8d6cb;
+            border-radius: 18px;
+            box-shadow: 0 24px 60px rgba(30, 20, 10, 0.25);
+            padding: 18px;
+            display: grid;
+            gap: 14px;
+        }
+        .glyph-modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 16px;
+        }
+        .glyph-modal-title {
+            margin: 0;
+            font-size: 24px;
+        }
+        .glyph-modal-sub {
+            margin: 6px 0 0;
+            color: #6f6657;
+            font-size: 13px;
+        }
+        .glyph-modal-close {
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid #d8d6cb;
+            background: #f4f0ea;
+            color: #3d382f;
+            cursor: pointer;
+        }
+        .glyph-modal-grid {
+            display: grid;
+            grid-template-columns: minmax(320px, 1.2fr) minmax(220px, 0.9fr);
+            gap: 16px;
+        }
+        .glyph-modal-stage {
+            border: 1px solid #d8d6cb;
+            border-radius: 14px;
+            background: #fff;
+            padding: 10px;
+        }
+        .glyph-modal-stage canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .glyph-metrics {
+            display: grid;
+            gap: 8px;
+        }
+        .glyph-metric {
+            border: 1px solid #e3dfd6;
+            border-radius: 12px;
+            background: #fbf9f5;
+            padding: 10px 12px;
+        }
+        .glyph-metric strong {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #7d7261;
+            margin-bottom: 4px;
+        }
     </style>
 </head>
 <body>
-<div data-nav="main"></div>
-
+    <div id="fontDrawerMount"></div>
+    <div class="page">
     <h1>All Glyphs Grid</h1>
     <div class="panel">
-        <label>
-            Font
-            <select id="fontSelect"></select>
-        </label>
+        <select id="fontSelect" hidden data-font-source-ui="off"></select>
         <label>
             Cell Size
             <input id="cellInput" type="range" min="40" max="160" value="100" />
@@ -115,6 +195,24 @@
         <canvas id="canvas" width="1200" height="800"></canvas>
         <div id="status" class="hint"></div>
     </div>
+    <div id="glyphModal" class="glyph-modal" aria-hidden="true">
+        <div class="glyph-modal-card">
+            <div class="glyph-modal-head">
+                <div>
+                    <h2 id="glyphModalTitle" class="glyph-modal-title">Glyph</h2>
+                    <p id="glyphModalSub" class="glyph-modal-sub"></p>
+                </div>
+                <button id="glyphModalClose" class="glyph-modal-close" type="button">Close</button>
+            </div>
+            <div class="glyph-modal-grid">
+                <div class="glyph-modal-stage">
+                    <canvas id="glyphModalCanvas" width="560" height="420"></canvas>
+                </div>
+                <div id="glyphMetrics" class="glyph-metrics"></div>
+            </div>
+        </div>
+    </div>
+    </div>
 
     <script type="module">
         import { FontParser } from "../dist/data/FontParser.js";
@@ -122,10 +220,11 @@
         import { CanvasRenderer } from "../dist/render/CanvasRenderer.js";
         import { Table } from "../dist/table/Table.js";
         import { getFontList } from "./shared/font-catalog.js";
-        import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/font-ui.js";
+        import { createFontDrawer, createFontLoader, getSelectedFont } from "./shared/font-ui.js";
         import { clearCanvas } from "./shared/canvas-utils.js";
         import { setStatus } from "./shared/status-ui.js";
 
+        const fontDrawerMount = document.getElementById("fontDrawerMount");
         const fontSelect = document.getElementById("fontSelect");
         const cellInput = document.getElementById("cellInput");
         const scaleInput = document.getElementById("scaleInput");
@@ -139,8 +238,18 @@
         const canvas = document.getElementById("canvas");
         const status = document.getElementById("status");
         const ctx = canvas.getContext("2d");
+        const glyphModal = document.getElementById("glyphModal");
+        const glyphModalClose = document.getElementById("glyphModalClose");
+        const glyphModalTitle = document.getElementById("glyphModalTitle");
+        const glyphModalSub = document.getElementById("glyphModalSub");
+        const glyphModalCanvas = document.getElementById("glyphModalCanvas");
+        const glyphMetrics = document.getElementById("glyphMetrics");
+        const glyphModalCtx = glyphModalCanvas.getContext("2d");
 
         const fonts = getFontList("allGlyphs");
+        const glyphCellMap = [];
+        let currentGridFont = null;
+        let currentUnicodeMap = new Map();
 
         const loadFont = createFontLoader(async (url) => {
             if (isWoff(url)) {
@@ -211,6 +320,65 @@
             ctx.restore();
         }
 
+        function renderGlyphModal(entry) {
+            if (!entry || !glyphModalCtx) return;
+            const { glyphIndex, glyph, codePoint, font } = entry;
+            const bounds = getGlyphBounds(glyph);
+            if (!glyph || !bounds) return;
+
+            const modalCanvas = glyphModalCanvas;
+            glyphModalCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
+            glyphModalCtx.fillStyle = "#fffdfa";
+            glyphModalCtx.fillRect(0, 0, modalCanvas.width, modalCanvas.height);
+
+            const unitsPerEm = typeof font.getUnitsPerEm === "function" ? font.getUnitsPerEm() : 1000;
+            const hhea = font.getTableByType(Table.hhea);
+            const ascender = hhea?.ascender ?? unitsPerEm * 0.8;
+            const descender = hhea?.descender ?? -unitsPerEm * 0.2;
+            const emHeight = ascender - descender || unitsPerEm;
+            const usableWidth = modalCanvas.width - 80;
+            const usableHeight = modalCanvas.height - 80;
+            const scale = Math.min(usableWidth / Math.max(1, bounds.maxx - bounds.minx), usableHeight / Math.max(1, emHeight));
+            const baselineY = 40 + ascender * scale;
+            const drawX = 40 + ((usableWidth - ((bounds.maxx - bounds.minx) * scale)) * 0.5) - (bounds.minx * scale);
+
+            glyphModalCtx.save();
+            glyphModalCtx.strokeStyle = "#d8d6cb";
+            glyphModalCtx.lineWidth = 1;
+            glyphModalCtx.setLineDash([5, 5]);
+            glyphModalCtx.beginPath();
+            glyphModalCtx.moveTo(0, baselineY);
+            glyphModalCtx.lineTo(modalCanvas.width, baselineY);
+            glyphModalCtx.stroke();
+            glyphModalCtx.beginPath();
+            glyphModalCtx.moveTo(0, 40 + (ascender - (font.getAscent?.() ?? ascender)) * scale);
+            glyphModalCtx.lineTo(modalCanvas.width, 40 + (ascender - (font.getAscent?.() ?? ascender)) * scale);
+            glyphModalCtx.stroke();
+            glyphModalCtx.restore();
+
+            CanvasRenderer.drawGlyphToContext(glyphModalCtx, glyph, {
+                x: drawX,
+                y: baselineY,
+                scale,
+                styles: { fillStyle: "#2f2a22", strokeStyle: "#2f2a22", lineWidth: 1.5 }
+            });
+
+            glyphModalTitle.textContent = codePoint != null
+                ? `${String.fromCodePoint(codePoint)}  U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}`
+                : `Glyph ${glyphIndex}`;
+            glyphModalSub.textContent = `Glyph ${glyphIndex} · advance ${glyph.advanceWidth} · left side bearing ${glyph.leftSideBearing}`;
+            glyphMetrics.innerHTML = `
+                <div class="glyph-metric"><strong>Glyph Index</strong>${glyphIndex}</div>
+                <div class="glyph-metric"><strong>Unicode</strong>${codePoint != null ? `U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}` : "Unmapped"}</div>
+                <div class="glyph-metric"><strong>Advance Width</strong>${glyph.advanceWidth}</div>
+                <div class="glyph-metric"><strong>Left Side Bearing</strong>${glyph.leftSideBearing}</div>
+                <div class="glyph-metric"><strong>Bounds</strong>${bounds.minx}, ${bounds.miny} → ${bounds.maxx}, ${bounds.maxy}</div>
+                <div class="glyph-metric"><strong>Point Count</strong>${Math.max(0, glyph.getPointCount() - 2)}</div>
+            `;
+            glyphModal.classList.add("open");
+            glyphModal.setAttribute("aria-hidden", "false");
+        }
+
         function renderGrid(font) {
             if (!ctx) return;
             const cell = Number(cellInput.value);
@@ -247,6 +415,9 @@
 
             canvas.height = height;
             clearCanvas(canvas, ctx, "#fbfbf8");
+            glyphCellMap.length = 0;
+            currentGridFont = font;
+            currentUnicodeMap = unicodeMap;
 
             ctx.strokeStyle = "#e6e3da";
             ctx.lineWidth = 1;
@@ -285,6 +456,17 @@
                         );
                     }
                 }
+
+                glyphCellMap.push({
+                    x,
+                    y,
+                    w: cell,
+                    h: cell,
+                    glyphIndex: i,
+                    glyph,
+                    codePoint: unicodeMap.get(i) ?? null,
+                    font
+                });
 
                 if (showIndex) {
                     ctx.fillText(String(i), x + 6, y + 14);
@@ -341,6 +523,25 @@
                 console.warn("Failed to log CFF ops:", err);
             }
         });
+        canvas.addEventListener("click", (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (event.clientX - rect.left) * scaleX;
+            const y = (event.clientY - rect.top) * scaleY;
+            const hit = glyphCellMap.find((cell) => x >= cell.x && x <= cell.x + cell.w && y >= cell.y && y <= cell.y + cell.h && cell.glyph);
+            if (hit) renderGlyphModal(hit);
+        });
+        glyphModalClose.addEventListener("click", () => {
+            glyphModal.classList.remove("open");
+            glyphModal.setAttribute("aria-hidden", "true");
+        });
+        glyphModal.addEventListener("click", (event) => {
+            if (event.target === glyphModal) {
+                glyphModal.classList.remove("open");
+                glyphModal.setAttribute("aria-hidden", "true");
+            }
+        });
         fontSelect.addEventListener("change", render);
         cellInput.addEventListener("input", render);
         scaleInput.addEventListener("input", render);
@@ -349,7 +550,13 @@
         startInput.addEventListener("input", render);
         limitInput.addEventListener("input", render);
 
-        populateFontSelect(fontSelect, fonts);
+        createFontDrawer({
+            mount: fontDrawerMount,
+            select: fontSelect,
+            fonts,
+            allowUrl: true,
+            title: "Font"
+        });
         render();
     </script>
 </body>
