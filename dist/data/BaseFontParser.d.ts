@@ -4,6 +4,8 @@ import { ByteArray } from '../utils/ByteArray.js';
 import { TableDirectory } from '../table/TableDirectory.js';
 import { GlyphData } from './GlyphData.js';
 import { TrueTypeHintVM, HintingMode, HintingOptions } from '../hint/TrueTypeHintVM.js';
+import { type CanvasDrawOptions } from '../render/CanvasRenderer.js';
+import { type SVGExportOptions } from '../render/SVGFont.js';
 type PositionedGlyph = {
     glyphIndex: number;
     xAdvance: number;
@@ -238,6 +240,16 @@ export declare abstract class BaseFontParser {
         onCurve: boolean;
         endOfContour: boolean;
     }>;
+    drawGlyph(canvas: HTMLCanvasElement, glyphIndex: number, options?: CanvasDrawOptions): void;
+    drawColorGlyph(canvas: HTMLCanvasElement, glyphIndex: number, options?: CanvasDrawOptions): void;
+    drawText(canvas: HTMLCanvasElement, text: string, options?: CanvasDrawOptions): void;
+    drawLayout(canvas: HTMLCanvasElement, layout: Array<{
+        glyphIndex: number;
+        xAdvance: number;
+        xOffset?: number;
+        yOffset?: number;
+    }>, options?: CanvasDrawOptions): void;
+    toSvg(text: string, options?: SVGExportOptions): string;
     measureText(text: string, options?: {
         gsubFeatures?: string[];
         scriptTags?: string[];
@@ -276,6 +288,11 @@ export declare abstract class BaseFontParser {
         paletteIndex: number;
     }>;
     getColorLayersForChar(char: string, paletteIndex?: number): Array<{
+        glyphId: number;
+        color: string | null;
+        paletteIndex: number;
+    }>;
+    getColorLayersByChar(char: string, paletteIndex?: number): Array<{
         glyphId: number;
         color: string | null;
         paletteIndex: number;

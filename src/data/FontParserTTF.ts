@@ -2,7 +2,6 @@ import { ByteArray } from '../utils/ByteArray.js';
 import { Cff2Table } from '../table/Cff2Table.js';
 import { Table } from '../table/Table.js';
 import { GlyphData } from './GlyphData.js';
-import { LigatureSubstFormat1 } from '../table/LigatureSubstFormat1.js';
 import { IGlyphDescription } from '../table/IGlyphDescription.js';
 import { BaseFontParser } from './BaseFontParser.js';
 

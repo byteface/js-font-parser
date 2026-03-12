@@ -2,7 +2,6 @@ import { ByteArray } from "../utils/ByteArray.js";
 import { Coverage } from "./Coverage.js";
 import { ICoverage } from "./ICoverage.js";
 import { LigatureSet } from "./LigatureSet.js";
-import { Ligature } from "./Ligature.js";
 // import { LigatureSubst } from "./LigatureSubst.js";
 // extends LigatureSubst - TODO - may need to make interface? see SingleSubsFormat
 

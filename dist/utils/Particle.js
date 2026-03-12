@@ -76,7 +76,6 @@ export class Particle {
         let force;
         let tx;
         let ty;
-        let point;
         let clip;
         let k;
         let minDist;

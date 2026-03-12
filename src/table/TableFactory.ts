@@ -47,8 +47,6 @@ export class TableFactory {
     constructor() {}
 
     create(de: DirectoryEntry, byte_ar: ByteArray): any | null {
-        let t: Table | null = null;
-
         switch (de.tag) {
             case Table.GSUB:
                 return new GsubTable(de, byte_ar);
@@ -145,7 +143,7 @@ export class TableFactory {
             case Table.STAT:
                 return new StatTable(de, byte_ar);
             default:
-                return t;
+                return null;
         }
     }
 }

@@ -5,7 +5,7 @@ export class KernSubtable {
     getKerningPairCount() {
         return -1;
     }
-    getKerningPair(i) {
+    getKerningPair(_i) {
         Debug.warn("Attempting to retrieve kerning pair, but method is unimplemented.");
         return null;
     }

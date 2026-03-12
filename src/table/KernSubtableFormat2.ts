@@ -23,7 +23,7 @@ export class KernSubtableFormat2 extends KernSubtable {
         return 0;
     }
 
-    override getKerningPair(i: number): KerningPair | null {
+    override getKerningPair(_i: number): KerningPair | null {
         return null;
     }
 }

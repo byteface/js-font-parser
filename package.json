@@ -24,6 +24,9 @@
   },
   "scripts": {
     "audit:tables": "node scripts/audit-table-coverage.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "check": "npm run build:dist && npm run typecheck && npm run lint && npm test && npm run audit:tables",
     "test": "node --test tests/*.test.mjs",
     "test:full": "FULL_SWEEP=1 node --test tests/*.test.mjs",
     "test:font": "node scripts/test-font.mjs",
@@ -63,7 +66,9 @@
     "url": "https://github.com/byteface/js-font-parser/issues"
   },
   "devDependencies": {
+    "@eslint/js": "^9.22.0",
     "ts-loader": "^9.5.1",
+    "typescript-eslint": "^8.26.1",
     "typescript": "^5.9.3",
     "webpack": "^5.95.0",
     "webpack-cli": "^5.1.4"

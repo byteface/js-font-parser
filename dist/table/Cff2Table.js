@@ -18,7 +18,7 @@ export class Cff2Table {
         this.baseOffset = de.offset;
         byte_ar.offset = de.offset;
         const major = byte_ar.readUnsignedByte();
-        const minor = byte_ar.readUnsignedByte();
+        byte_ar.readUnsignedByte(); // minor
         const hdrSize = byte_ar.readUnsignedByte();
         const topDictLength = byte_ar.readUnsignedShort();
         if (major !== 2) {

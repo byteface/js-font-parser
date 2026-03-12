@@ -19,7 +19,7 @@ export class CffTable {
         this.data = new Uint8Array(byte_ar.dataView.buffer, byte_ar.dataView.byteOffset, byte_ar.dataView.byteLength);
         byte_ar.offset = de.offset;
         const major = byte_ar.readUnsignedByte();
-        const minor = byte_ar.readUnsignedByte();
+        byte_ar.readUnsignedByte(); // minor
         const hdrSize = byte_ar.readUnsignedByte();
         byte_ar.readUnsignedByte(); // offSize
         if (major !== 1) {

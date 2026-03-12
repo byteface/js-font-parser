@@ -16,7 +16,7 @@ export class KernSubtableFormat2 extends KernSubtable {
     getKerningPairCount() {
         return 0;
     }
-    getKerningPair(i) {
+    getKerningPair(_i) {
         return null;
     }
 }

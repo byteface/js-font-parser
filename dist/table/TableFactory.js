@@ -42,7 +42,6 @@ import { VmtxTable } from './VmtxTable.js';
 export class TableFactory {
     constructor() { }
     create(de, byte_ar) {
-        let t = null;
         switch (de.tag) {
             case Table.GSUB:
                 return new GsubTable(de, byte_ar);
@@ -139,7 +138,7 @@ export class TableFactory {
             case Table.STAT:
                 return new StatTable(de, byte_ar);
             default:
-                return t;
+                return null;
         }
     }
 }

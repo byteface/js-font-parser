@@ -9,5 +9,5 @@ export declare class KernSubtableFormat2 extends KernSubtable {
     /** Creates new KernSubtableFormat2 */
     constructor(byte_ar: ByteArray);
     getKerningPairCount(): number;
-    getKerningPair(i: number): KerningPair | null;
+    getKerningPair(_i: number): KerningPair | null;
 }

@@ -14,6 +14,8 @@ import { TableDirectory } from '../table/TableDirectory.js';
 import { TableFactory } from '../table/TableFactory.js';
 import { GlyphData } from './GlyphData.js';
 import { TrueTypeHintVM } from '../hint/TrueTypeHintVM.js';
+import { CanvasRenderer } from '../render/CanvasRenderer.js';
+import { SVGFont } from '../render/SVGFont.js';
 export class BaseFontParser {
     diagnostics = [];
     diagnosticKeys = new Set();
@@ -453,8 +455,6 @@ export class BaseFontParser {
                                     const px = gd.getXCoordinate(localIndex);
                                     const py = gd.getYCoordinate(localIndex);
                                     const xscale = comp.xscale + (compXScale?.[compIndex] ?? 0);
-                                    const yscale = comp.yscale + (compYScale?.[compIndex] ?? 0);
-                                    const scale01 = comp.scale01 + (compScale01?.[compIndex] ?? 0);
                                     const scale10 = comp.scale10 + (compScale10?.[compIndex] ?? 0);
                                     const ox = comp.xtranslate + (compDx?.[compIndex] ?? 0);
                                     return (px * xscale) + (py * scale10) + ox;
@@ -480,10 +480,8 @@ export class BaseFontParser {
                                     const localIndex = p - comp.firstIndex;
                                     const px = gd.getXCoordinate(localIndex);
                                     const py = gd.getYCoordinate(localIndex);
-                                    const xscale = comp.xscale + (compXScale?.[compIndex] ?? 0);
                                     const yscale = comp.yscale + (compYScale?.[compIndex] ?? 0);
                                     const scale01 = comp.scale01 + (compScale01?.[compIndex] ?? 0);
-                                    const scale10 = comp.scale10 + (compScale10?.[compIndex] ?? 0);
                                     const oy = comp.ytranslate + (compDy?.[compIndex] ?? 0);
                                     return (px * scale01) + (py * yscale) + oy;
                                 }
@@ -1292,6 +1290,25 @@ export class BaseFontParser {
         }
         return points;
     }
+    drawGlyph(canvas, glyphIndex, options = {}) {
+        const glyph = this.getGlyph(glyphIndex);
+        const context = canvas.getContext('2d');
+        if (!context || !glyph)
+            return;
+        CanvasRenderer.drawGlyphToContext(context, glyph, options);
+    }
+    drawColorGlyph(canvas, glyphIndex, options = {}) {
+        CanvasRenderer.drawColorGlyph(this, glyphIndex, canvas, options);
+    }
+    drawText(canvas, text, options = {}) {
+        CanvasRenderer.drawStringWithKerning(this, text, canvas, options);
+    }
+    drawLayout(canvas, layout, options = {}) {
+        CanvasRenderer.drawLayout(this, layout, canvas, options);
+    }
+    toSvg(text, options = {}) {
+        return SVGFont.exportStringSvg(this, text, options);
+    }
     measureText(text, options = {}) {
         const layout = this.layoutString(text, options);
         const letterSpacing = Number.isFinite(options.letterSpacing) ? options.letterSpacing : 0;
@@ -1368,6 +1385,9 @@ export class BaseFontParser {
         if (glyphId == null)
             return [];
         return this.getColorLayersForGlyph(glyphId, paletteIndex);
+    }
+    getColorLayersByChar(char, paletteIndex = 0) {
+        return this.getColorLayersForChar(char, paletteIndex);
     }
     getColrV1LayersForGlyph(glyphId, paletteIndex = 0) {
         const colr = this.getColrTableForShared();

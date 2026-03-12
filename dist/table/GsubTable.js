@@ -74,7 +74,7 @@ export class GsubTable {
         const lookup = this.lookupList?.getLookups?.()[lookupIndex];
         if (!lookup)
             return glyphs;
-        let out = glyphs.slice();
+        const out = glyphs.slice();
         for (let s = 0; s < lookup.getSubtableCount(); s++) {
             const st = lookup.getSubtable(s);
             if (!st)

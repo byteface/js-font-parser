@@ -1,9 +1,28 @@
-interface Point {
+export interface Bounds {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+}
+export interface Point {
     x: number;
     y: number;
     k?: number;
     force?: number;
     minDist?: number;
+}
+export interface Clip {
+    clip: Point;
+    k: number;
+}
+export interface GravClip {
+    clip: Point;
+    force: number;
+}
+export interface RepelClip {
+    clip: Point;
+    minDist: number;
+    k: number;
 }
 export declare class Particle {
     x: number;

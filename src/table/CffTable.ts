@@ -34,7 +34,7 @@ export class CffTable implements ITable {
         byte_ar.offset = de.offset;
 
         const major = byte_ar.readUnsignedByte();
-        const minor = byte_ar.readUnsignedByte();
+        byte_ar.readUnsignedByte(); // minor
         const hdrSize = byte_ar.readUnsignedByte();
         byte_ar.readUnsignedByte(); // offSize
 

@@ -17,6 +17,8 @@ import { TableDirectory } from '../table/TableDirectory.js';
 import { TableFactory } from '../table/TableFactory.js';
 import { GlyphData } from './GlyphData.js';
 import { TrueTypeHintVM, HintingMode, HintingOptions } from '../hint/TrueTypeHintVM.js';
+import { CanvasRenderer, type CanvasDrawOptions } from '../render/CanvasRenderer.js';
+import { SVGFont, type SVGExportOptions } from '../render/SVGFont.js';
 
 type PositionedGlyph = { glyphIndex: number; xAdvance: number; xOffset: number; yOffset: number; yAdvance: number };
 type MarkAnchorType = 'mark' | 'base' | 'ligature' | 'mark2' | 'cursive-entry' | 'cursive-exit';
@@ -520,8 +522,6 @@ export abstract class BaseFontParser {
                                     const px = gd.getXCoordinate(localIndex);
                                     const py = gd.getYCoordinate(localIndex);
                                     const xscale = comp.xscale + (compXScale?.[compIndex] ?? 0);
-                                    const yscale = comp.yscale + (compYScale?.[compIndex] ?? 0);
-                                    const scale01 = comp.scale01 + (compScale01?.[compIndex] ?? 0);
                                     const scale10 = comp.scale10 + (compScale10?.[compIndex] ?? 0);
                                     const ox = comp.xtranslate + (compDx?.[compIndex] ?? 0);
                                     return (px * xscale) + (py * scale10) + ox;
@@ -547,10 +547,8 @@ export abstract class BaseFontParser {
                                     const localIndex = p - comp.firstIndex;
                                     const px = gd.getXCoordinate(localIndex);
                                     const py = gd.getYCoordinate(localIndex);
-                                    const xscale = comp.xscale + (compXScale?.[compIndex] ?? 0);
                                     const yscale = comp.yscale + (compYScale?.[compIndex] ?? 0);
                                     const scale01 = comp.scale01 + (compScale01?.[compIndex] ?? 0);
-                                    const scale10 = comp.scale10 + (compScale10?.[compIndex] ?? 0);
                                     const oy = comp.ytranslate + (compDy?.[compIndex] ?? 0);
                                     return (px * scale01) + (py * yscale) + oy;
                                 }
@@ -1515,6 +1513,48 @@ export abstract class BaseFontParser {
         return points;
     }
 
+    public drawGlyph(
+        canvas: HTMLCanvasElement,
+        glyphIndex: number,
+        options: CanvasDrawOptions = {}
+    ): void {
+        const glyph = this.getGlyph(glyphIndex);
+        const context = canvas.getContext('2d');
+        if (!context || !glyph) return;
+        CanvasRenderer.drawGlyphToContext(context, glyph, options);
+    }
+
+    public drawColorGlyph(
+        canvas: HTMLCanvasElement,
+        glyphIndex: number,
+        options: CanvasDrawOptions = {}
+    ): void {
+        CanvasRenderer.drawColorGlyph(this, glyphIndex, canvas, options);
+    }
+
+    public drawText(
+        canvas: HTMLCanvasElement,
+        text: string,
+        options: CanvasDrawOptions = {}
+    ): void {
+        CanvasRenderer.drawStringWithKerning(this, text, canvas, options);
+    }
+
+    public drawLayout(
+        canvas: HTMLCanvasElement,
+        layout: Array<{ glyphIndex: number; xAdvance: number; xOffset?: number; yOffset?: number }>,
+        options: CanvasDrawOptions = {}
+    ): void {
+        CanvasRenderer.drawLayout(this, layout, canvas, options);
+    }
+
+    public toSvg(
+        text: string,
+        options: SVGExportOptions = {}
+    ): string {
+        return SVGFont.exportStringSvg(this as any, text, options);
+    }
+
     public measureText(
         text: string,
         options: { gsubFeatures?: string[]; scriptTags?: string[]; gpos?: boolean; gposFeatures?: string[]; letterSpacing?: number } = {}
@@ -1610,6 +1650,10 @@ export abstract class BaseFontParser {
         const glyphId = this.getGlyphIndexByChar(char);
         if (glyphId == null) return [];
         return this.getColorLayersForGlyph(glyphId, paletteIndex);
+    }
+
+    public getColorLayersByChar(char: string, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {
+        return this.getColorLayersForChar(char, paletteIndex);
     }
 
     public getColrV1LayersForGlyph(glyphId: number, paletteIndex: number = 0): Array<{ glyphId: number; color: string | null; paletteIndex: number }> {

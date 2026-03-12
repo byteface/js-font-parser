@@ -35,11 +35,13 @@ Open:
 ### Node / Bundler
 
 ```js
-import { FontParser, CanvasRenderer, SVGFont } from 'js-font-parser';
+import { FontParser } from 'js-font-parser';
 
 const font = await FontParser.load('./font.ttf');
 const glyph = font.getGlyphByChar('A');
-const svg = SVGFont.exportStringSvg(font, 'Hello');
+const svg = font.toSvg('Hello');
+font.drawText(canvas, 'Hello', { x: 20, y: 140, scale: 0.12 });
+const metadata = font.getMetadata();
 ```
 
 ### Browser Script Tag
@@ -95,8 +97,8 @@ Current top open items are tracked in `docs/WISHLIST.md`.
   - `getUnitsPerEm()`, `getAscent()`, `getDescent()`
   - metadata convenience API (`name`, `OS/2`, `post`)
 - Rendering helpers:
-  - `CanvasRenderer`
-  - `SVGFont`
+  - font instance methods like `drawGlyph(...)`, `drawColorGlyph(...)`, `drawText(...)`, `drawLayout(...)`, `toSvg(...)`
+  - lower-level helpers: `CanvasRenderer`, `SVGFont`
 
 Full API details: `docs/API.md`
 

@@ -1,11 +1,11 @@
-interface Bounds {
+export interface Bounds {
     top: number;
     bottom: number;
     left: number;
     right: number;
 }
 
-interface Point {
+export interface Point {
     x: number;
     y: number;
     k?: number;        // Optional, used in springs
@@ -13,17 +13,17 @@ interface Point {
     minDist?: number;  // Optional, used in repel forces
 }
 
-interface Clip {
+export interface Clip {
     clip: Point;       // The point to which the clip refers
     k: number;         // The spring constant or strength
 }
 
-interface GravClip {
+export interface GravClip {
     clip: Point;       // The gravitational point
     force: number;     // The gravitational force applied
 }
 
-interface RepelClip {
+export interface RepelClip {
     clip: Point;       // The point from which it repels
     minDist: number;   // Minimum distance for repelling
     k: number;         // The repulsion strength
@@ -124,7 +124,6 @@ export class Particle {
         let force: number;
         let tx: number;
         let ty: number;
-        let point: Point;
         let clip: Point;
         let k: number;
         let minDist: number;

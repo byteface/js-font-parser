@@ -48,7 +48,7 @@ export class CmapFormat4 implements ICmapFormat {
         // Parsing end codes
         Debug.log("Parsing end codes:");
         this.last = -1;
-        for (var i = 0; i < this.segCount; i++) {
+        for (let i = 0; i < this.segCount; i++) {
             const endCodeValue = byteArray.readUnsignedShort();
             this.endCode.push(endCodeValue);
             if (endCodeValue > this.last) {
@@ -65,7 +65,7 @@ export class CmapFormat4 implements ICmapFormat {
         byteArray.readUnsignedShort(); // NOTE - these bytes will be zero
 
         Debug.log("Parsing start codes:");
-        for (var j = 0; j < this.segCount; j++) {
+        for (let j = 0; j < this.segCount; j++) {
             this.startCode.push(byteArray.readUnsignedShort());
         }
         this.first = Math.min(...this.startCode); // Find the minimum startCode
@@ -77,7 +77,7 @@ export class CmapFormat4 implements ICmapFormat {
 
 
         Debug.log("Parsing idDelta:");
-        for (var j = 0; j < this.segCount; j++) {
+        for (let j = 0; j < this.segCount; j++) {
             this.idDelta.push(byteArray.readShort());
         }
         Debug.log(this.idDelta);
@@ -85,7 +85,7 @@ export class CmapFormat4 implements ICmapFormat {
 
         Debug.log("Parsing idRangeOffset:");
         this.idRangeOffsetStart = byteArray.offset;
-        for (var j = 0; j < this.segCount; j++) {
+        for (let j = 0; j < this.segCount; j++) {
             this.idRangeOffset.push(byteArray.readUnsignedShort());
         }
         Debug.log(this.idRangeOffset);

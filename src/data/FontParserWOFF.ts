@@ -1,6 +1,5 @@
 import { ByteArray } from '../utils/ByteArray.js';
 import { GlyphData } from './GlyphData.js';
-import { LigatureSubstFormat1 } from '../table/LigatureSubstFormat1.js';
 import { IGlyphDescription } from '../table/IGlyphDescription.js';
 import { BaseFontParser } from './BaseFontParser.js';
 

@@ -162,6 +162,13 @@ if (glyph) {
 ```js
 font.getColorLayersForGlyph(glyphId, 0);
 font.getColorLayersForChar("A", 0);
+font.getColorLayersByChar("A", 0);
+
+font.toSvg("Hello", {
+  scale: 1,
+  fill: "#111",
+  stroke: "none"
+});
 
 await font.getSvgDocumentForGlyphAsync(glyphId);
 // -> { svgText: string | null, isCompressed: boolean }
@@ -189,6 +196,8 @@ font.getTableByType(0x6e616d65); // name
 ## Metadata API
 
 ```js
+font.getMetadata();
+
 // Legacy name-table helpers
 font.getNameRecord(1);
 font.getAllNameRecords();
@@ -205,19 +214,56 @@ font.getFsSelectionFlags();
 font.isBold();
 font.isItalic();
 font.isMonospace();
-font.getMetadata();
 ```
 
 ## Rendering
 
 ```js
-import { CanvasRenderer } from "js-font-parser";
+font.drawGlyph(canvas, glyphIndex, {
+  x: 20,
+  y: 140,
+  scale: 0.12,
+  styles: { fillStyle: "#111", strokeStyle: "#111" }
+});
+
+font.drawColorGlyph(canvas, glyphIndex, {
+  x: 20,
+  y: 140,
+  scale: 0.12,
+  fallbackFill: "#111"
+});
+
+font.drawText(canvas, "Hello", {
+  x: 20,
+  y: 140,
+  scale: 0.12,
+  styles: { fillStyle: "#111", strokeStyle: "#111" }
+});
+
+font.drawLayout(canvas, font.layoutString("Hello", { gpos: true }), {
+  x: 20,
+  y: 140,
+  scale: 0.12,
+  styles: { fillStyle: "#111", strokeStyle: "#111" }
+});
+```
+
+Low-level renderer/export helpers are still available when you want explicit backend control:
+
+```js
+import { CanvasRenderer, SVGFont } from "js-font-parser";
 
 CanvasRenderer.drawString(font, "Hello", canvas, {
   x: 20,
   y: 140,
   scale: 0.12,
   styles: { fillStyle: "#111", strokeStyle: "#111" }
+});
+
+SVGFont.exportStringSvg(font, "Hello", {
+  scale: 1,
+  fill: "#111",
+  stroke: "none"
 });
 ```
 
