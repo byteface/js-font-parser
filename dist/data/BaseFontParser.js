@@ -1809,7 +1809,7 @@ export class BaseFontParser {
             if (glyphOffsetArray + offsetArrayLength > sbixBytes.length)
                 continue;
             const ppem = view.getUint16(strikeOffset, false);
-            const resolution = view.getUint16(strikeOffset + 2, false);
+            view.getUint16(strikeOffset + 2, false); // resolution
             const glyphDataStart = view.getUint32(glyphOffsetArray + (glyphId * 4), false);
             const glyphDataEnd = view.getUint32(glyphOffsetArray + ((glyphId + 1) * 4), false);
             if (glyphDataEnd <= glyphDataStart)

@@ -48,7 +48,7 @@ export class ReverseChainSingleSubst extends LookupSubtable {
 
     applyToGlyphsWithContext(glyphs: number[], ctx?: GsubMatchContext): number[] {
         if (!this.coverage) return glyphs;
-        let out = glyphs.slice();
+        const out = glyphs.slice();
         let i = 0;
         while (i < out.length) {
             i = nextNonIgnoredIndex(out, i, ctx);
