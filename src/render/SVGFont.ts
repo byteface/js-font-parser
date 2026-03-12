@@ -36,47 +36,51 @@ export class SVGFont {
         offsetX: number,
         offsetY: number
     ): string {
-        const startPoint = glyph.getPoint(startIndex);
-        if (!startPoint || startPoint.endOfContour) return "";
+        if (count < 2) return "";
 
-        let d = "";
-        let offset = 0;
+        const points: GlyphData['points'] = [];
+        for (let i = 0; i < count; i++) {
+            const point = glyph.getPoint(startIndex + i);
+            if (!point) return "";
+            points.push(point);
+        }
+        if (points.length === 0) return "";
 
-        while (offset < count) {
-            const p0 = glyph.getPoint(startIndex + (offset % count));
-            const p1 = glyph.getPoint(startIndex + ((offset + 1) % count));
-            if (!p0 || !p1) break;
+        const first = points[0]!;
+        const last = points[points.length - 1]!;
+        const startPoint = first.onCurve
+            ? first
+            : (last.onCurve
+                ? last
+                : {
+                    x: (last.x + first.x) / 2,
+                    y: (last.y + first.y) / 2
+                });
 
-            if (offset === 0) {
-                d += `M ${(p0.x * scale) + offsetX} ${(-p0.y * scale) + offsetY} `;
+        let d = `M ${(startPoint.x * scale) + offsetX} ${(-startPoint.y * scale) + offsetY} `;
+        let index = first.onCurve ? 1 : 0;
+
+        while (index < points.length) {
+            const current = points[index];
+            const next = points[(index + 1) % points.length];
+            if (!current || !next) break;
+
+            if (current.onCurve) {
+                d += `L ${(current.x * scale) + offsetX} ${(-current.y * scale) + offsetY} `;
+                index += 1;
+                continue;
             }
 
-            if (p0.onCurve) {
-                if (p1.onCurve) {
-                    d += `L ${(p1.x * scale) + offsetX} ${(-p1.y * scale) + offsetY} `;
-                    offset++;
-                } else {
-                    const p2 = glyph.getPoint(startIndex + ((offset + 2) % count));
-                    if (!p2) break;
-                    if (p2.onCurve) {
-                        d += `Q ${(p1.x * scale) + offsetX} ${(-p1.y * scale) + offsetY}, ${(p2.x * scale) + offsetX} ${(-p2.y * scale) + offsetY} `;
-                    } else {
-                        const mx = (p1.x + p2.x) / 2;
-                        const my = (p1.y + p2.y) / 2;
-                        d += `Q ${(p1.x * scale) + offsetX} ${(-p1.y * scale) + offsetY}, ${(mx * scale) + offsetX} ${(-my * scale) + offsetY} `;
-                    }
-                    offset += 2;
-                }
-            } else {
-                if (!p1.onCurve) {
-                    const mx = (p0.x + p1.x) / 2;
-                    const my = (p0.y + p1.y) / 2;
-                    d += `Q ${(p0.x * scale) + offsetX} ${(-p0.y * scale) + offsetY}, ${(mx * scale) + offsetX} ${(-my * scale) + offsetY} `;
-                } else {
-                    d += `Q ${(p0.x * scale) + offsetX} ${(-p0.y * scale) + offsetY}, ${(p1.x * scale) + offsetX} ${(-p1.y * scale) + offsetY} `;
-                }
-                offset++;
+            if (next.onCurve) {
+                d += `Q ${(current.x * scale) + offsetX} ${(-current.y * scale) + offsetY}, ${(next.x * scale) + offsetX} ${(-next.y * scale) + offsetY} `;
+                index += 2;
+                continue;
             }
+
+            const mx = (current.x + next.x) / 2;
+            const my = (current.y + next.y) / 2;
+            d += `Q ${(current.x * scale) + offsetX} ${(-current.y * scale) + offsetY}, ${(mx * scale) + offsetX} ${(-my * scale) + offsetY} `;
+            index += 1;
         }
 
         d += "Z ";

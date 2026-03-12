@@ -123,40 +123,54 @@ export class CanvasRenderer {
     }
 
     static addContourToShape(context: CanvasRenderingContext2D, glyph: GlyphData, startIndex: number, count: number): void {
-        if (glyph.getPoint(startIndex)?.endOfContour) return;
+        if (count < 2) return;
 
-        let offset = 0;
-        while (offset < count) {
-            const p0 = glyph.getPoint(startIndex + offset % count);
-            const p1 = glyph.getPoint(startIndex + (offset + 1) % count);
-            if (!p0 || !p1) break;
+        const points: Array<ReturnType<GlyphData['getPoint']>> = [];
+        for (let i = 0; i < count; i++) {
+            const point = glyph.getPoint(startIndex + i);
+            if (!point) return;
+            points.push(point);
+        }
+        if (points.length === 0) return;
 
-            if (offset === 0) {
-                context.moveTo(p0.x, p0.y);
+        const first = points[0]!;
+        const last = points[points.length - 1]!;
+        const startPoint = first.onCurve
+            ? first
+            : (last.onCurve
+                ? last
+                : {
+                    x: this.midValue(last.x, first.x),
+                    y: this.midValue(last.y, first.y)
+                });
+
+        context.moveTo(startPoint.x, startPoint.y);
+
+        let index = first.onCurve ? 1 : 0;
+        while (index < points.length) {
+            const current = points[index];
+            const next = points[(index + 1) % points.length];
+            if (!current || !next) break;
+
+            if (current.onCurve) {
+                context.lineTo(current.x, current.y);
+                index += 1;
+                continue;
             }
 
-            if (p0.onCurve) {
-                if (p1.onCurve) {
-                    context.lineTo(p1.x, p1.y);
-                    offset++;
-                } else {
-                    const p2 = glyph.getPoint(startIndex + (offset + 2) % count);
-                    if (!p2) break;
-                    if (p2.onCurve) {
-                        context.quadraticCurveTo(p1.x, p1.y, p2.x, p2.y);
-                    } else {
-                        context.quadraticCurveTo(p1.x, p1.y, this.midValue(p1.x, p2.x), this.midValue(p1.y, p2.y));
-                    }
-                    offset += 2;
-                }
-            } else {
-                if (!p1.onCurve) {
-                    context.quadraticCurveTo(p0.x, p0.y, this.midValue(p0.x, p1.x), this.midValue(p0.y, p1.y));
-                } else {
-                    context.quadraticCurveTo(p0.x, p0.y, p1.x, p1.y);
-                }
-                offset++;
+            if (next.onCurve) {
+                context.quadraticCurveTo(current.x, current.y, next.x, next.y);
+                index += 2;
+                continue;
             }
+
+            context.quadraticCurveTo(
+                current.x,
+                current.y,
+                this.midValue(current.x, next.x),
+                this.midValue(current.y, next.y)
+            );
+            index += 1;
         }
     }
 
