@@ -97,19 +97,25 @@
         summary.style.color = '#444';
         const chunks = [];
         if (nameInfo) {
-            chunks.push(`<strong>Name</strong>: ${nameInfo.fullName || nameInfo.family || 'Unknown'}`);
-            if (nameInfo.postScriptName) chunks.push(`PostScript: ${nameInfo.postScriptName}`);
-            if (nameInfo.version) chunks.push(`Version: ${nameInfo.version}`);
+            chunks.push(['Name', nameInfo.fullName || nameInfo.family || 'Unknown']);
+            if (nameInfo.postScriptName) chunks.push(['PostScript', nameInfo.postScriptName]);
+            if (nameInfo.version) chunks.push(['Version', nameInfo.version]);
         }
         if (os2Info) {
-            chunks.push(`<strong>OS/2</strong>: weight ${os2Info.weightClass}, width ${os2Info.widthClass}, vendor ${os2Info.vendorId || '?'}`);
-            chunks.push(`Typo asc/desc/lineGap: ${os2Info.typoAscender}/${os2Info.typoDescender}/${os2Info.typoLineGap}`);
-            chunks.push(`Win ascent/descent: ${os2Info.winAscent}/${os2Info.winDescent}`);
+            chunks.push(['OS/2', `weight ${os2Info.weightClass}, width ${os2Info.widthClass}, vendor ${os2Info.vendorId || '?'}`]);
+            chunks.push(['Typo asc/desc/lineGap', `${os2Info.typoAscender}/${os2Info.typoDescender}/${os2Info.typoLineGap}`]);
+            chunks.push(['Win ascent/descent', `${os2Info.winAscent}/${os2Info.winDescent}`]);
         }
         if (postInfo) {
-            chunks.push(`<strong>Post</strong>: italicAngle ${postInfo.italicAngle.toFixed(2)}, underline ${postInfo.underlinePosition}/${postInfo.underlineThickness}`);
+            chunks.push(['Post', `italicAngle ${postInfo.italicAngle.toFixed(2)}, underline ${postInfo.underlinePosition}/${postInfo.underlineThickness}`]);
         }
-        summary.innerHTML = chunks.join(' | ');
+        chunks.forEach(([label, value], index) => {
+            if (index > 0) summary.append(' | ');
+            const strong = document.createElement('strong');
+            strong.textContent = String(label);
+            summary.appendChild(strong);
+            summary.append(`: ${value}`);
+        });
 
         const rows = records
             .filter(r => r.record && r.record.trim().length > 0)
@@ -121,13 +127,23 @@
 
         const table = document.createElement('table');
         const thead = document.createElement('thead');
-        thead.innerHTML = '<tr><th>Name ID</th><th>Label</th><th>Value</th></tr>';
+        const headRow = document.createElement('tr');
+        ['Name ID', 'Label', 'Value'].forEach((label) => {
+            const th = document.createElement('th');
+            th.textContent = label;
+            headRow.appendChild(th);
+        });
+        thead.appendChild(headRow);
         table.appendChild(thead);
 
         const tbody = document.createElement('tbody');
         rows.forEach(r => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${r.nameId}</td><td>${r.label}</td><td>${r.value}</td>`;
+            [String(r.nameId), r.label, r.value].forEach((value) => {
+                const td = document.createElement('td');
+                td.textContent = value;
+                tr.appendChild(td);
+            });
             tbody.appendChild(tr);
         });
         table.appendChild(tbody);

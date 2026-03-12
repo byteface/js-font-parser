@@ -160,7 +160,11 @@
         URL.revokeObjectURL(activeImageUrl);
         activeImageUrl = null;
       }
-      preview.innerHTML = `<div class="empty">${message}</div>`;
+      preview.replaceChildren();
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = String(message);
+      preview.appendChild(empty);
     }
 
     function setStatus(text, tone = "muted") {
@@ -192,7 +196,11 @@
         const blob = new Blob([strike.data], { type: strike.mimeType || "application/octet-stream" });
         if (activeImageUrl) URL.revokeObjectURL(activeImageUrl);
         activeImageUrl = URL.createObjectURL(blob);
-        preview.innerHTML = `<img alt="Bitmap strike preview for ${char}" src="${activeImageUrl}" />`;
+        preview.replaceChildren();
+        const img = document.createElement("img");
+        img.alt = `Bitmap strike preview for ${char}`;
+        img.src = activeImageUrl;
+        preview.appendChild(img);
         meta.textContent = JSON.stringify({
           font: selected.name,
           char,

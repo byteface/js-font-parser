@@ -152,13 +152,14 @@ function ensureFontSourceControl(select) {
 
   const wrapper = document.createElement("div");
   wrapper.className = "font-source-ui";
-  wrapper.innerHTML = `
-    <input type="file" accept=".ttf,.otf,.woff,.woff2" />
-    <div class="font-source-note">Or pick a local font file.</div>
-  `;
-
-  const fileInput = wrapper.querySelector('input[type="file"]');
-  const note = wrapper.querySelector(".font-source-note");
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = ".ttf,.otf,.woff,.woff2";
+  const note = document.createElement("div");
+  note.className = "font-source-note";
+  note.textContent = "Or pick a local font file.";
+  wrapper.appendChild(fileInput);
+  wrapper.appendChild(note);
   const control = {
     fileInput,
     note,
@@ -253,35 +254,64 @@ export function createFontDrawer({
   const host = mount || document.body;
   const drawer = document.createElement("div");
   drawer.className = "font-drawer";
-  drawer.innerHTML = `
-    <div class="font-drawer-tabs">
-      <a class="font-drawer-tab" href="./index.html" aria-label="Back to tools home">🔧</a>
-      <button type="button" class="font-drawer-tab" aria-label="Toggle font drawer">Aa</button>
-    </div>
-    <div class="font-drawer-panel">
-      <div class="font-drawer-group">
-        <label>${title} Catalog</label>
-      </div>
-      <div class="font-drawer-group">
-        <label>Local File</label>
-        <input type="file" accept=".ttf,.otf,.woff,.woff2" />
-      </div>
-      ${allowUrl ? `
-      <div class="font-drawer-group font-drawer-group--url">
-        <label>Font URL</label>
-        <input type="text" placeholder="https://.../font.woff" />
-        <button type="button">Load URL</button>
-      </div>
-      ` : ``}
-    </div>
-  `;
+  const tabs = document.createElement("div");
+  tabs.className = "font-drawer-tabs";
+  const homeLink = document.createElement("a");
+  homeLink.className = "font-drawer-tab";
+  homeLink.href = "./index.html";
+  homeLink.setAttribute("aria-label", "Back to tools home");
+  homeLink.textContent = "🔧";
+  const tab = document.createElement("button");
+  tab.type = "button";
+  tab.className = "font-drawer-tab";
+  tab.setAttribute("aria-label", "Toggle font drawer");
+  tab.textContent = "Aa";
+  tabs.appendChild(homeLink);
+  tabs.appendChild(tab);
 
-  const tab = drawer.querySelector('button.font-drawer-tab');
-  const panel = drawer.querySelector(".font-drawer-panel");
-  const catalogGroup = drawer.querySelector(".font-drawer-group");
-  const fileInput = drawer.querySelector('input[type="file"]');
-  const urlInput = allowUrl ? panel.querySelector('input[type="text"]') : null;
-  const urlButton = allowUrl ? panel.querySelector('button[type="button"]') : null;
+  const panel = document.createElement("div");
+  panel.className = "font-drawer-panel";
+
+  const catalogGroup = document.createElement("div");
+  catalogGroup.className = "font-drawer-group";
+  const catalogLabel = document.createElement("label");
+  catalogLabel.textContent = `${title} Catalog`;
+  catalogGroup.appendChild(catalogLabel);
+
+  const fileGroup = document.createElement("div");
+  fileGroup.className = "font-drawer-group";
+  const fileLabel = document.createElement("label");
+  fileLabel.textContent = "Local File";
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = ".ttf,.otf,.woff,.woff2";
+  fileGroup.appendChild(fileLabel);
+  fileGroup.appendChild(fileInput);
+
+  panel.appendChild(catalogGroup);
+  panel.appendChild(fileGroup);
+
+  let urlInput = null;
+  let urlButton = null;
+  if (allowUrl) {
+    const urlGroup = document.createElement("div");
+    urlGroup.className = "font-drawer-group font-drawer-group--url";
+    const urlLabel = document.createElement("label");
+    urlLabel.textContent = "Font URL";
+    urlInput = document.createElement("input");
+    urlInput.type = "text";
+    urlInput.placeholder = "https://.../font.woff";
+    urlButton = document.createElement("button");
+    urlButton.type = "button";
+    urlButton.textContent = "Load URL";
+    urlGroup.appendChild(urlLabel);
+    urlGroup.appendChild(urlInput);
+    urlGroup.appendChild(urlButton);
+    panel.appendChild(urlGroup);
+  }
+
+  drawer.appendChild(tabs);
+  drawer.appendChild(panel);
 
   catalogGroup.appendChild(select);
   select.hidden = false;

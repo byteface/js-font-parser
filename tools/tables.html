@@ -151,7 +151,13 @@
       records.forEach(r => {
         const btn = document.createElement('button');
         btn.className = `table-item${r.tag === selectedTag ? ' active' : ''}`;
-        btn.innerHTML = `<strong>${r.tagText}</strong> <small>offset: ${r.offset} • length: ${r.length} • checksum: 0x${r.checkSum.toString(16).padStart(8, '0')}</small>`;
+        const strong = document.createElement('strong');
+        strong.textContent = r.tagText;
+        const small = document.createElement('small');
+        small.textContent = `offset: ${r.offset} • length: ${r.length} • checksum: 0x${r.checkSum.toString(16).padStart(8, '0')}`;
+        btn.appendChild(strong);
+        btn.append(' ');
+        btn.appendChild(small);
         btn.addEventListener('click', () => {
           selectedTag = r.tag;
           renderTableList();
@@ -164,7 +170,11 @@
     function renderDetail() {
       const rec = records.find(r => r.tag === selectedTag);
       if (!rec) {
-        detail.innerHTML = '<div class="meta">No table selected.</div>';
+        detail.replaceChildren();
+        const empty = document.createElement('div');
+        empty.className = 'meta';
+        empty.textContent = 'No table selected.';
+        detail.appendChild(empty);
         return;
       }
       detailTitle.textContent = `Details — ${rec.tagText}`;
@@ -178,16 +188,39 @@
       const view = new Uint8Array(rawBytes, rec.offset, sliceLen);
       const hex = toHexDump(view, rec.offset);
 
-      detail.innerHTML = `
-        <div class="cell">
-          <div class="cell-head"><span>Parsed Summary</span><span>${rec.tagText}</span></div>
-          <pre>${parsed.replace(/</g, '&lt;')}</pre>
-        </div>
-        <div class="cell">
-          <div class="cell-head"><span>Raw Hex</span><span>${sliceLen}/${rec.length} bytes</span></div>
-          <pre>${hex}</pre>
-        </div>
-      `;
+      detail.replaceChildren();
+      const parsedCell = document.createElement('div');
+      parsedCell.className = 'cell';
+      const parsedHead = document.createElement('div');
+      parsedHead.className = 'cell-head';
+      const parsedHeadLabel = document.createElement('span');
+      parsedHeadLabel.textContent = 'Parsed Summary';
+      const parsedHeadTag = document.createElement('span');
+      parsedHeadTag.textContent = rec.tagText;
+      parsedHead.appendChild(parsedHeadLabel);
+      parsedHead.appendChild(parsedHeadTag);
+      const parsedPre = document.createElement('pre');
+      parsedPre.textContent = parsed;
+      parsedCell.appendChild(parsedHead);
+      parsedCell.appendChild(parsedPre);
+
+      const rawCell = document.createElement('div');
+      rawCell.className = 'cell';
+      const rawHead = document.createElement('div');
+      rawHead.className = 'cell-head';
+      const rawHeadLabel = document.createElement('span');
+      rawHeadLabel.textContent = 'Raw Hex';
+      const rawHeadCount = document.createElement('span');
+      rawHeadCount.textContent = `${sliceLen}/${rec.length} bytes`;
+      rawHead.appendChild(rawHeadLabel);
+      rawHead.appendChild(rawHeadCount);
+      const rawPre = document.createElement('pre');
+      rawPre.textContent = hex;
+      rawCell.appendChild(rawHead);
+      rawCell.appendChild(rawPre);
+
+      detail.appendChild(parsedCell);
+      detail.appendChild(rawCell);
       renderDiagnostics();
     }
 
@@ -212,7 +245,11 @@
         const font = await loadFont(selected.url);
         await loadFontSelection(font, selected);
       } catch (err) {
-        detail.innerHTML = `<div class="meta">Failed to load font: ${err.message ?? err}</div>`;
+        detail.replaceChildren();
+        const message = document.createElement('div');
+        message.className = 'meta';
+        message.textContent = `Failed to load font: ${err.message ?? err}`;
+        detail.appendChild(message);
       }
     }
     byteLimit.addEventListener('input', renderDetail);

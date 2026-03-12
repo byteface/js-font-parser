@@ -141,12 +141,20 @@
         const code = ch.codePointAt(0);
         const gid = font.getGlyphIndexByChar(ch);
         const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td style="border-bottom:1px solid #eee;padding:6px">${i}</td>
-          <td style="border-bottom:1px solid #eee;padding:6px">${ch}</td>
-          <td style="border-bottom:1px solid #eee;padding:6px">U+${code?.toString(16).toUpperCase().padStart(4, "0")}</td>
-          <td style="border-bottom:1px solid #eee;padding:6px;${gid ? "color:#1f7a3f" : "color:#b2432c"}">${gid ?? "missing"}</td>
-        `;
+        const values = [
+          String(i),
+          ch,
+          `U+${code?.toString(16).toUpperCase().padStart(4, "0")}`,
+          String(gid ?? "missing")
+        ];
+        values.forEach((value, index) => {
+          const td = document.createElement("td");
+          td.style.borderBottom = "1px solid #eee";
+          td.style.padding = "6px";
+          if (index === 3) td.style.color = gid ? "#1f7a3f" : "#b2432c";
+          td.textContent = value;
+          tr.appendChild(td);
+        });
         glyphRows.appendChild(tr);
       });
     }

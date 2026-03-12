@@ -114,7 +114,12 @@
     function addMetric(label, value) {
       const card = document.createElement('div');
       card.className = 'metric-card';
-      card.innerHTML = `<strong>${label}</strong><span>${value ?? 'n/a'}</span>`;
+      const strong = document.createElement('strong');
+      strong.textContent = String(label);
+      const span = document.createElement('span');
+      span.textContent = String(value ?? 'n/a');
+      card.appendChild(strong);
+      card.appendChild(span);
       ui.metricsGrid.appendChild(card);
     }
 

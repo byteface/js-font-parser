@@ -65,13 +65,19 @@
       rows.innerHTML = "";
       results.forEach(r => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${r.name}</td>
-          <td>${r.code}</td>
-          <td class="${r.supported ? "ok" : "bad"}">${r.supported ? "yes" : "no"}</td>
-          <td>${Math.round(r.coverage * 100)}%</td>
-          <td>${r.missing.slice(0, 12).join(" ")}${r.missing.length > 12 ? " …" : ""}</td>
-        `;
+        const cells = [
+          r.name,
+          r.code,
+          r.supported ? "yes" : "no",
+          `${Math.round(r.coverage * 100)}%`,
+          `${r.missing.slice(0, 12).join(" ")}${r.missing.length > 12 ? " …" : ""}`
+        ];
+        cells.forEach((value, index) => {
+          const td = document.createElement("td");
+          if (index === 2) td.className = r.supported ? "ok" : "bad";
+          td.textContent = String(value);
+          tr.appendChild(td);
+        });
         rows.appendChild(tr);
       });
     }
@@ -81,7 +87,13 @@
         const font = await loadFont(selected.url);
         render(font);
       } catch (err) {
-        rows.innerHTML = `<tr><td colspan="5">Failed to load font: ${err}</td></tr>`;
+        rows.replaceChildren();
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.textContent = `Failed to load font: ${err}`;
+        tr.appendChild(td);
+        rows.appendChild(tr);
       }
     }
     createFontDrawer({

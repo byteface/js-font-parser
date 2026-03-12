@@ -330,17 +330,25 @@
                 ? anchors.map(a => `${a.type}[${a.classIndex}] (${a.x}, ${a.y})`).join(', ')
                 : 'none';
 
-            meta.innerHTML = `
-                <div><strong>Glyph Index:</strong> ${idx}</div>
-                <div><strong>Contours:</strong> ${contours.length}</div>
-                <div><strong>Points:</strong> ${points.length}</div>
-                <div><strong>Advance Width:</strong> ${glyph.advanceWidth}</div>
-                <div><strong>Left Side Bearing:</strong> ${glyph.leftSideBearing}</div>
-                <div><strong>Right Side Bearing:</strong> ${rightBearing.toFixed(2)}</div>
-                <div><strong>Bounding Box:</strong> [${minX}, ${minY}] to [${maxX}, ${maxY}]</div>
-                <div><strong>Winding:</strong> ${winding.join(', ') || 'n/a'}</div>
-                <div><strong>Anchors:</strong> ${anchorSummary}</div>
-            `;
+            meta.replaceChildren();
+            [
+                ['Glyph Index', idx],
+                ['Contours', contours.length],
+                ['Points', points.length],
+                ['Advance Width', glyph.advanceWidth],
+                ['Left Side Bearing', glyph.leftSideBearing],
+                ['Right Side Bearing', rightBearing.toFixed(2)],
+                ['Bounding Box', `[${minX}, ${minY}] to [${maxX}, ${maxY}]`],
+                ['Winding', winding.join(', ') || 'n/a'],
+                ['Anchors', anchorSummary]
+            ].forEach(([label, value]) => {
+                const div = document.createElement('div');
+                const strong = document.createElement('strong');
+                strong.textContent = `${label}:`;
+                div.appendChild(strong);
+                div.append(` ${value}`);
+                meta.appendChild(div);
+            });
 
             inspectCtx.save();
             inspectCtx.translate(180, inspectCanvas.height * 0.7);

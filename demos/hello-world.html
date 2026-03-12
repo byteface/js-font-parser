@@ -304,12 +304,17 @@ for (const file of fontFiles) {
 
   const article = document.createElement("article");
   article.className = "specimen";
-  article.innerHTML = `
-    <div class="specimen-head">
-      <div class="specimen-title">${label}</div>
-      <div class="specimen-sub">${file}</div>
-    </div>
-  `;
+  const head = document.createElement("div");
+  head.className = "specimen-head";
+  const title = document.createElement("div");
+  title.className = "specimen-title";
+  title.textContent = label;
+  const sub = document.createElement("div");
+  sub.className = "specimen-sub";
+  sub.textContent = file;
+  head.appendChild(title);
+  head.appendChild(sub);
+  article.appendChild(head);
 
   const canvas = document.createElement("canvas");
   canvas.width = 1080;

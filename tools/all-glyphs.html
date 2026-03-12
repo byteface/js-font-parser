@@ -367,14 +367,23 @@
                 ? `${String.fromCodePoint(codePoint)}  U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}`
                 : `Glyph ${glyphIndex}`;
             glyphModalSub.textContent = `Glyph ${glyphIndex} · advance ${glyph.advanceWidth} · left side bearing ${glyph.leftSideBearing}`;
-            glyphMetrics.innerHTML = `
-                <div class="glyph-metric"><strong>Glyph Index</strong>${glyphIndex}</div>
-                <div class="glyph-metric"><strong>Unicode</strong>${codePoint != null ? `U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}` : "Unmapped"}</div>
-                <div class="glyph-metric"><strong>Advance Width</strong>${glyph.advanceWidth}</div>
-                <div class="glyph-metric"><strong>Left Side Bearing</strong>${glyph.leftSideBearing}</div>
-                <div class="glyph-metric"><strong>Bounds</strong>${bounds.minx}, ${bounds.miny} → ${bounds.maxx}, ${bounds.maxy}</div>
-                <div class="glyph-metric"><strong>Point Count</strong>${Math.max(0, glyph.getPointCount() - 2)}</div>
-            `;
+            glyphMetrics.replaceChildren();
+            [
+                ["Glyph Index", glyphIndex],
+                ["Unicode", codePoint != null ? `U+${codePoint.toString(16).toUpperCase().padStart(4, "0")}` : "Unmapped"],
+                ["Advance Width", glyph.advanceWidth],
+                ["Left Side Bearing", glyph.leftSideBearing],
+                ["Bounds", `${bounds.minx}, ${bounds.miny} -> ${bounds.maxx}, ${bounds.maxy}`],
+                ["Point Count", Math.max(0, glyph.getPointCount() - 2)]
+            ].forEach(([label, value]) => {
+                const item = document.createElement("div");
+                item.className = "glyph-metric";
+                const strong = document.createElement("strong");
+                strong.textContent = label;
+                item.appendChild(strong);
+                item.append(String(value));
+                glyphMetrics.appendChild(item);
+            });
             glyphModal.classList.add("open");
             glyphModal.setAttribute("aria-hidden", "false");
         }

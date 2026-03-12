@@ -180,6 +180,7 @@ const { FontParser } = window.FontParser;
         const outlineContainer = document.getElementById("outlineContainer");
 
         let font = null;
+        let outlinePreviewUrl = null;
         const SAMPLE_TEXTS = {
             "../truetypefonts/color/TwemojiMozilla.ttf": "😀😁😂🤣😃😄😅😆😉😊😍😘😜",
             "../truetypefonts/color/nabla/Nabla[EDPT,EHLT].ttf": "COLOR",
@@ -191,16 +192,24 @@ const { FontParser } = window.FontParser;
         function clearContainers() {
             palette.innerHTML = "";
             outlineContainer.innerHTML = "";
+            if (outlinePreviewUrl) {
+                URL.revokeObjectURL(outlinePreviewUrl);
+                outlinePreviewUrl = null;
+            }
             const ctx = colorCanvas.getContext("2d");
             if (ctx) ctx.clearRect(0, 0, colorCanvas.width, colorCanvas.height);
         }
 
         function setTableInfo(cpal, colr, svg) {
-            tableInfo.innerHTML = `
-                <div>CPAL: <strong>${cpal ? "yes" : "no"}</strong></div>
-                <div>COLR: <strong>${colr ? "yes" : "no"}</strong></div>
-                <div>SVG: <strong>${svg ? "yes" : "no"}</strong></div>
-            `;
+            tableInfo.replaceChildren();
+            [["CPAL", cpal], ["COLR", colr], ["SVG", svg]].forEach(([label, present]) => {
+                const row = document.createElement("div");
+                row.append(`${label}: `);
+                const strong = document.createElement("strong");
+                strong.textContent = present ? "yes" : "no";
+                row.appendChild(strong);
+                tableInfo.appendChild(row);
+            });
         }
 
         function renderPalette(cpal) {
@@ -224,7 +233,12 @@ const { FontParser } = window.FontParser;
             if (!font) return;
             const svg = font.toSvg(text, { scale: 1, fill: "#6b4e3d", stroke: "#6b4e3d" });
             outlineInfo.textContent = "Rendered from outline data.";
-            outlineContainer.innerHTML = svg;
+            if (outlinePreviewUrl) URL.revokeObjectURL(outlinePreviewUrl);
+            outlinePreviewUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+            const img = document.createElement("img");
+            img.alt = `Outline preview for ${text}`;
+            img.src = outlinePreviewUrl;
+            outlineContainer.appendChild(img);
         }
 
         async function renderSvgGlyphPreview(text) {

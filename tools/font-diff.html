@@ -358,13 +358,19 @@
     for (const it of items) {
       const tr = document.createElement('tr');
       const statusCls = it.status === 'coverage gap' ? 'warn' : 'ok';
-      tr.innerHTML = `
-        <td>${it.ch === ' ' ? '␠' : it.ch}</td>
-        <td>U+${it.cp.toString(16).toUpperCase().padStart(4, '0')}</td>
-        <td>${it.gidA}</td>
-        <td>${it.gidB}</td>
-        <td class="${statusCls}">${it.status}</td>
-      `;
+      const values = [
+        it.ch === ' ' ? '␠' : it.ch,
+        `U+${it.cp.toString(16).toUpperCase().padStart(4, '0')}`,
+        String(it.gidA),
+        String(it.gidB),
+        it.status
+      ];
+      values.forEach((value, index) => {
+        const td = document.createElement('td');
+        if (index === 4) td.className = statusCls;
+        td.textContent = value;
+        tr.appendChild(td);
+      });
       rows.appendChild(tr);
     }
   }
@@ -380,12 +386,28 @@
     const descB = fontB.getDescent?.() ?? 'n/a';
     const glyphsA = fontA.getNumGlyphs?.() ?? 'n/a';
     const glyphsB = fontB.getNumGlyphs?.() ?? 'n/a';
-    summary.innerHTML = `
-      <div><strong>A:</strong> <code>${aName}</code> (${infoA.fullName || 'n/a'})</div>
-      <div><strong>B:</strong> <code>${bName}</code> (${infoB.fullName || 'n/a'})</div>
-      <div><strong>Metrics:</strong> UPM ${upmA} vs ${upmB} | Asc ${ascA} vs ${ascB} | Desc ${descA} vs ${descB} | Glyphs ${glyphsA} vs ${glyphsB}</div>
-      <div><strong>Text report:</strong> Missing A ${report.missingA}, Missing B ${report.missingB}, Different mapped glyph IDs ${report.mismatch}</div>
-    `;
+    summary.replaceChildren();
+    const lines = [
+      ['A', `${aName} (${infoA.fullName || 'n/a'})`, true],
+      ['B', `${bName} (${infoB.fullName || 'n/a'})`, true],
+      ['Metrics', `UPM ${upmA} vs ${upmB} | Asc ${ascA} vs ${ascB} | Desc ${descA} vs ${descB} | Glyphs ${glyphsA} vs ${glyphsB}`],
+      ['Text report', `Missing A ${report.missingA}, Missing B ${report.missingB}, Different mapped glyph IDs ${report.mismatch}`]
+    ];
+    lines.forEach(([label, value, code]) => {
+      const div = document.createElement('div');
+      const strong = document.createElement('strong');
+      strong.textContent = `${label}:`;
+      div.appendChild(strong);
+      div.append(' ');
+      if (code) {
+        const codeEl = document.createElement('code');
+        codeEl.textContent = value;
+        div.appendChild(codeEl);
+      } else {
+        div.append(value);
+      }
+      summary.appendChild(div);
+    });
   }
 
   async function run() {
@@ -421,7 +443,11 @@
       renderRows(report.items);
       renderSummary(fontA, fontB, aSelected.name, bSelected.name, report);
     } catch (err) {
-      summary.innerHTML = `<span class="warn">Compare failed: ${err?.message || err}</span>`;
+      summary.replaceChildren();
+      const warning = document.createElement('span');
+      warning.className = 'warn';
+      warning.textContent = `Compare failed: ${err?.message || err}`;
+      summary.appendChild(warning);
     } finally {
       runBtn.disabled = false;
       runBtn.textContent = 'Compare';

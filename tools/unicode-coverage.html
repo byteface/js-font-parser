@@ -289,13 +289,25 @@
           const block = entry.block;
           const tr = document.createElement("tr");
           tr.className = "clickable";
-          tr.innerHTML = `
-            <td>${block.name}</td>
-            <td>${codePointLabel(block.start)}-${codePointLabel(block.end)}</td>
-            <td>${entry.coverage.toFixed(1)}%</td>
-            <td>${entry.missing}/${entry.total}</td>
-            <td><div class="bar"><span style="width:${Math.max(0, Math.min(100, entry.coverage)).toFixed(1)}%"></span></div></td>
-          `;
+          const values = [
+            block.name,
+            `${codePointLabel(block.start)}-${codePointLabel(block.end)}`,
+            `${entry.coverage.toFixed(1)}%`,
+            `${entry.missing}/${entry.total}`
+          ];
+          values.forEach((value) => {
+            const td = document.createElement("td");
+            td.textContent = value;
+            tr.appendChild(td);
+          });
+          const barCell = document.createElement("td");
+          const bar = document.createElement("div");
+          bar.className = "bar";
+          const span = document.createElement("span");
+          span.style.width = `${Math.max(0, Math.min(100, entry.coverage)).toFixed(1)}%`;
+          bar.appendChild(span);
+          barCell.appendChild(bar);
+          tr.appendChild(barCell);
           tr.addEventListener("click", () => {
             const blockIndex = blocks.findIndex((b) => b.name === block.name && b.start === block.start && b.end === block.end);
             if (blockIndex >= 0) {
@@ -308,7 +320,11 @@
 
       if (!summary.children.length) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td colspan="5" class="note">No blocks under ${threshold}% coverage.</td>`;
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.className = "note";
+        td.textContent = `No blocks under ${threshold}% coverage.`;
+        tr.appendChild(td);
         summary.appendChild(tr);
       }
     }

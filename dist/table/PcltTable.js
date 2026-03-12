@@ -1,6 +1,11 @@
 import { Table } from "./Table.js";
 function readAscii(byte_ar, length) {
-    return String.fromCharCode(...byte_ar.readBytes(length)).replace(/\0+$/g, "");
+    const raw = String.fromCharCode(...byte_ar.readBytes(length));
+    let end = raw.length;
+    while (end > 0 && raw.charCodeAt(end - 1) === 0) {
+        end -= 1;
+    }
+    return end === raw.length ? raw : raw.slice(0, end);
 }
 export class PcltTable {
     version;
