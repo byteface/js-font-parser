@@ -66,9 +66,9 @@
 
 <script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-const { FontParser, CanvasRenderer } = window.FontParser;
 import { createFontDrawer, createFontLoader, getSelectedFont } from "./shared/font-ui.js";
 import { getFontList } from "./shared/font-catalog.js";
+const { FontParser, CanvasRenderer } = window.FontParser;
 
 const fontDrawerMount = document.getElementById("fontDrawerMount");
 const fontSelect = document.getElementById("fontSelect");

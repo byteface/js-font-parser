@@ -44,9 +44,9 @@
 
 <script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-const { FontParser } = window.FontParser;
 import { getFontList } from "../tools/shared/font-catalog.js";
 import { collectGlyphPoints, splitContours, sampleContour, getBounds } from "./shared/glyph-helpers.js";
+const { FontParser } = window.FontParser;
 
 const canvas = document.getElementById("stage");
 const ctx = canvas.getContext("2d");

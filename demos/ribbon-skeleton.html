@@ -15,9 +15,9 @@ canvas{width:100%;height:min(74vh,680px);display:block;border:1px solid var(--li
 <div class="wrap"><section class="panel"><h1>Ribbon Skeleton</h1><p>Contour chains become drifting, glowing ribbons.</p><label>Font <select id="fontSelect"></select></label><label>Character <input id="charInput" value="S" maxlength="2" /></label><label>Ribbon width <input id="widthInput" type="range" min="3" max="32" value="12" /></label></section><canvas id="stage" width="1360" height="760"></canvas></div>
 <script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-const { FontParser } = window.FontParser;
 import { getFontList } from '../tools/shared/font-catalog.js';
 import { collectGlyphPoints, splitContours, sampleContour, getBounds } from './shared/glyph-helpers.js';
+const { FontParser } = window.FontParser;
 const canvas=document.getElementById('stage'),ctx=canvas.getContext('2d');
 const fontSelect=document.getElementById('fontSelect'),charInput=document.getElementById('charInput'),widthInput=document.getElementById('widthInput');
 let dpr=1,font=null,ribbons=[];

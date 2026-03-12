@@ -169,8 +169,8 @@
 
 <script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
   import { getFontList } from '../tools/shared/font-catalog.js';
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 
   const canvas = document.getElementById('stage');
   const ctx = canvas.getContext('2d');

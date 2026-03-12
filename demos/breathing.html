@@ -116,9 +116,9 @@
 
     <script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/demo-scaffold.js";
         import { getFontList } from "../tools/shared/font-catalog.js";
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 
         const fontSelect = document.getElementById("fontSelect");
         const modeSelect = document.getElementById("modeSelect");

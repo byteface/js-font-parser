@@ -119,10 +119,10 @@
 
     <script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         import { createFontLoader, getSelectedFont, populateFontSelect } from "./shared/demo-scaffold.js";
         import { collectGlyphPoints, splitContours as splitGlyphContours, sampleContour } from "./shared/glyph-helpers.js";
         import { getFontList } from "../tools/shared/font-catalog.js";
+const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
 
         const fontSelect = document.getElementById("fontSelect");
         const wordAInput = document.getElementById("wordA");
