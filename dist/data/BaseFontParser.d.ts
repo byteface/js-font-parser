@@ -106,6 +106,8 @@ export declare abstract class BaseFontParser {
     protected getOs2TableForShared(): any | null;
     protected getPostTableForShared(): any | null;
     protected getFvarTableForShared(): any | null;
+    protected getAvarTableForShared(): any | null;
+    protected getStatTableForShared(): any | null;
     protected getColrTableForShared(): any | null;
     protected getCpalTableForShared(): any | null;
     protected getUnitsPerEmForShared(): number;
@@ -209,6 +211,20 @@ export declare abstract class BaseFontParser {
     getVariationAxes(): any[];
     setVariationCoords(coords: number[]): void;
     setVariationByAxes(values: Record<string, number>): void;
+    getVariationInfo(): {
+        axes: ReturnType<BaseFontParser['getVariationAxes']>;
+        hasAvar: boolean;
+        hasGvar: boolean;
+        hasHvar: boolean;
+        hasVvar: boolean;
+        hasMvar: boolean;
+        hasStat: boolean;
+        stat: {
+            designAxes: any[];
+            axisValues: any[];
+            elidedFallbackNameId: number | null;
+        } | null;
+    };
     getGlyphPointsByChar(char: string, options?: {
         sampleStep?: number;
     }): Array<{
