@@ -67,8 +67,35 @@ test('woff/cmap: WOFF emits multi-char diagnostic for two BMP characters', () =>
   assert.equal(warnings.length, 1);
 });
 
-test.todo('woff/cmap known gap: TTF cmap should fallback to secondary format when primary misses');
-test.todo('woff/cmap known gap: WOFF cmap should fallback to secondary format when primary misses');
+test('woff/cmap: TTF falls back to a secondary cmap format when the preferred one misses', () => {
+  const parser = createTtfParserMock();
+  const missingFormat4 = { getFormatType: () => 4, mapCharCode: () => 0 };
+  const workingFormat4 = { getFormatType: () => 4, mapCharCode: () => 321 };
+  parser.cmap = {
+    formats: [missingFormat4, workingFormat4],
+    getCmapFormats(platformId, encodingId) {
+      if (platformId === 3 && encodingId === 1) return [missingFormat4, workingFormat4];
+      return [];
+    }
+  };
+
+  assert.equal(parser.getGlyphIndexByChar('A'), 321);
+});
+
+test('woff/cmap: WOFF falls back to a secondary cmap format when the preferred one misses', () => {
+  const parser = createWoffParserMock();
+  const missingFormat4 = { getFormatType: () => 4, mapCharCode: () => 0 };
+  const workingFormat4 = { getFormatType: () => 4, mapCharCode: () => 654 };
+  parser.cmap = {
+    formats: [missingFormat4, workingFormat4],
+    getCmapFormats(platformId, encodingId) {
+      if (platformId === 3 && encodingId === 1) return [missingFormat4, workingFormat4];
+      return [];
+    }
+  };
+
+  assert.equal(parser.getGlyphIndexByChar('A'), 654);
+});
 
 test('woff/cmap: LayoutEngine applies deterministic fallback kerning when glyph indices are unavailable', () => {
   const font = {

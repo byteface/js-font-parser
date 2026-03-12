@@ -213,6 +213,73 @@ test('layout/cmap: trailing spaces can remain in glyph stream while trimmed from
   assert.equal(out.lines[0].width, 500);
 });
 
+test('layout/cmap: bare carriage return acts as a line break', () => {
+  const font = createSpacingFontMock();
+  const out = LayoutEngine.layoutText(font, 'A\rB');
+  assert.equal(out.lines.length, 2);
+  assert.equal(out.lines[0].glyphs.map((g) => g.char).join(''), 'A');
+  assert.equal(out.lines[1].glyphs.map((g) => g.char).join(''), 'B');
+});
+
+test('layout/cmap: trailing carriage return preserves a final empty line', () => {
+  const font = createSpacingFontMock();
+  const out = LayoutEngine.layoutText(font, 'AB\r');
+  assert.equal(out.lines.length, 2);
+  assert.equal(out.lines[0].glyphs.map((g) => g.char).join(''), 'AB');
+  assert.equal(out.lines[1].glyphs.length, 0);
+});
+
+test('layout/cmap: NEL acts as a line break', () => {
+  const font = createSpacingFontMock();
+  const out = LayoutEngine.layoutText(font, 'A\u0085B');
+  assert.equal(out.lines.length, 2);
+  assert.equal(out.lines[0].glyphs.map((g) => g.char).join(''), 'A');
+  assert.equal(out.lines[1].glyphs.map((g) => g.char).join(''), 'B');
+});
+
+test('layout/cmap: Unicode line separator acts as a line break', () => {
+  const font = createSpacingFontMock();
+  const out = LayoutEngine.layoutText(font, 'A\u2028B');
+  assert.equal(out.lines.length, 2);
+  assert.equal(out.lines[0].glyphs.map((g) => g.char).join(''), 'A');
+  assert.equal(out.lines[1].glyphs.map((g) => g.char).join(''), 'B');
+});
+
+test('layout/cmap: Unicode paragraph separator acts as a line break', () => {
+  const font = createSpacingFontMock();
+  const out = LayoutEngine.layoutText(font, 'A\u2029B');
+  assert.equal(out.lines.length, 2);
+  assert.equal(out.lines[0].glyphs.map((g) => g.char).join(''), 'A');
+  assert.equal(out.lines[1].glyphs.map((g) => g.char).join(''), 'B');
+});
+
+test('layout/cmap: trimLeadingSpaces applies after carriage-return line breaks', () => {
+  const font = createSpacingFontMock();
+  const out = LayoutEngine.layoutText(font, 'A\r  B', {
+    trimLeadingSpaces: true
+  });
+  assert.equal(out.lines.length, 2);
+  assert.equal(out.lines[1].glyphs.map((g) => g.char).join(''), 'B');
+});
+
+test('layout/cmap: trimLeadingSpaces applies after Unicode line separators', () => {
+  const font = createSpacingFontMock();
+  const out = LayoutEngine.layoutText(font, 'A\u2028  B', {
+    trimLeadingSpaces: true
+  });
+  assert.equal(out.lines.length, 2);
+  assert.equal(out.lines[1].glyphs.map((g) => g.char).join(''), 'B');
+});
+
+test('layout/cmap: trimLeadingSpaces applies after Unicode paragraph separators', () => {
+  const font = createSpacingFontMock();
+  const out = LayoutEngine.layoutText(font, 'A\u2029  B', {
+    trimLeadingSpaces: true
+  });
+  assert.equal(out.lines.length, 2);
+  assert.equal(out.lines[1].glyphs.map((g) => g.char).join(''), 'B');
+});
+
 test('layout/cmap: LayoutEngine should not throw if getTableByType callback throws', () => {
   const font = {
     getTableByType() { throw new Error('table-boom'); },

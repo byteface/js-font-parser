@@ -162,6 +162,71 @@ export abstract class BaseFontParser {
         return safeFormats[0];
     }
 
+    protected getOrderedCmapFormatsFor(codePoint: number): CmapFormatLike[] {
+        const cmap = this.getCmapTableForLookup() as CmapLike | null;
+        if (!cmap) return [];
+
+        const prefersUcs4 = codePoint > 0xffff;
+        const preferred = prefersUcs4
+            ? [
+                { platformId: 3, encodingId: 10 },
+                { platformId: 0, encodingId: 4 },
+                { platformId: 3, encodingId: 1 },
+                { platformId: 0, encodingId: 3 },
+                { platformId: 0, encodingId: 1 },
+                { platformId: 1, encodingId: 0 }
+            ]
+            : [
+                { platformId: 3, encodingId: 1 },
+                { platformId: 0, encodingId: 3 },
+                { platformId: 0, encodingId: 1 },
+                { platformId: 3, encodingId: 10 },
+                { platformId: 0, encodingId: 4 },
+                { platformId: 1, encodingId: 0 }
+            ];
+        const order = prefersUcs4 ? [12, 10, 8, 4, 6, 2, 0] : [4, 12, 10, 8, 6, 2, 0];
+        const seen = new Set<CmapFormatLike>();
+        const out: CmapFormatLike[] = [];
+
+        const pushFormats = (formats: CmapFormatLike[]) => {
+            for (const fmtType of order) {
+                for (const fmt of formats) {
+                    if (!fmt || seen.has(fmt)) continue;
+                    const resolvedType = typeof fmt.getFormatType === 'function' ? fmt.getFormatType() : fmt.format;
+                    if (resolvedType === fmtType) {
+                        seen.add(fmt);
+                        out.push(fmt);
+                    }
+                }
+            }
+            for (const fmt of formats) {
+                if (!fmt || seen.has(fmt)) continue;
+                seen.add(fmt);
+                out.push(fmt);
+            }
+        };
+
+        const preferredBest = this.getBestCmapFormatFor(codePoint);
+        if (preferredBest) pushFormats([preferredBest]);
+
+        for (const pref of preferred) {
+            let formats: CmapFormatLike[] = [];
+            try {
+                const resolved = cmap.getCmapFormats(pref.platformId, pref.encodingId);
+                formats = Array.isArray(resolved) ? resolved.filter((fmt): fmt is CmapFormatLike => !!fmt && typeof fmt === 'object') : [];
+            } catch {
+                formats = [];
+            }
+            pushFormats(formats);
+        }
+
+        const fallbackFormats = Array.isArray(cmap.formats)
+            ? cmap.formats.filter((fmt: any): fmt is CmapFormatLike => !!fmt && typeof fmt === 'object')
+            : [];
+        pushFormats(fallbackFormats);
+        return out;
+    }
+
     protected isNonRenderingFormatCodePoint(codePoint: number): boolean {
         return codePoint === 0x00AD
             || codePoint === 0x061C
@@ -989,9 +1054,9 @@ export abstract class BaseFontParser {
             return null;
         }
 
-        let cmapFormat: any = null;
+        let cmapFormats: CmapFormatLike[] = [];
         try {
-            cmapFormat = this.getBestCmapFormatFor(codePoint);
+            cmapFormats = this.getOrderedCmapFormatsFor(codePoint);
         } catch {
             this.emitDiagnostic(
                 "CMAP_FORMAT_RESOLVE_FAILED",
@@ -1004,31 +1069,48 @@ export abstract class BaseFontParser {
             const fallbackFormats = Array.isArray(cmap.formats)
                 ? cmap.formats.filter((fmt: any): fmt is NonNullable<typeof fmt> => fmt != null)
                 : [];
-            cmapFormat = this.pickBestFormat(fallbackFormats);
+            const best = this.pickBestFormat(fallbackFormats);
+            cmapFormats = best ? [best] : [];
         }
-        if (!cmapFormat) {
+        if (cmapFormats.length === 0) {
             this.emitDiagnostic("MISSING_CMAP_FORMAT", "warning", "parse", "No cmap format available for code point.", { codePoint });
             return null;
         }
 
-        let glyphIndex: unknown = null;
-        try {
-            if (typeof cmapFormat.getGlyphIndex === "function") {
-                glyphIndex = cmapFormat.getGlyphIndex(codePoint);
-            } else if (typeof cmapFormat.mapCharCode === "function") {
-                glyphIndex = cmapFormat.mapCharCode(codePoint);
-            } else {
-                this.emitDiagnostic(
-                    "UNSUPPORTED_CMAP_FORMAT",
-                    "warning",
-                    "parse",
-                    "Selected cmap format does not expose getGlyphIndex/mapCharCode.",
-                    { codePoint },
-                    "UNSUPPORTED_CMAP_FORMAT"
-                );
-                return null;
+        let sawSupportedFormat = false;
+        let sawLookupFailure = false;
+        for (const cmapFormat of cmapFormats) {
+            let glyphIndex: unknown = null;
+            try {
+                if (typeof cmapFormat.getGlyphIndex === "function") {
+                    sawSupportedFormat = true;
+                    glyphIndex = cmapFormat.getGlyphIndex(codePoint);
+                } else if (typeof cmapFormat.mapCharCode === "function") {
+                    sawSupportedFormat = true;
+                    glyphIndex = cmapFormat.mapCharCode(codePoint);
+                } else {
+                    continue;
+                }
+            } catch {
+                sawLookupFailure = true;
+                continue;
             }
-        } catch {
+
+            if (typeof glyphIndex === "number" && Number.isFinite(glyphIndex) && glyphIndex !== 0) {
+                return glyphIndex;
+            }
+        }
+
+        if (!sawSupportedFormat) {
+            this.emitDiagnostic(
+                "UNSUPPORTED_CMAP_FORMAT",
+                "warning",
+                "parse",
+                "Selected cmap format does not expose getGlyphIndex/mapCharCode.",
+                { codePoint },
+                "UNSUPPORTED_CMAP_FORMAT"
+            );
+        } else if (sawLookupFailure) {
             this.emitDiagnostic(
                 "CMAP_LOOKUP_FAILED",
                 "warning",
@@ -1036,11 +1118,8 @@ export abstract class BaseFontParser {
                 "cmap glyph lookup failed for code point.",
                 { codePoint }
             );
-            return null;
         }
-
-        if (typeof glyphIndex !== "number" || !Number.isFinite(glyphIndex) || glyphIndex === 0) return null;
-        return glyphIndex;
+        return null;
     }
 
     public getGlyphByChar(char: string): any | null {

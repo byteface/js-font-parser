@@ -32,6 +32,12 @@ type GlyphBuildOptions = {
     fpgm?: any | null;
     prep?: any | null;
 };
+type CmapFormatLike = {
+    format?: number;
+    getFormatType?: () => number;
+    getGlyphIndex?: (codePoint: number) => number | null;
+    mapCharCode?: (codePoint: number) => number | null;
+};
 export declare abstract class BaseFontParser {
     private diagnostics;
     private diagnosticKeys;
@@ -75,6 +81,7 @@ export declare abstract class BaseFontParser {
     protected getCmapTableForLookup(): any | null;
     protected getBestCmapFormatFor(codePoint: number): any | null;
     protected pickBestFormat(formats: any[], order?: number[]): any | null;
+    protected getOrderedCmapFormatsFor(codePoint: number): CmapFormatLike[];
     protected isNonRenderingFormatCodePoint(codePoint: number): boolean;
     protected getGsubTableForLayout(): any | null;
     protected getKernTableForLayout(): {

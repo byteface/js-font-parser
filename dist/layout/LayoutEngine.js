@@ -167,11 +167,12 @@ export class LayoutEngine {
      * Falls back to a deterministic character scanner otherwise.
      */
     static tokenize(text, collapseSpaces, preserveNbsp, tabSize) {
+        const normalizedText = text.replace(/\r\n?/g, '\n').replace(/[\u0085\u2028\u2029]/g, '\n');
         const segmenterCtor = Intl.Segmenter;
         if (typeof Intl !== 'undefined' && typeof segmenterCtor === 'function') {
             const segments = [];
             const segmenter = new segmenterCtor(undefined, { granularity: 'word' });
-            const lines = text.split('\n');
+            const lines = normalizedText.split('\n');
             lines.forEach((line, index) => {
                 const segs = Array.from(segmenter.segment(line));
                 for (const seg of segs) {
@@ -212,7 +213,7 @@ export class LayoutEngine {
         const tokens = [];
         let buffer = '';
         let lastWasSpace = false;
-        for (const ch of text) {
+        for (const ch of normalizedText) {
             if (ch === '\n') {
                 if (buffer)
                     tokens.push(buffer);
