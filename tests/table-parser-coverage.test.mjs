@@ -6,6 +6,7 @@ import { FontParser } from '../dist/data/FontParser.js';
 import { ByteArray } from '../dist/utils/ByteArray.js';
 import { Table } from '../dist/table/Table.js';
 import { TableFactory } from '../dist/table/TableFactory.js';
+import { ReverseChainSingleSubst } from '../dist/table/ReverseChainSingleSubst.js';
 
 function loadFont(relativePath) {
   const data = fs.readFileSync(relativePath);
@@ -182,4 +183,24 @@ test('table parser coverage: factory creates vhea and vmtx parsers from syntheti
   assert.equal(vmtx.getAdvanceHeight(0), 1000);
   assert.equal(vmtx.getAdvanceHeight(2), 900);
   assert.equal(vmtx.getTopSideBearing(2), 30);
+});
+
+test('table parser coverage: reverse chaining single substitution applies only in matching context', () => {
+  const bytes = new Uint8Array([
+    ...u16(1),
+    ...u16(16),
+    ...u16(1),
+    ...u16(22),
+    ...u16(1),
+    ...u16(28),
+    ...u16(1),
+    ...u16(99),
+    ...u16(1), ...u16(1), ...u16(20),
+    ...u16(1), ...u16(1), ...u16(10),
+    ...u16(1), ...u16(1), ...u16(30)
+  ]);
+  const table = new ReverseChainSingleSubst(new ByteArray(bytes), 0);
+  assert.deepEqual(table.applyToGlyphs([10, 20, 30]), [10, 99, 30]);
+  assert.deepEqual(table.applyToGlyphs([11, 20, 30]), [11, 20, 30]);
+  assert.deepEqual(table.applyToGlyphs([10, 20, 31]), [10, 20, 31]);
 });

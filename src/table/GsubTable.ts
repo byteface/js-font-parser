@@ -15,6 +15,7 @@ import { ChainingSubst } from "./ChainingSubst.js";
 import { LigatureSubstFormat1 } from "./LigatureSubstFormat1.js";
 import { MultipleSubst } from "./MultipleSubst.js";
 import { AlternateSubst } from "./AlternateSubst.js";
+import { ReverseChainSingleSubst } from "./ReverseChainSingleSubst.js";
 
 export class GsubTable implements ITable {
     private static readonly FEATURE_ORDER_CACHE_LIMIT = 128;
@@ -77,6 +78,9 @@ export class GsubTable implements ITable {
                 break;
             case 6:
                 s = ChainingSubst.read(byte_ar, offset, this);
+                break;
+            case 8:
+                s = new ReverseChainSingleSubst(byte_ar, offset);
                 break;
         }
         return s;

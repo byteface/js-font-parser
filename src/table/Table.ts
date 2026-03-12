@@ -12,6 +12,11 @@ export class Table {
     static readonly COLR = 0x434f4c52; // Color glyph layers
     static readonly CPAL = 0x4350414c; // Color palette
     static readonly SVG = 0x53564720;  // SVG glyph data
+    static readonly STAT = 0x53544154; // Style attributes
+    static readonly HVAR = 0x48564152; // Horizontal metrics variations
+    static readonly MVAR = 0x4d564152; // Metrics variations
+    static readonly VVAR = 0x56564152; // Vertical metrics variations
+    static readonly avar = 0x61766172; // Axis variations
     static readonly gvar = 0x67766172; // Glyph variations
     static readonly GDEF = 0x47444546; // Glyph definition data [OpenType]
     static readonly GPOS = 0x47504f53; // Glyph positioning data [OpenType]
