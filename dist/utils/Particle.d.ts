@@ -81,4 +81,3 @@ export declare class Particle {
     update(): void;
     private handleEdgeBehavior;
 }
-export {};

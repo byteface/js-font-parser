@@ -161,7 +161,7 @@
 
 <script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-const { FontParser, CanvasRenderer } = window.FontParser;
+const { FontParser } = window.FontParser;
 import { getFontList } from "../tools/shared/font-catalog.js";
 
 const TABLE_TAGS = {
@@ -228,7 +228,7 @@ function redrawCard(card) {
     return;
   }
 
-  CanvasRenderer.drawStringWithKerning(card.font, phrase, card.canvas, {
+  card.font.drawText(card.canvas, phrase, {
     x: 34,
     y: 170,
     scale,
@@ -237,7 +237,7 @@ function redrawCard(card) {
   });
 
   const width = typeof card.font.measureText === "function"
-    ? card.font.measureText(phrase, { gpos: true, spacing: tracking }).width
+    ? card.font.measureText(phrase, { gpos: true }).advanceWidth
     : null;
   const widthText = Number.isFinite(width) ? `${Math.round(width)} units` : "n/a";
   card.status.textContent = `${card.label} • ${phrase.length} chars • ${widthText}`;

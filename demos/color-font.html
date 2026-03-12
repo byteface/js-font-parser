@@ -159,7 +159,7 @@
 
     <script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
-const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
+const { FontParser } = window.FontParser;
         const TABLE_TAGS = {
             CPAL: 0x4350414c,
             COLR: 0x434f4c52,
@@ -222,7 +222,7 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         function renderOutlineGlyph(text) {
             outlineContainer.innerHTML = "";
             if (!font) return;
-            const svg = SVGFont.exportStringSvg(font, text, { scale: 1, fill: "#6b4e3d", stroke: "#6b4e3d" });
+            const svg = font.toSvg(text, { scale: 1, fill: "#6b4e3d", stroke: "#6b4e3d" });
             outlineInfo.textContent = "Rendered from outline data.";
             outlineContainer.innerHTML = svg;
         }
@@ -298,7 +298,7 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
                     const x = 20 + col * cell;
                     const y = baseline - row * cell * 0.8;
                     const glyphId = colr.baseGlyphRecords[i].glyphId;
-                    CanvasRenderer.drawColorGlyph(font, glyphId, colorCanvas, {
+                    font.drawColorGlyph(colorCanvas, glyphId, {
                         x,
                         y,
                         scale,
@@ -315,7 +315,7 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
                     cursorX += unitsPerEm * scale * 0.4;
                     continue;
                 }
-                CanvasRenderer.drawColorGlyph(font, glyphId, colorCanvas, {
+                font.drawColorGlyph(colorCanvas, glyphId, {
                     x: cursorX,
                     y: baseline,
                     scale,

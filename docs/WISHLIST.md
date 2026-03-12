@@ -32,6 +32,10 @@
    - Risk: ambiguous call semantics make optimization and parser cleanup harder, but a rewrite now would have high blast radius.
    - Suggested direction: add explicit `read*` versus `peek*At` APIs alongside the current methods, migrate hot paths gradually, and benchmark before wider changes.
 
+
+6. - refactor to create a 'light' version without the hinting VM, GSUB shaping or colors etc
+
+
 ## Coverage Gaps
 
 - Bitmap color font tables
