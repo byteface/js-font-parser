@@ -45,15 +45,20 @@ export declare abstract class BaseFontParser {
     protected tables: any[];
     protected os2: any | null;
     protected cmap: any | null;
+    protected cbdt: any | null;
+    protected cblc: any | null;
     protected glyf: any | null;
     protected cff: any | null;
     protected head: any | null;
     protected hhea: any | null;
     protected hmtx: any | null;
+    protected vhea: any | null;
+    protected vmtx: any | null;
     protected loca: any | null;
     protected maxp: any | null;
     protected pName: any | null;
     protected post: any | null;
+    protected sbix: any | null;
     protected gsub: any | null;
     protected kern: {
         getKerningValue?: (leftGlyph: number, rightGlyph: number) => number | null;
@@ -66,6 +71,9 @@ export declare abstract class BaseFontParser {
     } | null;
     protected fvar: any | null;
     protected svg: any | null;
+    protected ebdt: any | null;
+    protected eblc: any | null;
+    protected ebsc: any | null;
     protected gvar: any | null;
     protected cvt: any | null;
     protected fpgm: any | null;
@@ -330,6 +338,21 @@ export declare abstract class BaseFontParser {
         isFixedPitch: boolean;
         rawIsFixedPitch: number;
     } | null;
+    getVerticalMetrics(): {
+        ascender: number;
+        descender: number;
+        lineGap: number;
+        advanceHeightMax: number;
+        minTopSideBearing: number;
+        minBottomSideBearing: number;
+        yMaxExtent: number;
+        caretSlopeRise: number;
+        caretSlopeRun: number;
+        caretOffset: number;
+        metricDataFormat: number;
+        numberOfVMetrics: number;
+        hasVerticalMetricsTable: boolean;
+    } | null;
     getWeightClass(): number;
     getWidthClass(): number;
     getFsTypeFlags(): string[];
@@ -342,6 +365,8 @@ export declare abstract class BaseFontParser {
         nameRecords: ReturnType<BaseFontParser['getAllNameRecordsDetailed']>;
         os2: ReturnType<BaseFontParser['getOs2Metrics']>;
         post: ReturnType<BaseFontParser['getPostMetrics']>;
+        vertical: ReturnType<BaseFontParser['getVerticalMetrics']>;
+        bitmapColor: ReturnType<BaseFontParser['getBitmapColorInfo']>;
         style: {
             isBold: boolean;
             isItalic: boolean;
@@ -352,6 +377,34 @@ export declare abstract class BaseFontParser {
             fsSelectionFlags: string[];
         };
     };
+    getBitmapColorInfo(): {
+        hasBitmapData: boolean;
+        format: 'cbdt-cblc' | 'sbix' | 'ebdt-eblc' | null;
+        tables: string[];
+        tableLengths: Record<string, number>;
+    };
+    getBitmapStrikeForGlyph(glyphId: number, preferredPpem?: number): {
+        glyphId: number;
+        ppemX: number;
+        ppemY: number;
+        bitDepth: number;
+        imageFormat: number | null;
+        graphicType: string | null;
+        metrics: {
+            height: number;
+            width: number;
+            bearingX: number;
+            bearingY: number;
+            advance: number;
+        } | null;
+        mimeType: string | null;
+        data: Uint8Array;
+    } | null;
+    private getCbdtBitmapStrikeForGlyph;
+    private getSbixBitmapStrikeForGlyph;
+    getBitmapStrikeForChar(char: string, preferredPpem?: number): ReturnType<BaseFontParser['getBitmapStrikeForGlyph']>;
+    private getBitmapMimeType;
+    private getBitmapImageDimensions;
     private getPreferredNameRecord;
     private decodeOs2VendorId;
 }

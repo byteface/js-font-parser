@@ -4,6 +4,8 @@ export class Table {
     static readonly CFF = 0x43464620; // PostScript font program (compact font format) [PostScript]
     static readonly CFF2 = 0x43464632; // Compact Font Format 2.0
     static readonly DSIG = 0x44534947; // Digital signature
+    static readonly CBDT = 0x43424454; // Color bitmap data
+    static readonly CBLC = 0x43424c43; // Color bitmap location data
     static readonly EBDT = 0x45424454; // Embedded bitmap data
     static readonly EBLC = 0x45424c43; // Embedded bitmap location data
     static readonly EBSC = 0x45425343; // Embedded bitmap scaling data
@@ -37,6 +39,7 @@ export class Table {
     static readonly pName = 0x6e616d65; // naming table [r]
     static readonly prep = 0x70726570; // CVT Program
     static readonly post = 0x706f7374; // PostScript information [r]
+    static readonly sbix = 0x73626978; // Standard bitmap graphics
     static readonly vhea = 0x76686561; // Vertical Metrics header
     static readonly vmtx = 0x766d7478; // Vertical Metrics
 

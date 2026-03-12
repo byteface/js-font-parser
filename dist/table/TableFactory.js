@@ -24,6 +24,21 @@ import { FvarTable } from './FvarTable.js';
 import { GvarTable } from './GvarTable.js';
 import { PrepTable } from './PrepTable.js';
 import { RawTable } from './RawTable.js';
+import { AvarTable } from './AvarTable.js';
+import { BaseAxisTable } from './BaseAxisTable.js';
+import { DsigTable } from './DsigTable.js';
+import { GaspTable } from './GaspTable.js';
+import { HdmxTable } from './HdmxTable.js';
+import { HvarTable } from './HvarTable.js';
+import { JstfTable } from './JstfTable.js';
+import { LtshTable } from './LtshTable.js';
+import { MvarTable } from './MvarTable.js';
+import { PcltTable } from './PcltTable.js';
+import { StatTable } from './StatTable.js';
+import { VdmxTable } from './VdmxTable.js';
+import { VheaTable } from './VheaTable.js';
+import { VvarTable } from './VvarTable.js';
+import { VmtxTable } from './VmtxTable.js';
 export class TableFactory {
     constructor() { }
     create(de, byte_ar) {
@@ -36,11 +51,15 @@ export class TableFactory {
             case Table.GDEF:
                 return new GdefTable(de, byte_ar);
             case Table.BASE:
-                return new RawTable(Table.BASE, de, byte_ar);
+                return new BaseAxisTable(de, byte_ar);
             case Table.OS_2:
                 return new Os2Table(de, byte_ar);
             case Table.DSIG:
-                return new RawTable(Table.DSIG, de, byte_ar);
+                return new DsigTable(de, byte_ar);
+            case Table.CBDT:
+                return new RawTable(Table.CBDT, de, byte_ar);
+            case Table.CBLC:
+                return new RawTable(Table.CBLC, de, byte_ar);
             case Table.EBDT:
                 return new RawTable(Table.EBDT, de, byte_ar);
             case Table.EBLC:
@@ -48,17 +67,17 @@ export class TableFactory {
             case Table.EBSC:
                 return new RawTable(Table.EBSC, de, byte_ar);
             case Table.JSTF:
-                return new RawTable(Table.JSTF, de, byte_ar);
+                return new JstfTable(de, byte_ar);
             case Table.LTSH:
-                return new RawTable(Table.LTSH, de, byte_ar);
+                return new LtshTable(de, byte_ar);
             case Table.MMFX:
                 return new RawTable(Table.MMFX, de, byte_ar);
             case Table.MMSD:
                 return new RawTable(Table.MMSD, de, byte_ar);
             case Table.PCLT:
-                return new RawTable(Table.PCLT, de, byte_ar);
+                return new PcltTable(de, byte_ar);
             case Table.VDMX:
-                return new RawTable(Table.VDMX, de, byte_ar);
+                return new VdmxTable(de, byte_ar);
             case Table.cmap:
                 return new CmapTable(de, byte_ar);
             case Table.cvt:
@@ -66,7 +85,7 @@ export class TableFactory {
             case Table.fpgm:
                 return new FpgmTable(de, byte_ar);
             case Table.gasp:
-                return new RawTable(Table.gasp, de, byte_ar);
+                return new GaspTable(de, byte_ar);
             case Table.glyf:
                 return new GlyfTable(de, byte_ar);
             case Table.CFF:
@@ -74,7 +93,7 @@ export class TableFactory {
             case Table.CFF2:
                 return new Cff2Table(de, byte_ar);
             case Table.hdmx:
-                return new RawTable(Table.hdmx, de, byte_ar);
+                return new HdmxTable(de, byte_ar);
             case Table.head:
                 return new HeadTable(de, byte_ar);
             case Table.hhea:
@@ -93,20 +112,32 @@ export class TableFactory {
                 return new PrepTable(de, byte_ar);
             case Table.post:
                 return new PostTable(de, byte_ar);
+            case Table.sbix:
+                return new RawTable(Table.sbix, de, byte_ar);
             case Table.vhea:
-                return new RawTable(Table.vhea, de, byte_ar);
+                return new VheaTable(de, byte_ar);
             case Table.vmtx:
-                return new RawTable(Table.vmtx, de, byte_ar);
+                return new VmtxTable(de, byte_ar);
             case Table.CPAL:
                 return new CpalTable(de, byte_ar);
             case Table.COLR:
                 return new ColrTable(de, byte_ar);
             case Table.SVG:
                 return new SvgTable(de, byte_ar);
+            case Table.avar:
+                return new AvarTable(de, byte_ar);
             case Table.fvar:
                 return new FvarTable(de, byte_ar);
             case Table.gvar:
                 return new GvarTable(de, byte_ar);
+            case Table.HVAR:
+                return new HvarTable(de, byte_ar);
+            case Table.VVAR:
+                return new VvarTable(de, byte_ar);
+            case Table.MVAR:
+                return new MvarTable(de, byte_ar);
+            case Table.STAT:
+                return new StatTable(de, byte_ar);
             default:
                 return t;
         }

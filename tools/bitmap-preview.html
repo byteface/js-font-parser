@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bitmap Color Preview</title>
+  <style>
+    :root {
+      --bg: #f6f4f1;
+      --ink: #1e1f24;
+      --muted: #5e6574;
+      --panel: #fff;
+      --border: #e3e1db;
+      --accent: #243144;
+    }
+    body { margin: 0; font-family: "Merriweather", serif; background: var(--bg); color: var(--ink); }
+    .page { padding: 10px 20px 28px; }
+    h1 { margin: 0 0 6px; font-size: 28px; }
+    p { margin: 0; color: var(--muted); }
+    .controls {
+      margin-top: 14px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: end;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      font: 600 12px/1.2 sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #5a6477;
+    }
+    input {
+      border: 1px solid #d8dce5;
+      border-radius: 10px;
+      background: #fcfcfd;
+      color: #1f2b3a;
+      padding: 10px 12px;
+      font: 16px/1.2 sans-serif;
+      min-width: 96px;
+      box-sizing: border-box;
+    }
+    .status {
+      margin-top: 10px;
+      min-height: 22px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .grid {
+      margin-top: 16px;
+      display: grid;
+      gap: 16px;
+      grid-template-columns: minmax(280px, 440px) minmax(280px, 1fr);
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .preview-wrap {
+      min-height: 260px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background:
+        linear-gradient(45deg, #ece8df 25%, transparent 25%),
+        linear-gradient(-45deg, #ece8df 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ece8df 75%),
+        linear-gradient(-45deg, transparent 75%, #ece8df 75%);
+      background-size: 24px 24px;
+      background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
+    }
+    .preview-wrap img {
+      image-rendering: pixelated;
+      width: min(260px, 72%);
+      height: auto;
+      filter: drop-shadow(0 8px 16px rgba(20, 30, 60, 0.12));
+    }
+    .empty {
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 240px;
+      text-align: center;
+      line-height: 1.45;
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #243144;
+    }
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Bitmap Color Preview</h1>
+    <p>Inspect extracted bitmap strikes from <code>CBDT/CBLC</code> and <code>sbix</code> fonts.</p>
+
+    <select id="fontSelect"></select>
+
+    <div class="controls">
+      <label>
+        Character
+        <input id="charInput" type="text" value="😀" maxlength="8" />
+      </label>
+      <label>
+        Preferred PPEM
+        <input id="ppemInput" type="number" min="0" step="1" placeholder="auto" />
+      </label>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="preview-wrap" id="preview"></div>
+      </section>
+      <section class="panel">
+        <pre id="meta"></pre>
+      </section>
+    </div>
+  </div>
+
+  <script type="module">
+    import { FontParser } from "../dist/data/FontParser.js";
+    import { createFontDrawer, createFontLoader, getSelectedFont } from "./shared/font-ui.js";
+    import { getFontList } from "./shared/font-catalog.js";
+
+    const fontSelect = document.getElementById("fontSelect");
+    const charInput = document.getElementById("charInput");
+    const ppemInput = document.getElementById("ppemInput");
+    const status = document.getElementById("status");
+    const preview = document.getElementById("preview");
+    const meta = document.getElementById("meta");
+
+    const fontOptions = getFontList("testFixtures").filter((font) => /emoji/i.test(font.name));
+
+    createFontDrawer({
+      mount: document.body,
+      select: fontSelect,
+      fonts: fontOptions,
+      allowUrl: true,
+      title: "Bitmap Font"
+    });
+    const defaultIndex = fontOptions.findIndex((font) => /Noto Color Emoji/i.test(font.name));
+    if (defaultIndex >= 0) fontSelect.value = String(defaultIndex);
+
+    const loadFont = createFontLoader((url) => FontParser.load(url));
+    let activeImageUrl = null;
+
+    function clearPreview(message = "No bitmap strike extracted for this glyph.") {
+      if (activeImageUrl) {
+        URL.revokeObjectURL(activeImageUrl);
+        activeImageUrl = null;
+      }
+      preview.innerHTML = `<div class="empty">${message}</div>`;
+    }
+
+    function setStatus(text, tone = "muted") {
+      status.textContent = text;
+      status.style.color = tone === "error" ? "#a53a2d" : "#5e6574";
+    }
+
+    async function render() {
+      const selected = getSelectedFont(fontSelect, fontOptions);
+      const char = (charInput.value || "😀").trim() || "😀";
+      const preferredPpem = Number(ppemInput.value);
+      setStatus(`Loading ${selected.name}…`);
+
+      try {
+        const font = await loadFont(selected.url);
+        const bitmapInfo = font.getBitmapColorInfo();
+        const strike = font.getBitmapStrikeForChar(char, Number.isFinite(preferredPpem) ? preferredPpem : undefined);
+        if (!strike) {
+          clearPreview(`No bitmap strike found for “${char}”.`);
+          meta.textContent = JSON.stringify({
+            font: selected.name,
+            char,
+            bitmapInfo
+          }, null, 2);
+          setStatus(`Loaded ${selected.name}, but no bitmap strike was found for “${char}”.`);
+          return;
+        }
+
+        const blob = new Blob([strike.data], { type: strike.mimeType || "application/octet-stream" });
+        if (activeImageUrl) URL.revokeObjectURL(activeImageUrl);
+        activeImageUrl = URL.createObjectURL(blob);
+        preview.innerHTML = `<img alt="Bitmap strike preview for ${char}" src="${activeImageUrl}" />`;
+        meta.textContent = JSON.stringify({
+          font: selected.name,
+          char,
+          bitmapInfo,
+          strike: {
+            glyphId: strike.glyphId,
+            ppemX: strike.ppemX,
+            ppemY: strike.ppemY,
+            bitDepth: strike.bitDepth,
+            imageFormat: strike.imageFormat,
+            graphicType: strike.graphicType,
+            mimeType: strike.mimeType,
+            metrics: strike.metrics,
+            dataLength: strike.data.length
+          }
+        }, null, 2);
+        setStatus(`Loaded ${selected.name} (${bitmapInfo.format || "no bitmap format"})`);
+      } catch (error) {
+        clearPreview("Failed to load bitmap font preview.");
+        meta.textContent = String(error?.stack || error);
+        setStatus(`Failed to load ${selected?.name || "font"}.`, "error");
+      }
+    }
+
+    fontSelect.addEventListener("change", render);
+    charInput.addEventListener("input", render);
+    ppemInput.addEventListener("input", render);
+    render();
+  </script>
+</body>
+</html>

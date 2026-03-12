@@ -371,6 +371,43 @@ test('Color and variable font APIs return structured data', () => {
   const plainBytes = readBytes('truetypefonts/noto/NotoSans-Regular.ttf');
   const plainFont = FontParser.fromArrayBuffer(toArrayBuffer(plainBytes));
   assert.deepEqual(plainFont.getColrV1LayersForGlyph(0), []);
+  assert.deepEqual(plainFont.getBitmapColorInfo().hasBitmapData, false);
+
+  const bitmapBytes = readBytes('truetypefonts/curated/NotoColorEmoji.ttf');
+  const bitmapFont = FontParser.fromArrayBuffer(toArrayBuffer(bitmapBytes));
+  const bitmapInfo = bitmapFont.getBitmapColorInfo();
+  assert.equal(bitmapInfo.hasBitmapData, true);
+  assert.equal(bitmapInfo.format, 'cbdt-cblc');
+  assert.ok(bitmapInfo.tables.includes('CBDT'));
+  assert.ok(bitmapInfo.tables.includes('CBLC'));
+  assert.ok(bitmapInfo.tableLengths.CBDT > 0);
+  assert.ok(bitmapInfo.tableLengths.CBLC > 0);
+  const bitmapStrike = bitmapFont.getBitmapStrikeForChar('😀');
+  assert.ok(bitmapStrike);
+  assert.equal(bitmapStrike?.mimeType, 'image/png');
+  assert.equal(bitmapStrike?.metrics?.height, 128);
+  assert.equal(bitmapStrike?.metrics?.width, 136);
+  assert.equal(bitmapStrike?.metrics?.bearingY, 101);
+  assert.equal(bitmapStrike?.metrics?.advance, 136);
+  assert.equal(bitmapStrike?.data[0], 0x89);
+  assert.equal(bitmapStrike?.data[1], 0x50);
+
+  const sbixBytes = readBytes('truetypefonts/curated/AppleColorEmoji-sbix-subset.ttf');
+  const sbixFont = FontParser.fromArrayBuffer(toArrayBuffer(sbixBytes));
+  const sbixInfo = sbixFont.getBitmapColorInfo();
+  assert.equal(sbixInfo.hasBitmapData, true);
+  assert.equal(sbixInfo.format, 'sbix');
+  assert.ok(sbixInfo.tables.includes('sbix'));
+  assert.ok(sbixInfo.tableLengths.sbix > 0);
+  const sbixStrike = sbixFont.getBitmapStrikeForChar('😀');
+  assert.ok(sbixStrike);
+  assert.equal(sbixStrike?.graphicType, 'png ');
+  assert.equal(sbixStrike?.mimeType, 'image/png');
+  assert.equal(sbixStrike?.metrics?.height, 20);
+  assert.equal(sbixStrike?.metrics?.width, 20);
+  assert.equal(sbixStrike?.metrics?.advance, 800);
+  assert.equal(sbixStrike?.data[0], 0x89);
+  assert.equal(sbixStrike?.data[1], 0x50);
 
   const colrTable = colrFont.getTableByType(Table.COLR);
   if (colrTable) {

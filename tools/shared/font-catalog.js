@@ -32,6 +32,13 @@ const PATHS = {
   sourceSerif4VarRoman: '../truetypefonts/OTF/source-serif4/SourceSerif4Variable-Roman.otf',
   sourceSerif4VarItalic: '../truetypefonts/curated/SourceSerif4Variable-Italic.otf',
   sourceSans3Regular: '../truetypefonts/curated/SourceSans3-Regular.otf',
+  sourceSerif4Regular: '../truetypefonts/curated/SourceSerif4-Regular.otf',
+  firaSansRegularTtf: '../truetypefonts/curated/FiraSans-Regular.ttf',
+  ibmPlexSerifRegular: '../truetypefonts/curated/IBMPlexSerif-Regular.ttf',
+  interVar: '../truetypefonts/curated/Inter-VF.ttf',
+  appleColorEmojiSbix: '../truetypefonts/curated/AppleColorEmoji-sbix-subset.ttf',
+  notoColorEmoji: '../truetypefonts/curated/NotoColorEmoji.ttf',
+  notoGeorgianVar: '../truetypefonts/curated/NotoSansGeorgian-VF.ttf',
   notoSerifVar: '../truetypefonts/curated/NotoSerif-VF.ttf',
   robotoVar: '../truetypefonts/curated/Roboto-VF.ttf',
   playwriteVar: '../truetypefonts/Playwrite_GB_S/PlaywriteGBS-VariableFont_wght.ttf',
@@ -67,6 +74,7 @@ const PATHS = {
   notoTeluguVar: '../truetypefonts/curated-extra/NotoSansTelugu-VF.ttf',
   notoThaiVar: '../truetypefonts/curated-extra/NotoSansThai-VF.ttf',
   notoTibetanVar: '../truetypefonts/curated-extra/NotoSerifTibetan-VF.ttf',
+  amiriRegular: '../truetypefonts/gpos/amiri/Amiri-Regular.ttf',
   firaSansWoff: '../truetypefonts/curated-extra/FiraSans-Regular.woff',
   sourceCodeProRegularExtra: '../truetypefonts/curated-extra/SourceCodePro-Regular.otf',
   sourceCodeProBoldExtra: '../truetypefonts/curated-extra/SourceCodePro-Bold.otf',
@@ -80,7 +88,8 @@ const PATHS = {
   woff2FontAwesomeSubset: '../truetypefonts/curated-extra/woff2/FontAwesome-4.7.0-icons-subset.woff2',
   nablaColrv1Var: '../truetypefonts/color/colrv1-var/Nabla.ttf',
   nablaColrv1Letters: '../truetypefonts/color/nabla/Nabla[EDPT,EHLT].ttf',
-  colrv1TestShapes: '../truetypefonts/color/colrv1/test_glyphs-glyf_colr_1.ttf'
+  colrv1TestShapes: '../truetypefonts/color/colrv1/test_glyphs-glyf_colr_1.ttf',
+  twitterColorEmojiSvg: '../truetypefonts/svg/TwitterColorEmoji-SVGinOT-15.1.0/TwitterColorEmoji-SVGinOT.ttf'
 };
 
 export const FONT_LISTS = {
@@ -104,6 +113,12 @@ export const FONT_LISTS = {
     { name: 'DiscoMo.ttf', url: PATHS.discomo },
     { name: 'DevilInside-G3xP.ttf', url: PATHS.devilInside },
     { name: 'JoeJack.ttf', url: PATHS.joeJack },
+    { name: 'Inter-VF.ttf', url: PATHS.interVar },
+    { name: 'IBMPlexSerif-Regular.ttf', url: PATHS.ibmPlexSerifRegular },
+    { name: 'NotoSansGeorgian-VF.ttf', url: PATHS.notoGeorgianVar },
+    { name: 'AppleColorEmoji-sbix-subset.ttf', url: PATHS.appleColorEmojiSbix },
+    { name: 'NotoColorEmoji.ttf', url: PATHS.notoColorEmoji },
+    { name: 'Amiri-Regular.ttf', url: PATHS.amiriRegular },
     { name: 'NotoSans-Regular.ttf', url: PATHS.notoSans },
     { name: 'NotoSansHebrew-Regular.ttf', url: PATHS.notoHebrew },
     { name: 'NotoSansArabic-VF.ttf', url: PATHS.notoArabicVar },
@@ -376,6 +391,8 @@ export const FONT_LISTS = {
   ],
   kerning: [
     { name: 'Noto Sans (GPOS)', url: PATHS.notoSans },
+    { name: 'Inter Variable (GPOS)', url: PATHS.interVar },
+    { name: 'IBM Plex Serif Regular (GPOS)', url: PATHS.ibmPlexSerifRegular },
     { name: 'Roboto VF (GPOS)', url: PATHS.robotoVar },
     { name: 'Gotham Narrow Ultra (kern + GPOS)', url: PATHS.gothamNarrow },
     { name: 'Noto Serif VF (GPOS)', url: PATHS.notoSerifVar },
@@ -389,6 +406,7 @@ export const FONT_LISTS = {
     { name: 'Noto Sans Sinhala VF (GPOS)', url: PATHS.notoSinhalaVar },
     { name: 'Noto Sans Telugu VF (GPOS)', url: PATHS.notoTeluguVar },
     { name: 'Noto Nastaliq Urdu VF (GPOS)', url: PATHS.notoNastaliqUrduVar },
+    { name: 'Amiri Regular (GPOS)', url: PATHS.amiriRegular },
     { name: 'Source Code Pro Bold (OTF)', url: PATHS.sourceCodeProBoldExtra }
   ],
   allGlyphs: [
@@ -417,7 +435,14 @@ export const FONT_LISTS = {
     { name: 'ZWISDOM', url: PATHS.zwisdom },
     { name: 'slkscr', url: PATHS.slkscr },
     { name: 'Twemoji Mozilla (color)', url: PATHS.twemoji },
+    { name: 'Apple Color Emoji sbix subset', url: PATHS.appleColorEmojiSbix },
+    { name: 'Noto Color Emoji', url: PATHS.notoColorEmoji },
+    { name: 'Twitter Color Emoji SVGinOT', url: PATHS.twitterColorEmojiSvg },
     { name: 'Noto Sans Regular', url: PATHS.notoSans },
+    { name: 'Inter Variable', url: PATHS.interVar },
+    { name: 'IBM Plex Serif Regular', url: PATHS.ibmPlexSerifRegular },
+    { name: 'Noto Sans Georgian VF', url: PATHS.notoGeorgianVar },
+    { name: 'Amiri Regular', url: PATHS.amiriRegular },
     { name: 'Noto Sans CJK SC', url: PATHS.notoCjkSc },
     { name: 'Noto Sans CJK JP', url: PATHS.notoCjkJp },
     { name: 'Noto Serif CJK SC', url: PATHS.notoSerifCjkSc },
@@ -457,7 +482,8 @@ export const FONT_LISTS = {
     { name: 'Font Awesome 4.7 (TTF)', url: PATHS.fontAwesome47Ttf },
     { name: 'Source Code Pro Regular (OTF)', url: PATHS.sourceCodeProRegular },
     { name: 'Source Code Pro Bold (OTF)', url: PATHS.sourceCodeProBoldExtra },
-    { name: 'Fira Sans (WOFF)', url: PATHS.firaSansWoff }
+    { name: 'Fira Sans (WOFF)', url: PATHS.firaSansWoff },
+    { name: 'Fira Sans Regular (TTF)', url: PATHS.firaSansRegularTtf }
   ],
   cff2Inspector: [
     { name: 'SourceSerif4Variable-Roman.otf', url: PATHS.sourceSerif4VarRoman },
@@ -573,6 +599,17 @@ export const FONT_LISTS = {
     'curated/Roboto-VF.ttf',
     'curated/NotoSerif-VF.ttf',
     'curated/SourceSerif4-Regular.otf'
+  ],
+  testFixtures: [
+    { name: 'Inter Variable', url: PATHS.interVar },
+    { name: 'IBM Plex Serif Regular', url: PATHS.ibmPlexSerifRegular },
+    { name: 'Fira Sans Regular (TTF)', url: PATHS.firaSansRegularTtf },
+    { name: 'Noto Sans Georgian VF', url: PATHS.notoGeorgianVar },
+    { name: 'Apple Color Emoji sbix subset', url: PATHS.appleColorEmojiSbix },
+    { name: 'Noto Color Emoji', url: PATHS.notoColorEmoji },
+    { name: 'Amiri Regular', url: PATHS.amiriRegular },
+    { name: 'Twitter Color Emoji SVGinOT', url: PATHS.twitterColorEmojiSvg },
+    { name: 'Source Serif 4 Regular', url: PATHS.sourceSerif4Regular }
   ]
 };
 

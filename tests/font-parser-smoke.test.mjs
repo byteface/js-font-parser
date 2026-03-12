@@ -85,3 +85,54 @@ test('font parser smoke: layout returns positioned glyphs', () => {
     assert.equal(Number.isFinite(item.yOffset), true, 'expected finite yOffset');
   }
 });
+
+test('font parser smoke: Inter variable exposes axes and basic glyph mapping', () => {
+  const font = loadFont('truetypefonts/curated/Inter-VF.ttf');
+  const axes = font.getVariationAxes();
+  assert.ok(Array.isArray(axes) && axes.length > 0, 'expected variation axes for Inter');
+  assert.ok(font.getGlyphIndexByChar('A') > 0, 'expected Latin glyph mapping in Inter');
+});
+
+test('font parser smoke: IBM Plex Serif exposes core glyph geometry', () => {
+  const font = loadFont('truetypefonts/curated/IBMPlexSerif-Regular.ttf');
+  const glyph = font.getGlyphByChar('Q');
+  assert.ok(glyph, 'expected IBM Plex Serif glyph data');
+  assert.ok(glyph.getPointCount() > 0, 'expected IBM Plex Serif contour points');
+});
+
+test('font parser smoke: Noto Sans Georgian variable maps Georgian text', () => {
+  const font = loadFont('truetypefonts/curated/NotoSansGeorgian-VF.ttf');
+  const layout = font.layoutStringAuto('ქართული', { gpos: true });
+  assert.ok(layout.length > 0, 'expected Georgian layout entries');
+});
+
+test('font parser smoke: extra emoji fixtures load and map emoji coverage', () => {
+  const notoEmoji = loadFont('truetypefonts/curated/NotoColorEmoji.ttf');
+  const appleEmoji = loadFont('truetypefonts/curated/AppleColorEmoji-sbix-subset.ttf');
+  const twitterEmoji = loadFont('truetypefonts/svg/TwitterColorEmoji-SVGinOT-15.1.0/TwitterColorEmoji-SVGinOT.ttf');
+  assert.ok(notoEmoji.getGlyphIndexByChar('😀') > 0, 'expected Noto Color Emoji cmap mapping');
+  assert.equal(notoEmoji.layoutStringAuto('😀😀', { gpos: true }).length, 2, 'expected Noto Color Emoji layout entries');
+  assert.ok(notoEmoji.getGlyphByChar('😀'), 'expected Noto Color Emoji glyph object');
+  assert.equal(notoEmoji.getGlyphByChar('😀')?.advanceWidth ?? 0, 2550, 'expected metrics-only emoji glyph fallback to preserve advance width');
+  assert.ok(notoEmoji.getTableByType(Table.CBDT), 'expected Noto Color Emoji CBDT table');
+  assert.ok(notoEmoji.getTableByType(Table.CBLC), 'expected Noto Color Emoji CBLC table');
+  assert.deepEqual(notoEmoji.getBitmapColorInfo().format, 'cbdt-cblc');
+  const bitmap = notoEmoji.getBitmapStrikeForChar('😀');
+  assert.ok(bitmap, 'expected bitmap strike extraction for Noto Color Emoji');
+  assert.equal(bitmap?.mimeType, 'image/png');
+  assert.equal(bitmap?.ppemY, 109);
+  assert.equal(bitmap?.imageFormat, 17);
+  assert.ok((bitmap?.data.length ?? 0) > 1000, 'expected embedded PNG payload');
+
+  assert.ok(appleEmoji.getGlyphIndexByChar('😀') > 0, 'expected Apple sbix subset cmap mapping');
+  assert.deepEqual(appleEmoji.getBitmapColorInfo().format, 'sbix');
+  const sbixBitmap = appleEmoji.getBitmapStrikeForChar('😀');
+  assert.ok(sbixBitmap, 'expected sbix bitmap strike extraction');
+  assert.equal(sbixBitmap?.graphicType, 'png ');
+  assert.equal(sbixBitmap?.mimeType, 'image/png');
+  assert.equal(sbixBitmap?.ppemY, 20);
+  assert.equal(sbixBitmap?.metrics?.width, 20);
+  assert.equal(sbixBitmap?.metrics?.height, 20);
+  assert.ok((sbixBitmap?.data.length ?? 0) > 1000, 'expected embedded sbix PNG payload');
+  assert.ok(twitterEmoji.getGlyphByChar('😀'), 'expected Twitter SVGinOT emoji glyph');
+});

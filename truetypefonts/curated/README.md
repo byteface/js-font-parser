@@ -47,6 +47,9 @@ Additional font fixtures downloaded to broaden parser/test coverage across:
 - `NotoColorEmoji.ttf`
   - Source: https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf
   - SHA256: `72a635cb3d2f3524c51620cdde406b217204e8a6a06c6a096ff8ed4b5fd6e27b`
+- `AppleColorEmoji-sbix-subset.ttf`
+  - Source: subset extracted from `/System/Library/Fonts/Apple Color Emoji.ttc` (font 0) with `pyftsubset --text='😀👍❤️'`
+  - SHA256: `a8a1f3b591719124cd7494b13bc4306b83d30a0c72cbf038efc72f62090465e3`
 
 ## Notes
 - These files were pulled via `curl -fL` directly from upstream repositories.

@@ -54,15 +54,20 @@ export abstract class BaseFontParser {
     protected tables: any[] = [];
     protected os2: any | null = null;
     protected cmap: any | null = null;
+    protected cbdt: any | null = null;
+    protected cblc: any | null = null;
     protected glyf: any | null = null;
     protected cff: any | null = null;
     protected head: any | null = null;
     protected hhea: any | null = null;
     protected hmtx: any | null = null;
+    protected vhea: any | null = null;
+    protected vmtx: any | null = null;
     protected loca: any | null = null;
     protected maxp: any | null = null;
     protected pName: any | null = null;
     protected post: any | null = null;
+    protected sbix: any | null = null;
     protected gsub: any | null = null;
     protected kern: { getKerningValue?: (leftGlyph: number, rightGlyph: number) => number | null } | null = null;
     protected colr: any | null = null;
@@ -70,8 +75,16 @@ export abstract class BaseFontParser {
     protected gpos: any | null = null;
     protected gdef: { getGlyphClass?: (glyphId: number) => number } | null = null;
     protected fvar: any | null = null;
+    protected avar: any | null = null;
     protected svg: any | null = null;
+    protected ebdt: any | null = null;
+    protected eblc: any | null = null;
+    protected ebsc: any | null = null;
     protected gvar: any | null = null;
+    protected hvar: any | null = null;
+    protected vvar: any | null = null;
+    protected mvar: any | null = null;
+    protected stat: any | null = null;
     protected cvt: any | null = null;
     protected fpgm: any | null = null;
     protected prep: any | null = null;
@@ -292,6 +305,14 @@ export abstract class BaseFontParser {
 
     protected getFvarTableForShared(): any | null {
         return this.fvar;
+    }
+
+    protected getAvarTableForShared(): any | null {
+        return this.avar;
+    }
+
+    protected getStatTableForShared(): any | null {
+        return this.stat;
     }
 
     protected getColrTableForShared(): any | null {
@@ -598,6 +619,26 @@ export abstract class BaseFontParser {
                 getYMinimum: () => 0,
                 isComposite: () => false,
                 resolve: () => { /* no-op for empty glyph */ },
+                getInstructions: () => []
+            };
+            return new GlyphData(emptyDesc, lsb, advance);
+        }
+        if (hmtx) {
+            const lsb = hmtx?.getLeftSideBearing?.(i) ?? 0;
+            const advance = hmtx?.getAdvanceWidth?.(i) ?? 0;
+            const emptyDesc: IGlyphDescription = {
+                getPointCount: () => 0,
+                getContourCount: () => 0,
+                getEndPtOfContours: () => -1,
+                getFlags: () => 0,
+                getXCoordinate: () => 0,
+                getYCoordinate: () => 0,
+                getXMaximum: () => 0,
+                getXMinimum: () => 0,
+                getYMaximum: () => 0,
+                getYMinimum: () => 0,
+                isComposite: () => false,
+                resolve: () => { /* no-op for metrics-only glyph */ },
                 getInstructions: () => []
             };
             return new GlyphData(emptyDesc, lsb, advance);
@@ -983,15 +1024,20 @@ export abstract class BaseFontParser {
     protected wireCommonTables(): void {
         this.os2 = this.getTable(Table.OS_2);
         this.cmap = this.getTable(Table.cmap);
+        this.cbdt = this.getTable(Table.CBDT);
+        this.cblc = this.getTable(Table.CBLC);
         this.glyf = this.getTable(Table.glyf);
         this.cff = this.getTable(Table.CFF);
         this.head = this.getTable(Table.head);
         this.hhea = this.getTable(Table.hhea);
         this.hmtx = this.getTable(Table.hmtx);
+        this.vhea = this.getTable(Table.vhea);
+        this.vmtx = this.getTable(Table.vmtx);
         this.loca = this.getTable(Table.loca);
         this.maxp = this.getTable(Table.maxp);
         this.pName = this.getTable(Table.pName);
         this.post = this.getTable(Table.post);
+        this.sbix = this.getTable(Table.sbix);
         this.gsub = this.getTable(Table.GSUB);
         this.kern = this.getTable(Table.kern);
         this.colr = this.getTable(Table.COLR);
@@ -999,8 +1045,16 @@ export abstract class BaseFontParser {
         this.gpos = this.getTable(Table.GPOS);
         this.gdef = this.getTable(Table.GDEF);
         this.svg = this.getTable(Table.SVG);
+        this.ebdt = this.getTable(Table.EBDT);
+        this.eblc = this.getTable(Table.EBLC);
+        this.ebsc = this.getTable(Table.EBSC);
+        this.avar = this.getTable(Table.avar);
         this.fvar = this.getTable(Table.fvar);
         this.gvar = this.getTable(Table.gvar);
+        this.hvar = this.getTable(Table.HVAR);
+        this.vvar = this.getTable(Table.VVAR);
+        this.mvar = this.getTable(Table.MVAR);
+        this.stat = this.getTable(Table.STAT);
         this.cvt = this.getTable(Table.cvt);
         this.fpgm = this.getTable(Table.fpgm);
         this.prep = this.getTable(Table.prep);
@@ -1016,6 +1070,9 @@ export abstract class BaseFontParser {
         }
         if (this.hmtx && this.maxp) {
             this.hmtx.run(this.hhea?.numberOfHMetrics ?? 0, this.maxp.numGlyphs - (this.hhea?.numberOfHMetrics ?? 0));
+        }
+        if (this.vmtx && this.maxp) {
+            this.vmtx.run(this.vhea?.numberOfVMetrics ?? 0, this.maxp.numGlyphs - (this.vhea?.numberOfVMetrics ?? 0));
         }
         if (this.loca && this.maxp && this.head) {
             this.loca.run(this.maxp.numGlyphs, this.head.indexToLocFormat === 0);
@@ -1381,7 +1438,9 @@ export abstract class BaseFontParser {
     public setVariationByAxes(values: Record<string, number>): void {
         const fvar = (this as any).getFvarTableForShared?.() ?? (this as any).fvar ?? null;
         if (!fvar) return;
+        const avar = (this as any).getAvarTableForShared?.() ?? (this as any).avar ?? null;
         const coords: number[] = [];
+        let axisIndex = 0;
         for (const axis of fvar.axes ?? []) {
             const tag = axis.name;
             const value = values[tag] ?? axis.defaultValue;
@@ -1395,9 +1454,44 @@ export abstract class BaseFontParser {
                     norm = span !== 0 ? (value - axis.defaultValue) / span : 0;
                 }
             }
+            if (avar && typeof avar.mapCoord === 'function') {
+                norm = avar.mapCoord(axisIndex, norm);
+            }
             coords.push(Number.isFinite(norm) ? Math.max(-1, Math.min(1, norm)) : 0);
+            axisIndex++;
         }
         this.setVariationCoords(coords);
+    }
+
+    public getVariationInfo(): {
+        axes: ReturnType<BaseFontParser['getVariationAxes']>;
+        hasAvar: boolean;
+        hasGvar: boolean;
+        hasHvar: boolean;
+        hasVvar: boolean;
+        hasMvar: boolean;
+        hasStat: boolean;
+        stat: {
+            designAxes: any[];
+            axisValues: any[];
+            elidedFallbackNameId: number | null;
+        } | null;
+    } {
+        const stat = (this as any).getStatTableForShared?.() ?? (this as any).stat ?? null;
+        return {
+            axes: this.getVariationAxes(),
+            hasAvar: !!this.avar,
+            hasGvar: !!this.gvar,
+            hasHvar: !!this.hvar,
+            hasVvar: !!this.vvar,
+            hasMvar: !!this.mvar,
+            hasStat: !!stat,
+            stat: stat ? {
+                designAxes: Array.isArray(stat.designAxes) ? stat.designAxes : [],
+                axisValues: Array.isArray(stat.axisValues) ? stat.axisValues : [],
+                elidedFallbackNameId: Number.isFinite(stat.elidedFallbackNameId) ? stat.elidedFallbackNameId : null
+            } : null
+        };
     }
 
     public getGlyphPointsByChar(
@@ -1702,6 +1796,39 @@ export abstract class BaseFontParser {
         };
     }
 
+    public getVerticalMetrics(): {
+        ascender: number;
+        descender: number;
+        lineGap: number;
+        advanceHeightMax: number;
+        minTopSideBearing: number;
+        minBottomSideBearing: number;
+        yMaxExtent: number;
+        caretSlopeRise: number;
+        caretSlopeRun: number;
+        caretOffset: number;
+        metricDataFormat: number;
+        numberOfVMetrics: number;
+        hasVerticalMetricsTable: boolean;
+    } | null {
+        if (!this.vhea) return null;
+        return {
+            ascender: this.vhea.ascender ?? 0,
+            descender: this.vhea.descender ?? 0,
+            lineGap: this.vhea.lineGap ?? 0,
+            advanceHeightMax: this.vhea.advanceHeightMax ?? 0,
+            minTopSideBearing: this.vhea.minTopSideBearing ?? 0,
+            minBottomSideBearing: this.vhea.minBottomSideBearing ?? 0,
+            yMaxExtent: this.vhea.yMaxExtent ?? 0,
+            caretSlopeRise: this.vhea.caretSlopeRise ?? 0,
+            caretSlopeRun: this.vhea.caretSlopeRun ?? 0,
+            caretOffset: this.vhea.caretOffset ?? 0,
+            metricDataFormat: this.vhea.metricDataFormat ?? 0,
+            numberOfVMetrics: this.vhea.numberOfVMetrics ?? 0,
+            hasVerticalMetricsTable: !!this.vmtx
+        };
+    }
+
     public getWeightClass(): number {
         return this.getOs2TableForShared()?.usWeightClass ?? 0;
     }
@@ -1763,6 +1890,8 @@ export abstract class BaseFontParser {
         nameRecords: ReturnType<BaseFontParser['getAllNameRecordsDetailed']>;
         os2: ReturnType<BaseFontParser['getOs2Metrics']>;
         post: ReturnType<BaseFontParser['getPostMetrics']>;
+        vertical: ReturnType<BaseFontParser['getVerticalMetrics']>;
+        bitmapColor: ReturnType<BaseFontParser['getBitmapColorInfo']>;
         style: {
             isBold: boolean;
             isItalic: boolean;
@@ -1778,6 +1907,8 @@ export abstract class BaseFontParser {
             nameRecords: this.getAllNameRecordsDetailed(),
             os2: this.getOs2Metrics(),
             post: this.getPostMetrics(),
+            vertical: this.getVerticalMetrics(),
+            bitmapColor: this.getBitmapColorInfo(),
             style: {
                 isBold: this.isBold(),
                 isItalic: this.isItalic(),
@@ -1788,6 +1919,310 @@ export abstract class BaseFontParser {
                 fsSelectionFlags: this.getFsSelectionFlags()
             }
         };
+    }
+
+    public getBitmapColorInfo(): {
+        hasBitmapData: boolean;
+        format: 'cbdt-cblc' | 'sbix' | 'ebdt-eblc' | null;
+        tables: string[];
+        tableLengths: Record<string, number>;
+    } {
+        const tables: string[] = [];
+        const tableLengths: Record<string, number> = {};
+        const collect = (tag: string, table: any | null) => {
+            if (!table) return;
+            tables.push(tag);
+            const length = typeof table.getLength === 'function' ? table.getLength() : null;
+            if (Number.isFinite(length)) tableLengths[tag] = length as number;
+        };
+
+        collect('CBDT', this.cbdt);
+        collect('CBLC', this.cblc);
+        collect('sbix', this.sbix);
+        collect('EBDT', this.ebdt);
+        collect('EBLC', this.eblc);
+        collect('EBSC', this.ebsc);
+
+        let format: 'cbdt-cblc' | 'sbix' | 'ebdt-eblc' | null = null;
+        if (this.cbdt && this.cblc) format = 'cbdt-cblc';
+        else if (this.sbix) format = 'sbix';
+        else if (this.ebdt && this.eblc) format = 'ebdt-eblc';
+
+        return {
+            hasBitmapData: tables.length > 0,
+            format,
+            tables,
+            tableLengths
+        };
+    }
+
+    public getBitmapStrikeForGlyph(glyphId: number, preferredPpem?: number): {
+        glyphId: number;
+        ppemX: number;
+        ppemY: number;
+        bitDepth: number;
+        imageFormat: number | null;
+        graphicType: string | null;
+        metrics: {
+            height: number;
+            width: number;
+            bearingX: number;
+            bearingY: number;
+            advance: number;
+        } | null;
+        mimeType: string | null;
+        data: Uint8Array;
+    } | null {
+        const cblcStrike = this.getCbdtBitmapStrikeForGlyph(glyphId, preferredPpem);
+        if (cblcStrike) return cblcStrike;
+        return this.getSbixBitmapStrikeForGlyph(glyphId, preferredPpem);
+    }
+
+    private getCbdtBitmapStrikeForGlyph(glyphId: number, preferredPpem?: number): ReturnType<BaseFontParser['getBitmapStrikeForGlyph']> {
+        const cblc = this.cblc ?? this.eblc;
+        const cbdt = this.cbdt ?? this.ebdt;
+        if (!cblc || !cbdt || typeof cblc.getBytes !== 'function' || typeof cbdt.getBytes !== 'function') {
+            return null;
+        }
+
+        const cblcBytes = cblc.getBytes() as Uint8Array;
+        const cbdtBytes = cbdt.getBytes() as Uint8Array;
+        if (!(cblcBytes instanceof Uint8Array) || !(cbdtBytes instanceof Uint8Array) || cblcBytes.length < 8 || cbdtBytes.length < 4) {
+            return null;
+        }
+
+        const cblcView = new DataView(cblcBytes.buffer, cblcBytes.byteOffset, cblcBytes.byteLength);
+        const cbdtView = new DataView(cbdtBytes.buffer, cbdtBytes.byteOffset, cbdtBytes.byteLength);
+        const numSizes = cblcView.getUint32(4, false);
+        const strikes: Array<{
+            ppemX: number;
+            ppemY: number;
+            bitDepth: number;
+            bitmapSizeTableOffset: number;
+            indexSubTableArrayOffset: number;
+            numberOfIndexSubTables: number;
+        }> = [];
+
+        for (let i = 0; i < numSizes; i++) {
+            const strikeOffset = 8 + (i * 48);
+            if (strikeOffset + 48 > cblcBytes.length) break;
+            strikes.push({
+                bitmapSizeTableOffset: strikeOffset,
+                indexSubTableArrayOffset: cblcView.getUint32(strikeOffset, false),
+                numberOfIndexSubTables: cblcView.getUint32(strikeOffset + 8, false),
+                ppemX: cblcView.getUint8(strikeOffset + 44),
+                ppemY: cblcView.getUint8(strikeOffset + 45),
+                bitDepth: cblcView.getUint8(strikeOffset + 46)
+            });
+        }
+
+        const orderedStrikes = strikes.slice().sort((a, b) => {
+            if (!Number.isFinite(preferredPpem)) return 0;
+            const target = preferredPpem as number;
+            return Math.abs(a.ppemY - target) - Math.abs(b.ppemY - target);
+        });
+
+        for (const strike of orderedStrikes) {
+            const arrayBase = strike.indexSubTableArrayOffset;
+            for (let i = 0; i < strike.numberOfIndexSubTables; i++) {
+                const recOffset = arrayBase + (i * 8);
+                if (recOffset + 8 > cblcBytes.length) break;
+                const firstGlyphIndex = cblcView.getUint16(recOffset, false);
+                const lastGlyphIndex = cblcView.getUint16(recOffset + 2, false);
+                const additionalOffset = cblcView.getUint32(recOffset + 4, false);
+                if (glyphId < firstGlyphIndex || glyphId > lastGlyphIndex) continue;
+
+                const subtableOffset = arrayBase + additionalOffset;
+                if (subtableOffset + 8 > cblcBytes.length) return null;
+                const indexFormat = cblcView.getUint16(subtableOffset, false);
+                const imageFormat = cblcView.getUint16(subtableOffset + 2, false);
+                const imageDataOffset = cblcView.getUint32(subtableOffset + 4, false);
+
+                if (indexFormat !== 1) return null;
+                const glyphIndex = glyphId - firstGlyphIndex;
+                const offsetArrayOffset = subtableOffset + 8;
+                const startOffsetPos = offsetArrayOffset + (glyphIndex * 4);
+                const endOffsetPos = startOffsetPos + 4;
+                if (endOffsetPos + 4 > cblcBytes.length) return null;
+                const startOffset = cblcView.getUint32(startOffsetPos, false);
+                const endOffset = cblcView.getUint32(endOffsetPos, false);
+                if (endOffset < startOffset) return null;
+
+                const bitmapOffset = imageDataOffset + startOffset;
+                const bitmapLength = endOffset - startOffset;
+                if (bitmapOffset < 0 || bitmapOffset + bitmapLength > cbdtBytes.length || bitmapOffset + 4 > cbdtBytes.length) return null;
+
+                let cursor = bitmapOffset;
+                let metrics: {
+                    height: number;
+                    width: number;
+                    bearingX: number;
+                    bearingY: number;
+                    advance: number;
+                } | null = null;
+
+                if (imageFormat === 17) {
+                    if (cursor + 9 > cbdtBytes.length) return null;
+                    metrics = {
+                        height: cbdtView.getUint8(cursor),
+                        width: cbdtView.getUint8(cursor + 1),
+                        bearingX: cbdtView.getInt8(cursor + 2),
+                        bearingY: cbdtView.getInt8(cursor + 3),
+                        advance: cbdtView.getUint8(cursor + 4)
+                    };
+                    cursor += 5;
+                } else if (imageFormat === 18) {
+                    if (cursor + 12 > cbdtBytes.length) return null;
+                    metrics = {
+                        height: cbdtView.getUint8(cursor),
+                        width: cbdtView.getUint8(cursor + 1),
+                        bearingX: cbdtView.getInt8(cursor + 2),
+                        bearingY: cbdtView.getInt8(cursor + 3),
+                        advance: cbdtView.getUint8(cursor + 7)
+                    };
+                    cursor += 8;
+                }
+
+                if (imageFormat !== 17 && imageFormat !== 18 && imageFormat !== 19) return null;
+                const dataLength = cbdtView.getUint32(cursor, false);
+                cursor += 4;
+                if (dataLength < 0 || cursor + dataLength > cbdtBytes.length) return null;
+                const data = cbdtBytes.slice(cursor, cursor + dataLength);
+                const mimeType = this.getBitmapMimeType(data);
+
+                return {
+                    glyphId,
+                    ppemX: strike.ppemX,
+                    ppemY: strike.ppemY,
+                    bitDepth: strike.bitDepth,
+                    imageFormat,
+                    graphicType: null,
+                    metrics,
+                    mimeType,
+                    data
+                };
+            }
+        }
+
+        return null;
+    }
+
+    private getSbixBitmapStrikeForGlyph(glyphId: number, preferredPpem?: number): ReturnType<BaseFontParser['getBitmapStrikeForGlyph']> {
+        const sbix = this.sbix;
+        if (!sbix || typeof sbix.getBytes !== 'function') return null;
+        const sbixBytes = sbix.getBytes() as Uint8Array;
+        if (!(sbixBytes instanceof Uint8Array) || sbixBytes.length < 8) return null;
+
+        const numGlyphs = this.getNumGlyphs();
+        if (!Number.isFinite(numGlyphs) || numGlyphs <= 0 || glyphId < 0 || glyphId >= numGlyphs) return null;
+
+        const view = new DataView(sbixBytes.buffer, sbixBytes.byteOffset, sbixBytes.byteLength);
+        const numStrikes = view.getUint32(4, false);
+        if (numStrikes <= 0 || sbixBytes.length < 8 + (numStrikes * 4)) return null;
+
+        const strikeOffsets: number[] = [];
+        for (let i = 0; i < numStrikes; i++) {
+            strikeOffsets.push(view.getUint32(8 + (i * 4), false));
+        }
+
+        const orderedStrikeOffsets = strikeOffsets.slice().sort((aOffset, bOffset) => {
+            if (!Number.isFinite(preferredPpem)) return 0;
+            if (aOffset + 4 > sbixBytes.length || bOffset + 4 > sbixBytes.length) return 0;
+            const target = preferredPpem as number;
+            const aPpem = view.getUint16(aOffset, false);
+            const bPpem = view.getUint16(bOffset, false);
+            return Math.abs(aPpem - target) - Math.abs(bPpem - target);
+        });
+
+        for (const strikeOffset of orderedStrikeOffsets) {
+            const glyphOffsetArray = strikeOffset + 4;
+            const offsetArrayLength = (numGlyphs + 1) * 4;
+            if (glyphOffsetArray + offsetArrayLength > sbixBytes.length) continue;
+
+            const ppem = view.getUint16(strikeOffset, false);
+            const resolution = view.getUint16(strikeOffset + 2, false);
+            const glyphDataStart = view.getUint32(glyphOffsetArray + (glyphId * 4), false);
+            const glyphDataEnd = view.getUint32(glyphOffsetArray + ((glyphId + 1) * 4), false);
+            if (glyphDataEnd <= glyphDataStart) continue;
+
+            const glyphOffset = strikeOffset + glyphDataStart;
+            const glyphEnd = strikeOffset + glyphDataEnd;
+            if (glyphOffset + 8 > sbixBytes.length || glyphEnd > sbixBytes.length || glyphEnd <= glyphOffset + 8) continue;
+
+            const bearingX = view.getInt16(glyphOffset, false);
+            const bearingY = view.getInt16(glyphOffset + 2, false);
+            const graphicTypeBytes = sbixBytes.slice(glyphOffset + 4, glyphOffset + 8);
+            const graphicType = String.fromCharCode(...graphicTypeBytes);
+            if (graphicType === 'dupe') {
+                if (glyphOffset + 10 > glyphEnd) return null;
+                const targetGlyphId = view.getUint16(glyphOffset + 8, false);
+                if (targetGlyphId === glyphId) return null;
+                return this.getSbixBitmapStrikeForGlyph(targetGlyphId, preferredPpem);
+            }
+
+            const data = sbixBytes.slice(glyphOffset + 8, glyphEnd);
+            const mimeType = this.getBitmapMimeType(data, graphicType);
+            const dimensions = this.getBitmapImageDimensions(data, mimeType);
+            const glyph = this.getGlyph(glyphId);
+            return {
+                glyphId,
+                ppemX: ppem,
+                ppemY: ppem,
+                bitDepth: 32,
+                imageFormat: null,
+                graphicType,
+                metrics: {
+                    height: dimensions?.height ?? 0,
+                    width: dimensions?.width ?? 0,
+                    bearingX,
+                    bearingY,
+                    advance: glyph?.advanceWidth ?? 0
+                },
+                mimeType,
+                data
+            };
+        }
+
+        return null;
+    }
+
+    public getBitmapStrikeForChar(char: string, preferredPpem?: number): ReturnType<BaseFontParser['getBitmapStrikeForGlyph']> {
+        const glyphId = this.getGlyphIndexByChar(char);
+        if (glyphId == null) return null;
+        return this.getBitmapStrikeForGlyph(glyphId, preferredPpem);
+    }
+
+    private getBitmapMimeType(data: Uint8Array, graphicType?: string | null): string | null {
+        const normalizedGraphicType = (graphicType ?? '').trim().toLowerCase();
+        if (normalizedGraphicType === 'png') return 'image/png';
+        if (normalizedGraphicType === 'jpg' || normalizedGraphicType === 'jpeg') return 'image/jpeg';
+        if (normalizedGraphicType === 'tiff') return 'image/tiff';
+        if (data.length >= 8
+            && data[0] === 0x89
+            && data[1] === 0x50
+            && data[2] === 0x4e
+            && data[3] === 0x47
+            && data[4] === 0x0d
+            && data[5] === 0x0a
+            && data[6] === 0x1a
+            && data[7] === 0x0a) {
+            return 'image/png';
+        }
+        if (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) {
+            return 'image/jpeg';
+        }
+        return null;
+    }
+
+    private getBitmapImageDimensions(data: Uint8Array, mimeType: string | null): { width: number; height: number } | null {
+        if (mimeType === 'image/png' && data.length >= 24) {
+            const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+            return {
+                width: view.getUint32(16, false),
+                height: view.getUint32(20, false)
+            };
+        }
+        return null;
     }
 
     private getPreferredNameRecord(nameId: number): string {

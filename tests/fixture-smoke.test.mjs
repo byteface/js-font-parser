@@ -21,6 +21,7 @@ function readBytes(relativePath) {
 }
 
 const CURATED_FIXTURES = [
+  'truetypefonts/curated/AppleColorEmoji-sbix-subset.ttf',
   'truetypefonts/curated/IBMPlexSerif-Regular.ttf',
   'truetypefonts/curated/FiraSans-Regular.ttf',
   'truetypefonts/curated/Inter-VF.ttf',
