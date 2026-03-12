@@ -5,15 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Box2D Glyph Pile</title>
   <style>
-    :root { --bg:#0f1118; --ink:#f4f1ec; --muted:#b4a9a0; --panel:#1a1c22; --border:#2b2f3a; }
-    body { margin:0; font-family:"IBM Plex Sans", system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+    :root { --bg:#120f0c; --ink:#f5eadf; --muted:#b89f8b; --panel:rgba(28,20,16,0.88); --border:#4b3a2d; }
+    body { margin:0; font-family:"IBM Plex Sans", system-ui, sans-serif; background:radial-gradient(circle at 18% 14%, #2c1c12, transparent 28%),linear-gradient(180deg,#140f0c,#0e0b09); color:var(--ink); }
     header { padding:20px 22px 10px; }
-    h1 { margin:0 0 6px; font-size:24px; }
-    p { margin:0 0 12px; color:var(--muted); }
-    .panel { display:flex; flex-wrap:wrap; gap:12px; padding:10px 22px 16px; align-items:center; }
+    h1 { margin:0 0 6px; font-size:24px; letter-spacing:-0.03em; }
+    p { margin:0 0 12px; color:var(--muted); max-width:720px; }
+    .panel { display:flex; flex-wrap:wrap; gap:12px; padding:10px 22px 16px; align-items:center; backdrop-filter:blur(10px); }
     label { display:flex; flex-direction:column; gap:6px; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); }
-    input, select, button { background:#151821; color:var(--ink); border:1px solid var(--border); border-radius:8px; padding:8px 10px; min-width:160px; }
-    canvas { display:block; width:100vw; height:70vh; background:#0f1118; }
+    input, select, button { background:rgba(20,15,12,0.92); color:var(--ink); border:1px solid var(--border); border-radius:10px; padding:8px 10px; min-width:160px; }
+    button { cursor:pointer; }
+    canvas { display:block; width:100vw; background:#120f0c; }
   </style>
 </head>
 <body>
@@ -21,42 +22,39 @@
 
   <header>
     <h1>Glyph Pile</h1>
-    <p>Chaos pile of glyph bodies with random impulses.</p>
+    <p>Letterforms drop like carved blocks onto a lit stage, picking up heat where they collide.</p>
   </header>
   <div class="panel">
     <label>Font
-      <select id="fontSelect">
-        <option value="../truetypefonts/DiscoMo.ttf">DiscoMo</option>
-        <option value="../truetypefonts/devil-inside-font/DevilInside-G3xP.ttf">DevilInside</option>
-        <option value="../truetypefonts/Quill.ttf">Quill</option>
-      </select>
+      <select id="fontSelect"></select>
     </label>
     <label>Text
       <input id="textInput" value="PILE" />
     </label>
     <label>Gravity
-      <input id="gravInput" type="range" min="4" max="18" value="10" />
+      <input id="gravInput" type="range" min="4" max="18" value="18" />
     </label>
     <label>Stack Size
-      <input id="countInput" type="range" min="6" max="28" value="12" />
+      <input id="countInput" type="range" min="4" max="36" value="36" />
     </label>
     <label>Glyph Size
-      <input id="sizeInput" type="range" min="72" max="180" value="120" />
+      <input id="sizeInput" type="range" min="72" max="180" value="180" />
     </label>
     <label>Drop Spread
-      <input id="spreadInput" type="range" min="120" max="920" value="600" />
+      <input id="spreadInput" type="range" min="120" max="920" value="920" />
     </label>
     <label>Bounce
-      <input id="bounceInput" type="range" min="0" max="40" value="8" />
+      <input id="bounceInput" type="range" min="0" max="40" value="40" />
     </label>
     <button id="resetBtn">Reset</button>
   </div>
   <canvas id="stage" width="1200" height="600"></canvas>
 
-  <script src="https://unpkg.com/planck-js@0.3.0/dist/planck.min.js"></script>
+<script src="https://unpkg.com/planck-js@0.3.0/dist/planck.min.js"></script>
   <script src="../dist-build/fontparser.min.js"></script>
 <script type="module">
 import { collectGlyphPoints, splitContours as splitGlyphContours, sampleContour } from "./shared/glyph-helpers.js";
+import { getFontList } from "../tools/shared/font-catalog.js";
 const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     const planck = window.planck;
 
@@ -70,16 +68,50 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     const spreadInput = document.getElementById("spreadInput");
     const bounceInput = document.getElementById("bounceInput");
     const resetBtn = document.getElementById("resetBtn");
+    const fontOptions = [
+      ...getFontList("demoCore"),
+      ...getFontList("allGlyphs").slice(0, 14),
+      ...getFontList("variableFonts").slice(0, 6)
+    ]
+      .filter((entry) => !/2006 Team|Twemoji|Font Awesome/i.test(entry.name))
+      .filter((entry, index, all) => all.findIndex((item) => item.url === entry.url) === index);
 
     const scale = 30;
-    const floorY = pxToWorld(canvas.height - 24);
     let world = null;
     let font = null;
     let bodies = [];
     let bodyMeta = new Map();
+    let viewportWidth = canvas.width;
+    let viewportHeight = canvas.height;
+
+    for (const entry of fontOptions) {
+      const option = document.createElement("option");
+      option.value = entry.url;
+      option.textContent = entry.name;
+      fontSelect.appendChild(option);
+    }
+    if (fontOptions.length) {
+      const preferred = fontOptions.find((entry) => /Gotham|Quill|DiscoMo|Source Serif|Roboto/i.test(entry.name));
+      fontSelect.value = (preferred || fontOptions[0]).url;
+    }
 
     function pxToWorld(v) { return v / scale; }
     function worldToPx(v) { return v * scale; }
+    function getFloorY() { return pxToWorld(viewportHeight - 24); }
+
+    function resizeCanvas() {
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      const top = canvas.getBoundingClientRect().top;
+      const cssHeight = Math.max(260, window.innerHeight - top);
+      canvas.style.height = `${cssHeight}px`;
+      const rect = canvas.getBoundingClientRect();
+      viewportWidth = rect.width;
+      viewportHeight = rect.height;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+    }
 
     function glyphBounds(glyph) {
       const pts = collectGlyphPoints(glyph);
@@ -211,10 +243,20 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
       world = planck.World({ gravity: planck.Vec2(0, gravity) });
       bodyMeta = new Map();
       const ground = world.createBody();
+      const floorY = getFloorY();
       const floorThickness = pxToWorld(36);
       ground.createFixture(
-        planck.Box(pxToWorld(canvas.width + 120) * 0.5, floorThickness, planck.Vec2(pxToWorld(canvas.width) * 0.5, floorY + floorThickness * 0.5), 0),
+        planck.Box(pxToWorld(viewportWidth + 120) * 0.5, floorThickness, planck.Vec2(pxToWorld(viewportWidth) * 0.5, floorY + floorThickness * 0.5), 0),
         { friction: 0.9, restitution: 0.02 }
+      );
+      const wallThickness = pxToWorld(60);
+      ground.createFixture(
+        planck.Box(wallThickness, pxToWorld(viewportHeight) * 0.5, planck.Vec2(-wallThickness * 0.5, pxToWorld(viewportHeight) * 0.5), 0),
+        { friction: 0.8, restitution: 0.02 }
+      );
+      ground.createFixture(
+        planck.Box(wallThickness, pxToWorld(viewportHeight) * 0.5, planck.Vec2(pxToWorld(viewportWidth) + wallThickness * 0.5, pxToWorld(viewportHeight) * 0.5), 0),
+        { friction: 0.8, restitution: 0.02 }
       );
       ground.setUserData({ kind: "ground" });
 
@@ -279,7 +321,7 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
       const bounce = Number(bounceInput.value) / 100;
       const stackSize = Number(countInput.value);
       const spread = Number(spreadInput.value);
-      const spawnLeft = Math.max(60, canvas.width * 0.5 - spread * 0.5);
+      const spawnLeft = Math.max(110, viewportWidth * 0.5 - spread * 0.5);
       const impulseScale = 0.12 + bounce * 0.7;
 
       const chars = Array.from(textInput.value || "");
@@ -292,7 +334,7 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         const h = Math.max(10, (bounds.maxY - bounds.minY) * glyphScale);
         const body = world.createBody({
           type: "dynamic",
-          position: planck.Vec2(pxToWorld(spawnLeft + Math.random() * spread), pxToWorld(36 + Math.random() * 160)),
+          position: planck.Vec2(pxToWorld(spawnLeft + Math.random() * spread), pxToWorld(40 + Math.random() * 140)),
           angle: (Math.random() - 0.5) * (0.16 + bounce * 1.4),
           bullet: true,
           linearDamping: 0.65,
@@ -334,15 +376,29 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     }
 
     function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#0f1118";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const floorY = getFloorY();
+      ctx.clearRect(0, 0, viewportWidth, viewportHeight);
+      const bg = ctx.createLinearGradient(0, 0, 0, viewportHeight);
+      bg.addColorStop(0, "#17110d");
+      bg.addColorStop(0.55, "#120f0c");
+      bg.addColorStop(1, "#0d0a08");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, viewportWidth, viewportHeight);
 
-      ctx.strokeStyle = "#2c3140";
+      const poolGrad = ctx.createLinearGradient(0, viewportHeight * 0.72, 0, viewportHeight);
+      poolGrad.addColorStop(0, "rgba(255,184,102,0)");
+      poolGrad.addColorStop(1, "rgba(255,140,62,0.12)");
+      ctx.fillStyle = poolGrad;
+      ctx.fillRect(0, viewportHeight * 0.72, viewportWidth, viewportHeight * 0.28);
+
+      ctx.fillStyle = "#251a13";
+      ctx.fillRect(0, worldToPx(floorY), viewportWidth, viewportHeight - worldToPx(floorY));
+
+      ctx.strokeStyle = "rgba(255,205,142,0.28)";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(0, worldToPx(floorY));
-      ctx.lineTo(canvas.width, worldToPx(floorY));
+      ctx.lineTo(viewportWidth, worldToPx(floorY));
       ctx.stroke();
 
       for (const item of bodies) {
@@ -360,6 +416,8 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         ctx.save();
         ctx.translate(worldToPx(pos.x), worldToPx(pos.y));
         ctx.rotate(-angle);
+        ctx.shadowBlur = 18 + (22 * heat);
+        ctx.shadowColor = `rgba(255, 152, 82, ${0.12 + heat * 0.22})`;
         CanvasRenderer.drawGlyphToContext(ctx, glyph, {
           x: -(bounds.minX * glyphScale) - worldToPx(centerX),
           y: (bounds.maxY * glyphScale) - worldToPx(centerY),
@@ -367,9 +425,10 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
           styles: {
             fillStyle: `rgb(${fillR}, ${fillG}, ${fillB})`,
             strokeStyle: `rgb(${strokeR}, ${strokeG}, ${strokeB})`,
-            lineWidth: 1 + (0.25 * heat)
+            lineWidth: 1.2 + (0.3 * heat)
           }
         });
+        ctx.shadowBlur = 0;
 
         if (item.hits.length) {
           ctx.save();
@@ -416,7 +475,12 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
     spreadInput.addEventListener("input", reset);
     bounceInput.addEventListener("input", reset);
     resetBtn.addEventListener("click", reset);
+    window.addEventListener("resize", () => {
+      resizeCanvas();
+      reset();
+    });
 
+    resizeCanvas();
     boot();
     requestAnimationFrame(tick);
   </script>

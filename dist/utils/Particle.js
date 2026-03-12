@@ -1,5 +1,4 @@
-"use strict";
-class Particle {
+export class Particle {
     // Properties
     x = 0;
     y = 0;
@@ -222,4 +221,3 @@ class Particle {
         }
     }
 }
-export { Particle };

@@ -12,3 +12,4 @@ export { getSupportedLanguages, supportsLanguage, listLanguages } from './utils/
 export { setWoff2Decoder, setWoff2DecoderAsync } from './utils/Woff2Decoder.js';
 export { detectScriptTags } from './utils/ScriptDetector.js';
 export { Color } from './utils/Color.js';
+export { Particle } from './utils/Particle.js';

@@ -1,19 +1,61 @@
 import { GlyphData } from '../data/GlyphData.js';
+export type CanvasPaintStop = {
+    offset: number;
+    color: string;
+};
+export type CanvasPaintValue = string | {
+    type: 'solid';
+    color: string;
+} | {
+    type: 'linear-gradient';
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+    stops: CanvasPaintStop[];
+} | {
+    type: 'radial-gradient';
+    x0: number;
+    y0: number;
+    r0: number;
+    x1: number;
+    y1: number;
+    r1: number;
+    stops: CanvasPaintStop[];
+} | {
+    type: 'pattern';
+    image: CanvasImageSource;
+    repetition?: string | null;
+};
 export type CanvasStyleOptions = Partial<{
-    fillStyle: string;
-    strokeStyle: string;
+    fillStyle: CanvasPaintValue;
+    strokeStyle: CanvasPaintValue;
     globalAlpha: number;
     lineWidth: number;
+    lineCap: CanvasLineCap;
+    lineJoin: CanvasLineJoin;
+    miterLimit: number;
+    lineDash: number[];
+    lineDashOffset: number;
     shadowColor: string;
     shadowBlur: number;
     shadowOffsetX: number;
     shadowOffsetY: number;
+    filter: string;
+    globalCompositeOperation: GlobalCompositeOperation;
+    imageSmoothingEnabled: boolean;
+    imageSmoothingQuality: ImageSmoothingQuality;
 }>;
 export type CanvasDrawOptions = {
     scale?: number;
+    scaleX?: number;
+    scaleY?: number;
     x?: number;
     y?: number;
     spacing?: number;
+    rotation?: number;
+    skewX?: number;
+    skewY?: number;
     styles?: CanvasStyleOptions;
     paletteIndex?: number;
     fallbackFill?: string;
@@ -54,6 +96,7 @@ export declare class CanvasRenderer {
     private static getLayout;
     private static getKerningAdjustedLayout;
     static applyCanvasStyles(context: CanvasRenderingContext2D, styles?: CanvasStyleOptions): void;
+    static resolveCanvasPaint(context: CanvasRenderingContext2D, paint: CanvasPaintValue): string | CanvasGradient | CanvasPattern | null;
     static addContourToShape(context: CanvasRenderingContext2D, glyph: GlyphData, startIndex: number, count: number): void;
     static addContourToShapeCubic(context: CanvasRenderingContext2D, glyph: GlyphData, startIndex: number, count: number): void;
     static drawGlyphToContext(context: CanvasRenderingContext2D, glyph: GlyphData | null, options?: CanvasDrawOptions): void;

@@ -29,80 +29,20 @@
       width: min(1200px, calc(100vw - 28px));
       margin: 72px auto 36px;
     }
-    .hero {
-      display: grid;
-      grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.7fr);
-      gap: 18px;
-      margin-bottom: 20px;
-    }
-    .intro, .controls, .specimen {
+    .controls, .specimen {
       border: 1px solid var(--line);
       border-radius: 22px;
       background: var(--panel);
       backdrop-filter: blur(18px);
       box-shadow: 0 24px 70px var(--shadow);
     }
-    .intro {
-      padding: 26px 28px;
-      min-height: 260px;
+    .controls {
+      margin-bottom: 20px;
+      padding: 18px 20px;
       display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 14px;
-      font: 700 12px/1.2 "IBM Plex Sans", sans-serif;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: var(--accent-2);
-    }
-    .eyebrow::before {
-      content: "";
-      width: 24px;
-      height: 1px;
-      background: currentColor;
-    }
-    h1 {
-      margin: 0 0 12px;
-      font-size: clamp(38px, 5vw, 68px);
-      line-height: 0.92;
-      font-weight: 700;
-      letter-spacing: -0.04em;
-    }
-    .lede {
-      max-width: 40rem;
-      margin: 0;
-      color: var(--muted);
-      font: 500 16px/1.6 "IBM Plex Sans", sans-serif;
-    }
-    .quote {
-      margin-top: 22px;
-      padding-top: 18px;
-      border-top: 1px solid rgba(25, 36, 48, 0.08);
-      display: flex;
-      justify-content: space-between;
+      flex-wrap: wrap;
       gap: 14px;
       align-items: end;
-    }
-    .quote-big {
-      font-size: clamp(28px, 4vw, 52px);
-      letter-spacing: -0.04em;
-      color: var(--accent);
-    }
-    .quote-small {
-      color: var(--muted);
-      font: 500 12px/1.5 "IBM Plex Sans", sans-serif;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-    }
-    .controls {
-      padding: 20px;
-      display: grid;
-      gap: 14px;
-      align-content: start;
     }
     .controls h2 {
       margin: 0;
@@ -111,8 +51,11 @@
       letter-spacing: 0.12em;
     }
     .control-grid {
-      display: grid;
+      display: flex;
+      flex-wrap: wrap;
       gap: 12px;
+      align-items: end;
+      flex: 1;
     }
     label {
       display: grid;
@@ -136,7 +79,8 @@
       accent-color: var(--accent);
     }
     .stats {
-      display: grid;
+      display: flex;
+      flex-wrap: wrap;
       gap: 8px;
     }
     .stat {
@@ -187,45 +131,29 @@
       color: var(--muted);
       font: 500 12px/1.4 "IBM Plex Sans", sans-serif;
     }
-    @media (max-width: 980px) {
-      .hero { grid-template-columns: 1fr; }
-    }
   </style>
 </head>
 <body>
 <div data-nav="main"></div>
 <main class="shell">
-  <section class="hero">
-    <div class="intro">
-      <div>
-        <div class="eyebrow">First Contact</div>
-        <h1>Hello world,<br />through real outlines.</h1>
-        <p class="lede">A simple browser-first specimen wall. Pick a phrase, scale it, adjust tracking, and compare how the parser renders the same words across a curated spread of real fonts.</p>
-      </div>
-      <div class="quote">
-        <div class="quote-big" id="heroPhrase">hello world</div>
-        <div class="quote-small">Typography engine specimen wall</div>
-      </div>
+  <section class="controls">
+    <h2>Specimen Controls</h2>
+    <div class="control-grid">
+      <label>Phrase
+        <input id="phraseInput" value="hello world" />
+      </label>
+      <label>Scale
+        <input id="scaleInput" type="range" min="0.06" max="0.18" value="0.1" step="0.005" />
+      </label>
+      <label>Tracking
+        <input id="trackingInput" type="range" min="0" max="40" value="8" step="1" />
+      </label>
     </div>
-    <aside class="controls">
-      <h2>Specimen Controls</h2>
-      <div class="control-grid">
-        <label>Phrase
-          <input id="phraseInput" value="hello world" />
-        </label>
-        <label>Scale
-          <input id="scaleInput" type="range" min="0.06" max="0.18" value="0.1" step="0.005" />
-        </label>
-        <label>Tracking
-          <input id="trackingInput" type="range" min="0" max="40" value="8" step="1" />
-        </label>
-      </div>
-      <div class="stats">
-        <div class="stat"><span>Visible specimens</span><strong id="fontCount">0</strong></div>
-        <div class="stat"><span>Outline-ready</span><strong id="outlineCount">0</strong></div>
-        <div class="stat"><span>Phrase length</span><strong id="phraseCount">0</strong></div>
-      </div>
-    </aside>
+    <div class="stats">
+      <div class="stat"><span>Visible specimens</span><strong id="fontCount">0</strong></div>
+      <div class="stat"><span>Outline-ready</span><strong id="outlineCount">0</strong></div>
+      <div class="stat"><span>Phrase length</span><strong id="phraseCount">0</strong></div>
+    </div>
   </section>
 
   <section class="specimens" id="fontList"></section>
@@ -246,7 +174,6 @@ const fontList = document.getElementById("fontList");
 const phraseInput = document.getElementById("phraseInput");
 const scaleInput = document.getElementById("scaleInput");
 const trackingInput = document.getElementById("trackingInput");
-const heroPhrase = document.getElementById("heroPhrase");
 const fontCount = document.getElementById("fontCount");
 const outlineCount = document.getElementById("outlineCount");
 const phraseCount = document.getElementById("phraseCount");
@@ -254,6 +181,9 @@ const phraseCount = document.getElementById("phraseCount");
 const fontFiles = getFontList("stringExplorer");
 const cards = [];
 const fontCache = new Map();
+const visibleCards = new Set();
+let redrawScheduled = false;
+let observer = null;
 
 function getStyles() {
   return {
@@ -270,8 +200,7 @@ function getStyles() {
 
 function updateStats() {
   const phrase = phraseInput.value || "";
-  heroPhrase.textContent = phrase || "hello world";
-  fontCount.textContent = String(cards.length);
+  fontCount.textContent = String(visibleCards.size);
   outlineCount.textContent = String(cards.filter((card) => card.outlineReady).length);
   phraseCount.textContent = String(Array.from(phrase).length);
 }
@@ -315,8 +244,16 @@ function redrawCard(card) {
 }
 
 function redrawAll() {
+  redrawScheduled = false;
   updateStats();
-  for (const card of cards) redrawCard(card);
+  const targets = visibleCards.size ? visibleCards : new Set(cards.slice(0, 6));
+  for (const card of targets) redrawCard(card);
+}
+
+function scheduleRedraw() {
+  if (redrawScheduled) return;
+  redrawScheduled = true;
+  requestAnimationFrame(redrawAll);
 }
 
 async function ensureFont(card) {
@@ -326,11 +263,32 @@ async function ensureFont(card) {
       fontCache.set(card.url, FontParser.load(card.url));
     }
     card.font = await fontCache.get(card.url);
-    redrawCard(card);
+    if (visibleCards.has(card) || visibleCards.size === 0) redrawCard(card);
   } catch (error) {
     card.status.textContent = `Failed to load font: ${error?.message || error}`;
   }
 }
+
+observer = new IntersectionObserver((entries) => {
+  let changed = false;
+  for (const entry of entries) {
+    const card = entry.target.__cardRef;
+    if (!card) continue;
+    if (entry.isIntersecting) {
+      if (!visibleCards.has(card)) {
+        visibleCards.add(card);
+        changed = true;
+      }
+      if (card.font) redrawCard(card);
+      else ensureFont(card);
+    } else if (visibleCards.delete(card)) {
+      changed = true;
+    }
+  }
+  if (changed) updateStats();
+}, {
+  rootMargin: "300px 0px"
+});
 
 for (const file of fontFiles) {
   const safePath = file.split("/").map((part) => encodeURIComponent(part)).join("/");
@@ -366,14 +324,15 @@ for (const file of fontFiles) {
   card.canvas = canvas;
   card.status = status;
   article.dataset.font = label;
+  article.__cardRef = card;
   fontList.appendChild(article);
   cards.push(card);
-  ensureFont(card);
+  observer.observe(article);
 }
 
-phraseInput.addEventListener("input", redrawAll);
-scaleInput.addEventListener("input", redrawAll);
-trackingInput.addEventListener("input", redrawAll);
+phraseInput.addEventListener("input", scheduleRedraw);
+scaleInput.addEventListener("input", scheduleRedraw);
+trackingInput.addEventListener("input", scheduleRedraw);
 updateStats();
 </script>
 <script type="module" src="../tools/shared/main-nav.js"></script>

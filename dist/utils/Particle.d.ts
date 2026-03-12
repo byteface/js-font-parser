@@ -1,28 +1,9 @@
-interface Bounds {
-    top: number;
-    bottom: number;
-    left: number;
-    right: number;
-}
 interface Point {
     x: number;
     y: number;
     k?: number;
     force?: number;
     minDist?: number;
-}
-interface Clip {
-    clip: Point;
-    k: number;
-}
-interface GravClip {
-    clip: Point;
-    force: number;
-}
-interface RepelClip {
-    clip: Point;
-    minDist: number;
-    k: number;
 }
 export declare class Particle {
     x: number;
@@ -81,3 +62,4 @@ export declare class Particle {
     update(): void;
     private handleEdgeBehavior;
 }
+export {};

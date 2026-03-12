@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Box2D Bendy Glyph</title>
+  <style>
+    :root {
+      --bg: #081019;
+      --ink: #eff6ff;
+      --muted: #9eb0c6;
+      --line: rgba(161, 196, 255, 0.18);
+      --panel: rgba(9, 16, 25, 0.84);
+      --accent: #6ec8ff;
+      --accent-hot: #f5b95e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 16% 10%, rgba(110, 200, 255, 0.18), transparent 24%),
+        radial-gradient(circle at 84% 14%, rgba(245, 185, 94, 0.14), transparent 22%),
+        linear-gradient(180deg, #09111b 0%, #050a11 100%);
+    }
+    header { padding: 20px 22px 10px; }
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: -0.03em; }
+    .sub { margin: 0; max-width: 58rem; color: var(--muted); line-height: 1.5; }
+    .panel {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px 22px 16px;
+      align-items: end;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    input, select, button {
+      min-width: 160px;
+      background: rgba(10, 16, 24, 0.95);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font: inherit;
+    }
+    input[type="range"] {
+      padding: 0;
+      accent-color: var(--accent);
+    }
+    button {
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), var(--accent-hot));
+      border: 0;
+      color: #081019;
+      font-weight: 700;
+    }
+    .stats {
+      display: flex;
+      gap: 10px;
+      padding: 0 22px 12px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .stat {
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(10, 16, 24, 0.72);
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 70vh;
+      background:
+        radial-gradient(circle at 50% 40%, rgba(110, 200, 255, 0.12), transparent 26%),
+        linear-gradient(180deg, #0a1320 0%, #050a11 100%);
+    }
+  </style>
+</head>
+<body>
+<div data-nav="main"></div>
+
+<header>
+  <h1>Bendy Glyph Toss</h1>
+  <p class="sub">A single soft Box2D letter made of spring-linked nodes. Grab any point, drag it hard, and throw the whole glyph into the walls to watch it wobble, bounce, and recover.</p>
+</header>
+
+<section class="panel">
+  <label>Font
+    <select id="fontSelect"></select>
+  </label>
+  <label>Character
+    <input id="charInput" value="R" maxlength="1" />
+  </label>
+  <label>Gravity
+    <input id="gravInput" type="range" min="0" max="12" value="2" />
+  </label>
+  <label>Spring
+    <input id="stiffInput" type="range" min="4" max="24" value="14" />
+  </label>
+  <label>Damping
+    <input id="dampingInput" type="range" min="4" max="38" value="16" />
+  </label>
+  <label>Bounce
+    <input id="bounceInput" type="range" min="0" max="70" value="32" />
+  </label>
+  <button id="resetBtn" type="button">Reset Glyph</button>
+</section>
+
+<div class="stats">
+  <div class="stat" id="hintStat">Drag to throw</div>
+  <div class="stat" id="nodeStat">0 nodes</div>
+</div>
+
+<canvas id="stage" width="1280" height="760"></canvas>
+
+<script src="https://unpkg.com/planck-js@0.3.0/dist/planck.min.js"></script>
+<script src="../dist-build/fontparser.min.js"></script>
+<script type="module">
+import { collectGlyphPoints, splitContours as splitGlyphContours } from "./shared/glyph-helpers.js";
+import { getFontList } from "../tools/shared/font-catalog.js";
+
+const { FontParser } = window.FontParser;
+const planck = window.planck;
+
+const canvas = document.getElementById("stage");
+const ctx = canvas.getContext("2d");
+const fontSelect = document.getElementById("fontSelect");
+const charInput = document.getElementById("charInput");
+const gravInput = document.getElementById("gravInput");
+const stiffInput = document.getElementById("stiffInput");
+const dampingInput = document.getElementById("dampingInput");
+const bounceInput = document.getElementById("bounceInput");
+const resetBtn = document.getElementById("resetBtn");
+const hintStat = document.getElementById("hintStat");
+const nodeStat = document.getElementById("nodeStat");
+
+const scale = 30;
+let world = null;
+let font = null;
+let nodes = [];
+let links = [];
+let dpr = 1;
+let dragNode = null;
+let dragHistory = [];
+let coreBody = null;
+
+const fontOptions = [
+  ...getFontList("demoCore"),
+  ...getFontList("allGlyphs").slice(0, 18),
+  ...getFontList("variableFonts").slice(0, 8)
+]
+  .filter((entry) => !/2006 Team|Twemoji|Font Awesome/i.test(entry.name))
+  .filter((entry, index, all) => all.findIndex((item) => item.url === entry.url) === index);
+
+for (const entry of fontOptions) {
+  const option = document.createElement("option");
+  option.value = entry.url;
+  option.textContent = entry.name;
+  fontSelect.appendChild(option);
+}
+if (fontOptions.length) {
+  const preferred = fontOptions.find((entry) => /Quill|Gotham|Source Serif|Roboto|Minecraft/i.test(entry.name));
+  fontSelect.value = (preferred || fontOptions[0]).url;
+}
+
+function pxToWorld(v) { return v / scale; }
+function worldToPx(v) { return v * scale; }
+
+function resizeCanvas() {
+  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr, dpr);
+  reset();
+}
+
+function splitContours(glyph) {
+  return splitGlyphContours(collectGlyphPoints(glyph)).filter((contour) => contour.length > 2);
+}
+
+function updateStats() {
+  nodeStat.textContent = `${nodes.length} nodes`;
+}
+
+function setupWorld() {
+  world = planck.World({ gravity: planck.Vec2(0, Number(gravInput.value)) });
+  links = [];
+  nodes = [];
+  coreBody = null;
+
+  const bounds = world.createBody();
+  const width = canvas.width / dpr;
+  const height = canvas.height / dpr;
+  const wallPad = pxToWorld(22);
+  const halfW = pxToWorld(width) * 0.5;
+  const halfH = pxToWorld(height) * 0.5;
+
+  bounds.createFixture(planck.Box(halfW, wallPad, planck.Vec2(halfW, -wallPad * 0.5), 0), { restitution: 0.32, friction: 0.2 });
+  bounds.createFixture(planck.Box(halfW, wallPad, planck.Vec2(halfW, pxToWorld(height) + wallPad * 0.5), 0), { restitution: 0.32, friction: 0.2 });
+  bounds.createFixture(planck.Box(wallPad, halfH, planck.Vec2(-wallPad * 0.5, halfH), 0), { restitution: 0.32, friction: 0.2 });
+  bounds.createFixture(planck.Box(wallPad, halfH, planck.Vec2(pxToWorld(width) + wallPad * 0.5, halfH), 0), { restitution: 0.32, friction: 0.2 });
+}
+
+function addSpring(a, b, hz = Number(stiffInput.value) * 0.18, damping = Number(dampingInput.value) / 100) {
+  links.push([a, b]);
+  world.createJoint(planck.DistanceJoint({
+    frequencyHz: hz,
+    dampingRatio: damping,
+    length: planck.Vec2.distance(a.getPosition(), b.getPosition())
+  }, a, b, a.getPosition(), b.getPosition()));
+}
+
+function addCoreSpring(body, localAnchor, hz = Number(stiffInput.value) * 0.22, damping = Number(dampingInput.value) / 100) {
+  if (!coreBody) return;
+  world.createJoint(planck.DistanceJoint({
+    frequencyHz: hz,
+    dampingRatio: damping,
+    length: 0
+  }, coreBody, body, coreBody.getWorldPoint(localAnchor), body.getPosition()));
+}
+
+function addCoreBrace(body, localAnchor, hz = Number(stiffInput.value) * 0.34, damping = Number(dampingInput.value) / 82) {
+  if (!coreBody) return;
+  world.createJoint(planck.DistanceJoint({
+    frequencyHz: hz,
+    dampingRatio: damping,
+    length: 0
+  }, coreBody, body, coreBody.getWorldPoint(localAnchor), body.getPosition()));
+}
+
+function buildGlyph() {
+  if (!font) return;
+  const ch = (charInput.value || "R").charAt(0);
+  const glyph = font.getGlyphByChar(ch) || font.getGlyphByChar("R");
+  if (!glyph) return;
+
+  const contours = splitContours(glyph);
+  const all = contours.flat();
+  if (!all.length) return;
+
+  const unitsPerEm = typeof font.getUnitsPerEm === "function" ? font.getUnitsPerEm() : 1000;
+  const minX = Math.min(...all.map((p) => p.x));
+  const maxX = Math.max(...all.map((p) => p.x));
+  const minY = Math.min(...all.map((p) => p.y));
+  const maxY = Math.max(...all.map((p) => p.y));
+  const glyphWidth = maxX - minX || unitsPerEm;
+  const glyphHeight = maxY - minY || unitsPerEm;
+  const width = canvas.width / dpr;
+  const height = canvas.height / dpr;
+  const targetSize = Math.min(width * 0.42, height * 0.56);
+  const glyphScale = targetSize / Math.max(glyphWidth, glyphHeight, unitsPerEm * 0.6);
+  const offsetX = width * 0.5 - glyphWidth * glyphScale * 0.5;
+  const offsetY = height * 0.5 + glyphHeight * glyphScale * 0.5;
+  const bounce = Number(bounceInput.value) / 100;
+  const contourBodies = [];
+  const centerX = offsetX + glyphWidth * glyphScale * 0.5;
+  const centerY = offsetY - glyphHeight * glyphScale * 0.5;
+
+  coreBody = world.createBody({
+    type: "dynamic",
+    position: planck.Vec2(pxToWorld(centerX), pxToWorld(centerY)),
+    linearDamping: 0.9,
+    angularDamping: 1.8
+  });
+  coreBody.createFixture(planck.Circle(0.12), {
+    density: 1.6,
+    friction: 0.2,
+    restitution: Math.max(0.08, bounce)
+  });
+
+  for (let ci = 0; ci < contours.length; ci++) {
+    const contour = contours[ci].filter((_, i) => i % 2 === 0);
+    if (contour.length < 3) continue;
+    const bodies = [];
+
+    for (let i = 0; i < contour.length; i++) {
+      const p = contour[i];
+      const x = pxToWorld(offsetX + (p.x - minX) * glyphScale);
+      const y = pxToWorld(offsetY - (p.y - minY) * glyphScale);
+      const body = world.createBody({
+        type: "dynamic",
+        position: planck.Vec2(x, y),
+        linearDamping: 2.2,
+        angularDamping: 2.8
+      });
+      body.createFixture(planck.Circle(0.082), {
+        density: 1.1,
+        friction: 0.44,
+        restitution: Math.max(0.08, bounce)
+      });
+      nodes.push({ body, contourIndex: ci, pointIndex: i });
+      bodies.push(body);
+    }
+    contourBodies.push(bodies);
+  }
+
+  for (const bodies of contourBodies) {
+    for (let i = 0; i < bodies.length; i++) {
+      const a = bodies[i];
+      const b = bodies[(i + 1) % bodies.length];
+      addSpring(a, b, Number(stiffInput.value) * 0.24, Number(dampingInput.value) / 88);
+      if (bodies.length > 4) addSpring(a, bodies[(i + 2) % bodies.length], Number(stiffInput.value) * 0.17, Number(dampingInput.value) / 92);
+      if (bodies.length > 7) addSpring(a, bodies[(i + 4) % bodies.length], Number(stiffInput.value) * 0.12, Number(dampingInput.value) / 102);
+      if (bodies.length > 10) addSpring(a, bodies[(i + Math.max(5, Math.floor(bodies.length / 2))) % bodies.length], Number(stiffInput.value) * 0.09, Number(dampingInput.value) / 108);
+    }
+  }
+
+  for (const node of nodes) {
+    const pos = node.body.getPosition();
+    const localAnchor = planck.Vec2(pos.x - coreBody.getPosition().x, pos.y - coreBody.getPosition().y);
+    addCoreSpring(node.body, localAnchor, Number(stiffInput.value) * 0.24, Number(dampingInput.value) / 95);
+    addCoreBrace(node.body, localAnchor, Number(stiffInput.value) * 0.32, Number(dampingInput.value) / 80);
+  }
+  updateStats();
+}
+
+async function loadFont() {
+  try {
+    font = await FontParser.load(fontSelect.value);
+    reset();
+  } catch (err) {
+    console.error("Failed to load font for bendy glyph demo:", err);
+  }
+}
+
+function reset() {
+  setupWorld();
+  buildGlyph();
+  hintStat.textContent = "Drag to throw";
+}
+
+function pointerToWorld(event) {
+  const rect = canvas.getBoundingClientRect();
+  const x = (event.clientX - rect.left) * (canvas.width / rect.width) / dpr;
+  const y = (event.clientY - rect.top) * (canvas.height / rect.height) / dpr;
+  return { x: pxToWorld(x), y: pxToWorld(y) };
+}
+
+function pickNearestNode(wx, wy) {
+  let best = null;
+  let bestDist = 0.36;
+  for (const node of nodes) {
+    const pos = node.body.getPosition();
+    const dist = planck.Vec2.distance(planck.Vec2(wx, wy), pos);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = node;
+    }
+  }
+  return best;
+}
+
+function releaseThrow() {
+  if (!dragNode || dragHistory.length < 2) {
+    dragNode = null;
+    dragHistory = [];
+    return;
+  }
+  const a = dragHistory[Math.max(0, dragHistory.length - 5)];
+  const b = dragHistory[dragHistory.length - 1];
+  const dt = Math.max(1, b.t - a.t);
+  const vx = (b.x - a.x) / dt;
+  const vy = (b.y - a.y) / dt;
+  const impulse = planck.Vec2(vx * 22, vy * 22);
+  if (coreBody) coreBody.applyLinearImpulse(impulse, coreBody.getPosition(), true);
+  for (const node of nodes) {
+    node.body.applyLinearImpulse(impulse, node.body.getPosition(), true);
+  }
+  hintStat.textContent = "Thrown";
+  dragNode = null;
+  dragHistory = [];
+}
+
+canvas.addEventListener("pointerdown", (event) => {
+  const p = pointerToWorld(event);
+  dragNode = pickNearestNode(p.x, p.y);
+  dragHistory = [{ x: p.x, y: p.y, t: performance.now() }];
+  if (dragNode) {
+    hintStat.textContent = "Pulling";
+    canvas.setPointerCapture(event.pointerId);
+  }
+});
+
+canvas.addEventListener("pointermove", (event) => {
+  if (!dragNode) return;
+  const p = pointerToWorld(event);
+  const pos = dragNode.body.getPosition();
+  const to = planck.Vec2.sub(planck.Vec2(p.x, p.y), pos);
+  dragNode.body.applyForceToCenter(planck.Vec2.mul(to, 220), true);
+  dragHistory.push({ x: p.x, y: p.y, t: performance.now() });
+  if (dragHistory.length > 8) dragHistory.shift();
+});
+
+canvas.addEventListener("pointerup", releaseThrow);
+canvas.addEventListener("pointercancel", releaseThrow);
+
+function drawBackdrop(width, height) {
+  const glow = ctx.createRadialGradient(width * 0.5, height * 0.42, 20, width * 0.5, height * 0.42, width * 0.42);
+  glow.addColorStop(0, "rgba(110,200,255,0.18)");
+  glow.addColorStop(1, "rgba(110,200,255,0)");
+  ctx.fillStyle = "#07101a";
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = "rgba(161,196,255,0.14)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(12, 12, width - 24, height - 24);
+}
+
+function draw() {
+  const width = canvas.width / dpr;
+  const height = canvas.height / dpr;
+  ctx.clearRect(0, 0, width, height);
+  drawBackdrop(width, height);
+
+  ctx.strokeStyle = "rgba(110,200,255,0.12)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (const [a, b] of links) {
+    const ap = a.getPosition();
+    const bp = b.getPosition();
+    ctx.moveTo(worldToPx(ap.x), worldToPx(ap.y));
+    ctx.lineTo(worldToPx(bp.x), worldToPx(bp.y));
+  }
+  ctx.stroke();
+
+  const grouped = new Map();
+  for (const node of nodes) {
+    if (!grouped.has(node.contourIndex)) grouped.set(node.contourIndex, []);
+    grouped.get(node.contourIndex).push(node);
+  }
+
+  for (const contourNodes of grouped.values()) {
+    if (contourNodes.length < 3) continue;
+    ctx.beginPath();
+    contourNodes.forEach((node, index) => {
+      const p = node.body.getPosition();
+      const x = worldToPx(p.x);
+      const y = worldToPx(p.y);
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    const fill = ctx.createLinearGradient(0, height * 0.2, width, height * 0.9);
+    fill.addColorStop(0, "rgba(110, 200, 255, 0.26)");
+    fill.addColorStop(1, "rgba(245, 185, 94, 0.18)");
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = "#eef6ff";
+    ctx.lineWidth = 2.2;
+    ctx.shadowColor = "rgba(110, 200, 255, 0.26)";
+    ctx.shadowBlur = 18;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.stroke();
+  }
+
+  if (coreBody) {
+    const p = coreBody.getPosition();
+    ctx.beginPath();
+    ctx.arc(worldToPx(p.x), worldToPx(p.y), 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(245, 185, 94, 0.28)";
+    ctx.fill();
+  }
+
+  for (const node of nodes) {
+    const p = node.body.getPosition();
+    ctx.beginPath();
+    ctx.arc(worldToPx(p.x), worldToPx(p.y), dragNode === node ? 4.6 : 3.2, 0, Math.PI * 2);
+    ctx.fillStyle = dragNode === node ? "#f5b95e" : "#6ec8ff";
+    ctx.fill();
+  }
+}
+
+function tick() {
+  if (world) {
+    world.step(1 / 60);
+    draw();
+  }
+  requestAnimationFrame(tick);
+}
+
+fontSelect.addEventListener("change", loadFont);
+charInput.addEventListener("input", reset);
+gravInput.addEventListener("input", reset);
+stiffInput.addEventListener("input", reset);
+dampingInput.addEventListener("input", reset);
+bounceInput.addEventListener("input", reset);
+resetBtn.addEventListener("click", reset);
+window.addEventListener("resize", resizeCanvas);
+
+resizeCanvas();
+loadFont();
+requestAnimationFrame(tick);
+</script>
+<script type="module" src="../tools/shared/main-nav.js"></script>
+</body>
+</html>

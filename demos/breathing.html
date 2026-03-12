@@ -92,6 +92,7 @@
                 <option value="breathing">Breathing</option>
                 <option value="scared">Scared</option>
                 <option value="floating">Floating</option>
+                <option value="stretching">Stretching</option>
             </select>
         </label>
         <label>
@@ -135,7 +136,8 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
         const EFFECTS = {
             breathing: { word: "BREATHING", fill: "rgba(45, 105, 78, 0.08)", stroke: "#2f6b52", speedStep: 0.020 },
             scared: { word: "SCARED", fill: "rgba(120, 44, 44, 0.09)", stroke: "#8f3d3d", speedStep: 0.042 },
-            floating: { word: "FLOATING", fill: "rgba(56, 84, 148, 0.08)", stroke: "#365494", speedStep: 0.018 }
+            floating: { word: "FLOATING", fill: "rgba(56, 84, 148, 0.08)", stroke: "#365494", speedStep: 0.018 },
+            stretching: { word: "STRETCH", fill: "rgba(166, 105, 44, 0.08)", stroke: "#9a5f28", speedStep: 0.014 }
         };
 
         function getScale(font, sizePx) {
@@ -223,10 +225,34 @@ const { FontParser, CanvasRenderer, SVGFont } = window.FontParser;
             }));
         }
 
+        function deformPointsStretching(points, amp, time) {
+            const { cx, cy, maxDist } = getPointStats(points);
+            const phase = (Math.sin(time) + 1) * 0.5;
+            const hold = Math.pow(phase, 1.8);
+            const stretchY = 1 + hold * 0.42;
+            const squeezeX = 1 - hold * 0.16;
+            const rebound = Math.sin(time * 2.1 + Math.PI * 0.35) * amp * 0.08;
+
+            return points.map((p, i) => {
+                const dx = p.x - cx;
+                const dy = p.y - cy;
+                const radial = Math.sqrt(dx * dx + dy * dy) / maxDist;
+                const wave = Math.sin(time * 0.65 + radial * 3.4 + i * 0.045) * amp * 0.14;
+                const edgePull = Math.sign(dy || 1) * hold * radial * amp * 0.22;
+                return {
+                    x: cx + (dx * squeezeX) + Math.sin(time * 0.9 + dy * 0.012) * amp * 0.05,
+                    y: cy + (dy * stretchY) + edgePull + wave + rebound,
+                    onCurve: p.onCurve,
+                    endOfContour: p.endOfContour
+                };
+            });
+        }
+
         function deformByMode(mode, points, amp, time) {
             switch (mode) {
                 case "scared": return deformPointsScared(points, amp, time);
                 case "floating": return deformPointsFloating(points, amp, time);
+                case "stretching": return deformPointsStretching(points, amp, time);
                 case "breathing":
                 default: return deformPointsBreathing(points, amp, time);
             }

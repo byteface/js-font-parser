@@ -83,9 +83,16 @@ const palettes = {
   }
 };
 
-const fontOptions = getFontList("languageSupport")
+const fontOptions = [
+  ...getFontList("demoCore"),
+  ...getFontList("allGlyphs")
+]
   .filter((f) => !/2006 Team|DevilInside/i.test(f.name))
-  .filter((fontOption, index, all) => all.findIndex((item) => item.url === fontOption.url) === index);
+  .filter((fontOption, index, all) => all.findIndex((item) => item.url === fontOption.url) === index)
+  .filter((fontOption, index, all) => {
+    if (!/^Noto\b/i.test(fontOption.name)) return true;
+    return all.findIndex((item) => /^Noto\b/i.test(item.name)) === index;
+  });
 for (const f of fontOptions) {
   const opt = document.createElement("option");
   opt.value = f.url;
@@ -367,7 +374,8 @@ thicknessInput.addEventListener("input", () => {
 branchInput.addEventListener("input", rebuild);
 window.addEventListener("resize", resize);
 
-if (fontOptions.length) fontSelect.value = fontOptions[0].url;
+const defaultFont = fontOptions.find((fontOption) => !/DiscoMo/i.test(fontOption.name)) || fontOptions[0];
+if (defaultFont) fontSelect.value = defaultFont.url;
 resize();
 loadFont();
 requestAnimationFrame(frame);
